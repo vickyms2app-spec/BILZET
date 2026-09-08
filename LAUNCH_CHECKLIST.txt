@@ -1,0 +1,16 @@
+BILZET V10.4 NEW LAUNCH CHECKLIST
+
+[ ] database/schema.sql executed in Supabase
+[ ] Confirm email OFF if instant registration is required
+[ ] SUPABASE_URL set in Vercel
+[ ] SUPABASE_ANON_KEY set in Vercel
+[ ] SUPABASE_SERVICE_ROLE_KEY set in Vercel
+[ ] ADMIN_EMAIL set in Vercel
+[ ] ADMIN_PASSWORD set in Vercel
+[ ] ADMIN_SESSION_SECRET set in Vercel
+[ ] Vercel Root Directory is repository root / blank
+[ ] / opens Login/Register
+[ ] Login opens correct Retail/Pharmacy workspace
+[ ] Refresh returns to Login screen
+[ ] Logout returns to Login screen
+[ ] /admin opens admin portal only

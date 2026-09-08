@@ -1,0 +1,1 @@
+module.exports=(req,res)=>{res.setHeader('Cache-Control','no-store');res.status(200).json({product:'BILZET',version:'10.4.0',mode:'login-online+offline-billing',userPortal:'/',adminPortal:'/admin',adminFile:'/admin.html',pharmacy:true,mobileResponsive:true,authPersistence:false})};
