@@ -12,6 +12,14 @@
     {
       "source": "/admin/",
       "destination": "/admin.html"
+    },
+    {
+      "source": "/Admin",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/Admin/",
+      "destination": "/admin.html"
     }
   ],
   "headers": [
