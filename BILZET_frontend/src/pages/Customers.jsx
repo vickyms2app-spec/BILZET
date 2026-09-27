@@ -15,7 +15,7 @@ import { mockCustomers } from "../api/mockData";
 import { customersApi } from "../api";
 
 export default function Customers() {
-  const [customers, setCustomers] = useState(mockCustomers);
+  const [customers, setCustomers] = useState([]);
   const [search, setSearch] = useState("");
   const [openModal, setOpenModal] = useState(false);
   const [newCust, setNewCust] = useState({
@@ -27,11 +27,9 @@ export default function Customers() {
 
   useEffect(() => {
     customersApi.list({ search }).then((res) => {
-      const list = res?.customers || res?.data?.customers || mockCustomers;
-      if (list && list.length > 0) {
-        setCustomers(list);
-      }
-    });
+      const list = res?.customers || res?.data?.customers || [];
+      setCustomers(list);
+    }).catch(() => setCustomers([]));
   }, [search]);
 
   const totalOutstanding = customers.reduce((acc, c) => acc + (c.balance || 0), 0);

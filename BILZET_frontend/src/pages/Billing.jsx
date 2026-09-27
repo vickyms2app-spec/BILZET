@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Menu, Plus, ChevronDown, ChevronRight, Trash2, Printer, Share2, Download, Check, Eye } from "lucide-react";
-import { mockProducts } from "../api/mockData";
-import { settingsApi } from "../api";
+import { settingsApi, productsApi } from "../api";
 import TaxInvoice from "../components/invoice/TaxInvoice";
 import Logo from "../components/common/Logo";
 
@@ -11,6 +10,7 @@ export default function Billing() {
   const [saleType, setSaleType] = useState("B2C — Customer");
   const [showGstOptions, setShowGstOptions] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState("");
+  const [availableProducts, setAvailableProducts] = useState([]);
   const [items, setItems] = useState([]);
   
   // Payment states
@@ -35,6 +35,12 @@ export default function Billing() {
         if (res) setShopSettings(res);
       }).catch(() => {});
     }
+
+    // Load active products from database
+    productsApi.list({ limit: 100 }).then((res) => {
+      const prods = res?.products || res?.data?.products || [];
+      setAvailableProducts(prods);
+    }).catch(() => setAvailableProducts([]));
   }, []);
 
   // Calculations
@@ -44,10 +50,11 @@ export default function Billing() {
   const balanceDue = Math.max(0, grandTotal - Number(amountReceived || 0));
 
   const handleAddItem = () => {
-    const prod = mockProducts.find((p) => p._id === selectedProductId) || mockProducts[0];
+    const prod = availableProducts.find((p) => (p.id || p._id) === selectedProductId);
     if (!prod) return;
 
-    const existingIndex = items.findIndex((i) => i.id === prod._id);
+    const prodId = prod.id || prod._id;
+    const existingIndex = items.findIndex((i) => i.id === prodId);
     if (existingIndex >= 0) {
       const updated = [...items];
       updated[existingIndex].qty += 1;
@@ -56,12 +63,12 @@ export default function Billing() {
       setItems([
         ...items,
         {
-          id: prod._id,
+          id: prodId,
           name: prod.name,
-          hsn: "1904",
+          hsn: prod.hsn || "1904",
           qty: 1,
-          rate: prod.sellingPrice,
-          gst: prod.gstRate || 5,
+          rate: Number(prod.sellingPrice || 0),
+          gst: Number(prod.gstRate || 0),
         },
       ]);
     }
@@ -263,12 +270,15 @@ export default function Billing() {
                 onChange={(e) => setSelectedProductId(e.target.value)}
                 className="w-full md:flex-1 min-w-0 px-3.5 py-2.5 text-xs sm:text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-500 bg-white"
               >
-                <option value="">Select product to add</option>
-                {mockProducts.map((p) => (
-                  <option key={p._id} value={p._id}>
-                    {p.name} — ₹{p.sellingPrice} ({p.stock} in stock)
-                  </option>
-                ))}
+                <option value="">{availableProducts.length === 0 ? "No catalog products found — add in Products or use Custom Line" : "Select product to add"}</option>
+                {availableProducts.map((p) => {
+                  const id = p.id || p._id;
+                  return (
+                    <option key={id} value={id}>
+                      {p.name} — ₹{p.sellingPrice} ({p.stock ?? 0} in stock)
+                    </option>
+                  );
+                })}
               </select>
 
               <div className="flex flex-wrap items-center gap-2">

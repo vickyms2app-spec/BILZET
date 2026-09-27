@@ -15,7 +15,7 @@ import { inventoryApi } from "../api";
 import { mockInventory } from "../api/mockData";
 
 export default function Inventory() {
-  const [inventory, setInventory] = useState(mockInventory);
+  const [inventory, setInventory] = useState([]);
   const [search, setSearch] = useState("");
   const [selectedCat, setSelectedCat] = useState("All");
   const [openModal, setOpenModal] = useState(false);
@@ -25,11 +25,9 @@ export default function Inventory() {
 
   useEffect(() => {
     inventoryApi.list().then((res) => {
-      const list = res?.data?.inventory || res?.inventory || mockInventory;
-      if (list && list.length > 0) {
-        setInventory(list);
-      }
-    });
+      const list = res?.data?.inventory || res?.inventory || [];
+      setInventory(list);
+    }).catch(() => setInventory([]));
   }, []);
 
   const totalItems = inventory.reduce((acc, i) => acc + (i.stock || 0), 0);

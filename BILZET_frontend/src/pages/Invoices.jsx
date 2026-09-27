@@ -22,7 +22,7 @@ export default function Invoices() {
   const nav = useNavigate();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
-  const [invoices, setInvoices] = useState(mockDashboardData.recentSales || []);
+  const [invoices, setInvoices] = useState([]);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [shopSettings, setShopSettings] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -45,11 +45,10 @@ export default function Invoices() {
     salesApi
       .list()
       .then((res) => {
-        if (res && res.sales && res.sales.length > 0) {
-          setInvoices(res.sales);
-        }
+        const salesList = res?.sales || res?.data?.sales || [];
+        setInvoices(salesList);
       })
-      .catch(() => {})
+      .catch(() => setInvoices([]))
       .finally(() => setLoading(false));
   }, []);
 

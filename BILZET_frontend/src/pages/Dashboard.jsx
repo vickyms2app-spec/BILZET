@@ -55,15 +55,15 @@ export default function Dashboard() {
   const stats = [
     {
       title: "Today's Gross Sales",
-      value: `₹${(data.todaySales || data.totalSales || 4947).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
-      sub: "+14.2% vs previous period",
+      value: `₹${Number(data.todaySales ?? data.totalSales ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
+      sub: "Active Live Outward Billing",
       icon: TrendingUp,
       color: "from-blue-600 to-indigo-600",
       glow: "rgba(26, 92, 255, 0.15)",
     },
     {
       title: "Total GST Collected",
-      value: `₹${(data.gstCollected || 387.4).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
+      value: `₹${Number(data.gstCollected ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
       sub: "100% Tax Compliant Outward",
       icon: Receipt,
       color: "from-teal-500 to-emerald-600",
@@ -71,7 +71,7 @@ export default function Dashboard() {
     },
     {
       title: "Registered Customers",
-      value: `${data.totalCustomers || 18} Accounts`,
+      value: `${data.totalCustomers ?? 0} Accounts`,
       sub: "Active B2B & Retail Clients",
       icon: Users,
       color: "from-cyan-500 to-blue-600",
@@ -79,7 +79,7 @@ export default function Dashboard() {
     },
     {
       title: "Inventory Stock Watch",
-      value: `${data.lowStockCount || 2} Low Items`,
+      value: `${data.lowStockCount ?? data.lowStockProducts ?? 0} Low Items`,
       sub: "Requires replenishment",
       icon: AlertTriangle,
       color: "from-amber-500 to-orange-600",
