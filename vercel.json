@@ -1,35 +1,14 @@
 {
-  "version": 2,
   "buildCommand": "npm run build",
   "outputDirectory": "BILZET_frontend/dist",
-  "builds": [
+  "rewrites": [
     {
-      "src": "api/index.mjs",
-      "use": "@vercel/node"
+      "source": "/api/(.*)",
+      "destination": "/api/index.mjs"
     },
     {
-      "src": "BILZET_frontend/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
-      }
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/api/index.mjs"
-    },
-    {
-      "src": "/assets/(.*)",
-      "dest": "/assets/$1"
-    },
-    {
-      "handle": "filesystem"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }
