@@ -13,4 +13,3 @@ export const prisma = globalForPrisma.prisma ?? prismaClientSingleton();
 globalForPrisma.prisma = prisma;
 
 export default prisma;
-export { prisma };
