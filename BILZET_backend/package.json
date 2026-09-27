@@ -1,0 +1,46 @@
+{
+  "name": "shop-billing-backend",
+  "version": "1.0.0",
+  "description": "Production-ready REST API backend for Shop Billing and Inventory Management System",
+  "type": "module",
+  "main": "src/server.mjs",
+  "scripts": {
+    "start": "node src/server.mjs",
+    "dev": "nodemon src/server.mjs",
+    "build": "prisma generate",
+    "seed": "node prisma/seed.mjs",
+    "prisma:push": "prisma db push",
+    "prisma:generate": "prisma generate",
+    "test": "node --test \"tests/**/*.test.mjs\""
+  },
+  "keywords": [
+    "pos",
+    "billing",
+    "inventory",
+    "express",
+    "mongodb",
+    "mongoose"
+  ],
+  "author": "Engineering Team",
+  "license": "ISC",
+  "dependencies": {
+    "@prisma/client": "6.4.1",
+    "bcryptjs": "^3.0.3",
+    "bwip-js": "^4.5.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "exceljs": "^4.4.0",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.13.0",
+    "pdfkit": "^0.16.0",
+    "prisma": "6.4.1",
+    "qrcode": "^1.5.4",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9"
+  }
+}

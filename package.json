@@ -1,0 +1,30 @@
+{
+  "name": "bilzet-all-in-one",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "npm run build:backend && npm run build:frontend",
+    "build:backend": "cd BILZET_backend && npm install && npx prisma generate",
+    "build:frontend": "cd BILZET_frontend && npm install && npm run build",
+    "dev:backend": "cd BILZET_backend && npm run dev",
+    "dev:frontend": "cd BILZET_frontend && npm run dev"
+  },
+  "dependencies": {
+    "@prisma/client": "6.4.1",
+    "bcryptjs": "^3.0.3",
+    "bwip-js": "^4.5.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "exceljs": "^4.4.0",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.13.0",
+    "pdfkit": "^0.16.0",
+    "prisma": "6.4.1",
+    "qrcode": "^1.5.4",
+    "zod": "^3.24.2"
+  }
+}
