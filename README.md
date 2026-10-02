@@ -8,6 +8,12 @@ Built with **React 18**, **Vite**, **Tailwind CSS v4**, **Framer Motion**, and *
 
 ## 🌟 Key Features & New Updates
 
+### 🚀 Streamlined Navigation Architecture & Dedicated Operations
+- **Single Page Responsibility**: Every module has one clear navigation destination and zero duplicate cross-navigation buttons.
+- **Dedicated Stock Transfers (`/warehouses/transfer`)**: Full multi-warehouse transfer operations with live history and transfer dialogs.
+- **Godowns & Warehouses (`/warehouses`)**: Dedicated warehouse & physical location management with instant stock lookup.
+- **Clerk Authentication**: Seamless, official social and email authentication with session protection.
+
 ### 1. 📊 Creative & Illustrative Dashboard (`/dashboard`)
 - **4 Top KPI Cards**: Net Sales, Amount Collected, Outstanding Customer Dues, and Net GST/Tax with glowing gradient orbs and colored accent top lines.
 - **GST Readiness Tracker**: Live **100/100** compliance score with instant access to the GST review center.
