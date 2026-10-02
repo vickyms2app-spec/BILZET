@@ -5,7 +5,7 @@ import AppRoutes from "./routes/AppRoutes";
 import { ClerkAuthSync } from "./components/auth/ClerkAuth";
 import "./index.css";
 
-const hasClerk = Boolean(import.meta.env.VITE_CLERK_PUBLISHABLE_KEY);
+import { hasClerk } from "./config/clerk";
 
 export default function App() {
   const bootstrap = useAuth((s) => s.bootstrap);

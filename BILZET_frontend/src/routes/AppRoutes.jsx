@@ -41,7 +41,7 @@ import SuperAdminSettings from "../pages/superAdmin/SuperAdminSettings";
 
 import { useAuth as useClerkAuth } from "@clerk/clerk-react";
 
-const hasClerk = Boolean(import.meta.env.VITE_CLERK_PUBLISHABLE_KEY);
+import { hasClerk } from "../config/clerk";
 
 function ClerkProtectedWrapper({ children, roles }) {
   const { user, loading: authLoading } = useAuth();

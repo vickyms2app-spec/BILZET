@@ -42,7 +42,7 @@ import { useConnectionStatus } from "../../hooks/useConnectionStatus";
 import Logo from "../common/Logo";
 import { useClerk } from "@clerk/clerk-react";
 
-const hasClerk = Boolean(import.meta.env.VITE_CLERK_PUBLISHABLE_KEY);
+import { hasClerk } from "../../config/clerk";
 
 const navSections = [
   {

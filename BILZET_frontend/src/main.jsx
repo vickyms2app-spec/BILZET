@@ -4,7 +4,7 @@ import App from "./App";
 import ErrorBoundary from "./components/common/ErrorBoundary";
 import { ClerkProvider } from "@clerk/clerk-react";
 
-const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+import { CLERK_PUBLISHABLE_KEY } from "./config/clerk";
 
 const container = document.getElementById("root");
 if (container) {
@@ -12,8 +12,8 @@ if (container) {
   root.render(
     <React.StrictMode>
       <ErrorBoundary>
-        {clerkPubKey ? (
-          <ClerkProvider publishableKey={clerkPubKey}>
+        {CLERK_PUBLISHABLE_KEY ? (
+          <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY}>
             <App />
           </ClerkProvider>
         ) : (
