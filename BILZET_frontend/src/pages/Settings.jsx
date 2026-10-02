@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import {
   Settings as SettingsIcon,
   Store,
@@ -19,7 +20,10 @@ import { settingsApi } from "../api";
 import TaxInvoice from "../components/invoice/TaxInvoice";
 
 export default function Settings() {
-  const [activeTab, setActiveTab] = useState("customizer"); // 'customizer' | 'store' | 'bank' | 'paper'
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const isOnboarding = searchParams.get("onboarding") === "true";
+  const [activeTab, setActiveTab] = useState(isOnboarding ? "store" : "customizer");
 
   const [form, setForm] = useState(() => {
     const savedLocal = localStorage.getItem("bilzet_invoice_settings");
@@ -131,68 +135,86 @@ export default function Settings() {
     },
   ];
 
+  const inputCls = "w-full px-3.5 py-2.5 text-xs border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 font-medium transition bg-white";
+
   return (
-    <div className="space-y-6 pb-16 max-w-7xl mx-auto">
+    <div className="space-y-5 pb-16 max-w-7xl mx-auto fade-up">
       {/* ══════════════════════════════════════════════════
           TOP HEADER
       ══════════════════════════════════════════════════ */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-        <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white grid place-items-center shadow-lg shadow-blue-500/20">
-            <Palette size={22} />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 grid place-items-center shrink-0">
+            <Palette size={20} />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-black text-slate-900 tracking-tight">
-                Invoice Customizer & Settings
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-xl font-bold text-slate-900 tracking-tight">
+                Invoice Customizer &amp; Settings
               </h1>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-100 text-blue-700">
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200/80">
                 GST Ready
               </span>
             </div>
-            <p className="text-xs text-slate-500 font-medium mt-0.5">
+            <p className="text-xs text-slate-500 font-normal mt-0.5">
               Design tailored tax invoices, configure brand themes, and set up instant UPI scan-to-pay
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 self-start sm:self-center">
           {saved && (
-            <span className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold rounded-xl animate-in fade-in">
-              <Check size={14} />
-              <span>Settings Saved!</span>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold rounded-xl">
+              <Check size={13} />
+              <span>Saved!</span>
             </span>
           )}
-
           <button
             type="button"
             onClick={() => setShowFullPreview(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition"
+            className="btn-secondary text-xs"
           >
-            <Eye size={14} />
+            <Eye size={13} className="text-slate-400" />
             <span>Full Preview</span>
           </button>
-
           <button
             type="button"
             onClick={handleSubmit}
-            className="flex items-center gap-2 bg-[#1a5cff] hover:bg-[#1248cc] text-white px-5 py-2.5 rounded-xl font-bold text-xs shadow-md shadow-blue-500/25 transition active:scale-95"
+            className="btn-primary text-xs"
           >
-            <Save size={14} />
+            <Save size={13} />
             <span>Save Customization</span>
           </button>
         </div>
       </div>
 
+      {isOnboarding && (
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fadeIn">
+          <div>
+            <h3 className="font-bold text-sm">Welcome to BILZET ERP! 🎉</h3>
+            <p className="text-xs text-blue-100 mt-0.5">
+              Let&apos;s quickly review and save your Business profile and Shop details before accessing your workspace.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate("/dashboard")}
+            className="px-4 py-2 rounded-xl bg-white text-blue-700 font-bold text-xs hover:bg-blue-50 transition shrink-0 self-start sm:self-auto shadow-xs"
+          >
+            Continue to Dashboard →
+          </button>
+        </div>
+      )}
+
       {/* ══════════════════════════════════════════════════
           NAVIGATION TABS
       ══════════════════════════════════════════════════ */}
-      <div className="flex items-center gap-2 border-b border-slate-200 pb-2 overflow-x-auto">
+      <div className="seg-tabs w-full overflow-x-auto">
         {[
           { id: "customizer", label: "Invoice Studio & Preview", icon: Sparkles },
           { id: "store", label: "Shop Profile & GST", icon: Store },
-          { id: "bank", label: "Bank & UPI QR Setup", icon: Building2 },
-          { id: "paper", label: "Paper & Print Formats", icon: Printer },
+          { id: "bank", label: "Bank & UPI QR", icon: Building2 },
+          { id: "paper", label: "Paper & Print", icon: Printer },
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -200,13 +222,9 @@ export default function Settings() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition whitespace-nowrap ${
-                isActive
-                  ? "bg-slate-900 text-white shadow-sm"
-                  : "text-slate-600 hover:bg-slate-100"
-              }`}
+              className={`seg-tab flex items-center gap-1.5 ${isActive ? "active" : ""}`}
             >
-              <Icon size={15} />
+              <Icon size={13} className={isActive ? "text-blue-600" : "text-slate-400"} />
               <span>{tab.label}</span>
             </button>
           );
@@ -214,501 +232,424 @@ export default function Settings() {
       </div>
 
       {/* ══════════════════════════════════════════════════
-          TAB 1: INVOICE STUDIO & LIVE PREVIEW
+          2-COLUMN SPLIT: FORM CONTROLS (LEFT) + LIVE PREVIEW (RIGHT)
       ══════════════════════════════════════════════════ */}
-      {activeTab === "customizer" && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* LEFT: CONTROLS (7 Cols) */}
-          <div className="lg:col-span-6 space-y-6">
-            {/* 1. TEMPLATE PICKER */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-sm font-bold text-slate-900">1. Invoice Design Template</h2>
-                  <p className="text-xs text-slate-400">Select the visual layout for your customer invoices</p>
-                </div>
-                <span className="text-[11px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
-                  {form.template.toUpperCase()}
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {templates.map((tmpl) => {
-                  const isSelected = form.template === tmpl.id;
-                  return (
-                    <div
-                      key={tmpl.id}
-                      onClick={() => handleChange("template", tmpl.id)}
-                      className={`p-3.5 rounded-xl border-2 cursor-pointer transition relative flex flex-col justify-between ${
-                        isSelected
-                          ? "border-blue-600 bg-blue-50/40 shadow-sm"
-                          : "border-slate-200 hover:border-slate-300 bg-white"
-                      }`}
-                    >
-                      <div>
-                        <div className="flex items-center justify-between">
-                          <p className="font-bold text-xs text-slate-900">{tmpl.name}</p>
-                          <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
-                            {tmpl.tag}
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-slate-500 mt-1 leading-snug">{tmpl.desc}</p>
-                      </div>
-                      <div className="mt-3 flex items-center justify-between pt-2 border-t border-slate-100 text-[10px]">
-                        <span className={isSelected ? "text-blue-600 font-bold" : "text-slate-400"}>
-                          {isSelected ? "Active Layout" : "Click to apply"}
-                        </span>
-                        {isSelected && <CheckCircle2 size={14} className="text-blue-600" />}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* 2. THEME PALETTE & ACCENT COLOR */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-sm font-bold text-slate-900">2. Brand Accent Color</h2>
-                  <p className="text-xs text-slate-400">Used for headers, invoice highlights, and badges</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div
-                    className="w-5 h-5 rounded-full border border-white shadow-sm"
-                    style={{ backgroundColor: form.themeColor }}
-                  />
-                  <span className="text-xs font-mono font-bold text-slate-700 uppercase">
-                    {form.themeColor}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+        {/* LEFT COLUMN: ACTIVE TAB CONTROLS (6 Cols) */}
+        <div className="lg:col-span-6 space-y-5">
+          {/* ──────────────── TAB 1: INVOICE STUDIO ──────────────── */}
+          {activeTab === "customizer" && (
+            <div className="space-y-5">
+              {/* 1. TEMPLATE PICKER */}
+              <div className="card p-5 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-sm font-bold text-slate-900">1. Invoice Design Template</h2>
+                    <p className="text-xs text-slate-400 mt-0.5">Select the visual layout for your customer invoices</p>
+                  </div>
+                  <span className="text-[10px] font-bold text-blue-600 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-lg uppercase tracking-wider">
+                    {form.template}
                   </span>
                 </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {templates.map((tmpl) => {
+                    const isSelected = form.template === tmpl.id;
+                    return (
+                      <div
+                        key={tmpl.id}
+                        onClick={() => handleChange("template", tmpl.id)}
+                        className={`p-3.5 rounded-xl border-2 cursor-pointer transition relative flex flex-col justify-between ${
+                          isSelected
+                            ? "border-blue-600 bg-blue-50/40"
+                            : "border-slate-200 hover:border-slate-300 bg-white"
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <p className="font-bold text-xs text-slate-900">{tmpl.name}</p>
+                            <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">
+                              {tmpl.tag}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-500 leading-snug">{tmpl.desc}</p>
+                        </div>
+                        <div className="mt-2.5 flex items-center justify-between pt-2 border-t border-slate-100 text-[10px]">
+                          <span className={isSelected ? "text-blue-600 font-bold" : "text-slate-400"}>
+                            {isSelected ? "✓ Active Layout" : "Click to apply"}
+                          </span>
+                          {isSelected && <CheckCircle2 size={13} className="text-blue-600" />}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
 
-              {/* Swatches */}
-              <div className="flex flex-wrap items-center gap-3">
-                {themePalettes.map((p) => {
-                  const active = form.themeColor === p.color;
-                  return (
-                    <button
-                      key={p.color}
-                      type="button"
-                      onClick={() => handleChange("themeColor", p.color)}
-                      className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-semibold transition ${
-                        active
-                          ? "border-slate-800 bg-slate-900 text-white shadow-sm"
-                          : "border-slate-200 hover:border-slate-300 text-slate-700 bg-white"
-                      }`}
-                    >
-                      <span
-                        className="w-3.5 h-3.5 rounded-full border border-white shadow-xs"
-                        style={{ backgroundColor: p.color }}
-                      />
-                      <span>{p.label}</span>
-                    </button>
-                  );
-                })}
+              {/* 2. THEME PALETTE & ACCENT COLOR */}
+              <div className="card p-5 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-sm font-bold text-slate-900">2. Brand Accent Color</h2>
+                    <p className="text-xs text-slate-400 mt-0.5">Used for headers, invoice highlights, and badges</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div
+                      className="w-5 h-5 rounded-full border-2 border-white shadow"
+                      style={{ backgroundColor: form.themeColor }}
+                    />
+                    <span className="text-xs font-mono font-bold text-slate-700 uppercase">
+                      {form.themeColor}
+                    </span>
+                  </div>
+                </div>
 
-                {/* Custom Color Input */}
-                <div className="flex items-center gap-1.5 ml-auto">
-                  <label className="text-[11px] font-semibold text-slate-500">Custom:</label>
-                  <input
-                    type="color"
-                    value={form.themeColor}
-                    onChange={(e) => handleChange("themeColor", e.target.value)}
-                    className="w-8 h-8 rounded-lg cursor-pointer border border-slate-200 p-0.5 bg-white"
-                  />
+                {/* Swatches */}
+                <div className="flex flex-wrap items-center gap-2">
+                  {themePalettes.map((p) => {
+                    const active = form.themeColor === p.color;
+                    return (
+                      <button
+                        key={p.color}
+                        type="button"
+                        onClick={() => handleChange("themeColor", p.color)}
+                        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-semibold transition ${
+                          active
+                            ? "border-slate-800 bg-slate-900 text-white shadow-sm"
+                            : "border-slate-200 hover:border-slate-300 text-slate-700 bg-white"
+                        }`}
+                      >
+                        <span
+                          className="w-3 h-3 rounded-full border border-white/60 shadow-xs"
+                          style={{ backgroundColor: p.color }}
+                        />
+                        <span>{p.label}</span>
+                      </button>
+                    );
+                  })}
+
+                  {/* Custom Color Input */}
+                  <div className="flex items-center gap-1.5 ml-auto">
+                    <label className="text-[10px] font-semibold text-slate-500">Custom:</label>
+                    <input
+                      type="color"
+                      value={form.themeColor}
+                      onChange={(e) => handleChange("themeColor", e.target.value)}
+                      className="w-8 h-8 rounded-lg cursor-pointer border border-slate-200 p-0.5 bg-white"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. INVOICE HEADER & TITLE */}
+              <div className="card p-5 space-y-4">
+                <h2 className="text-sm font-bold text-slate-900">3. Document Header &amp; Title</h2>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 mb-1.5">Invoice Document Title</label>
+                    <select
+                      value={form.invoiceTitle}
+                      onChange={(e) => handleChange("invoiceTitle", e.target.value)}
+                      className={inputCls}
+                    >
+                      <option value="TAX INVOICE">TAX INVOICE (GST Standard)</option>
+                      <option value="RETAIL INVOICE">RETAIL INVOICE</option>
+                      <option value="BILL OF SUPPLY">BILL OF SUPPLY (Composition / Exempt)</option>
+                      <option value="CASH MEMO">TAX INVOICE / CASH MEMO</option>
+                      <option value="PROFORMA INVOICE">PROFORMA INVOICE</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 mb-1.5">Invoice Series Prefix</label>
+                    <input
+                      value={form.invoicePrefix}
+                      onChange={(e) => handleChange("invoicePrefix", e.target.value)}
+                      placeholder="INV-2026-"
+                      className={`${inputCls} font-mono uppercase`}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 4. TOGGLES: SECTIONS DISPLAY */}
+              <div className="card p-5 space-y-3">
+                <div>
+                  <h2 className="text-sm font-bold text-slate-900">4. Visible Elements &amp; Compliance</h2>
+                  <p className="text-xs text-slate-400 mt-0.5">Toggle sections shown on customer invoices</p>
+                </div>
+
+                <div className="divide-y divide-slate-100">
+                  {[
+                    {
+                      key: "showHsnSummary",
+                      title: "HSN / SAC Tax Summary Grid",
+                      desc: "Detailed table calculating CGST and SGST per HSN category",
+                    },
+                    {
+                      key: "showAmountInWords",
+                      title: "Amount in Words (INR)",
+                      desc: "Spells out the grand total in Indian Rupees",
+                    },
+                    {
+                      key: "showBankDetails",
+                      title: "Bank Account & IFSC Box",
+                      desc: "Displays Bank Name, A/C Number, IFSC for NEFT/RTGS",
+                    },
+                    {
+                      key: "showQrCode",
+                      title: "Dynamic UPI Payment QR Code",
+                      desc: "Direct scan-to-pay QR linking to your shop's UPI VPA",
+                    },
+                    {
+                      key: "showSignatory",
+                      title: "Authorized Signatory Box",
+                      desc: "Formal stamp area with 'For [Shop Name]' and signature line",
+                    },
+                    {
+                      key: "showTerms",
+                      title: "Terms & Conditions Clause",
+                      desc: "Footer note outlining return policy and business terms",
+                    },
+                  ].map((item) => (
+                    <label
+                      key={item.key}
+                      className="py-3 flex items-center justify-between cursor-pointer hover:bg-slate-50/60 -mx-2 px-2 rounded-xl transition"
+                    >
+                      <div>
+                        <p className="text-xs font-bold text-slate-800">{item.title}</p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">{item.desc}</p>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={form[item.key]}
+                        onChange={(e) => handleChange(item.key, e.target.checked)}
+                        className="w-4 h-4 accent-blue-600 rounded cursor-pointer shrink-0 ml-3"
+                      />
+                    </label>
+                  ))}
                 </div>
               </div>
             </div>
+          )}
 
-            {/* 3. INVOICE HEADER & TITLE */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-              <h2 className="text-sm font-bold text-slate-900">3. Document Header & Title</h2>
+          {/* ──────────────── TAB 2: SHOP PROFILE & GST ──────────────── */}
+          {activeTab === "store" && (
+            <div className="card p-6 space-y-5">
+              <div className="flex items-center gap-2.5 pb-4 border-b border-slate-100">
+                <Store size={18} className="text-blue-600" />
+                <div>
+                  <h2 className="text-sm font-bold text-slate-900">Business Profile &amp; GST Identification</h2>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Official entity information printed on the supplier block of tax invoices
+                  </p>
+                </div>
+              </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-600 mb-1">
-                    Invoice Document Title
-                  </label>
-                  <select
-                    value={form.invoiceTitle}
-                    onChange={(e) => handleChange("invoiceTitle", e.target.value)}
-                    className="w-full px-3.5 py-2 text-xs border border-slate-200 rounded-xl outline-none focus:border-blue-500 font-bold bg-white"
-                  >
-                    <option value="TAX INVOICE">TAX INVOICE (GST Standard)</option>
-                    <option value="RETAIL INVOICE">RETAIL INVOICE</option>
-                    <option value="BILL OF SUPPLY">BILL OF SUPPLY (Composition / Exempt)</option>
-                    <option value="CASH MEMO">TAX INVOICE / CASH MEMO</option>
-                    <option value="PROFORMA INVOICE">PROFORMA INVOICE</option>
-                  </select>
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5">Shop / Business Trade Name</label>
+                  <input value={form.shopName} onChange={(e) => handleChange("shopName", e.target.value)} className={inputCls} />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-600 mb-1">
-                    Invoice Series Prefix
-                  </label>
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5">Owner / Authorized Person</label>
+                  <input value={form.ownerName} onChange={(e) => handleChange("ownerName", e.target.value)} className={inputCls} />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5">Contact Phone</label>
+                  <input value={form.phone} onChange={(e) => handleChange("phone", e.target.value)} className={inputCls} />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5">Contact Email</label>
+                  <input value={form.email} onChange={(e) => handleChange("email", e.target.value)} className={inputCls} />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5">Registered Principal Place of Business Address</label>
+                  <input value={form.address} onChange={(e) => handleChange("address", e.target.value)} className={inputCls} />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5">Registered GSTIN (15 Digits)</label>
                   <input
-                    value={form.invoicePrefix}
-                    onChange={(e) => handleChange("invoicePrefix", e.target.value)}
-                    placeholder="INV-2026-"
-                    className="w-full px-3.5 py-2 text-xs border border-slate-200 rounded-xl outline-none focus:border-blue-500 font-mono font-bold"
+                    value={form.gstin}
+                    onChange={(e) => handleChange("gstin", e.target.value.toUpperCase())}
+                    placeholder="29ABCDE1234F1Z5"
+                    className={`${inputCls} font-mono uppercase font-bold`}
                   />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5">Permanent Account Number (PAN)</label>
+                  <input
+                    value={form.pan}
+                    onChange={(e) => handleChange("pan", e.target.value.toUpperCase())}
+                    placeholder="ABCDE1234F"
+                    className={`${inputCls} font-mono uppercase font-bold`}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5">State Name</label>
+                  <input value={form.state} onChange={(e) => handleChange("state", e.target.value)} className={inputCls} />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5">State Code (e.g. 29, 33, 27)</label>
+                  <input value={form.stateCode} onChange={(e) => handleChange("stateCode", e.target.value)} className={`${inputCls} font-mono`} />
                 </div>
               </div>
             </div>
+          )}
 
-            {/* 4. TOGGLES: SECTIONS DISPLAY */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-              <div className="flex items-center justify-between">
+          {/* ──────────────── TAB 3: BANK & UPI QR ──────────────── */}
+          {activeTab === "bank" && (
+            <div className="card p-6 space-y-5">
+              <div className="flex items-center gap-2.5 pb-4 border-b border-slate-100">
+                <Building2 size={18} className="text-emerald-600" />
                 <div>
-                  <h2 className="text-sm font-bold text-slate-900">4. Visible Elements & Compliance</h2>
-                  <p className="text-xs text-slate-400">Toggle sections shown on customer invoices</p>
+                  <h2 className="text-sm font-bold text-slate-900">Direct Bank Settlement &amp; UPI Payment QR</h2>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Printed on invoice bills for seamless customer payments via GPay, PhonePe, Paytm, or NEFT
+                  </p>
                 </div>
               </div>
 
-              <div className="divide-y divide-slate-100">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5">Bank Name</label>
+                  <input value={form.bankName} onChange={(e) => handleChange("bankName", e.target.value)} placeholder="HDFC Bank / State Bank of India" className={inputCls} />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5">Beneficiary / Account Holder Name</label>
+                  <input value={form.accountHolder} onChange={(e) => handleChange("accountHolder", e.target.value)} placeholder="BILZET Retail Mart" className={inputCls} />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5">Bank Account Number</label>
+                  <input value={form.accountNumber} onChange={(e) => handleChange("accountNumber", e.target.value)} placeholder="50200012345678" className={`${inputCls} font-mono font-bold`} />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5">IFSC Code (11 Characters)</label>
+                  <input value={form.ifsc} onChange={(e) => handleChange("ifsc", e.target.value.toUpperCase())} placeholder="HDFC0001234" className={`${inputCls} font-mono uppercase font-bold`} />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5">
+                    Shop UPI VPA ID (For Instant Scan &amp; Pay QR Code)
+                  </label>
+                  <input
+                    value={form.upiId}
+                    onChange={(e) => handleChange("upiId", e.target.value)}
+                    placeholder="bilzet@hdfcbank or phone@paytm"
+                    className={`${inputCls} font-mono font-bold text-emerald-700`}
+                  />
+                  <p className="text-[11px] text-slate-400 mt-1.5">
+                    Each invoice automatically embeds an authentic UPI QR code encoded with your UPI ID and the exact invoice bill amount.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ──────────────── TAB 4: PAPER & PRINT ──────────────── */}
+          {activeTab === "paper" && (
+            <div className="card p-6 space-y-5">
+              <div className="flex items-center gap-2.5 pb-4 border-b border-slate-100">
+                <Printer size={18} className="text-blue-600" />
+                <div>
+                  <h2 className="text-sm font-bold text-slate-900">Print Paper Dimensions &amp; Legal Terms</h2>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Choose output paper size and configure the default terms of sale
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {[
-                  {
-                    key: "showHsnSummary",
-                    title: "HSN / SAC Tax Summary Grid",
-                    desc: "Detailed table calculating CGST and SGST per HSN category",
-                  },
-                  {
-                    key: "showAmountInWords",
-                    title: "Amount in Words (INR)",
-                    desc: "Spells out the grand total in Indian Rupees (Rupees ... Only)",
-                  },
-                  {
-                    key: "showBankDetails",
-                    title: "Bank Account & IFSC Box",
-                    desc: "Displays Bank Name, A/C Number, IFSC, and Branch for NEFT/RTGS",
-                  },
-                  {
-                    key: "showQrCode",
-                    title: "Dynamic UPI Payment QR Code",
-                    desc: "Direct scan-to-pay QR linking to your shop's UPI VPA",
-                  },
-                  {
-                    key: "showSignatory",
-                    title: "Authorized Signatory Box",
-                    desc: "Formal stamp area with 'For [Shop Name]' and signature line",
-                  },
-                  {
-                    key: "showTerms",
-                    title: "Terms & Conditions Clause",
-                    desc: "Footer note outlining return policy and business terms",
-                  },
-                ].map((item) => (
-                  <label
-                    key={item.key}
-                    className="py-3 flex items-center justify-between cursor-pointer hover:bg-slate-50/60 -mx-2 px-2 rounded-xl transition"
-                  >
-                    <div>
-                      <p className="text-xs font-bold text-slate-800">{item.title}</p>
-                      <p className="text-[11px] text-slate-400">{item.desc}</p>
+                  { id: "A4", name: "A4 Standard Sheet", sub: "Standard laser or inkjet printer" },
+                  { id: "A5", name: "A5 Half Sheet", sub: "Compact invoice format (148 × 210 mm)" },
+                  { id: "80mm", name: "80mm Thermal Roll", sub: "Fast POS counter roll printer" },
+                ].map((p) => {
+                  const active = form.paperSize === p.id;
+                  return (
+                    <div
+                      key={p.id}
+                      onClick={() => {
+                        handleChange("paperSize", p.id);
+                        if (p.id === "80mm") handleChange("template", "thermal");
+                      }}
+                      className={`p-3.5 rounded-xl border-2 cursor-pointer transition flex items-center justify-between ${
+                        active
+                          ? "border-blue-600 bg-blue-50/40"
+                          : "border-slate-200/80 hover:border-slate-300 bg-white"
+                      }`}
+                    >
+                      <div>
+                        <p className="font-bold text-xs text-slate-900">{p.name}</p>
+                        <p className="text-[10px] text-slate-400 mt-0.5">{p.sub}</p>
+                      </div>
+                      <input
+                        type="radio"
+                        name="paperSize"
+                        checked={active}
+                        onChange={() => {}}
+                        className="accent-blue-600 cursor-pointer"
+                      />
                     </div>
-                    <input
-                      type="checkbox"
-                      checked={form[item.key]}
-                      onChange={(e) => handleChange(item.key, e.target.checked)}
-                      className="w-4 h-4 accent-blue-600 rounded cursor-pointer"
-                    />
-                  </label>
-                ))}
+                  );
+                })}
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  Invoice Terms &amp; Legal Conditions
+                </label>
+                <textarea
+                  rows={4}
+                  value={form.terms}
+                  onChange={(e) => handleChange("terms", e.target.value)}
+                  className={`${inputCls} resize-none`}
+                />
               </div>
             </div>
+          )}
+        </div>
+
+        {/* RIGHT: LIVE INTERACTIVE PREVIEW (6 Cols - Visible across all tabs!) */}
+        <div className="lg:col-span-6 sticky top-5">
+          {/* Preview Header */}
+          <div className="flex items-center justify-between px-4 py-3 bg-slate-800 rounded-t-2xl border border-slate-700 border-b-0">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-xs font-bold text-white uppercase tracking-wider">Live Dynamic Preview</span>
+              <span className="text-[10px] px-2 py-0.5 rounded bg-slate-700 text-slate-300 font-mono">
+                {form.paperSize}
+              </span>
+            </div>
+            <button
+              onClick={() => setShowFullPreview(true)}
+              className="text-[11px] font-bold text-blue-400 hover:text-blue-300 flex items-center gap-1 transition"
+            >
+              <Eye size={12} />
+              <span>Fullscreen</span>
+            </button>
           </div>
 
-          {/* RIGHT: LIVE INTERACTIVE PREVIEW (6 Cols) */}
-          <div className="lg:col-span-6 sticky top-20">
-            <div className="bg-slate-900 text-white p-3.5 rounded-t-2xl flex items-center justify-between border border-slate-800">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-xs font-bold uppercase tracking-wider">
-                  Live Dynamic Preview
-                </span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-mono">
-                  {form.paperSize}
-                </span>
-              </div>
-              <button
-                onClick={() => setShowFullPreview(true)}
-                className="text-[11px] font-bold text-blue-400 hover:text-blue-300 flex items-center gap-1"
-              >
-                <Eye size={12} /> Expand Fullscreen
-              </button>
-            </div>
-
-            {/* Embedded Zoomed Preview container */}
-            <div className="bg-slate-200 border-x border-b border-slate-300 rounded-b-2xl p-4 overflow-y-auto max-h-[820px] shadow-inner">
-              <div className="origin-top transform transition-all duration-200 shadow-xl rounded-xl overflow-hidden bg-white">
-                <TaxInvoice shopSettings={form} isModal={false} />
-              </div>
+          {/* Embedded Preview Container */}
+          <div className="bg-slate-100 border border-slate-300 border-t-0 rounded-b-2xl p-4 overflow-y-auto max-h-[820px]">
+            <div className="shadow-md rounded-xl overflow-hidden bg-white">
+              <TaxInvoice shopSettings={form} isModal={false} />
             </div>
           </div>
         </div>
-      )}
-
-      {/* ══════════════════════════════════════════════════
-          TAB 2: SHOP PROFILE & GST
-      ══════════════════════════════════════════════════ */}
-      {activeTab === "store" && (
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6 max-w-4xl">
-          <div className="flex items-center gap-2.5 pb-4 border-b border-slate-100">
-            <Store size={20} className="text-blue-600" />
-            <div>
-              <h2 className="text-base font-bold text-slate-900">Business Profile & GST Identification</h2>
-              <p className="text-xs text-slate-400">
-                Official entity information printed on the supplier block of tax invoices
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1">
-                Shop / Business Trade Name
-              </label>
-              <input
-                value={form.shopName}
-                onChange={(e) => handleChange("shopName", e.target.value)}
-                className="w-full px-3.5 py-2 text-xs border border-slate-200 rounded-xl outline-none focus:border-blue-500 font-semibold"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1">
-                Owner / Authorized Person
-              </label>
-              <input
-                value={form.ownerName}
-                onChange={(e) => handleChange("ownerName", e.target.value)}
-                className="w-full px-3.5 py-2 text-xs border border-slate-200 rounded-xl outline-none focus:border-blue-500 font-semibold"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1">Contact Phone</label>
-              <input
-                value={form.phone}
-                onChange={(e) => handleChange("phone", e.target.value)}
-                className="w-full px-3.5 py-2 text-xs border border-slate-200 rounded-xl outline-none focus:border-blue-500 font-semibold"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1">Contact Email</label>
-              <input
-                value={form.email}
-                onChange={(e) => handleChange("email", e.target.value)}
-                className="w-full px-3.5 py-2 text-xs border border-slate-200 rounded-xl outline-none focus:border-blue-500 font-semibold"
-              />
-            </div>
-
-            <div className="sm:col-span-2">
-              <label className="block text-xs font-bold text-slate-600 mb-1">
-                Registered Principal Place of Business Address
-              </label>
-              <input
-                value={form.address}
-                onChange={(e) => handleChange("address", e.target.value)}
-                className="w-full px-3.5 py-2 text-xs border border-slate-200 rounded-xl outline-none focus:border-blue-500 font-semibold"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1">
-                Registered GSTIN (15 Digits)
-              </label>
-              <input
-                value={form.gstin}
-                onChange={(e) => handleChange("gstin", e.target.value.toUpperCase())}
-                placeholder="29ABCDE1234F1Z5"
-                className="w-full px-3.5 py-2 text-xs border border-slate-200 rounded-xl outline-none focus:border-blue-500 font-mono uppercase font-bold"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1">
-                Permanent Account Number (PAN)
-              </label>
-              <input
-                value={form.pan}
-                onChange={(e) => handleChange("pan", e.target.value.toUpperCase())}
-                placeholder="ABCDE1234F"
-                className="w-full px-3.5 py-2 text-xs border border-slate-200 rounded-xl outline-none focus:border-blue-500 font-mono uppercase font-bold"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1">State Name</label>
-              <input
-                value={form.state}
-                onChange={(e) => handleChange("state", e.target.value)}
-                className="w-full px-3.5 py-2 text-xs border border-slate-200 rounded-xl outline-none focus:border-blue-500 font-semibold"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1">
-                State Code (e.g. 29, 33, 27)
-              </label>
-              <input
-                value={form.stateCode}
-                onChange={(e) => handleChange("stateCode", e.target.value)}
-                className="w-full px-3.5 py-2 text-xs border border-slate-200 rounded-xl outline-none focus:border-blue-500 font-semibold font-mono"
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ══════════════════════════════════════════════════
-          TAB 3: BANK & UPI QR SETUP
-      ══════════════════════════════════════════════════ */}
-      {activeTab === "bank" && (
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6 max-w-4xl">
-          <div className="flex items-center gap-2.5 pb-4 border-b border-slate-100">
-            <Building2 size={20} className="text-emerald-600" />
-            <div>
-              <h2 className="text-base font-bold text-slate-900">Direct Bank Settlement & UPI Payment QR</h2>
-              <p className="text-xs text-slate-400">
-                Printed on invoice bills for seamless customer payments via GPay, PhonePe, Paytm, or NEFT
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1">
-                Bank Name
-              </label>
-              <input
-                value={form.bankName}
-                onChange={(e) => handleChange("bankName", e.target.value)}
-                placeholder="HDFC Bank / State Bank of India"
-                className="w-full px-3.5 py-2 text-xs border border-slate-200 rounded-xl outline-none focus:border-blue-500 font-semibold"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1">
-                Beneficiary / Account Holder Name
-              </label>
-              <input
-                value={form.accountHolder}
-                onChange={(e) => handleChange("accountHolder", e.target.value)}
-                placeholder="BILZET Retail Mart"
-                className="w-full px-3.5 py-2 text-xs border border-slate-200 rounded-xl outline-none focus:border-blue-500 font-semibold"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1">
-                Bank Account Number
-              </label>
-              <input
-                value={form.accountNumber}
-                onChange={(e) => handleChange("accountNumber", e.target.value)}
-                placeholder="50200012345678"
-                className="w-full px-3.5 py-2 text-xs border border-slate-200 rounded-xl outline-none focus:border-blue-500 font-mono font-bold"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1">
-                IFSC Code (11 Characters)
-              </label>
-              <input
-                value={form.ifsc}
-                onChange={(e) => handleChange("ifsc", e.target.value.toUpperCase())}
-                placeholder="HDFC0001234"
-                className="w-full px-3.5 py-2 text-xs border border-slate-200 rounded-xl outline-none focus:border-blue-500 font-mono uppercase font-bold"
-              />
-            </div>
-
-            <div className="sm:col-span-2">
-              <label className="block text-xs font-bold text-slate-600 mb-1">
-                Shop UPI VPA ID (For Instant Scan & Pay QR Code)
-              </label>
-              <input
-                value={form.upiId}
-                onChange={(e) => handleChange("upiId", e.target.value)}
-                placeholder="bilzet@hdfcbank or phone@paytm"
-                className="w-full px-3.5 py-2 text-xs border border-slate-200 rounded-xl outline-none focus:border-blue-500 font-mono font-bold text-emerald-700 bg-emerald-50/30"
-              />
-              <p className="text-[11px] text-slate-400 mt-1">
-                Each invoice automatically embeds an authentic UPI QR code encoded with your UPI ID and the exact invoice bill amount.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ══════════════════════════════════════════════════
-          TAB 4: PAPER & PRINT FORMATS
-      ══════════════════════════════════════════════════ */}
-      {activeTab === "paper" && (
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6 max-w-4xl">
-          <div className="flex items-center gap-2.5 pb-4 border-b border-slate-100">
-            <Printer size={20} className="text-purple-600" />
-            <div>
-              <h2 className="text-base font-bold text-slate-900">Print Paper Dimensions & Legal Terms</h2>
-              <p className="text-xs text-slate-400">
-                Choose output paper size and configure the default terms of sale
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {[
-              { id: "A4", name: "A4 Standard Sheet", sub: "Standard laser or inkjet printer" },
-              { id: "A5", name: "A5 Half Sheet", sub: "Compact invoice format (148 x 210 mm)" },
-              { id: "80mm", name: "80mm Thermal Roll", sub: "Fast POS counter roll printer" },
-            ].map((p) => {
-              const active = form.paperSize === p.id;
-              return (
-                <div
-                  key={p.id}
-                  onClick={() => {
-                    handleChange("paperSize", p.id);
-                    if (p.id === "80mm") handleChange("template", "thermal");
-                  }}
-                  className={`p-4 rounded-xl border-2 cursor-pointer transition flex items-center justify-between ${
-                    active
-                      ? "border-purple-600 bg-purple-50/40 shadow-sm"
-                      : "border-slate-200 hover:border-slate-300 bg-white"
-                  }`}
-                >
-                  <div>
-                    <p className="font-bold text-xs text-slate-900">{p.name}</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">{p.sub}</p>
-                  </div>
-                  <input
-                    type="radio"
-                    name="paperSize"
-                    checked={active}
-                    onChange={() => {}}
-                    className="accent-purple-600"
-                  />
-                </div>
-              );
-            })}
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-slate-600 mb-1">
-              Invoice Terms & Legal Conditions
-            </label>
-            <textarea
-              rows={4}
-              value={form.terms}
-              onChange={(e) => handleChange("terms", e.target.value)}
-              className="w-full p-3 text-xs border border-slate-200 rounded-xl outline-none focus:border-blue-500 font-medium"
-            />
-          </div>
-        </div>
-      )}
+      </div>
 
       {/* ══════════════════════════════════════════════════
           MODAL: FULL PREVIEW

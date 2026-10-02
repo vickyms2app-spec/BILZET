@@ -17,8 +17,44 @@ export const getPurchaseById = asyncHandler(async (req, res) => {
   return sendResponse(res, 200, { purchase }, 'Purchase fetched successfully');
 });
 
+export const createPurchaseOrder = asyncHandler(async (req, res) => {
+  const po = await purchaseService.createPurchaseOrder(req.body);
+  return sendResponse(res, 201, { purchaseOrder: po }, 'Purchase order issued successfully');
+});
+
+export const getPurchaseOrders = asyncHandler(async (req, res) => {
+  const purchaseOrders = await purchaseService.getPurchaseOrders(req.query);
+  return sendResponse(res, 200, { purchaseOrders }, 'Purchase orders fetched successfully');
+});
+
+export const updatePurchaseOrderStatus = asyncHandler(async (req, res) => {
+  const updated = await purchaseService.updatePurchaseOrderStatus(req.params.id, req.body.status);
+  return sendResponse(res, 200, { purchaseOrder: updated }, 'Purchase order status updated');
+});
+
+export const createPurchaseReturn = asyncHandler(async (req, res) => {
+  const ret = await purchaseService.createPurchaseReturn(req.body);
+  return sendResponse(res, 201, { purchaseReturn: ret }, 'Purchase return recorded and stock adjusted');
+});
+
+export const createDebitNote = asyncHandler(async (req, res) => {
+  const dn = await purchaseService.createDebitNote(req.body);
+  return sendResponse(res, 201, { debitNote: dn }, 'Debit note created successfully');
+});
+
+export const getDebitNotes = asyncHandler(async (req, res) => {
+  const debitNotes = await purchaseService.getDebitNotes(req.query);
+  return sendResponse(res, 200, { debitNotes }, 'Debit notes fetched successfully');
+});
+
 export default {
   createPurchase,
   getPurchases,
-  getPurchaseById
+  getPurchaseById,
+  createPurchaseOrder,
+  getPurchaseOrders,
+  updatePurchaseOrderStatus,
+  createPurchaseReturn,
+  createDebitNote,
+  getDebitNotes,
 };

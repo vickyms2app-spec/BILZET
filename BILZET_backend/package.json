@@ -24,6 +24,7 @@
   "author": "Engineering Team",
   "license": "ISC",
   "dependencies": {
+    "@clerk/express": "^2.1.75",
     "@prisma/client": "6.4.1",
     "bcryptjs": "^3.0.3",
     "bwip-js": "^4.5.1",

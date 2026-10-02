@@ -1,244 +1,367 @@
-import mongoose from 'mongoose';
-import { Purchase } from '../models/Purchase.mjs';
-import { Product } from '../models/Product.mjs';
-import { Supplier } from '../models/Supplier.mjs';
-import { Payment } from '../models/Payment.mjs';
-import { StockTransaction } from '../models/StockTransaction.mjs';
+import prisma from '../config/prisma.mjs';
 import { ApiError } from '../utils/ApiError.mjs';
-import { withTransaction } from '../utils/transaction.mjs';
-import { calculatePurchaseItem, round2 } from '../utils/calculations.mjs';
-import { generatePurchaseNumber } from '../utils/generateInvoiceNumber.mjs';
-import { STOCK_TRANSACTION_TYPES, AUDIT_ACTIONS, PAYMENT_STATUSES } from '../utils/constants.mjs';
-import { recordAudit } from '../middleware/audit.middleware.mjs';
 import { getPaginationParams, buildPaginationMeta } from '../utils/pagination.mjs';
 
-/**
- * Creates a purchase order atomically: increases stock, creates stock transactions, updates supplier balance, and records payment.
- */
-export const createPurchase = async (purchaseData, user, context = {}) => {
-  const { supplier: supplierId, items, discount = 0, paidAmount = 0, purchaseDate } = purchaseData;
+const round2 = (num) => Math.round((Number(num) + Number.EPSILON) * 100) / 100;
 
-  return await withTransaction(async (session) => {
-    // 1. Validate Supplier
-    const supQuery = Supplier.findById(supplierId);
-    if (session) supQuery.session(session);
-    const supplier = await supQuery.exec();
+export const createPurchase = async (purchaseData, user = {}, context = {}) => {
+  const {
+    supplierId,
+    supplier: altSupplierId,
+    items,
+    warehouseId,
+    discountTotal = 0,
+    paidAmount = 0,
+    paymentMethod = 'CASH',
+    purchaseDate,
+    dueDate,
+    poNumber,
+  } = purchaseData;
 
-    if (!supplier) {
-      throw ApiError.notFound('Supplier not found');
-    }
-    if (!supplier.isActive) {
-      throw ApiError.badRequest('Supplier is inactive');
-    }
+  const targetSupplierId = supplierId || altSupplierId;
+  if (!targetSupplierId) {
+    throw ApiError.badRequest('Supplier ID is required');
+  }
 
-    // 2. Fetch and validate all products
-    const productIds = items.map((i) => i.productId);
-    const prodQuery = Product.find({ _id: { $in: productIds } });
-    if (session) prodQuery.session(session);
-    const dbProducts = await prodQuery.exec();
+  if (!items || !items.length) {
+    throw ApiError.badRequest('At least one purchase item is required');
+  }
 
-    const productMap = new Map();
-    dbProducts.forEach((p) => productMap.set(p._id.toString(), p));
+  // 1. Verify supplier exists
+  const supplier = await prisma.supplier.findUnique({
+    where: { id: targetSupplierId },
+  });
+  if (!supplier) {
+    throw ApiError.notFound('Supplier not found');
+  }
+  if (!supplier.isActive) {
+    throw ApiError.badRequest('Supplier is currently inactive');
+  }
 
-    const calculatedItems = [];
-    let subtotal = 0;
-    let totalTax = 0;
-    let totalItemDiscount = 0;
+  // 2. Fetch all products
+  const productIds = items.map((i) => i.productId || i.id);
+  const products = await prisma.product.findMany({
+    where: { id: { in: productIds } },
+  });
+  const productMap = new Map();
+  products.forEach((p) => productMap.set(p.id, p));
 
-    for (const item of items) {
-      const product = productMap.get(item.productId);
-      if (!product) {
-        throw ApiError.notFound(`Product with ID '${item.productId}' not found`);
-      }
+  let subtotal = 0;
+  let taxTotal = 0;
+  const processedItems = [];
 
-      const calculated = calculatePurchaseItem(
-        product,
-        item.quantity,
-        item.purchasePrice,
-        item.gstRate || 0,
-        item.discount || 0
-      );
-
-      calculatedItems.push(calculated);
-      subtotal = round2(subtotal + item.quantity * item.purchasePrice);
-      totalTax = round2(totalTax + calculated.tax);
-      totalItemDiscount = round2(totalItemDiscount + calculated.discount);
-    }
-
-    const overallDiscount = Math.max(0, round2(discount));
-    const finalDiscount = round2(totalItemDiscount + overallDiscount);
-    const grandTotal = Math.max(0, round2(subtotal - finalDiscount + totalTax));
-    const paid = Math.max(0, round2(paidAmount));
-    const dueAmount = Math.max(0, round2(grandTotal - paid));
-
-    let paymentStatus = PAYMENT_STATUSES.PAID;
-    if (paid === 0 && grandTotal > 0) {
-      paymentStatus = PAYMENT_STATUSES.DUE;
-    } else if (paid < grandTotal) {
-      paymentStatus = PAYMENT_STATUSES.PARTIAL;
+  for (const item of items) {
+    const prodId = item.productId || item.id;
+    const product = productMap.get(prodId);
+    if (!product) {
+      throw ApiError.notFound(`Product with ID '${prodId}' not found`);
     }
 
-    // 3. Generate Purchase Number
-    const purchaseNumber = await generatePurchaseNumber('PUR', session);
+    const qty = Number(item.quantity || item.qty || 1);
+    const price = Number(item.purchasePrice || item.rate || product.purchasePrice || 0);
+    const gstRate = Number(item.gstRate ?? item.gst ?? product.gstRate ?? 0);
+    const itemSubtotal = round2(qty * price);
+    const itemTax = round2((itemSubtotal * gstRate) / 100);
+    const itemTotal = round2(itemSubtotal + itemTax);
 
-    // 4. Create Purchase Record
-    const purchasePayload = {
-      purchaseNumber,
-      supplier: supplier._id,
-      items: calculatedItems,
-      subtotal,
-      discount: finalDiscount,
-      tax: totalTax,
-      grandTotal,
-      paidAmount: paid,
-      dueAmount,
-      paymentStatus,
-      purchaseDate: purchaseDate ? new Date(purchaseDate) : new Date(),
-      createdBy: user._id
-    };
+    subtotal = round2(subtotal + itemSubtotal);
+    taxTotal = round2(taxTotal + itemTax);
 
-    const [createdPurchase] = session
-      ? await Purchase.create([purchasePayload], { session })
-      : [await Purchase.create(purchasePayload)];
+    processedItems.push({
+      productId: prodId,
+      quantity: qty,
+      purchasePrice: price,
+      gstRate,
+      taxAmount: itemTax,
+      total: itemTotal,
+    });
+  }
 
-    // 5. Increase Product Stock & Create StockTransactions
-    for (const item of calculatedItems) {
-      const product = productMap.get(item.product.toString());
-      const prevStock = product.stock;
-      const newStock = prevStock + item.quantity;
+  const grandTotal = Math.max(0, round2(subtotal + taxTotal - Number(discountTotal || 0)));
+  const paid = Math.max(0, round2(paidAmount));
+  const due = Math.max(0, round2(grandTotal - paid));
 
-      const updateProd = Product.findByIdAndUpdate(
-        item.product,
-        {
-          $inc: { stock: item.quantity },
-          purchasePrice: item.purchasePrice // update latest cost price
-        },
-        { new: true }
-      );
-      if (session) updateProd.session(session);
-      await updateProd.exec();
+  let paymentStatus = 'PAID';
+  if (paid === 0 && grandTotal > 0) {
+    paymentStatus = 'UNPAID';
+  } else if (paid < grandTotal) {
+    paymentStatus = 'PARTIAL';
+  }
 
-      const stockTxPayload = {
-        product: item.product,
-        type: STOCK_TRANSACTION_TYPES.PURCHASE,
-        quantity: item.quantity,
-        previousStock: prevStock,
-        newStock,
-        referenceType: 'Purchase',
-        referenceId: createdPurchase._id,
-        reason: `Purchased via PO ${purchaseNumber}`,
-        createdBy: user._id
-      };
+  const invoiceNumber =
+    purchaseData.invoiceNumber ||
+    `PUR-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`;
 
-      if (session) {
-        await StockTransaction.create([stockTxPayload], { session });
-      } else {
-        await StockTransaction.create(stockTxPayload);
-      }
-    }
-
-    // 6. Update Supplier Balance (dueAmount increases supplier currentBalance)
-    if (dueAmount > 0) {
-      supplier.currentBalance = round2(supplier.currentBalance + dueAmount);
-      if (session) await supplier.save({ session });
-      else await supplier.save();
-    }
-
-    // 7. Record Payment if paidAmount > 0
-    if (paid > 0) {
-      const paymentPayload = {
-        purchase: createdPurchase._id,
-        supplier: supplier._id,
-        amount: paid,
-        method: 'cash',
-        type: 'PURCHASE_PAYMENT',
+  // Execute atomically in a transaction
+  return await prisma.$transaction(async (tx) => {
+    // A. Create Purchase record
+    const purchase = await tx.purchase.create({
+      data: {
+        invoiceNumber,
+        poNumber: poNumber || null,
+        supplierId: targetSupplierId,
+        warehouseId: warehouseId || null,
+        subtotal,
+        taxTotal,
+        discountTotal: Number(discountTotal || 0),
+        grandTotal,
+        paidAmount: paid,
+        paymentStatus,
+        paymentMethod: paymentMethod.toUpperCase(),
         status: 'COMPLETED',
-        notes: `Payment for Purchase ${purchaseNumber}`,
-        receivedBy: user._id
-      };
-
-      if (session) {
-        await Payment.create([paymentPayload], { session });
-      } else {
-        await Payment.create(paymentPayload);
-      }
-    }
-
-    // 8. Audit Log
-    await recordAudit({
-      user,
-      action: AUDIT_ACTIONS.CREATE_PURCHASE,
-      entity: 'Purchase',
-      entityId: createdPurchase._id,
-      description: `Purchase ${purchaseNumber} recorded. Grand Total: ₹${grandTotal}, Paid: ₹${paid}`,
-      metadata: { purchaseNumber, grandTotal, paidAmount: paid },
-      req: context.req
+        dueDate: dueDate ? new Date(dueDate) : null,
+        purchaseDate: purchaseDate ? new Date(purchaseDate) : new Date(),
+        items: {
+          create: processedItems,
+        },
+      },
+      include: {
+        items: { include: { product: true } },
+        supplier: true,
+      },
     });
 
-    return createdPurchase;
+    // B. Update stock & cost price for each product
+    for (const item of processedItems) {
+      const current = productMap.get(item.productId);
+      const newStock = (current.stock || 0) + item.quantity;
+
+      await tx.product.update({
+        where: { id: item.productId },
+        data: {
+          stock: newStock,
+          purchasePrice: item.purchasePrice,
+        },
+      });
+
+      // Update warehouse-specific stock if warehouseId provided
+      if (warehouseId) {
+        await tx.warehouseStock.upsert({
+          where: {
+            warehouseId_productId: {
+              warehouseId,
+              productId: item.productId,
+            },
+          },
+          update: {
+            quantity: { increment: item.quantity },
+          },
+          create: {
+            warehouseId,
+            productId: item.productId,
+            quantity: item.quantity,
+          },
+        });
+      }
+
+      // Record stock transaction
+      await tx.stockTransaction.create({
+        data: {
+          productId: item.productId,
+          type: 'IN',
+          quantity: item.quantity,
+          previousStock: current.stock || 0,
+          newStock,
+          reason: `Purchased via bill ${invoiceNumber}`,
+        },
+      });
+    }
+
+    // C. Update Supplier balance if credit / pending
+    if (due > 0) {
+      await tx.supplier.update({
+        where: { id: targetSupplierId },
+        data: {
+          balance: { increment: due },
+        },
+      });
+    }
+
+    return purchase;
   });
 };
 
-/**
- * Lists purchases with pagination and filters.
- */
 export const getPurchases = async (query = {}) => {
-  const { page, limit, skip, sort } = getPaginationParams(query);
-  const filter = {};
+  const { page, limit, skip } = getPaginationParams(query);
+  const where = {};
 
-  if (query.supplierId) {
-    filter.supplier = query.supplierId;
-  }
-  if (query.paymentStatus) {
-    filter.paymentStatus = query.paymentStatus;
-  }
+  if (query.supplierId) where.supplierId = query.supplierId;
+  if (query.warehouseId) where.warehouseId = query.warehouseId;
+  if (query.paymentStatus) where.paymentStatus = query.paymentStatus.toUpperCase();
+
   if (query.search) {
-    filter.purchaseNumber = { $regex: query.search, $options: 'i' };
-  }
-  if (query.startDate || query.endDate) {
-    filter.purchaseDate = {};
-    if (query.startDate) filter.purchaseDate.$gte = new Date(query.startDate);
-    if (query.endDate) {
-      const end = new Date(query.endDate);
-      end.setHours(23, 59, 59, 999);
-      filter.purchaseDate.$lte = end;
-    }
+    where.OR = [
+      { invoiceNumber: { contains: query.search, mode: 'insensitive' } },
+      { poNumber: { contains: query.search, mode: 'insensitive' } },
+      { supplier: { name: { contains: query.search, mode: 'insensitive' } } },
+    ];
   }
 
   const [purchases, total] = await Promise.all([
-    Purchase.find(filter)
-      .sort(sort)
-      .skip(skip)
-      .limit(limit)
-      .populate('supplier', 'name phone email currentBalance')
-      .populate('createdBy', 'name email')
-      .exec(),
-    Purchase.countDocuments(filter)
+    prisma.purchase.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        supplier: { select: { id: true, name: true, phone: true } },
+        items: { include: { product: { select: { id: true, name: true, sku: true } } } },
+      },
+    }),
+    prisma.purchase.count({ where }),
   ]);
 
   return {
     purchases,
-    meta: buildPaginationMeta(total, page, limit)
+    meta: buildPaginationMeta(total, page, limit),
   };
 };
 
-/**
- * Gets a single purchase by ID.
- */
 export const getPurchaseById = async (id) => {
-  const purchase = await Purchase.findById(id)
-    .populate('supplier')
-    .populate('createdBy', 'name email');
+  const purchase = await prisma.purchase.findUnique({
+    where: { id },
+    include: {
+      supplier: true,
+      items: { include: { product: true } },
+      returns: true,
+    },
+  });
 
   if (!purchase) {
-    throw ApiError.notFound('Purchase not found');
+    throw ApiError.notFound('Purchase order not found');
   }
 
   return purchase;
 };
 
+// ─── PURCHASE ORDERS (PO) ───
+export const createPurchaseOrder = async (poData) => {
+  const { supplierId, warehouseId, expectedDelivery, notes, items = [] } = poData;
+
+  const poNumber = `PO-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`;
+  let subtotal = 0;
+  let taxTotal = 0;
+
+  items.forEach((item) => {
+    const qty = Number(item.quantity || 1);
+    const rate = Number(item.expectedPrice || item.rate || 0);
+    const gst = Number(item.gstRate || 0);
+    const lineSub = round2(qty * rate);
+    subtotal = round2(subtotal + lineSub);
+    taxTotal = round2(taxTotal + (lineSub * gst) / 100);
+  });
+
+  return await prisma.purchaseOrder.create({
+    data: {
+      poNumber,
+      supplierId,
+      warehouseId: warehouseId || null,
+      expectedDelivery: expectedDelivery ? new Date(expectedDelivery) : null,
+      notes: notes || null,
+      subtotal,
+      taxTotal,
+      grandTotal: round2(subtotal + taxTotal),
+      status: 'PENDING',
+    },
+    include: { supplier: true },
+  });
+};
+
+export const getPurchaseOrders = async (query = {}) => {
+  const where = {};
+  if (query.status) where.status = query.status.toUpperCase();
+  if (query.supplierId) where.supplierId = query.supplierId;
+
+  return await prisma.purchaseOrder.findMany({
+    where,
+    orderBy: { createdAt: 'desc' },
+    include: { supplier: true },
+  });
+};
+
+export const updatePurchaseOrderStatus = async (id, status) => {
+  return await prisma.purchaseOrder.update({
+    where: { id },
+    data: { status: status.toUpperCase() },
+  });
+};
+
+// ─── PURCHASE RETURNS ───
+export const createPurchaseReturn = async (returnData) => {
+  const { purchaseId, supplierId, items = [], reason } = returnData;
+
+  let totalAmount = 0;
+  items.forEach((i) => {
+    totalAmount = round2(totalAmount + (Number(i.quantity || 1) * Number(i.rate || 0)));
+  });
+
+  const returnNumber = `PRET-${Date.now().toString().slice(-6)}`;
+
+  return await prisma.$transaction(async (tx) => {
+    const pret = await tx.purchaseReturn.create({
+      data: {
+        returnNumber,
+        purchaseId,
+        supplierId,
+        totalAmount,
+        reason: reason || 'Defective/Damaged Stock',
+        status: 'COMPLETED',
+      },
+    });
+
+    // Decrease stock back for returned items
+    for (const item of items) {
+      if (item.productId) {
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { stock: { decrement: Number(item.quantity) } },
+        });
+      }
+    }
+
+    // Adjust supplier balance
+    if (supplierId && totalAmount > 0) {
+      await tx.supplier.update({
+        where: { id: supplierId },
+        data: { balance: { decrement: totalAmount } },
+      });
+    }
+
+    return pret;
+  });
+};
+
+// ─── DEBIT NOTES ───
+export const createDebitNote = async (debitData) => {
+  const { supplierId, referenceInvoice, amount, reason } = debitData;
+  const debitNoteNumber = `DN-${Date.now().toString().slice(-6)}`;
+
+  return await prisma.debitNote.create({
+    data: {
+      debitNoteNumber,
+      supplierId,
+      referenceInvoice: referenceInvoice || null,
+      amount: Number(amount || 0),
+      reason: reason || 'Adjustment against returned goods',
+      status: 'ISSUED',
+    },
+  });
+};
+
+export const getDebitNotes = async (query = {}) => {
+  return await prisma.debitNote.findMany({
+    orderBy: { createdAt: 'desc' },
+  });
+};
+
 export default {
   createPurchase,
   getPurchases,
-  getPurchaseById
+  getPurchaseById,
+  createPurchaseOrder,
+  getPurchaseOrders,
+  updatePurchaseOrderStatus,
+  createPurchaseReturn,
+  createDebitNote,
+  getDebitNotes,
 };

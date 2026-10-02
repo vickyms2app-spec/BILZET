@@ -1,482 +1,314 @@
-import ExcelJS from 'exceljs';
-import { Sale } from '../models/Sale.mjs';
-import { Purchase } from '../models/Purchase.mjs';
-import { Product } from '../models/Product.mjs';
-import { Customer } from '../models/Customer.mjs';
-import { Payment } from '../models/Payment.mjs';
-import { Expense } from '../models/Expense.mjs';
-import { round2 } from '../utils/calculations.mjs';
+import prisma from '../config/prisma.mjs';
 
-/**
- * Builds date range match object for aggregation pipelines.
- */
-const buildDateFilter = (startDate, endDate, field = 'createdAt') => {
-  const filter = {};
-  if (startDate || endDate) {
-    filter[field] = {};
-    if (startDate) filter[field].$gte = new Date(startDate);
-    if (endDate) {
-      const end = new Date(endDate);
-      end.setHours(23, 59, 59, 999);
-      filter[field].$lte = end;
-    }
-  }
-  return filter;
-};
+const round2 = (num) => Math.round((Number(num) + Number.EPSILON) * 100) / 100;
 
-/**
- * Sales Report with total bills, sales volume, discounts, taxes, and collections.
- */
 export const getSalesReport = async (query = {}) => {
-  const match = buildDateFilter(query.startDate, query.endDate, 'createdAt');
-
-  if (query.customerId) match.customer = query.customerId;
-  if (query.paymentMethod) match.paymentMethod = query.paymentMethod;
-
-  const summary = await Sale.aggregate([
-    { $match: match },
-    {
-      $group: {
-        _id: null,
-        totalBills: { $sum: 1 },
-        totalSubtotal: { $sum: '$subtotal' },
-        totalSales: { $sum: '$grandTotal' },
-        totalDiscount: { $sum: '$discount' },
-        totalGST: { $sum: '$tax' },
-        totalCollected: { $sum: '$paidAmount' },
-        totalPending: { $sum: '$dueAmount' }
-      }
-    }
-  ]);
-
-  const salesByPaymentMethod = await Sale.aggregate([
-    { $match: match },
-    {
-      $group: {
-        _id: '$paymentMethod',
-        count: { $sum: 1 },
-        amount: { $sum: '$grandTotal' }
-      }
-    }
-  ]);
-
-  const result = summary[0] || {
-    totalBills: 0,
-    totalSubtotal: 0,
-    totalSales: 0,
-    totalDiscount: 0,
-    totalGST: 0,
-    totalCollected: 0,
-    totalPending: 0
-  };
-
-  return {
-    summary: {
-      totalBills: result.totalBills,
-      totalSubtotal: round2(result.totalSubtotal),
-      totalSales: round2(result.totalSales),
-      totalDiscount: round2(result.totalDiscount),
-      totalGST: round2(result.totalGST),
-      totalCollected: round2(result.totalCollected),
-      totalPending: round2(result.totalPending)
-    },
-    salesByPaymentMethod
-  };
-};
-
-/**
- * Purchases Report.
- */
-export const getPurchasesReport = async (query = {}) => {
-  const match = buildDateFilter(query.startDate, query.endDate, 'purchaseDate');
-  if (query.supplierId) match.supplier = query.supplierId;
-
-  const summary = await Purchase.aggregate([
-    { $match: match },
-    {
-      $group: {
-        _id: null,
-        totalPurchases: { $sum: 1 },
-        totalAmount: { $sum: '$grandTotal' },
-        totalDiscount: { $sum: '$discount' },
-        totalTax: { $sum: '$tax' },
-        totalPaid: { $sum: '$paidAmount' },
-        totalDue: { $sum: '$dueAmount' }
-      }
-    }
-  ]);
-
-  const res = summary[0] || {
-    totalPurchases: 0,
-    totalAmount: 0,
-    totalDiscount: 0,
-    totalTax: 0,
-    totalPaid: 0,
-    totalDue: 0
-  };
-
-  return {
-    summary: {
-      totalPurchases: res.totalPurchases,
-      totalAmount: round2(res.totalAmount),
-      totalDiscount: round2(res.totalDiscount),
-      totalTax: round2(res.totalTax),
-      totalPaid: round2(res.totalPaid),
-      totalDue: round2(res.totalDue)
-    }
-  };
-};
-
-/**
- * Profit & Loss Report:
- * Gross Profit = Total Sales Revenue - Cost of Goods Sold (COGS) - Discounts - Returns Refund
- * Net Profit = Gross Profit - Operating Expenses
- */
-export const getProfitReport = async (query = {}) => {
-  const match = buildDateFilter(query.startDate, query.endDate, 'createdAt');
-  const expenseMatch = buildDateFilter(query.startDate, query.endDate, 'date');
-
-  // 1. Calculate sales revenue, total discount, COGS, and returns
-  const salesAggregate = await Sale.aggregate([
-    { $match: match },
-    {
-      $facet: {
-        overall: [
-          {
-            $group: {
-              _id: null,
-              revenue: { $sum: '$grandTotal' },
-              totalDiscount: { $sum: '$discount' }
-            }
-          }
-        ],
-        cogs: [
-          { $unwind: '$items' },
-          {
-            $project: {
-              netQuantity: {
-                $subtract: ['$items.quantity', { $ifNull: ['$items.returnedQuantity', 0] }]
-              },
-              purchasePrice: '$items.purchasePrice'
-            }
-          },
-          {
-            $group: {
-              _id: null,
-              totalCOGS: { $sum: { $multiply: ['$netQuantity', '$purchasePrice'] } }
-            }
-          }
-        ],
-        returns: [
-          { $unwind: { path: '$returns', preserveNullAndEmptyArrays: true } },
-          {
-            $group: {
-              _id: null,
-              totalRefunds: { $sum: '$returns.refundAmount' }
-            }
-          }
-        ]
-      }
-    }
-  ]);
-
-  // 2. Fetch Operating Expenses
-  const expensesAggregate = await Expense.aggregate([
-    { $match: expenseMatch },
-    {
-      $group: {
-        _id: null,
-        totalExpenses: { $sum: '$amount' }
-      }
-    }
-  ]);
-
-  const salesData = salesAggregate[0] || {};
-  const revenue = round2(salesData.overall?.[0]?.revenue || 0);
-  const totalCOGS = round2(salesData.cogs?.[0]?.totalCOGS || 0);
-  const totalRefunds = round2(salesData.returns?.[0]?.totalRefunds || 0);
-  const totalExpenses = round2(expensesAggregate[0]?.totalExpenses || 0);
-
-  // Net Sales Revenue = Revenue - Returns
-  const netSalesRevenue = round2(revenue - totalRefunds);
-  // Gross Profit = Net Sales Revenue - COGS
-  const grossProfit = round2(netSalesRevenue - totalCOGS);
-  // Net Profit = Gross Profit - Expenses
-  const netProfit = round2(grossProfit - totalExpenses);
-
-  return {
-    revenue,
-    returns: totalRefunds,
-    netRevenue: netSalesRevenue,
-    cogs: totalCOGS,
-    grossProfit,
-    operatingExpenses: totalExpenses,
-    netProfit,
-    marginPercentage: netSalesRevenue > 0 ? round2((netProfit / netSalesRevenue) * 100) : 0
-  };
-};
-
-/**
- * GST / Tax Report.
- */
-export const getGstReport = async (query = {}) => {
-  const match = buildDateFilter(query.startDate, query.endDate, 'createdAt');
-
-  const gstBreakdown = await Sale.aggregate([
-    { $match: match },
-    { $unwind: '$items' },
-    {
-      $group: {
-        _id: '$items.gstRate',
-        taxableValue: {
-          $sum: {
-            $subtract: [
-              { $multiply: ['$items.quantity', '$items.unitPrice'] },
-              '$items.discount'
-            ]
-          }
-        },
-        taxAmount: { $sum: '$items.tax' }
-      }
-    },
-    { $sort: { _id: 1 } }
-  ]);
-
-  let totalTaxableValue = 0;
-  let totalTaxAmount = 0;
-
-  const rates = gstBreakdown.map((item) => {
-    const taxable = round2(item.taxableValue);
-    const tax = round2(item.taxAmount);
-    totalTaxableValue = round2(totalTaxableValue + taxable);
-    totalTaxAmount = round2(totalTaxAmount + tax);
-
-    return {
-      gstRate: item._id,
-      taxableValue: taxable,
-      taxAmount: tax,
-      cgst: round2(tax / 2),
-      sgst: round2(tax / 2)
+  const where = {};
+  if (query.customerId) where.customerId = query.customerId;
+  if (query.warehouseId) where.warehouseId = query.warehouseId;
+  if (query.from || query.startDate) {
+    where.createdAt = {
+      gte: new Date(query.from || query.startDate),
+      ...(query.to || query.endDate ? { lte: new Date(query.to || query.endDate) } : {}),
     };
-  });
+  }
 
-  return {
-    totalTaxableValue,
-    totalTaxAmount,
-    totalCgst: round2(totalTaxAmount / 2),
-    totalSgst: round2(totalTaxAmount / 2),
-    breakdownByRate: rates
-  };
-};
-
-/**
- * Inventory Valuation Report.
- */
-export const getInventoryReport = async () => {
-  const result = await Product.aggregate([
-    { $match: { isActive: true } },
-    {
-      $group: {
-        _id: null,
-        totalProducts: { $sum: 1 },
-        totalStockUnits: { $sum: '$stock' },
-        valuationAtCost: { $sum: { $multiply: ['$stock', '$purchasePrice'] } },
-        valuationAtSellingPrice: { $sum: { $multiply: ['$stock', '$sellingPrice'] } }
-      }
-    }
+  const [sales, returns] = await Promise.all([
+    prisma.sale.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        customer: { select: { id: true, name: true, phone: true } },
+        items: true,
+      },
+    }),
+    prisma.salesReturn.findMany({
+      orderBy: { createdAt: 'desc' },
+    }),
   ]);
 
-  const summary = result[0] || {
-    totalProducts: 0,
-    totalStockUnits: 0,
-    valuationAtCost: 0,
-    valuationAtSellingPrice: 0
-  };
-
-  return {
-    totalProducts: summary.totalProducts,
-    totalStockUnits: summary.totalStockUnits,
-    valuationAtCost: round2(summary.valuationAtCost),
-    valuationAtSellingPrice: round2(summary.valuationAtSellingPrice),
-    potentialProfit: round2(summary.valuationAtSellingPrice - summary.valuationAtCost)
-  };
-};
-
-/**
- * Payment collection report.
- */
-export const getPaymentsReport = async (query = {}) => {
-  const match = buildDateFilter(query.startDate, query.endDate, 'paymentDate');
-  if (query.method) match.method = query.method;
-  if (query.type) match.type = query.type;
-
-  const breakdown = await Payment.aggregate([
-    { $match: match },
-    {
-      $group: {
-        _id: '$method',
-        count: { $sum: 1 },
-        totalAmount: { $sum: '$amount' }
-      }
-    }
-  ]);
-
-  const totalCollected = breakdown.reduce((acc, curr) => round2(acc + curr.totalAmount), 0);
-
-  return {
-    totalCollected,
-    methods: breakdown.map((b) => ({
-      method: b._id,
-      count: b.count,
-      totalAmount: round2(b.totalAmount)
-    }))
-  };
-};
-
-/**
- * Excel Exports using ExcelJS.
- */
-export const exportSalesToExcel = async (query = {}) => {
-  const match = buildDateFilter(query.startDate, query.endDate, 'createdAt');
-  const sales = await Sale.find(match)
-    .populate('customer', 'name phone')
-    .populate('cashier', 'name')
-    .sort({ createdAt: -1 });
-
-  const workbook = new ExcelJS.Workbook();
-  const sheet = workbook.addWorksheet('Sales Report');
-
-  sheet.columns = [
-    { header: 'Invoice No', key: 'invoiceNumber', width: 18 },
-    { header: 'Date', key: 'date', width: 15 },
-    { header: 'Customer', key: 'customer', width: 22 },
-    { header: 'Subtotal (₹)', key: 'subtotal', width: 14 },
-    { header: 'Discount (₹)', key: 'discount', width: 14 },
-    { header: 'GST (₹)', key: 'tax', width: 14 },
-    { header: 'Grand Total (₹)', key: 'grandTotal', width: 16 },
-    { header: 'Paid (₹)', key: 'paidAmount', width: 14 },
-    { header: 'Due (₹)', key: 'dueAmount', width: 14 },
-    { header: 'Payment Method', key: 'paymentMethod', width: 16 },
-    { header: 'Status', key: 'status', width: 14 },
-    { header: 'Cashier', key: 'cashier', width: 16 }
-  ];
-
-  sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-  sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A365D' } };
+  let totalSales = 0;
+  let totalPaid = 0;
+  let totalDiscounts = 0;
+  let totalTaxes = 0;
 
   sales.forEach((s) => {
-    sheet.addRow({
-      invoiceNumber: s.invoiceNumber,
-      date: new Date(s.createdAt).toISOString().split('T')[0],
-      customer: s.customer ? `${s.customer.name} (${s.customer.phone})` : 'Walk-in',
-      subtotal: s.subtotal,
-      discount: s.discount,
-      tax: s.tax,
-      grandTotal: s.grandTotal,
-      paidAmount: s.paidAmount,
-      dueAmount: s.dueAmount,
-      paymentMethod: s.paymentMethod.toUpperCase(),
-      status: s.status,
-      cashier: s.cashier?.name || 'N/A'
-    });
+    totalSales += Number(s.grandTotal);
+    totalPaid += Number(s.paidAmount);
+    totalDiscounts += Number(s.discountTotal);
+    totalTaxes += Number(s.taxTotal);
   });
 
-  return workbook;
+  const totalReturns = returns.reduce((acc, r) => acc + Number(r.totalAmount), 0);
+  const netSales = Math.max(0, round2(totalSales - totalReturns));
+  const totalPending = Math.max(0, round2(totalSales - totalPaid));
+
+  return {
+    totalRevenue: round2(totalSales),
+    totalSales: round2(totalSales),
+    netSales,
+    totalReturns: round2(totalReturns),
+    totalCollected: round2(totalPaid),
+    totalPending,
+    totalInvoices: sales.length,
+    totalDiscounts: round2(totalDiscounts),
+    totalGST: round2(totalTaxes),
+    sales,
+  };
 };
 
-export const exportProductsToExcel = async () => {
-  const products = await Product.find().populate('category', 'name').sort({ name: 1 });
+export const getDailyReport = async (query = {}) => {
+  const where = {};
+  if (query.from || query.startDate) {
+    where.createdAt = {
+      gte: new Date(query.from || query.startDate),
+      ...(query.to || query.endDate ? { lte: new Date(query.to || query.endDate) } : {}),
+    };
+  }
 
-  const workbook = new ExcelJS.Workbook();
-  const sheet = workbook.addWorksheet('Products');
+  const sales = await prisma.sale.findMany({
+    where,
+    orderBy: { createdAt: 'desc' },
+  });
 
-  sheet.columns = [
-    { header: 'SKU', key: 'sku', width: 15 },
-    { header: 'Product Name', key: 'name', width: 30 },
-    { header: 'Barcode', key: 'barcode', width: 18 },
-    { header: 'Category', key: 'category', width: 20 },
-    { header: 'Brand', key: 'brand', width: 18 },
-    { header: 'Unit', key: 'unit', width: 10 },
-    { header: 'Cost Price (₹)', key: 'purchasePrice', width: 14 },
-    { header: 'Selling Price (₹)', key: 'sellingPrice', width: 14 },
-    { header: 'GST %', key: 'gstRate', width: 10 },
-    { header: 'Current Stock', key: 'stock', width: 14 },
-    { header: 'Min Stock Alert', key: 'minimumStock', width: 14 },
-    { header: 'Status', key: 'isActive', width: 12 }
+  // Group by date (YYYY-MM-DD)
+  const map = new Map();
+  sales.forEach((s) => {
+    const d = s.createdAt.toISOString().split('T')[0];
+    if (!map.has(d)) {
+      map.set(d, {
+        date: d,
+        invoicesCount: 0,
+        totalSales: 0,
+        paidAmount: 0,
+        pendingAmount: 0,
+        netSales: 0,
+      });
+    }
+    const row = map.get(d);
+    row.invoicesCount += 1;
+    row.totalSales = round2(row.totalSales + Number(s.grandTotal));
+    row.paidAmount = round2(row.paidAmount + Number(s.paidAmount));
+    row.pendingAmount = Math.max(0, round2(row.totalSales - row.paidAmount));
+    row.netSales = row.totalSales;
+  });
+
+  return Array.from(map.values()).sort((a, b) => b.date.localeCompare(a.date));
+};
+
+export const getMonthlyReport = async (year = new Date().getFullYear()) => {
+  const startOfYear = new Date(`${year}-01-01T00:00:00.000Z`);
+  const endOfYear = new Date(`${year}-12-31T23:59:59.999Z`);
+
+  const sales = await prisma.sale.findMany({
+    where: {
+      createdAt: {
+        gte: startOfYear,
+        lte: endOfYear,
+      },
+    },
+  });
+
+  const months = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
   ];
 
-  sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-  sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2B6CB0' } };
+  const breakdown = months.map((m, idx) => ({
+    month: m,
+    monthNumber: idx + 1,
+    orders: 0,
+    totalSales: 0,
+    netSales: 0,
+  }));
+
+  sales.forEach((s) => {
+    const mIdx = s.createdAt.getMonth();
+    breakdown[mIdx].orders += 1;
+    breakdown[mIdx].totalSales = round2(breakdown[mIdx].totalSales + Number(s.grandTotal));
+    breakdown[mIdx].netSales = breakdown[mIdx].totalSales;
+  });
+
+  return breakdown;
+};
+
+export const getYearlyReport = async () => {
+  const sales = await prisma.sale.findMany({
+    orderBy: { createdAt: 'desc' },
+  });
+
+  const map = new Map();
+  sales.forEach((s) => {
+    const yr = s.createdAt.getFullYear().toString();
+    if (!map.has(yr)) {
+      map.set(yr, {
+        year: yr,
+        totalSales: 0,
+        orders: 0,
+        netRevenue: 0,
+      });
+    }
+    const item = map.get(yr);
+    item.orders += 1;
+    item.totalSales = round2(item.totalSales + Number(s.grandTotal));
+    item.netRevenue = item.totalSales;
+  });
+
+  return Array.from(map.values()).sort((a, b) => b.year.localeCompare(a.year));
+};
+
+export const getProfitReport = async (query = {}) => {
+  const where = {};
+  if (query.from || query.startDate) {
+    where.createdAt = {
+      gte: new Date(query.from || query.startDate),
+      ...(query.to || query.endDate ? { lte: new Date(query.to || query.endDate) } : {}),
+    };
+  }
+
+  const [sales, purchases] = await Promise.all([
+    prisma.sale.findMany({ where, include: { items: true } }),
+    prisma.purchase.findMany({ where, include: { items: true } }),
+  ]);
+
+  let totalSales = 0;
+  let totalCost = 0;
+
+  sales.forEach((s) => {
+    totalSales += Number(s.grandTotal);
+  });
+
+  purchases.forEach((p) => {
+    totalCost += Number(p.grandTotal);
+  });
+
+  const netProfit = round2(totalSales - totalCost);
+  const margin = totalSales > 0 ? Math.round((netProfit / totalSales) * 100) : 0;
+
+  return {
+    totalRevenue: round2(totalSales),
+    totalCost: round2(totalCost),
+    netProfit,
+    profitMargin: margin,
+  };
+};
+
+export const getInventoryReport = async () => {
+  const products = await prisma.product.findMany({
+    include: { category: true },
+  });
+
+  let totalValuation = 0;
+  let lowStockCount = 0;
+  let outOfStockCount = 0;
 
   products.forEach((p) => {
-    sheet.addRow({
-      sku: p.sku,
-      name: p.name,
-      barcode: p.barcode || 'N/A',
-      category: p.category?.name || 'Uncategorized',
-      brand: p.brand || '',
-      unit: p.unit,
-      purchasePrice: p.purchasePrice,
-      sellingPrice: p.sellingPrice,
-      gstRate: `${p.gstRate}%`,
-      stock: p.stock,
-      minimumStock: p.minimumStock,
-      isActive: p.isActive ? 'ACTIVE' : 'INACTIVE'
-    });
+    const qty = p.stock || 0;
+    const cost = Number(p.purchasePrice || p.sellingPrice || 0);
+    totalValuation += qty * cost;
+    if (qty <= 0) outOfStockCount += 1;
+    else if (qty <= (p.minimumStock || 5)) lowStockCount += 1;
   });
 
-  return workbook;
+  return {
+    totalProducts: products.length,
+    totalValuation: round2(totalValuation),
+    lowStockCount,
+    outOfStockCount,
+  };
 };
 
-export const exportInventoryToExcel = async () => {
-  return await exportProductsToExcel();
-};
-
-export const exportCustomersToExcel = async () => {
-  const customers = await Customer.find().sort({ name: 1 });
-
-  const workbook = new ExcelJS.Workbook();
-  const sheet = workbook.addWorksheet('Customers');
-
-  sheet.columns = [
-    { header: 'Customer Name', key: 'name', width: 25 },
-    { header: 'Phone', key: 'phone', width: 18 },
-    { header: 'Email', key: 'email', width: 25 },
-    { header: 'Address', key: 'address', width: 30 },
-    { header: 'GSTIN', key: 'gstin', width: 18 },
-    { header: 'Credit Limit (₹)', key: 'creditLimit', width: 16 },
-    { header: 'Outstanding Credit (₹)', key: 'currentCredit', width: 20 },
-    { header: 'Status', key: 'isActive', width: 12 }
-  ];
-
-  sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-  sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF234E52' } };
-
-  customers.forEach((c) => {
-    sheet.addRow({
-      name: c.name,
-      phone: c.phone,
-      email: c.email || 'N/A',
-      address: c.address || 'N/A',
-      gstin: c.gstin || 'N/A',
-      creditLimit: c.creditLimit,
-      currentCredit: c.currentCredit,
-      isActive: c.isActive ? 'ACTIVE' : 'INACTIVE'
-    });
+export const getGstReport = async (query = {}) => {
+  const sales = await prisma.sale.findMany({
+    orderBy: { createdAt: 'desc' },
+    include: { customer: true, items: true },
   });
 
-  return workbook;
+  let totalTaxable = 0;
+  let totalCgst = 0;
+  let totalSgst = 0;
+  let totalGst = 0;
+
+  sales.forEach((s) => {
+    const tax = Number(s.taxTotal);
+    totalGst += tax;
+    totalCgst += tax / 2;
+    totalSgst += tax / 2;
+    totalTaxable += Number(s.subtotal);
+  });
+
+  return {
+    totalTaxable: round2(totalTaxable),
+    totalCgst: round2(totalCgst),
+    totalSgst: round2(totalSgst),
+    totalGst: round2(totalGst),
+    invoices: sales,
+  };
+};
+
+export const getAnalyticsReport = async () => {
+  const today = new Date();
+  const startOfDay = new Date(today.setHours(0, 0, 0, 0));
+  const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+
+  const [
+    totalSalesAgg,
+    todaySalesAgg,
+    monthSalesAgg,
+    totalPurchasesAgg,
+    customerCount,
+    supplierCount,
+    productCount,
+    lowStockProducts,
+    pendingSales,
+    pendingPurchases,
+    onlineOrdersCount,
+  ] = await Promise.all([
+    prisma.sale.aggregate({ _sum: { grandTotal: true } }),
+    prisma.sale.aggregate({
+      where: { createdAt: { gte: startOfDay } },
+      _sum: { grandTotal: true },
+    }),
+    prisma.sale.aggregate({
+      where: { createdAt: { gte: startOfMonth } },
+      _sum: { grandTotal: true },
+    }),
+    prisma.purchase.aggregate({ _sum: { grandTotal: true } }),
+    prisma.customer.count({ where: { isActive: true } }),
+    prisma.supplier.count({ where: { isActive: true } }),
+    prisma.product.count({ where: { isActive: true } }),
+    prisma.product.count({ where: { stock: { lte: 5 }, isActive: true } }),
+    prisma.sale.findMany({ where: { paymentStatus: { in: ['UNPAID', 'PARTIAL'] } } }),
+    prisma.purchase.findMany({ where: { paymentStatus: { in: ['UNPAID', 'PARTIAL'] } } }),
+    prisma.onlineOrder.count(),
+  ]);
+
+  const receivables = pendingSales.reduce((acc, s) => acc + (Number(s.grandTotal) - Number(s.paidAmount)), 0);
+  const payables = pendingPurchases.reduce((acc, p) => acc + (Number(p.grandTotal) - Number(p.paidAmount)), 0);
+
+  return {
+    totalSales: round2(totalSalesAgg._sum.grandTotal || 0),
+    todaySales: round2(todaySalesAgg._sum.grandTotal || 0),
+    monthlySales: round2(monthSalesAgg._sum.grandTotal || 0),
+    totalPurchases: round2(totalPurchasesAgg._sum.grandTotal || 0),
+    totalCustomers: customerCount,
+    totalSuppliers: supplierCount,
+    totalProducts: productCount,
+    lowStock: lowStockProducts,
+    pendingPayments: pendingSales.length + pendingPurchases.length,
+    outstandingReceivables: round2(receivables),
+    outstandingPayables: round2(payables),
+    onlineOrders: onlineOrdersCount,
+  };
 };
 
 export default {
   getSalesReport,
-  getPurchasesReport,
+  getDailyReport,
+  getMonthlyReport,
+  getYearlyReport,
   getProfitReport,
-  getGstReport,
   getInventoryReport,
-  getPaymentsReport,
-  exportSalesToExcel,
-  exportProductsToExcel,
-  exportInventoryToExcel,
-  exportCustomersToExcel
+  getGstReport,
+  getAnalyticsReport,
 };

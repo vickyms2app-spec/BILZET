@@ -12,39 +12,43 @@ export default function Referral() {
   };
 
   return (
-    <div className="space-y-6 pb-12 max-w-4xl">
-      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-        <h1 className="text-2xl font-black text-slate-900 tracking-tight">
-          Refer & Earn
-        </h1>
-        <p className="text-xs text-slate-500 font-medium mt-1">
-          Share BILZET with other store owners and get rewards on every subscription.
-        </p>
+    <div className="space-y-5 pb-12 max-w-3xl fade-up">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 border border-amber-200/60 grid place-items-center shrink-0">
+          <Star size={20} />
+        </div>
+        <div>
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Refer &amp; Earn</h1>
+          <p className="text-xs text-slate-500 font-normal mt-0.5">
+            Share BILZET with other store owners and get rewards on every subscription
+          </p>
+        </div>
       </div>
 
-      <div className="bg-white p-7 rounded-2xl border border-slate-200 shadow-sm">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-500 grid place-items-center">
-            <Gift size={24} />
+      <div className="card p-6">
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 border border-amber-200/60 flex items-center justify-center shrink-0">
+            <Gift size={20} />
           </div>
           <div>
-            <h2 className="text-base font-bold text-slate-900">Your Referral Code</h2>
-            <p className="text-xs text-slate-400">
+            <h2 className="text-sm font-bold text-slate-900">Your Referral Code</h2>
+            <p className="text-xs text-slate-400 font-normal mt-0.5">
               Your friend gets 10% off and you get 1 extra month of BILZET Pro.
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 p-4 bg-slate-50 border border-slate-200 rounded-2xl max-w-sm">
-          <span className="font-mono text-lg font-black text-slate-900 tracking-wider flex-1">
+        <div className="flex items-center gap-3 p-3.5 bg-slate-50 border border-slate-200 rounded-xl max-w-sm">
+          <span className="font-mono text-lg font-bold text-slate-900 tracking-[0.15em] flex-1 px-1">
             {referralCode}
           </span>
           <button
             onClick={handleCopy}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#4361ee] hover:bg-[#3751d8] text-white rounded-xl text-xs font-bold transition shadow-sm"
+            className="btn-primary text-xs py-2 px-3.5 inline-flex items-center gap-1.5 shrink-0"
           >
-            {copied ? <Check size={14} /> : <Copy size={14} />}
-            <span>{copied ? "Copied" : "Copy"}</span>
+            {copied ? <Check size={13} /> : <Copy size={13} />}
+            <span>{copied ? "Copied!" : "Copy"}</span>
           </button>
         </div>
       </div>

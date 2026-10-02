@@ -1,39 +1,35 @@
 import { useEffect, useState } from "react";
-import { Card, Button, Input, Modal, Loading, Empty } from "../components/ui";
-import { Plus } from "lucide-react";
+import { Plus, Search, X, ShoppingBag, Truck, Receipt, FolderPlus, CheckCircle2 } from "lucide-react";
 import { apiError } from "../api/http";
+
 export default function Simple({ title, api, fields, readOnly = false, note }) {
-  const [d, setD] = useState(),
-    [open, setOpen] = useState(false),
-    [err, setErr] = useState("");
-  /* const load = () =>
-    api
-      .list({ page: 1, limit: 100 })
-      .then(setD)
-      .catch((e) => setErr(apiError(e)));
-  useEffect(load, []); */
-  useEffect(() => {
+  const [d, setD] = useState(null);
+  const [open, setOpen] = useState(false);
+  const [err, setErr] = useState("");
+  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
+
   const load = async () => {
     try {
+      setLoading(true);
       setErr(null);
-
-      const data = await api.list({
-        page: 1,
-        limit: 100,
-      });
-
+      const data = await api.list({ page: 1, limit: 100 });
       setD(data);
     } catch (e) {
       setErr(apiError(e));
+    } finally {
+      setLoading(false);
     }
   };
 
-  load();
-}, []);
+  useEffect(() => {
+    load();
+  }, []);
+
   async function save(e) {
     e.preventDefault();
-    const f = new FormData(e.currentTarget),
-      p = {};
+    const f = new FormData(e.currentTarget);
+    const p = {};
     fields.forEach(([k]) => {
       const v = f.get(k);
       p[k] = ["amount", "openingBalance"].includes(k) ? Number(v) : v;
@@ -46,43 +42,157 @@ export default function Simple({ title, api, fields, readOnly = false, note }) {
       setErr(apiError(e));
     }
   }
-  const rows =
-    d?.data?.suppliers || d?.data?.expenses || d?.data?.purchases || [];
+
+  const rows = d?.data?.suppliers || d?.data?.expenses || d?.data?.purchases || [];
+
+  // Filter rows based on search
+  const filteredRows = rows.filter((r) => {
+    if (!search.trim()) return true;
+    const term = search.toLowerCase();
+    return Object.values(r).some((val) =>
+      String(val).toLowerCase().includes(term)
+    );
+  });
+
+  // Calculate sum if amount exists
+  const hasAmountField = fields.some(([k]) => k === "amount" || k === "openingBalance");
+  const totalSum = rows.reduce((acc, r) => {
+    const val = Number(r.amount ?? r.openingBalance ?? 0);
+    return acc + (isNaN(val) ? 0 : val);
+  }, 0);
+
+  // Icon selector
+  const getIcon = () => {
+    const t = title.toLowerCase();
+    if (t.includes("purchase")) return ShoppingBag;
+    if (t.includes("supplier")) return Truck;
+    if (t.includes("expense")) return Receipt;
+    return FolderPlus;
+  };
+  const TitleIcon = getIcon();
+
   return (
-    <div className="space-y-5">
-      <header className="flex items-end justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase text-brand">
-            Operations
-          </p>
-          <h1 className="text-2xl font-bold">{title}</h1>
+    <div className="space-y-5 pb-12 fade-up">
+      {/* ══════════════════════════════════════════════════
+          PAGE HEADER
+      ══════════════════════════════════════════════════ */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/90 shadow-xs">
+        <div className="flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-xl border border-blue-100 grid place-items-center text-blue-600 bg-blue-50/70 shadow-2xs shrink-0">
+            <TitleIcon size={22} />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+                {title}
+              </h1>
+              <span className="text-[11px] font-bold text-blue-700 bg-blue-50 border border-blue-200/80 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                Operations
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 font-normal mt-0.5">
+              Live record management and backend synchronization for {title.toLowerCase()}
+            </p>
+          </div>
         </div>
+
         {!readOnly && (
-          <Button onClick={() => setOpen(true)}>
-            <Plus size={17} />
-            Add {title.slice(0, -1).toLowerCase()}
-          </Button>
+          <button
+            onClick={() => setOpen(true)}
+            className="btn-primary text-xs py-2 px-4 inline-flex items-center gap-1.5 self-start sm:self-center shadow-xs"
+          >
+            <Plus size={15} strokeWidth={2.5} />
+            <span>Add {title.replace(/s$/, "")}</span>
+          </button>
         )}
-      </header>
+      </div>
+
+      {/* ══════════════════════════════════════════════════
+          METRICS CARDS
+      ══════════════════════════════════════════════════ */}
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
+        <div className="card p-4 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shrink-0">
+            <TitleIcon size={18} />
+          </div>
+          <div>
+            <p className="text-[11px] font-medium text-slate-500">Total {title}</p>
+            <p className="text-lg font-bold text-slate-900">{rows.length}</p>
+          </div>
+        </div>
+
+        {hasAmountField && (
+          <div className="card p-4 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shrink-0">
+              <CheckCircle2 size={18} />
+            </div>
+            <div>
+              <p className="text-[11px] font-medium text-slate-500">Aggregated Total</p>
+              <p className="text-lg font-bold text-emerald-700">₹{totalSum.toLocaleString("en-IN")}</p>
+            </div>
+          </div>
+        )}
+
+        <div className="card p-4 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center shrink-0">
+            <Search size={18} />
+          </div>
+          <div>
+            <p className="text-[11px] font-medium text-slate-500">Active Records</p>
+            <p className="text-lg font-bold text-indigo-700">{filteredRows.length}</p>
+          </div>
+        </div>
+      </div>
+
       {note && (
-        <div className="rounded-lg bg-blue-50 p-3 text-sm text-blue-800">
+        <div className="rounded-xl bg-blue-50/80 border border-blue-200/80 p-3.5 text-xs text-blue-800 font-medium leading-relaxed">
           {note}
         </div>
       )}
+
       {err && (
-        <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+        <div className="rounded-xl bg-rose-50 border border-rose-200/80 p-3.5 text-xs text-rose-700 font-medium">
           {err}
         </div>
       )}
-      <Card className="overflow-hidden">
-        {!d ? (
-          <Loading />
+
+      {/* ══════════════════════════════════════════════════
+          TABLE CARD & SEARCH
+      ══════════════════════════════════════════════════ */}
+      <div className="card overflow-hidden">
+        <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white">
+          <div className="relative max-w-sm w-full">
+            <Search
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+              size={15}
+            />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={`Search ${title.toLowerCase()}…`}
+              className="w-full pl-9 pr-3.5 py-2 text-xs border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 font-medium bg-slate-50/40"
+            />
+          </div>
+          <span className="text-xs text-slate-400 font-medium">
+            Showing {filteredRows.length} of {rows.length} records
+          </span>
+        </div>
+
+        {loading ? (
+          <div className="py-16 flex flex-col items-center justify-center text-slate-400 gap-2">
+            <div className="w-7 h-7 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
+            <p className="text-xs font-medium">Loading {title.toLowerCase()}...</p>
+          </div>
         ) : !rows.length ? (
-          <Empty title={`No ${title.toLowerCase()} yet`} />
+          <div className="py-16 text-center text-slate-400">
+            <TitleIcon size={36} className="mx-auto text-slate-300 mb-2" />
+            <p className="text-sm font-semibold text-slate-700">No {title.toLowerCase()} yet</p>
+            <p className="text-xs text-slate-400 mt-0.5">Records will be listed here once recorded in the system</p>
+          </div>
         ) : (
-          <div className="overflow-auto">
-            <table className="w-full min-w-[700px] text-sm">
-              <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50/75 border-b border-slate-200/80 text-[11px] font-semibold text-slate-600 uppercase tracking-wider">
                 <tr>
                   {fields.length ? (
                     fields.map(([k, l]) => (
@@ -91,21 +201,33 @@ export default function Simple({ title, api, fields, readOnly = false, note }) {
                       </th>
                     ))
                   ) : (
-                    <th className="px-4 py-3">Record</th>
+                    <th className="px-4 py-3">Record Identifier</th>
                   )}
                 </tr>
               </thead>
-              <tbody>
-                {rows.map((r, i) => (
-                  <tr key={r._id || i} className="border-t">
+              <tbody className="divide-y divide-slate-100">
+                {filteredRows.map((r, i) => (
+                  <tr key={r._id || i} className="hover:bg-slate-50/60 transition">
                     {fields.length ? (
-                      fields.map(([k]) => (
-                        <td key={k} className="px-4 py-3">
-                          {String(r[k] ?? "—")}
-                        </td>
-                      ))
+                      fields.map(([k]) => {
+                        const isCurrency = ["amount", "openingBalance"].includes(k);
+                        const val = r[k];
+                        return (
+                          <td key={k} className="px-4 py-3 text-slate-700 font-medium">
+                            {isCurrency && val != null ? (
+                              <span className="font-semibold text-slate-900">
+                                ₹{Number(val).toLocaleString("en-IN")}
+                              </span>
+                            ) : (
+                              String(val ?? "—")
+                            )}
+                          </td>
+                        );
+                      })
                     ) : (
-                      <td className="px-4 py-3">{r.invoiceNumber || r._id}</td>
+                      <td className="px-4 py-3 font-mono text-slate-800 font-semibold">
+                        {r.invoiceNumber || r._id}
+                      </td>
                     )}
                   </tr>
                 ))}
@@ -113,29 +235,67 @@ export default function Simple({ title, api, fields, readOnly = false, note }) {
             </table>
           </div>
         )}
-      </Card>
-      <Modal
-        open={open}
-        onClose={() => setOpen(false)}
-        title={`New ${title.slice(0, -1)}`}
-      >
-        <form onSubmit={save} className="space-y-4">
-          {fields.map(([k, l]) => (
-            <Input
-              key={k}
-              label={l}
-              name={k}
-              type={
-                ["amount", "openingBalance"].includes(k) ? "number" : "text"
-              }
-              required={
-                k === "name" || k === "title" || k === "phone" || k === "amount"
-              }
-            />
-          ))}
-          <Button>{`Create ${title.slice(0, -1).toLowerCase()}`}</Button>
-        </form>
-      </Modal>
+      </div>
+
+      {/* ══════════════════════════════════════════════════
+          CREATE RECORD MODAL
+      ══════════════════════════════════════════════════ */}
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto p-6 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center">
+                  <TitleIcon size={16} />
+                </div>
+                <h2 className="text-base font-bold text-slate-900">
+                  New {title.replace(/s$/, "")}
+                </h2>
+              </div>
+              <button
+                onClick={() => setOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <form onSubmit={save} className="space-y-3.5 text-xs">
+              {fields.map(([k, l]) => (
+                <div key={k}>
+                  <label className="block font-semibold text-slate-700 mb-1">
+                    {l} {["name", "title", "phone", "amount"].includes(k) && "*"}
+                  </label>
+                  <input
+                    name={k}
+                    type={["amount", "openingBalance"].includes(k) ? "number" : "text"}
+                    step={["amount", "openingBalance"].includes(k) ? "0.01" : undefined}
+                    required={["name", "title", "phone", "amount"].includes(k)}
+                    placeholder={`Enter ${l.toLowerCase()}`}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 font-medium"
+                  />
+                </div>
+              ))}
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  className="btn-secondary text-xs py-2 px-4"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary text-xs py-2 px-5 font-semibold"
+                >
+                  Create {title.replace(/s$/, "")}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { useAuth } from "../store/auth";
 import { apiError } from "../api/http";
 import Logo from "../components/common/Logo";
 import HeroBillingIllustration from "../components/illustrations/HeroBillingIllustration";
+import { ClerkAuthBox, ClerkGoogleButton } from "../components/auth/ClerkAuth";
 import {
   Eye,
   EyeOff,
@@ -17,6 +18,8 @@ import {
   CheckCircle2,
 } from "lucide-react";
 
+const hasClerk = Boolean(import.meta.env.VITE_CLERK_PUBLISHABLE_KEY);
+
 /* Inline styles for dark left panel */
 const leftPanelStyle = {
   background: "linear-gradient(150deg, #0d1b3e 0%, #112257 40%, #0a2040 70%, #062035 100%)",
@@ -26,9 +29,12 @@ const leftPanelStyle = {
 
 export default function Login({ initialMode = "login" }) {
   const location = useLocation();
-  const [mode, setMode] = useState(
-    location.pathname === "/register" || initialMode === "register" ? "register" : "login"
-  );
+  const isRegister =
+    location.pathname.startsWith("/sign-up") ||
+    location.pathname === "/register" ||
+    initialMode === "register";
+
+  const [mode, setMode] = useState(isRegister ? "register" : "login");
 
   // Form Fields
   const [name, setName] = useState("");
@@ -43,23 +49,88 @@ export default function Login({ initialMode = "login" }) {
   const [showPwd, setShowPwd] = useState(false);
   const [showConfirmPwd, setShowConfirmPwd] = useState(false);
 
+  const user = useAuth((s) => s.user);
   const login = useAuth((s) => s.login);
   const register = useAuth((s) => s.register);
+  const googleLogin = useAuth((s) => s.googleLogin);
   const nav = useNavigate();
 
+  // If already authenticated, redirect to dashboard
   useEffect(() => {
-    if (location.pathname === "/register") {
+    if (user) {
+      nav("/dashboard", { replace: true });
+    }
+  }, [user, nav]);
+
+  useEffect(() => {
+    if (location.pathname.startsWith("/sign-up") || location.pathname === "/register") {
       setMode("register");
-    } else if (location.pathname === "/login") {
+    } else if (location.pathname.startsWith("/sign-in") || location.pathname === "/login") {
       setMode("login");
     }
   }, [location.pathname]);
+
+  // Load Google Identity Services script if not already loaded
+  useEffect(() => {
+    const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    if (!googleClientId) return;
+
+    const script = document.createElement("script");
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.defer = true;
+    script.onload = () => {
+      if (window.google?.accounts?.id) {
+        window.google.accounts.id.initialize({
+          client_id: googleClientId,
+          callback: async (response) => {
+            if (response?.credential) {
+              setBusy(true);
+              try {
+                await googleLogin(response.credential);
+                nav("/dashboard");
+              } catch (err) {
+                setError(apiError(err));
+              } finally {
+                setBusy(false);
+              }
+            }
+          },
+        });
+      }
+    };
+    document.body.appendChild(script);
+
+    return () => {
+      try {
+        document.body.removeChild(script);
+      } catch (e) {}
+    };
+  }, [googleLogin, nav]);
+
+  const handleGoogleSignIn = async () => {
+    setError("");
+    const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+    if (window.google?.accounts?.id && googleClientId) {
+      window.google.accounts.id.prompt();
+      return;
+    }
+
+    setError("Google OAuth requires Clerk configuration. Please set VITE_CLERK_PUBLISHABLE_KEY in your frontend environment.");
+  };
 
   const switchMode = (newMode) => {
     setMode(newMode);
     setError("");
     setSuccess("");
+    if (newMode === "register") {
+      nav("/sign-up");
+    } else {
+      nav("/sign-in");
+    }
   };
+
 
   async function submit(e) {
     e.preventDefault();
@@ -315,7 +386,51 @@ export default function Login({ initialMode = "login" }) {
               </div>
             )}
 
-            <form onSubmit={submit} className="space-y-4">
+            {hasClerk ? (
+              <div className="w-full">
+                <ClerkAuthBox mode={mode} />
+              </div>
+            ) : (
+              <>
+                {/* Google Sign-In Button */}
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={handleGoogleSignIn}
+                  className="w-full flex items-center justify-center gap-3 py-2.5 px-4 mb-4 rounded-xl border border-slate-200 bg-white hover:bg-slate-50/90 text-slate-700 text-xs font-bold transition shadow-2xs hover:shadow-xs active:scale-[0.99]"
+                >
+                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                    <path
+                      fill="#4285F4"
+                      d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.65v3h3.88c2.27-2.09 3.665-5.17 3.665-9.09z"
+                    />
+                    <path
+                      fill="#34A853"
+                      d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.26v3.09C3.29 21.43 7.37 24 12 24z"
+                    />
+                    <path
+                      fill="#FBBC05"
+                      d="M5.28 14.32c-.25-.72-.38-1.49-.38-2.32s.13-1.6.38-2.32V6.59H1.26C.46 8.19 0 9.99 0 12s.46 3.81 1.26 5.41l4.02-3.09z"
+                    />
+                    <path
+                      fill="#EA4335"
+                      d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.37 0 3.29 2.57 1.26 6.59l4.02 3.09c.95-2.83 3.6-4.93 6.72-4.93z"
+                    />
+                  </svg>
+                  <span>Continue with Google</span>
+                </button>
+
+                {/* Divider */}
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="flex-1 h-px bg-slate-200" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    or with email
+                  </span>
+                  <div className="flex-1 h-px bg-slate-200" />
+                </div>
+
+                <form onSubmit={submit} className="space-y-4">
+
               {/* REGISTER ONLY: Name & Phone */}
               {mode === "register" && (
                 <>
@@ -471,6 +586,8 @@ export default function Login({ initialMode = "login" }) {
                 )}
               </button>
             </form>
+            </>
+            )}
 
             {/* Toggle Helper Prompt */}
             <div className="mt-5 text-center">

@@ -29,10 +29,24 @@ export const logout = asyncHandler(async (req, res) => {
   return sendResponse(res, 200, {}, 'Logged out successfully');
 });
 
+export const google = asyncHandler(async (req, res) => {
+  const { credential } = req.body;
+  const result = await authService.googleLogin(credential, { req });
+  return sendResponse(res, 200, result, 'Google login successful');
+});
+
+export const clerkSync = asyncHandler(async (req, res) => {
+  const result = await authService.clerkSync(req.body);
+  return sendResponse(res, 200, result, 'Clerk user identity synchronized successfully');
+});
+
 export default {
   register,
   login,
+  google,
+  clerkSync,
   getMe,
   refresh,
   logout
 };
+

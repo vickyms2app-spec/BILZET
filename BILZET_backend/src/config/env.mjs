@@ -18,7 +18,9 @@ const envSchema = z.object({
   SHOP_ADDRESS: z.string().default(''),
   SHOP_GSTIN: z.string().default(''),
   SHOP_STATE: z.string().default(''),
-  SHOP_STATE_CODE: z.string().default('')
+  SHOP_STATE_CODE: z.string().default(''),
+  CLERK_SECRET_KEY: z.string().optional().default(''),
+  CLERK_PUBLISHABLE_KEY: z.string().optional().default('')
 });
 
 const parsed = envSchema.safeParse(process.env);

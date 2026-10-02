@@ -22,6 +22,11 @@ import dashboardRoutes from './routes/dashboard.routes.mjs';
 import expenseRoutes from './routes/expense.routes.mjs';
 import settingsRoutes from './routes/settings.routes.mjs';
 import superAdminRoutes from './routes/superAdmin.routes.mjs';
+import warehouseRoutes from './routes/warehouse.routes.mjs';
+import staffRoutes from './routes/staff.routes.mjs';
+import onlineOrderRoutes from './routes/onlineOrder.routes.mjs';
+import smsRoutes from './routes/sms.routes.mjs';
+import auditRoutes from './routes/audit.routes.mjs';
 
 // Error middlewares
 import { notFoundHandler } from './middleware/notFound.middleware.mjs';
@@ -74,11 +79,12 @@ app.get('/api/v1/health', (req, res) => {
     res,
     200,
     {
+      status: 'ok',
       database: 'PostgreSQL (NeonDB)',
       timestamp: new Date().toISOString(),
       uptime: process.uptime()
     },
-    'BILZET API is running with NeonDB PostgreSQL'
+    'BILZET API is healthy and connected'
   );
 });
 
@@ -93,12 +99,18 @@ app.use('/api/v1/purchases', purchaseRoutes);
 app.use('/api/v1/sales', saleRoutes);
 app.use('/api/v1/payments', paymentRoutes);
 app.use('/api/v1/inventory', inventoryRoutes);
+app.use('/api/v1/warehouses', warehouseRoutes);
+app.use('/api/v1/staff', staffRoutes);
+app.use('/api/v1/online-orders', onlineOrderRoutes);
+app.use('/api/v1/sms-campaigns', smsRoutes);
+app.use('/api/v1/audit-logs', auditRoutes);
 app.use('/api/v1/reports', reportRoutes);
 app.use('/api/v1/invoices', invoiceRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
 app.use('/api/v1/expenses', expenseRoutes);
 app.use('/api/v1/settings', settingsRoutes);
 app.use('/api/v1/super-admin', superAdminRoutes);
+
 
 // Fallback 404 Handler
 app.use(notFoundHandler);

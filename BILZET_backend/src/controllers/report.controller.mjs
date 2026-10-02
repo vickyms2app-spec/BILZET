@@ -7,9 +7,19 @@ export const getSalesReport = asyncHandler(async (req, res) => {
   return sendResponse(res, 200, report, 'Sales report generated successfully');
 });
 
-export const getPurchasesReport = asyncHandler(async (req, res) => {
-  const report = await reportService.getPurchasesReport(req.query);
-  return sendResponse(res, 200, report, 'Purchases report generated successfully');
+export const getDailyReport = asyncHandler(async (req, res) => {
+  const report = await reportService.getDailyReport(req.query);
+  return sendResponse(res, 200, { report }, 'Daily sales report generated');
+});
+
+export const getMonthlyReport = asyncHandler(async (req, res) => {
+  const report = await reportService.getMonthlyReport(req.query.year);
+  return sendResponse(res, 200, { report }, 'Monthly sales breakdown generated');
+});
+
+export const getYearlyReport = asyncHandler(async (req, res) => {
+  const report = await reportService.getYearlyReport();
+  return sendResponse(res, 200, { report }, 'Yearly sales comparison generated');
 });
 
 export const getProfitReport = asyncHandler(async (req, res) => {
@@ -27,64 +37,18 @@ export const getGstReport = asyncHandler(async (req, res) => {
   return sendResponse(res, 200, report, 'GST report generated successfully');
 });
 
-export const getPaymentsReport = asyncHandler(async (req, res) => {
-  const report = await reportService.getPaymentsReport(req.query);
-  return sendResponse(res, 200, report, 'Payments report generated successfully');
-});
-
-export const exportSales = asyncHandler(async (req, res) => {
-  const workbook = await reportService.exportSalesToExcel(req.query);
-  res.setHeader(
-    'Content-Type',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-  );
-  res.setHeader('Content-Disposition', 'attachment; filename="sales-report.xlsx"');
-  await workbook.xlsx.write(res);
-  return res.end();
-});
-
-export const exportProducts = asyncHandler(async (req, res) => {
-  const workbook = await reportService.exportProductsToExcel();
-  res.setHeader(
-    'Content-Type',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-  );
-  res.setHeader('Content-Disposition', 'attachment; filename="products-catalogue.xlsx"');
-  await workbook.xlsx.write(res);
-  return res.end();
-});
-
-export const exportInventory = asyncHandler(async (req, res) => {
-  const workbook = await reportService.exportInventoryToExcel();
-  res.setHeader(
-    'Content-Type',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-  );
-  res.setHeader('Content-Disposition', 'attachment; filename="inventory-report.xlsx"');
-  await workbook.xlsx.write(res);
-  return res.end();
-});
-
-export const exportCustomers = asyncHandler(async (req, res) => {
-  const workbook = await reportService.exportCustomersToExcel();
-  res.setHeader(
-    'Content-Type',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-  );
-  res.setHeader('Content-Disposition', 'attachment; filename="customers-report.xlsx"');
-  await workbook.xlsx.write(res);
-  return res.end();
+export const getAnalyticsReport = asyncHandler(async (req, res) => {
+  const report = await reportService.getAnalyticsReport();
+  return sendResponse(res, 200, { report }, 'Business analytics metrics fetched');
 });
 
 export default {
   getSalesReport,
-  getPurchasesReport,
+  getDailyReport,
+  getMonthlyReport,
+  getYearlyReport,
   getProfitReport,
   getInventoryReport,
   getGstReport,
-  getPaymentsReport,
-  exportSales,
-  exportProducts,
-  exportInventory,
-  exportCustomers
+  getAnalyticsReport,
 };

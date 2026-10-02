@@ -4,7 +4,7 @@ const API =
   (import.meta.env.PROD ? "/api/v1" : "http://localhost:5000/api/v1");
 export const http = axios.create({
   baseURL: API,
-  timeout: 15000,
+  timeout: 5000,
   headers: { "Content-Type": "application/json" },
 });
 let accessToken = localStorage.getItem("bilzet_access_token");

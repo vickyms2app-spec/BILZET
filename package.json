@@ -4,13 +4,16 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "dev": "npm --prefix BILZET_frontend run dev",
+    "dev:frontend": "npm --prefix BILZET_frontend run dev",
+    "dev:backend": "npm --prefix BILZET_backend run dev",
+    "install:all": "npm install && npm --prefix BILZET_frontend install && npm --prefix BILZET_backend install",
     "build": "npm run build:backend && npm run build:frontend",
     "build:backend": "cd BILZET_backend && npm install && npx prisma generate",
-    "build:frontend": "cd BILZET_frontend && npm install && npm run build",
-    "dev:backend": "cd BILZET_backend && npm run dev",
-    "dev:frontend": "cd BILZET_frontend && npm run dev"
+    "build:frontend": "cd BILZET_frontend && npm install && npm run build"
   },
   "dependencies": {
+    "@clerk/react": "^6.17.5",
     "@prisma/client": "6.4.1",
     "bcryptjs": "^3.0.3",
     "bwip-js": "^4.5.1",
