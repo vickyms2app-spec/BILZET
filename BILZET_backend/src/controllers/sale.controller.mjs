@@ -27,7 +27,7 @@ export const returnSale = asyncHandler(async (req, res) => {
 
 // ─── DELIVERY CHALLANS ───
 export const createDeliveryChallan = asyncHandler(async (req, res) => {
-  const { customerId, warehouseId, deliveryAddress, transportDetails, deliveryDate } = req.body;
+  const { customerId, warehouseId, deliveryAddress, transportDetails, vehicleNumber, deliveryDate } = req.body;
   const challanNumber = `CHAL-${Date.now().toString().slice(-6)}`;
 
   const challan = await prisma.deliveryChallan.create({
@@ -36,7 +36,7 @@ export const createDeliveryChallan = asyncHandler(async (req, res) => {
       customerId: customerId || null,
       warehouseId: warehouseId || null,
       deliveryAddress: deliveryAddress || null,
-      transportDetails: transportDetails || null,
+      transportDetails: transportDetails || vehicleNumber || null,
       deliveryDate: deliveryDate ? new Date(deliveryDate) : new Date(),
       status: 'DELIVERED',
     },
@@ -52,14 +52,47 @@ export const getDeliveryChallans = asyncHandler(async (req, res) => {
   return sendResponse(res, 200, { challans }, 'Delivery challans fetched successfully');
 });
 
+// ─── SALES RETURNS ───
+export const getSalesReturns = asyncHandler(async (req, res) => {
+  const returns = await prisma.salesReturn.findMany({
+    orderBy: { createdAt: 'desc' },
+    include: {
+      sale: {
+        select: {
+          id: true,
+          invoiceNumber: true,
+          grandTotal: true,
+          customer: { select: { id: true, name: true, phone: true } },
+        },
+      },
+    },
+  });
+  return sendResponse(res, 200, { returns }, 'Sales returns fetched successfully');
+});
+
 // ─── PAYMENT IN (Customer Collection) ───
 export const createPaymentIn = asyncHandler(async (req, res) => {
-  const { customerId, saleId, amount, method = 'CASH', transactionId, note } = req.body;
+  const {
+    customerId,
+    saleId,
+    amount,
+    method,
+    paymentMode,
+    paymentMethod,
+    transactionId,
+    referenceNumber,
+    note,
+    notes,
+  } = req.body;
 
   const amt = Number(amount);
   if (!amt || amt <= 0) {
     throw ApiError.badRequest('Payment amount must be greater than 0');
   }
+
+  const selectedMethod = (method || paymentMode || paymentMethod || 'CASH').toUpperCase();
+  const selectedTxId = transactionId || referenceNumber || null;
+  const selectedNote = note || notes || null;
 
   const payment = await prisma.$transaction(async (tx) => {
     const pay = await tx.payment.create({
@@ -67,9 +100,9 @@ export const createPaymentIn = asyncHandler(async (req, res) => {
         customerId: customerId || null,
         saleId: saleId || null,
         amount: amt,
-        method: method.toUpperCase(),
-        transactionId: transactionId || null,
-        note: note || null,
+        method: selectedMethod,
+        transactionId: selectedTxId,
+        note: selectedNote,
       },
     });
 
@@ -106,5 +139,6 @@ export default {
   returnSale,
   createDeliveryChallan,
   getDeliveryChallans,
+  getSalesReturns,
   createPaymentIn,
 };

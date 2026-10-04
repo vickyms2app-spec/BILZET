@@ -14,10 +14,11 @@ import {
   Receipt,
   User,
   Trash2,
+  CreditCard,
 } from "lucide-react";
 import { salesApi, customersApi, productsApi } from "../api";
-
 import { useLocation } from "react-router-dom";
+import Modal from "../components/common/Modal";
 
 export default function SalesOperations({ defaultTab = "challans" }) {
   const location = useLocation();
@@ -28,6 +29,7 @@ export default function SalesOperations({ defaultTab = "challans" }) {
     : defaultTab;
   const [challans, setChallans] = useState([]);
   const [returns, setReturns] = useState([]);
+  const [sales, setSales] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -50,7 +52,6 @@ export default function SalesOperations({ defaultTab = "challans" }) {
   const [returnForm, setReturnForm] = useState({
     saleId: "",
     reason: "",
-    refundAmount: "",
     notes: "",
   });
 
@@ -73,12 +74,16 @@ export default function SalesOperations({ defaultTab = "challans" }) {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [chRes, custRes, prodRes] = await Promise.all([
+      const [chRes, retRes, salesRes, custRes, prodRes] = await Promise.all([
         salesApi.challans(),
+        salesApi.returns(),
+        salesApi.list({ limit: 100 }),
         customersApi.list({ limit: 100 }),
         productsApi.list({ limit: 100 }),
       ]);
       setChallans(Array.isArray(chRes) ? chRes : chRes?.challans || []);
+      setReturns(retRes?.returns || (Array.isArray(retRes) ? retRes : []));
+      setSales(salesRes?.sales || salesRes?.data?.sales || []);
       setCustomers(custRes?.data?.customers || custRes?.customers || custRes || []);
       setProducts(prodRes?.data?.products || prodRes?.products || []);
     } catch (err) {
@@ -96,7 +101,10 @@ export default function SalesOperations({ defaultTab = "challans" }) {
     e.preventDefault();
     setSubmitting(true);
     try {
-      await salesApi.createChallan(challanForm);
+      await salesApi.createChallan({
+        ...challanForm,
+        transportDetails: challanForm.vehicleNumber,
+      });
       notify("success", "Delivery Challan generated successfully!");
       setShowChallanModal(false);
       setChallanForm({
@@ -114,12 +122,39 @@ export default function SalesOperations({ defaultTab = "challans" }) {
     }
   };
 
+  const handleCreateReturn = async (e) => {
+    e.preventDefault();
+    if (!returnForm.saleId) {
+      notify("error", "Please select a sales invoice to return");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await salesApi.return(returnForm.saleId, {
+        reason: returnForm.reason,
+        notes: returnForm.notes,
+      });
+      notify("success", "Sales return recorded and stock replenished!");
+      setShowReturnModal(false);
+      setReturnForm({ saleId: "", reason: "", notes: "" });
+      loadData();
+    } catch (err) {
+      notify("error", err.response?.data?.error || err.message || "Failed to record sales return");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleCreatePayment = async (e) => {
     e.preventDefault();
     setSubmitting(true);
     try {
       await salesApi.paymentIn({
         ...paymentForm,
+        method: paymentForm.paymentMode?.toUpperCase(),
+        paymentMethod: paymentForm.paymentMode?.toUpperCase(),
+        transactionId: paymentForm.referenceNumber,
+        note: paymentForm.notes,
         amount: Number(paymentForm.amount) || 0,
       });
       notify("success", "Payment received and customer account credited!");
@@ -313,16 +348,59 @@ export default function SalesOperations({ defaultTab = "challans" }) {
         </div>
       ) : activeTab === "returns" ? (
         /* Sales Returns View */
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-8 text-center space-y-3">
-          <RotateCcw size={32} className="mx-auto text-slate-300" />
-          <h3 className="font-bold text-slate-700 text-sm">Customer Sales Returns & Credit Notes</h3>
-          <p className="text-xs text-slate-400 max-w-md mx-auto">
-            Sales returns can be processed directly from any invoice under{" "}
-            <a href="/invoices" className="text-blue-600 underline font-medium">
-              Sales Invoices
-            </a>{" "}
-            using the return button to reverse stock and issue customer credit balance.
-          </p>
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50/70 text-slate-500 font-semibold border-b border-slate-200/80 uppercase tracking-wider text-[10px]">
+                <tr>
+                  <th className="py-3 px-4">Return #</th>
+                  <th className="py-3 px-4">Sale Invoice</th>
+                  <th className="py-3 px-4">Customer</th>
+                  <th className="py-3 px-4">Amount</th>
+                  <th className="py-3 px-4">Reason</th>
+                  <th className="py-3 px-4">Status</th>
+                  <th className="py-3 px-4">Date</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {returns.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-8 text-center text-slate-400">
+                      No sales returns recorded yet.
+                    </td>
+                  </tr>
+                ) : (
+                  returns.map((ret) => (
+                    <tr key={ret.id} className="hover:bg-slate-50/60 transition">
+                      <td className="py-3 px-4 font-mono font-bold text-slate-800">
+                        {ret.returnNumber}
+                      </td>
+                      <td className="py-3 px-4 font-mono text-blue-600">
+                        {ret.sale?.invoiceNumber || "—"}
+                      </td>
+                      <td className="py-3 px-4 font-medium text-slate-700">
+                        {ret.sale?.customer?.name || "Direct Customer"}
+                      </td>
+                      <td className="py-3 px-4 font-bold text-slate-900">
+                        ₹{Number(ret.totalAmount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                      </td>
+                      <td className="py-3 px-4 text-slate-600">
+                        {ret.reason || "Customer Return"}
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                          {ret.refundStatus || "COMPLETED"}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-slate-400">
+                        {new Date(ret.createdAt).toLocaleDateString()}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : (
         /* Payments In View */
@@ -337,237 +415,311 @@ export default function SalesOperations({ defaultTab = "challans" }) {
       )}
 
       {/* ── New Delivery Challan Modal ── */}
-      {showChallanModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto p-4 flex items-start sm:items-center justify-center bg-black/60 backdrop-blur-xs">
-          <div className="relative w-full max-w-md my-auto bg-white rounded-2xl p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="font-bold text-slate-800 text-sm">Create Delivery Challan</h3>
-              <button
-                onClick={() => setShowChallanModal(false)}
-                className="text-slate-400 hover:text-slate-600 p-1"
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateChallan} className="space-y-4 pt-4 text-xs">
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Customer *</label>
-                <select
-                  required
-                  value={challanForm.customerId}
-                  onChange={(e) =>
-                    setChallanForm({ ...challanForm, customerId: e.target.value })
-                  }
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
-                >
-                  <option value="">Select Recipient Customer</option>
-                  {customers.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} ({c.phone || "No phone"})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Delivery Destination</label>
-                <input
-                  type="text"
-                  placeholder="Delivery address / Site location"
-                  value={challanForm.deliveryAddress}
-                  onChange={(e) =>
-                    setChallanForm({ ...challanForm, deliveryAddress: e.target.value })
-                  }
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200"
-                />
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Vehicle / Transporter #</label>
-                <input
-                  type="text"
-                  placeholder="e.g. TN-09-AB-1234 / BlueDart"
-                  value={challanForm.vehicleNumber}
-                  onChange={(e) =>
-                    setChallanForm({ ...challanForm, vehicleNumber: e.target.value })
-                  }
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 uppercase font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Product Dispatched</label>
-                <select
-                  required
-                  value={challanForm.items[0].productId}
-                  onChange={(e) =>
-                    setChallanForm({
-                      ...challanForm,
-                      items: [{ ...challanForm.items[0], productId: e.target.value }],
-                    })
-                  }
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
-                >
-                  <option value="">Choose item</option>
-                  {products.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Dispatch Quantity</label>
-                  <input
-                    type="number"
-                    min="1"
-                    required
-                    value={challanForm.items[0].quantity}
-                    onChange={(e) =>
-                      setChallanForm({
-                        ...challanForm,
-                        items: [{ ...challanForm.items[0], quantity: Number(e.target.value) }],
-                      })
-                    }
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200"
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Challan Type</label>
-                  <select className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white">
-                    <option>Outward Delivery</option>
-                    <option>Job Work</option>
-                    <option>Exhibition / Demo</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setShowChallanModal(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 font-semibold text-slate-600 hover:bg-slate-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold flex items-center gap-2"
-                >
-                  {submitting && <RefreshCw size={13} className="animate-spin" />}
-                  <span>Generate Challan</span>
-                </button>
-              </div>
-            </form>
+      <Modal
+        isOpen={showChallanModal}
+        onClose={() => setShowChallanModal(false)}
+        title="Create Delivery Challan"
+        subtitle="Dispatch stock for delivery, job work or demo"
+        icon={Truck}
+        iconColor="text-blue-600 bg-blue-50 border-blue-100"
+        maxWidth="max-w-lg"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setShowChallanModal(false)}
+              className="px-4 py-2.5 rounded-xl border border-slate-200 font-medium text-slate-600 hover:bg-slate-100 transition text-xs"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="challan-form"
+              disabled={submitting}
+              className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold flex items-center gap-2 shadow-sm shadow-blue-500/20 transition text-xs disabled:opacity-50"
+            >
+              {submitting && <RefreshCw size={13} className="animate-spin" />}
+              <span>Generate Challan</span>
+            </button>
+          </>
+        }
+      >
+        <form id="challan-form" onSubmit={handleCreateChallan} className="space-y-4">
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1.5">Recipient Customer *</label>
+            <select
+              required
+              value={challanForm.customerId}
+              onChange={(e) =>
+                setChallanForm({ ...challanForm, customerId: e.target.value })
+              }
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
+            >
+              <option value="">Select Recipient Customer</option>
+              {customers.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} ({c.phone || "No phone"})
+                </option>
+              ))}
+            </select>
           </div>
-        </div>
-      )}
+
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1.5">Delivery Destination</label>
+            <input
+              type="text"
+              placeholder="Delivery address / Site location"
+              value={challanForm.deliveryAddress}
+              onChange={(e) =>
+                setChallanForm({ ...challanForm, deliveryAddress: e.target.value })
+              }
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
+            />
+          </div>
+
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1.5">Vehicle / Transporter #</label>
+            <input
+              type="text"
+              placeholder="e.g. TN-09-AB-1234 / BlueDart"
+              value={challanForm.vehicleNumber}
+              onChange={(e) =>
+                setChallanForm({ ...challanForm, vehicleNumber: e.target.value })
+              }
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 uppercase font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
+            />
+          </div>
+
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1.5">Product Dispatched *</label>
+            <select
+              required
+              value={challanForm.items[0].productId}
+              onChange={(e) =>
+                setChallanForm({
+                  ...challanForm,
+                  items: [{ ...challanForm.items[0], productId: e.target.value }],
+                })
+              }
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
+            >
+              <option value="">Choose item to dispatch</option>
+              {products.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3.5">
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1.5">Dispatch Quantity *</label>
+              <input
+                type="number"
+                min="1"
+                required
+                value={challanForm.items[0].quantity}
+                onChange={(e) =>
+                  setChallanForm({
+                    ...challanForm,
+                    items: [{ ...challanForm.items[0], quantity: Number(e.target.value) }],
+                  })
+                }
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
+              />
+            </div>
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1.5">Challan Type</label>
+              <select className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition">
+                <option>Outward Delivery</option>
+                <option>Job Work</option>
+                <option>Exhibition / Demo</option>
+              </select>
+            </div>
+          </div>
+        </form>
+      </Modal>
+
+      {/* ── Record Sales Return Modal ── */}
+      <Modal
+        isOpen={showReturnModal}
+        onClose={() => setShowReturnModal(false)}
+        title="Process Sales Return"
+        subtitle="Initiate return & refund against an issued invoice"
+        icon={RotateCcw}
+        iconColor="text-rose-600 bg-rose-50 border-rose-100"
+        maxWidth="max-w-lg"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setShowReturnModal(false)}
+              className="px-4 py-2.5 rounded-xl border border-slate-200 font-medium text-slate-600 hover:bg-slate-100 transition text-xs"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="return-form"
+              disabled={submitting}
+              className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-semibold flex items-center gap-2 shadow-sm shadow-rose-500/20 transition text-xs disabled:opacity-50"
+            >
+              {submitting && <RefreshCw size={13} className="animate-spin" />}
+              <span>Confirm Return</span>
+            </button>
+          </>
+        }
+      >
+        <form id="return-form" onSubmit={handleCreateReturn} className="space-y-4">
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1.5">
+              Select Sale Invoice *
+            </label>
+            <select
+              required
+              value={returnForm.saleId}
+              onChange={(e) => setReturnForm({ ...returnForm, saleId: e.target.value })}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition"
+            >
+              <option value="">Choose invoice to refund/return</option>
+              {sales
+                .filter((s) => s.status !== "REFUNDED")
+                .map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.invoiceNumber} - {s.customer?.name || "Cash Sale"} (₹{s.grandTotal})
+                  </option>
+                ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1.5">
+              Reason for Return *
+            </label>
+            <textarea
+              rows="3"
+              required
+              placeholder="e.g. Defective item, customer changed mind"
+              value={returnForm.reason}
+              onChange={(e) => setReturnForm({ ...returnForm, reason: e.target.value })}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition"
+            />
+          </div>
+
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1.5">Additional Notes</label>
+            <input
+              type="text"
+              placeholder="Optional remarks or courier tracking"
+              value={returnForm.notes}
+              onChange={(e) => setReturnForm({ ...returnForm, notes: e.target.value })}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition"
+            />
+          </div>
+        </form>
+      </Modal>
 
       {/* ── Record Payment In Modal ── */}
-      {showPaymentModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto p-4 flex items-start sm:items-center justify-center bg-black/60 backdrop-blur-xs">
-          <div className="relative w-full max-w-md my-auto bg-white rounded-2xl p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="font-bold text-slate-800 text-sm">Record Customer Payment-In</h3>
-              <button
-                onClick={() => setShowPaymentModal(false)}
-                className="text-slate-400 hover:text-slate-600 p-1"
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreatePayment} className="space-y-4 pt-4 text-xs">
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Customer *</label>
-                <select
-                  required
-                  value={paymentForm.customerId}
-                  onChange={(e) =>
-                    setPaymentForm({ ...paymentForm, customerId: e.target.value })
-                  }
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
-                >
-                  <option value="">Select Paying Customer</option>
-                  {customers.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} ({c.phone || "No phone"})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Amount Received (₹) *</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  required
-                  placeholder="Amount in Rupees"
-                  value={paymentForm.amount}
-                  onChange={(e) =>
-                    setPaymentForm({ ...paymentForm, amount: e.target.value })
-                  }
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Payment Mode</label>
-                  <select
-                    value={paymentForm.paymentMode}
-                    onChange={(e) =>
-                      setPaymentForm({ ...paymentForm, paymentMode: e.target.value })
-                    }
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
-                  >
-                    <option value="UPI">UPI / GPay / PhonePe</option>
-                    <option value="CASH">Cash</option>
-                    <option value="BANK_TRANSFER">NEFT / RTGS</option>
-                    <option value="CHEQUE">Cheque</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Reference / UTR #</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. UPI Ref # / Cheque #"
-                    value={paymentForm.referenceNumber}
-                    onChange={(e) =>
-                      setPaymentForm({ ...paymentForm, referenceNumber: e.target.value })
-                    }
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 font-mono"
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setShowPaymentModal(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 font-semibold text-slate-600 hover:bg-slate-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold flex items-center gap-2"
-                >
-                  {submitting && <RefreshCw size={13} className="animate-spin" />}
-                  <span>Save Payment</span>
-                </button>
-              </div>
-            </form>
+      <Modal
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        title="Record Customer Payment-In"
+        subtitle="Record payments to reduce outstanding customer balance"
+        icon={CreditCard}
+        iconColor="text-emerald-600 bg-emerald-50 border-emerald-100"
+        maxWidth="max-w-lg"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setShowPaymentModal(false)}
+              className="px-4 py-2.5 rounded-xl border border-slate-200 font-medium text-slate-600 hover:bg-slate-100 transition text-xs"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="payment-form"
+              disabled={submitting}
+              className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold flex items-center gap-2 shadow-sm shadow-emerald-500/20 transition text-xs disabled:opacity-50"
+            >
+              {submitting && <RefreshCw size={13} className="animate-spin" />}
+              <span>Save Payment</span>
+            </button>
+          </>
+        }
+      >
+        <form id="payment-form" onSubmit={handleCreatePayment} className="space-y-4">
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1.5">Paying Customer *</label>
+            <select
+              required
+              value={paymentForm.customerId}
+              onChange={(e) =>
+                setPaymentForm({ ...paymentForm, customerId: e.target.value })
+              }
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition"
+            >
+              <option value="">Select Paying Customer</option>
+              {customers.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} ({c.phone || "No phone"})
+                </option>
+              ))}
+            </select>
           </div>
-        </div>
-      )}
+
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1.5">Amount Received (₹) *</label>
+            <div className="relative">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₹</span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                required
+                placeholder="0.00"
+                value={paymentForm.amount}
+                onChange={(e) =>
+                  setPaymentForm({ ...paymentForm, amount: e.target.value })
+                }
+                className="w-full pl-8 pr-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3.5">
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1.5">Payment Mode</label>
+              <select
+                value={paymentForm.paymentMode}
+                onChange={(e) =>
+                  setPaymentForm({ ...paymentForm, paymentMode: e.target.value })
+                }
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition"
+              >
+                <option value="UPI">UPI / GPay / PhonePe</option>
+                <option value="CASH">Cash</option>
+                <option value="BANK_TRANSFER">NEFT / RTGS</option>
+                <option value="CHEQUE">Cheque</option>
+              </select>
+            </div>
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1.5">Reference / UTR #</label>
+              <input
+                type="text"
+                placeholder="e.g. UPI Ref / Cheque #"
+                value={paymentForm.referenceNumber}
+                onChange={(e) =>
+                  setPaymentForm({ ...paymentForm, referenceNumber: e.target.value })
+                }
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition"
+              />
+            </div>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

@@ -3,6 +3,17 @@ import { sendResponse } from '../utils/apiResponse.mjs';
 import { ApiError } from '../utils/ApiError.mjs';
 import prisma from '../config/prisma.mjs';
 
+const mapOrder = (o) => {
+  if (!o) return null;
+  return {
+    ...o,
+    _id: o.id,
+    status: o.orderStatus,
+    orderStatus: o.orderStatus,
+    totalAmount: Number(o.totalAmount || 0),
+  };
+};
+
 export const getOnlineOrders = asyncHandler(async (req, res) => {
   const where = {};
   if (req.query.status) {
@@ -14,7 +25,7 @@ export const getOnlineOrders = asyncHandler(async (req, res) => {
     orderBy: { orderDate: 'desc' },
   });
 
-  return sendResponse(res, 200, { orders }, 'Online orders fetched successfully');
+  return sendResponse(res, 200, { orders: orders.map(mapOrder) }, 'Online orders fetched successfully');
 });
 
 export const createOnlineOrder = asyncHandler(async (req, res) => {
@@ -40,7 +51,7 @@ export const createOnlineOrder = asyncHandler(async (req, res) => {
     },
   });
 
-  return sendResponse(res, 201, { order }, 'Online order placed successfully');
+  return sendResponse(res, 201, { order: mapOrder(order) }, 'Online order placed successfully');
 });
 
 export const updateOrderStatus = asyncHandler(async (req, res) => {
@@ -55,7 +66,7 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
     },
   });
 
-  return sendResponse(res, 200, { order }, 'Order status updated');
+  return sendResponse(res, 200, { order: mapOrder(order) }, 'Order status updated');
 });
 
 export default {

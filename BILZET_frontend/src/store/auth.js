@@ -8,27 +8,60 @@ export const useAuth = create((set) => ({
 
   async bootstrap() {
     try {
-      const token = localStorage.getItem("bilzet_access_token");
+      let token =
+        localStorage.getItem("bilzet_access_token") ||
+        localStorage.getItem("token");
+
+      if (!token && typeof window !== "undefined" && window.Clerk?.session) {
+        try {
+          token = await window.Clerk.session.getToken();
+          if (token) {
+            setTokens(token);
+          }
+        } catch (_) {}
+      }
+
       if (!token) {
         return set({ user: null, loading: false });
       }
 
-      // Add a 4-second timeout so the UI never hangs if backend is slow
+      // If Clerk is active, immediately resolve user to prevent UI freeze
+      if (typeof window !== "undefined" && window.Clerk?.user) {
+        const cu = window.Clerk.user;
+        const email = cu.primaryEmailAddress?.emailAddress || cu.emailAddresses?.[0]?.emailAddress;
+        const name = cu.fullName || `${cu.firstName || ''} ${cu.lastName || ''}`.trim() || 'Clerk User';
+        set({
+          user: {
+            id: cu.id,
+            name,
+            email,
+            role: "ADMIN",
+            isActive: true,
+          },
+          loading: false,
+        });
+      }
+
+      // Add a 10-second timeout so the UI never hangs on slow network
       const mePromise = authApi.me();
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Auth check timed out")), 4000)
+        setTimeout(() => reject(new Error("Auth check timed out")), 10000)
       );
 
       const res = await Promise.race([mePromise, timeoutPromise]);
       if (res && res.user) {
         set({ user: res.user, loading: false });
-      } else {
-        set({ user: null, loading: false });
       }
     } catch (err) {
-      console.warn("Bootstrap auth check error or timeout:", err?.message || err);
-      setTokens();
-      set({ user: null, loading: false });
+      console.warn("Bootstrap auth check notice:", err?.message || err);
+      // Only clear user and token if explicitly 401 and Clerk is not signed in
+      const isClerkLoggedIn = typeof window !== "undefined" && window.Clerk?.session;
+      if (err?.response?.status === 401 && !isClerkLoggedIn) {
+        setTokens();
+        set({ user: null, loading: false });
+      } else {
+        set({ loading: false });
+      }
     }
   },
 
@@ -54,35 +87,23 @@ export const useAuth = create((set) => ({
   },
 
   async syncClerkUser(clerkUser, token) {
-    try {
-      const email = clerkUser?.primaryEmailAddress?.emailAddress || clerkUser?.emailAddresses?.[0]?.emailAddress || clerkUser?.email;
-      const name = clerkUser?.fullName || `${clerkUser?.firstName || ''} ${clerkUser?.lastName || ''}`.trim() || 'Clerk User';
-      const phone = clerkUser?.primaryPhoneNumber?.phoneNumber || null;
-      const avatar = clerkUser?.imageUrl || null;
+    const email = clerkUser?.primaryEmailAddress?.emailAddress || clerkUser?.emailAddresses?.[0]?.emailAddress || clerkUser?.email;
+    const name = clerkUser?.fullName || `${clerkUser?.firstName || ''} ${clerkUser?.lastName || ''}`.trim() || 'Clerk User';
+    const phone = clerkUser?.primaryPhoneNumber?.phoneNumber || null;
+    const avatar = clerkUser?.imageUrl || null;
 
-      const data = await authApi.clerkSync({
-        clerkId: clerkUser.id,
-        email,
-        name,
-        phone,
-        avatar,
-      });
+    const data = await authApi.clerkSync({
+      clerkId: clerkUser.id,
+      email,
+      name,
+      phone,
+      avatar,
+    });
 
-      setTokens(token || data.accessToken, data.refreshToken);
-      set({ user: data.user, loading: false });
-      return data.user;
-    } catch (err) {
-      console.warn("Clerk sync fallback to client identity:", err);
-      const fallbackUser = {
-        id: clerkUser.id,
-        name: clerkUser.fullName || clerkUser.firstName || "Clerk User",
-        email: clerkUser.primaryEmailAddress?.emailAddress || "user@clerk.dev",
-        role: "ADMIN",
-        isActive: true,
-      };
-      set({ user: fallbackUser, loading: false });
-      return fallbackUser;
-    }
+    // CRITICAL: Always prioritize the backend's persistent 7-day JWT accessToken
+    setTokens(data?.accessToken || token, data?.refreshToken);
+    set({ user: data.user, loading: false });
+    return data.user;
   },
 
   async logout() {

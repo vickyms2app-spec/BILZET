@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutGrid,
@@ -36,12 +36,17 @@ import {
   ClipboardList,
   Wallet,
   RefreshCw,
+  Search,
+  Store,
+  ChevronUp,
+  Sun,
+  Sparkles,
+  Bell,
 } from "lucide-react";
 import { useAuth } from "../../store/auth";
 import { useConnectionStatus } from "../../hooks/useConnectionStatus";
 import Logo from "../common/Logo";
 import { useClerk } from "@clerk/clerk-react";
-
 import { hasClerk } from "../../config/clerk";
 
 const navSections = [
@@ -57,12 +62,12 @@ const navSections = [
     title: "Sales & Billing",
     key: "sales",
     items: [
-      { label: "New Bill / POS", path: "/billing", icon: FilePlus },
+      { label: "New Bill / POS", path: "/billing", icon: FilePlus, highlight: true },
       { label: "Sales Invoices", path: "/invoices", icon: FileText },
       { label: "Delivery Challans", path: "/sales/challans", icon: FileCheck },
       { label: "Sales Returns", path: "/sales/returns", icon: RotateCcw },
-      { label: "Payment-In", path: "/sales/payments-in", icon: DollarSign },
-      { label: "Customers (CRM)", path: "/customers", icon: Users },
+      { label: "Payment-In Ledger", path: "/sales/payments-in", icon: DollarSign },
+      { label: "Customer CRM", path: "/customers", icon: Users },
     ],
   },
   {
@@ -80,38 +85,29 @@ const navSections = [
     key: "inventory",
     items: [
       { label: "Stock Overview", path: "/inventory", icon: Boxes },
-      { label: "Products", path: "/products", icon: Package },
-      { label: "Godowns / Warehouses", path: "/warehouses", icon: Warehouse },
-      { label: "Stock Transfers", path: "/warehouses/transfer", icon: ArrowRightLeft },
+      { label: "Product Catalog", path: "/products", icon: Package },
+      { label: "Warehouses & Godowns", path: "/warehouses", icon: Warehouse },
+      { label: "Stock Transfers", path: "/stock-transfers", icon: ArrowRightLeft },
     ],
   },
   {
-    title: "Business Tools",
+    title: "Operations & HR",
     key: "tools",
     items: [
       { label: "Staff & Payroll", path: "/staff", icon: UserCheck },
       { label: "Online Store Orders", path: "/online-orders", icon: OnlineIcon },
-      { label: "SMS & Marketing", path: "/sms-marketing", icon: MessageSquare },
       { label: "Expenses Ledger", path: "/expenses", icon: Wallet },
+      { label: "SMS Campaigns", path: "/sms-marketing", icon: MessageSquare },
     ],
   },
   {
-    title: "Compliance & GST",
-    key: "compliance",
-    items: [
-      { label: "GST Center", path: "/gst", icon: Percent },
-      { label: "CA Connect", path: "/ca-connect", icon: Briefcase },
-    ],
-  },
-  {
-    title: "Settings & System",
+    title: "System & Audit",
     key: "system",
     items: [
-      { label: "Refer & Earn", path: "/referral", icon: Star },
-      { label: "Plans & Upgrades", path: "/plans", icon: CreditCard },
-      { label: "Support Desk", path: "/support", icon: LifeBuoy },
       { label: "Business Settings", path: "/settings", icon: Settings },
-      { label: "Audit Trail", path: "/audit-logs", icon: History },
+      { label: "Security Audit Trail", path: "/audit-logs", icon: History },
+      { label: "GST & Tax Filing", path: "/gst", icon: Percent },
+      { label: "Support & Help", path: "/support", icon: LifeBuoy },
     ],
   },
 ];
@@ -120,6 +116,7 @@ export default function Layout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileDrawer, setMobileDrawer] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState({});
+  const [userDropdown, setUserDropdown] = useState(false);
   const { user, logout } = useAuth();
   const { status: connStatus, checkConnection } = useConnectionStatus();
   const nav = useNavigate();
@@ -132,11 +129,35 @@ export default function Layout({ children }) {
     }));
   };
 
-  const displayName = user?.name || "demo";
+  const displayName = user?.name || "Admin User";
   const displayRole =
     user?.role === "ADMIN" || !user?.role || user?.role === "GUEST"
       ? "Business Owner"
       : user.role;
+
+  const userInitials = useMemo(() => {
+    if (!displayName) return "B";
+    const parts = displayName.trim().split(" ");
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return displayName.slice(0, 2).toUpperCase();
+  }, [displayName]);
+
+  // Dynamic breadcrumb matching
+  const currentBreadcrumb = useMemo(() => {
+    const path = location.pathname;
+    for (const sec of navSections) {
+      const match = sec.items.find((i) => i.path === path);
+      if (match) {
+        return { category: sec.title, page: match.label, icon: match.icon };
+      }
+    }
+    if (path.startsWith("/invoices/")) return { category: "Sales & Billing", page: "Invoice Details", icon: FileText };
+    if (path === "/admin") return { category: "Administration", page: "User Management", icon: Shield };
+    if (path === "/app-admin") return { category: "Super Admin", page: "Master Control", icon: Shield };
+    return { category: "Overview", page: "BILZET Business ERP", icon: LayoutGrid };
+  }, [location.pathname]);
 
   const clerk = hasClerk ? useClerk() : null;
 
@@ -153,23 +174,23 @@ export default function Layout({ children }) {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#f1f5f9] text-slate-800">
+    <div className="h-screen w-screen overflow-hidden flex bg-[#f8fafc] text-slate-800 antialiased font-sans selection:bg-blue-600 selection:text-white">
       {/* ══════════════════════════════════════════════════
-          DESKTOP SIDEBAR
+          DESKTOP & TABLET SIDEBAR
       ══════════════════════════════════════════════════ */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 hidden lg:flex flex-col transition-all duration-300 ${
-          sidebarOpen ? "w-64" : "w-[72px]"
+        className={`h-full shrink-0 hidden md:flex flex-col transition-all duration-300 ease-in-out z-30 select-none ${
+          sidebarOpen ? "w-[264px]" : "w-[76px]"
         }`}
         style={{
-          background: "#080c16",
-          borderRight: "1px solid rgba(255,255,255,0.06)",
-          boxShadow: "2px 0 20px rgba(0,0,0,0.3)",
+          background: "linear-gradient(180deg, #0F2747 0%, #0B1D36 50%, #081628 100%)",
+          borderRight: "1px solid rgba(255,255,255,0.08)",
+          boxShadow: "4px 0 24px -2px rgba(15,39,71,0.25)",
         }}
       >
-        {/* Header / Brand Logo */}
+        {/* Brand Header */}
         <div
-          className={`flex items-center h-16 px-4 border-b border-white/[0.05] ${
+          className={`flex items-center h-16 px-4 border-b border-white/[0.06] shrink-0 ${
             sidebarOpen ? "justify-between" : "justify-center"
           }`}
         >
@@ -177,7 +198,7 @@ export default function Layout({ children }) {
           {sidebarOpen && (
             <button
               onClick={() => setSidebarOpen(false)}
-              className="text-slate-500 hover:text-slate-200 p-1.5 rounded-lg hover:bg-white/5 transition"
+              className="text-slate-400 hover:text-white p-1.5 rounded-xl hover:bg-white/[0.08] transition duration-150"
               title="Collapse sidebar"
             >
               <ChevronLeft size={16} />
@@ -186,7 +207,7 @@ export default function Layout({ children }) {
           {!sidebarOpen && (
             <button
               onClick={() => setSidebarOpen(true)}
-              className="text-slate-500 hover:text-slate-200 p-1.5 rounded-lg hover:bg-white/5 transition mt-2"
+              className="text-slate-400 hover:text-white p-1.5 rounded-xl hover:bg-white/[0.08] transition duration-150"
               title="Expand sidebar"
             >
               <ChevronRight size={16} />
@@ -194,8 +215,36 @@ export default function Layout({ children }) {
           )}
         </div>
 
+        {/* Quick Action Button: POS Billing */}
+        {sidebarOpen ? (
+          <div className="px-3.5 pt-3.5 pb-1 shrink-0">
+            <NavLink
+              to="/billing"
+              className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs text-white bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 shadow-md shadow-blue-500/25 transition-all duration-200 group"
+            >
+              <div className="flex items-center gap-2.5">
+                <Sparkles size={16} className="text-cyan-200 animate-pulse" />
+                <span>POS / New Bill</span>
+              </div>
+              <span className="px-1.5 py-0.5 rounded-md bg-white/20 text-[10px] font-mono tracking-tight text-white/90">
+                F2
+              </span>
+            </NavLink>
+          </div>
+        ) : (
+          <div className="px-2 pt-3 pb-1 shrink-0 flex justify-center">
+            <NavLink
+              to="/billing"
+              title="New Bill / POS (F2)"
+              className="w-10 h-10 rounded-xl flex items-center justify-center text-white bg-gradient-to-tr from-blue-600 to-cyan-500 shadow-md shadow-blue-500/30 hover:scale-105 transition"
+            >
+              <Sparkles size={17} />
+            </NavLink>
+          </div>
+        )}
+
         {/* Navigation list */}
-        <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-3 scrollbar-thin scrollbar-thumb-white/10">
+        <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-3 scrollbar-thin scrollbar-thumb-white/10 hover:scrollbar-thumb-white/20">
           {navSections.map((section, sIdx) => {
             const isSectionCollapsed = !!collapsedSections[section.key];
 
@@ -204,7 +253,7 @@ export default function Layout({ children }) {
                 {sidebarOpen ? (
                   <button
                     onClick={() => toggleSection(section.key)}
-                    className="w-full flex items-center justify-between px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 hover:text-slate-200 transition"
+                    className="w-full flex items-center justify-between px-2.5 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400/80 hover:text-slate-200 transition"
                   >
                     <span className="truncate">{section.title}</span>
                     <ChevronDown
@@ -222,29 +271,31 @@ export default function Layout({ children }) {
                   <div className="space-y-0.5">
                     {section.items.map((item) => {
                       const Icon = item.icon;
-                      const isActive = location.pathname === item.path;
+                      const isActive =
+                        location.pathname === item.path ||
+                        (item.path !== "/" && location.pathname.startsWith(`${item.path}/`));
 
                       return (
                         <NavLink
                           key={item.path}
                           to={item.path}
                           title={!sidebarOpen ? item.label : undefined}
-                          className={`flex items-center gap-3 px-3 py-2 rounded-xl text-[12px] font-medium transition-all duration-150 ${
+                          className={`flex items-center gap-3 px-3 py-2 rounded-xl text-[12px] font-medium transition-all duration-150 relative group ${
                             isActive
-                              ? "bg-white/10 text-white font-semibold shadow-xs"
-                              : "text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]"
+                              ? "bg-gradient-to-r from-blue-600 to-blue-500 text-white font-semibold shadow-md shadow-blue-600/30"
+                              : "text-slate-300/80 hover:text-white hover:bg-white/[0.07]"
                           } ${!sidebarOpen ? "justify-center px-0 py-2.5" : ""}`}
                         >
                           <Icon
                             size={16}
-                            className={`shrink-0 ${
-                              isActive ? "text-blue-400" : "text-slate-500"
+                            className={`shrink-0 transition-transform duration-150 group-hover:scale-110 ${
+                              isActive ? "text-white" : "text-slate-400 group-hover:text-slate-200"
                             }`}
                             strokeWidth={isActive ? 2.2 : 1.8}
                           />
                           {sidebarOpen && <span className="truncate">{item.label}</span>}
                           {isActive && sidebarOpen && (
-                            <span className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />
+                            <span className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-400 shadow-xs shadow-blue-400 shrink-0" />
                           )}
                         </NavLink>
                       );
@@ -259,7 +310,7 @@ export default function Layout({ children }) {
           {user?.role === "ADMIN" && (
             <div className="space-y-1 pt-1 border-t border-white/[0.06]">
               {sidebarOpen && (
-                <div className="px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-purple-400">
+                <div className="px-2.5 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-purple-400/90">
                   Administration
                 </div>
               )}
@@ -268,14 +319,14 @@ export default function Layout({ children }) {
                 title={!sidebarOpen ? "User Management" : undefined}
                 className={`flex items-center gap-3 px-3 py-2 rounded-xl text-[12px] font-medium transition-all duration-150 ${
                   location.pathname === "/admin"
-                    ? "bg-white/10 text-white font-semibold"
-                    : "text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]"
+                    ? "bg-purple-600/20 text-white font-semibold border border-purple-500/30"
+                    : "text-slate-400 hover:text-slate-100 hover:bg-white/[0.05]"
                 } ${!sidebarOpen ? "justify-center px-0 py-2.5" : ""}`}
               >
                 <Shield
                   size={16}
                   className={`shrink-0 ${
-                    location.pathname === "/admin" ? "text-purple-400" : "text-slate-500"
+                    location.pathname === "/admin" ? "text-purple-400" : "text-slate-400"
                   }`}
                   strokeWidth={location.pathname === "/admin" ? 2.2 : 1.8}
                 />
@@ -285,74 +336,123 @@ export default function Layout({ children }) {
           )}
         </nav>
 
-        {/* Bottom User Card */}
-        <div className="p-3 border-t border-white/[0.06]">
+        {/* Bottom Store Card & User */}
+        <div className="p-3 border-t border-white/[0.08] bg-black/25 shrink-0 space-y-2">
           {sidebarOpen ? (
-            <div className="bg-white/[0.04] border border-white/[0.07] rounded-xl p-3">
-              <div className="mb-2.5">
-                <p className="text-white font-bold text-sm leading-tight truncate">
-                  {displayName}
-                </p>
-                <p className="text-[11px] text-slate-500 font-medium mt-0.5">
-                  {displayRole}
-                </p>
-              </div>
-              {user?.email?.toLowerCase() === "vickyms2app@gmail.com" && (
-                <NavLink
-                  to="/app-admin"
-                  className="w-full mb-2 py-1.5 px-3 bg-gradient-to-r from-cyan-500 to-blue-600 hover:brightness-110 text-white text-[11px] font-bold rounded-lg transition flex items-center justify-center gap-1.5"
+            <>
+              {/* Store Switcher Card from Reference Image */}
+              <div className="bg-white/[0.06] border border-white/[0.08] rounded-xl p-2.5 flex items-center justify-between gap-2 text-left">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-7 h-7 rounded-lg bg-blue-600/30 text-blue-400 border border-blue-500/30 flex items-center justify-center shrink-0">
+                    <Store size={14} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-bold text-white truncate leading-tight">BILZET Store</p>
+                    <p className="text-[9px] text-slate-400 truncate">Perambalur, Tamil Nadu</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => nav("/settings")}
+                  className="text-[10px] text-blue-400 hover:text-blue-300 font-semibold shrink-0 flex items-center gap-0.5 hover:underline"
+                  title="Switch Store"
                 >
-                  <Shield size={12} />
-                  <span>Master Admin</span>
-                </NavLink>
-              )}
+                  <span>Switch</span>
+                  <ArrowRightLeft size={10} />
+                </button>
+              </div>
+
+              <div className="bg-white/[0.04] border border-white/[0.08] hover:border-white/[0.12] rounded-xl p-2.5 transition duration-150">
+                <div className="flex items-center gap-2.5 mb-2">
+                  <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xs shadow-xs shrink-0">
+                    {userInitials}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-white font-bold text-xs leading-tight truncate">
+                      {displayName}
+                    </p>
+                    <p className="text-[10px] text-slate-400 font-medium truncate mt-0.5">
+                      {displayRole}
+                    </p>
+                  </div>
+                </div>
+
+                {user?.email?.toLowerCase() === "vickyms2app@gmail.com" && (
+                  <NavLink
+                    to="/app-admin"
+                    className="w-full mb-1.5 py-1 px-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:brightness-110 text-white text-[10px] font-bold rounded-lg transition flex items-center justify-center gap-1.5 shadow-xs"
+                  >
+                    <Shield size={11} />
+                    <span>Master Admin</span>
+                  </NavLink>
+                )}
+
+                <button
+                  onClick={handleLogout}
+                  className="w-full py-1.5 px-2.5 bg-white/[0.06] hover:bg-rose-500/20 hover:text-rose-300 hover:border-rose-500/30 border border-white/[0.08] text-slate-300 text-[10px] font-semibold rounded-lg transition flex items-center justify-center gap-1.5"
+                >
+                  <LogOut size={11} className="text-slate-400 group-hover:text-rose-300" />
+                  <span>Sign Out</span>
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-col items-center gap-2">
+              <div
+                className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xs shadow-xs"
+                title={`${displayName} (${displayRole})`}
+              >
+                {userInitials}
+              </div>
               <button
                 onClick={handleLogout}
-                className="w-full py-1.5 px-3 bg-white/[0.06] hover:bg-white/[0.10] border border-white/[0.08] text-slate-300 text-[11px] font-semibold rounded-lg transition flex items-center justify-center gap-2"
+                className="p-2 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition"
+                title="Logout"
               >
-                <LogOut size={12} className="text-slate-400" />
-                <span>Logout</span>
+                <LogOut size={16} />
               </button>
             </div>
-          ) : (
-            <button
-              onClick={handleLogout}
-              className="w-full p-2.5 bg-white/[0.06] hover:bg-white/[0.10] text-slate-400 rounded-xl transition flex justify-center"
-              title="Logout"
-            >
-              <LogOut size={16} />
-            </button>
           )}
         </div>
       </aside>
 
       {/* ══════════════════════════════════════════════════
-          MOBILE DRAWER
+          MOBILE DRAWER (FOR SCREENS < 768px)
       ══════════════════════════════════════════════════ */}
       {mobileDrawer && (
-        <div className="fixed inset-0 z-50 lg:hidden flex">
+        <div className="fixed inset-0 z-50 md:hidden flex">
           <div
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
             onClick={() => setMobileDrawer(false)}
           />
           <div
-            className="relative w-72 max-w-[85vw] h-full flex flex-col z-10 p-4 overflow-y-auto"
-            style={{ background: "#080c16" }}
+            className="relative w-72 max-w-[85vw] h-full flex flex-col z-10 p-4 overflow-y-auto animate-in slide-in-from-left duration-250 shadow-2xl"
+            style={{ background: "linear-gradient(180deg, #0F2747 0%, #0B1D36 100%)" }}
           >
-            <div className="flex items-center justify-between pb-4 border-b border-white/[0.07]">
+            <div className="flex items-center justify-between pb-4 border-b border-white/[0.08]">
               <Logo variant="full" theme="dark" size="md" />
               <button
                 onClick={() => setMobileDrawer(false)}
-                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-white/10"
+                className="p-1.5 text-slate-400 hover:text-white rounded-xl hover:bg-white/10 transition"
               >
                 <X size={18} />
               </button>
             </div>
 
-            <nav className="flex-1 overflow-y-auto py-3 space-y-3">
+            <div className="pt-3 pb-2">
+              <NavLink
+                to="/billing"
+                onClick={() => setMobileDrawer(false)}
+                className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl font-bold text-xs text-white bg-gradient-to-r from-blue-600 to-blue-500 shadow-md shadow-blue-500/20"
+              >
+                <Sparkles size={14} />
+                <span>POS / Quick Bill</span>
+              </NavLink>
+            </div>
+
+            <nav className="flex-1 overflow-y-auto py-2 space-y-3">
               {navSections.map((section) => (
                 <div key={section.title} className="space-y-1">
-                  <div className="px-3 pt-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                  <div className="px-3 pt-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                     {section.title}
                   </div>
                   {section.items.map((item) => {
@@ -366,13 +466,13 @@ export default function Layout({ children }) {
                         onClick={() => setMobileDrawer(false)}
                         className={`flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition ${
                           isActive
-                            ? "bg-white/10 text-white font-semibold"
-                            : "text-slate-400 hover:text-white hover:bg-white/[0.04]"
+                            ? "bg-gradient-to-r from-blue-600 to-blue-500 text-white font-semibold shadow-md shadow-blue-600/30"
+                            : "text-slate-300/80 hover:text-white hover:bg-white/[0.07]"
                         }`}
                       >
                         <Icon
                           size={16}
-                          className={isActive ? "text-blue-400" : "text-slate-500"}
+                          className={isActive ? "text-white" : "text-slate-400"}
                           strokeWidth={isActive ? 2.2 : 1.8}
                         />
                         <span>{item.label}</span>
@@ -384,43 +484,24 @@ export default function Layout({ children }) {
                   })}
                 </div>
               ))}
-
-              {user?.role === "ADMIN" && (
-                <div className="space-y-1 pt-1">
-                  <div className="px-3 pt-1 text-[10px] font-bold uppercase tracking-wider text-purple-400">
-                    Administration
-                  </div>
-                  <NavLink
-                    to="/admin"
-                    onClick={() => setMobileDrawer(false)}
-                    className={`flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition ${
-                      location.pathname === "/admin"
-                        ? "bg-white/10 text-white font-semibold"
-                        : "text-slate-400 hover:text-white hover:bg-white/[0.04]"
-                    }`}
-                  >
-                    <Shield
-                      size={16}
-                      className={location.pathname === "/admin" ? "text-purple-400" : "text-slate-500"}
-                      strokeWidth={location.pathname === "/admin" ? 2.2 : 1.8}
-                    />
-                    <span>User Admin</span>
-                  </NavLink>
-                </div>
-              )}
             </nav>
 
-            <div className="pt-3 border-t border-white/[0.07]">
-              <div className="bg-white/[0.04] border border-white/[0.07] rounded-xl p-3 mb-2">
-                <p className="text-white font-bold text-sm truncate">{displayName}</p>
-                <p className="text-xs text-slate-500">{displayRole}</p>
+            <div className="pt-3 border-t border-white/[0.08]">
+              <div className="bg-white/[0.04] border border-white/[0.08] rounded-xl p-3 mb-2 flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xs shrink-0">
+                  {userInitials}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-white font-bold text-xs truncate">{displayName}</p>
+                  <p className="text-[10px] text-slate-400">{displayRole}</p>
+                </div>
               </div>
               <button
                 onClick={handleLogout}
-                className="w-full py-2 bg-white/[0.06] text-slate-300 text-xs font-semibold rounded-xl flex items-center justify-center gap-2"
+                className="w-full py-2 bg-white/[0.06] hover:bg-rose-500/20 text-slate-300 hover:text-rose-300 text-xs font-semibold rounded-xl flex items-center justify-center gap-2 transition"
               >
                 <LogOut size={13} />
-                Logout
+                <span>Logout</span>
               </button>
             </div>
           </div>
@@ -428,61 +509,191 @@ export default function Layout({ children }) {
       )}
 
       {/* ══════════════════════════════════════════════════
-          MAIN CONTENT AREA
+          MAIN VIEWPORT (FLEX COLUMN WITH INDEPENDENT SCROLL)
       ══════════════════════════════════════════════════ */}
-      <div
-        className={`flex-1 flex flex-col transition-all duration-300 ${
-          sidebarOpen ? "lg:pl-64" : "lg:pl-[72px]"
-        }`}
-      >
-        {/* Mobile top trigger */}
-        <div className="lg:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-slate-200/80 shadow-xs">
-          <div className="flex items-center gap-3">
+      <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
+        {/* ── Top Header Bar ── */}
+        <header className="h-16 shrink-0 bg-white border-b border-slate-200/90 px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4 z-20 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+          {/* Left: Mobile trigger & Global Search with Ctrl+K */}
+          <div className="flex items-center gap-3 min-w-0 flex-1 max-w-xl">
             <button
               onClick={() => setMobileDrawer(true)}
-              className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 transition"
+              className="md:hidden p-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 transition"
+              aria-label="Open Navigation"
             >
               <Menu size={18} />
             </button>
-            <Logo variant="full" theme="light" size="sm" />
+
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="hidden md:flex p-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 hover:text-slate-900 transition shrink-0"
+              title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+            >
+              <Menu size={17} />
+            </button>
+
+            {/* Global Search Bar with Ctrl+K badge */}
+            <div className="flex items-center gap-2.5 px-3.5 py-2 bg-slate-50 border border-slate-200/90 rounded-xl text-xs text-slate-400 w-full max-w-md focus-within:border-blue-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-500/10 transition shadow-2xs">
+              <Search size={15} className="text-slate-400 shrink-0" />
+              <input
+                type="text"
+                placeholder="Search customers, products, invoices..."
+                className="bg-transparent outline-none w-full text-slate-800 text-xs placeholder:text-slate-400 font-normal"
+              />
+              <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 text-[10px] font-mono font-semibold text-slate-400 bg-white border border-slate-200 rounded shadow-2xs shrink-0">
+                Ctrl K
+              </kbd>
+            </div>
           </div>
-          <span className="text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-full tracking-wider uppercase">
-            PRO ERP
-          </span>
-        </div>
 
-        {/* Content */}
-        <main className="flex-1 p-4 md:p-5 lg:p-6 max-w-7xl w-full mx-auto">
-          {children}
-        </main>
+          {/* Right: Theme Toggle, Notifications, Store, Connection, User Profile */}
+          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+            {/* Theme Toggle Button */}
+            <button
+              type="button"
+              className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-500 hover:text-slate-800 transition"
+              title="Theme Toggle"
+            >
+              <Sun size={15} />
+            </button>
 
-        {/* Dynamic Status Footer */}
-        <footer className="mt-auto border-t border-slate-200/80 bg-white/90 backdrop-blur-xs py-3.5 px-5 text-[11px] text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <p>© 2026 <strong className="font-semibold text-slate-700">Garden Greens Private Limited</strong>. All rights reserved.</p>
-          <div className="flex items-center gap-3 flex-wrap">
-            <span className="text-slate-400 hidden md:inline">BILZET Business ERP</span>
-            
-            {/* Dynamic Connection Indicator */}
+            {/* Notification Bell with Red Badge */}
+            <button
+              type="button"
+              className="relative p-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-500 hover:text-slate-800 transition"
+              title="Notifications"
+            >
+              <Bell size={15} />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white" />
+            </button>
+
+            {/* Store Badge */}
+            <div className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700">
+              <Store size={14} className="text-blue-600" />
+              <span>BILZET Store</span>
+            </div>
+
+            {/* Connection Badge */}
             {connStatus === "online" ? (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide uppercase bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
+              <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 shadow-2xs">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                ONLINE · CONNECTED
-              </span>
-            ) : connStatus === "connecting" ? (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide uppercase bg-amber-50 text-amber-700 border border-amber-200 shadow-2xs">
-                <RefreshCw size={10} className="animate-spin text-amber-600" />
-                CONNECTING...
+                <span>Online</span>
               </span>
             ) : (
               <button
                 onClick={checkConnection}
-                title="Click to re-check connection"
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide uppercase bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition shadow-2xs"
+                className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold text-rose-700 bg-rose-50 border border-rose-200 animate-bounce"
               >
                 <span className="w-2 h-2 rounded-full bg-rose-500" />
-                OFFLINE · SERVER UNREACHABLE
+                <span>Offline · Retry</span>
               </button>
             )}
+
+            {/* Quick POS Button */}
+            <NavLink
+              to="/billing"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-blue-700 bg-blue-50/80 hover:bg-blue-100/80 border border-blue-200 transition shadow-2xs"
+            >
+              <FilePlus size={14} />
+              <span>New Bill</span>
+            </NavLink>
+
+            {/* User Dropdown Chip */}
+            <div className="relative">
+              <button
+                onClick={() => setUserDropdown(!userDropdown)}
+                className="flex items-center gap-2 p-1 pl-1.5 pr-2.5 rounded-xl border border-slate-200 hover:border-slate-300 hover:bg-slate-50/80 transition"
+              >
+                <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-[11px] shadow-2xs">
+                  {userInitials}
+                </div>
+                <div className="text-left hidden sm:block">
+                  <p className="text-xs font-bold text-slate-800 leading-none truncate max-w-[120px]">
+                    {displayName}
+                  </p>
+                  <p className="text-[10px] text-slate-400 font-medium leading-tight mt-0.5">
+                    {displayRole}
+                  </p>
+                </div>
+                <ChevronDown size={13} className="text-slate-400" />
+              </button>
+
+              {userDropdown && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setUserDropdown(false)}
+                  />
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl p-2 shadow-xl border border-slate-200 z-50 animate-in fade-in zoom-in-95">
+                    <div className="px-3 py-2 border-b border-slate-100 mb-1">
+                      <p className="text-xs font-bold text-slate-900 truncate">{displayName}</p>
+                      <p className="text-[11px] text-slate-500 truncate">{user?.email || "owner@bilzet.com"}</p>
+                      <span className="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-100">
+                        {displayRole}
+                      </span>
+                    </div>
+
+                    <NavLink
+                      to="/settings"
+                      onClick={() => setUserDropdown(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-slate-700 hover:bg-slate-50 font-medium transition"
+                    >
+                      <Settings size={14} className="text-slate-500" />
+                      <span>Business Settings</span>
+                    </NavLink>
+
+                    <NavLink
+                      to="/audit-logs"
+                      onClick={() => setUserDropdown(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-slate-700 hover:bg-slate-50 font-medium transition"
+                    >
+                      <History size={14} className="text-slate-500" />
+                      <span>Security Logs</span>
+                    </NavLink>
+
+                    <div className="border-t border-slate-100 my-1" />
+
+                    <button
+                      onClick={() => {
+                        setUserDropdown(false);
+                        handleLogout();
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-rose-600 hover:bg-rose-50 font-semibold transition"
+                    >
+                      <LogOut size={14} />
+                      <span>Log Out</span>
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </header>
+
+        {/* ── Main Content Canvas with Independent Vertical Scroll ── */}
+        <main className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8 bg-[#F7FAFF]">
+          <div className="max-w-[1600px] w-full mx-auto pb-8">
+            {children}
+          </div>
+        </main>
+
+        {/* ── Fixed Clean Footer ── */}
+        <footer className="h-11 shrink-0 border-t border-slate-200/80 bg-white/90 backdrop-blur-xs px-6 text-xs text-slate-500 flex items-center justify-between gap-3 z-10">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-slate-700">BILZET Retail &amp; POS Systems</span>
+            <span className="text-slate-300 hidden sm:inline">·</span>
+            <span className="hidden sm:inline">© {new Date().getFullYear()} All rights reserved.</span>
+          </div>
+
+          <div className="flex items-center gap-4 text-[11px]">
+            <span className="text-slate-400 hidden md:inline">
+              Cloud Database: <strong className="text-slate-600 font-semibold">PostgreSQL (Neon)</strong>
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-slate-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              <span>Encrypted SSL</span>
+            </span>
+            <span className="text-slate-400 font-mono">v2.4.0</span>
           </div>
         </footer>
       </div>

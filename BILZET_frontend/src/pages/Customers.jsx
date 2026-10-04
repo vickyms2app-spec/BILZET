@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { mockCustomers } from "../api/mockData";
 import { customersApi } from "../api";
+import Modal from "../components/common/Modal";
 
 export default function Customers() {
   const [customers, setCustomers] = useState([]);
@@ -26,35 +27,52 @@ export default function Customers() {
     balance: 0,
   });
 
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const loadCustomers = () => {
+    customersApi
+      .list({ search })
+      .then((res) => {
+        const list = res?.customers || res?.data?.customers || [];
+        setCustomers(list);
+      })
+      .catch(() => setCustomers([]));
+  };
+
   useEffect(() => {
-    customersApi.list({ search }).then((res) => {
-      const list = res?.customers || res?.data?.customers || [];
-      setCustomers(list);
-    }).catch(() => setCustomers([]));
+    loadCustomers();
   }, [search]);
 
   const totalOutstanding = customers.reduce((acc, c) => acc + (c.balance || 0), 0);
   const filtered = customers.filter(
     (c) =>
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
+      c.name?.toLowerCase().includes(search.toLowerCase()) ||
       c.phone?.includes(search) ||
       c.email?.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleAddCustomer = (e) => {
+  const handleAddCustomer = async (e) => {
     e.preventDefault();
-    if (!newCust.name) return;
-    const added = {
-      _id: "c-" + Date.now(),
-      name: newCust.name,
-      phone: newCust.phone || "—",
-      email: newCust.email || "—",
-      balance: Number(newCust.balance || 0),
-      totalOrders: 0,
-    };
-    setCustomers([added, ...customers]);
-    setNewCust({ name: "", phone: "", email: "", balance: 0 });
-    setOpenModal(false);
+    if (!newCust.name.trim()) return;
+    setLoading(true);
+    setErrorMsg("");
+    try {
+      const payload = {
+        name: newCust.name.trim(),
+        phone: newCust.phone.trim() || undefined,
+        email: newCust.email.trim() || undefined,
+        balance: Number(newCust.balance || 0),
+      };
+      await customersApi.create(payload);
+      setNewCust({ name: "", phone: "", email: "", balance: 0 });
+      setOpenModal(false);
+      loadCustomers();
+    } catch (err) {
+      setErrorMsg(err.response?.data?.error || err.response?.data?.message || err.message || "Failed to create customer");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -236,90 +254,86 @@ export default function Customers() {
       {/* ══════════════════════════════════════════════════
           ADD CUSTOMER MODAL
       ══════════════════════════════════════════════════ */}
-      {openModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-200/80 scale-in">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-              <div>
-                <h3 className="text-base font-bold text-slate-900">Add New Customer</h3>
-                <p className="text-xs text-slate-500 mt-0.5">For automatic invoice lookup and credit tracking</p>
-              </div>
-              <button
-                onClick={() => setOpenModal(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition"
-              >
-                <X size={16} />
-              </button>
+      <Modal
+        isOpen={openModal}
+        onClose={() => setOpenModal(false)}
+        title="Add New Customer"
+        subtitle="For automatic invoice lookup and credit tracking"
+        icon={Users}
+        iconColor="text-blue-600 bg-blue-50 border-blue-100"
+        maxWidth="max-w-md"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setOpenModal(false)}
+              className="px-4 py-2.5 rounded-xl border border-slate-200 font-medium text-slate-600 hover:bg-slate-100 transition text-xs"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="add-customer-form"
+              className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-sm shadow-blue-500/20 transition text-xs"
+            >
+              Save Customer
+            </button>
+          </>
+        }
+      >
+        <form id="add-customer-form" onSubmit={handleAddCustomer} className="space-y-4 text-xs">
+          {errorMsg && (
+            <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl">
+              {errorMsg}
             </div>
-
-            {/* Modal Body */}
-            <form onSubmit={handleAddCustomer} className="p-6 space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  Customer Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  required
-                  placeholder="e.g. Ramesh Hardware"
-                  value={newCust.name}
-                  onChange={(e) => setNewCust({ ...newCust, name: e.target.value })}
-                  className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 font-medium transition"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Mobile Number</label>
-                  <input
-                    placeholder="10-digit mobile"
-                    value={newCust.phone}
-                    onChange={(e) => setNewCust({ ...newCust, phone: e.target.value })}
-                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 font-medium transition"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Opening Balance (₹)</label>
-                  <input
-                    type="number"
-                    placeholder="0"
-                    value={newCust.balance}
-                    onChange={(e) => setNewCust({ ...newCust, balance: e.target.value })}
-                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 font-medium transition tabular-nums"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">Email Address</label>
-                <input
-                  type="email"
-                  placeholder="customer@domain.com"
-                  value={newCust.email}
-                  onChange={(e) => setNewCust({ ...newCust, email: e.target.value })}
-                  className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 font-medium transition"
-                />
-              </div>
-
-              <div className="flex gap-2.5 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setOpenModal(false)}
-                  className="flex-1 py-2.5 btn-secondary text-xs"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-2.5 btn-primary text-xs"
-                >
-                  Save Customer
-                </button>
-              </div>
-            </form>
+          )}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              Customer Name <span className="text-rose-500">*</span>
+            </label>
+            <input
+              required
+              placeholder="e.g. Ramesh Hardware"
+              value={newCust.name}
+              onChange={(e) => setNewCust({ ...newCust, name: e.target.value })}
+              className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 font-medium transition text-slate-800"
+            />
           </div>
-        </div>
-      )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">Mobile Number</label>
+              <input
+                placeholder="10-digit mobile"
+                value={newCust.phone}
+                onChange={(e) => setNewCust({ ...newCust, phone: e.target.value })}
+                className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 font-medium transition text-slate-800"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">Opening Balance (₹)</label>
+              <input
+                type="number"
+                placeholder="0"
+                value={newCust.balance}
+                onChange={(e) => setNewCust({ ...newCust, balance: e.target.value })}
+                className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 font-medium transition tabular-nums text-slate-800"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">Email Address</label>
+            <input
+              type="email"
+              placeholder="customer@domain.com"
+              value={newCust.email}
+              onChange={(e) => setNewCust({ ...newCust, email: e.target.value })}
+              className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 font-medium transition text-slate-800"
+            />
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

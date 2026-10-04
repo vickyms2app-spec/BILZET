@@ -10,6 +10,8 @@ const mapProduct = (p) => {
   return {
     ...p,
     _id: p.id,
+    categoryId: p.categoryId || p.category?.id || null,
+    category: p.category ? { ...p.category, _id: p.category.id } : null,
     sellingPrice: Number(p.sellingPrice),
     purchasePrice: Number(p.purchasePrice),
     gstRate: Number(p.gstRate),
@@ -103,6 +105,7 @@ export const createProduct = asyncHandler(async (req, res) => {
     sku,
     barcode,
     categoryId,
+    category,
     brand,
     unit = 'piece',
     purchasePrice = 0,
@@ -111,6 +114,8 @@ export const createProduct = asyncHandler(async (req, res) => {
     stock = 0,
     minimumStock = 5,
   } = req.body;
+
+  const resolvedCategoryId = categoryId || category || undefined;
 
   const existingSku = await prisma.product.findUnique({
     where: { sku: sku.toUpperCase() },
@@ -124,7 +129,7 @@ export const createProduct = asyncHandler(async (req, res) => {
       name,
       sku: sku.toUpperCase(),
       barcode: barcode || generateBarcodeString(),
-      categoryId: categoryId || undefined,
+      categoryId: resolvedCategoryId,
       brand,
       unit,
       purchasePrice,
@@ -165,6 +170,7 @@ export const updateProduct = asyncHandler(async (req, res) => {
     sku,
     barcode,
     categoryId,
+    category,
     brand,
     unit,
     purchasePrice,
@@ -175,13 +181,20 @@ export const updateProduct = asyncHandler(async (req, res) => {
     isActive,
   } = req.body;
 
+  const resolvedCategoryId =
+    categoryId !== undefined
+      ? categoryId || null
+      : category !== undefined
+      ? category || null
+      : undefined;
+
   const updated = await prisma.product.update({
     where: { id },
     data: {
       ...(name && { name }),
       ...(sku && { sku: sku.toUpperCase() }),
       ...(barcode && { barcode }),
-      ...(categoryId !== undefined && { categoryId: categoryId || null }),
+      ...(resolvedCategoryId !== undefined && { categoryId: resolvedCategoryId }),
       ...(brand !== undefined && { brand }),
       ...(unit && { unit }),
       ...(purchasePrice !== undefined && { purchasePrice: Number(purchasePrice) }),

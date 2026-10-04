@@ -14,7 +14,10 @@ export const login = asyncHandler(async (req, res) => {
 });
 
 export const getMe = asyncHandler(async (req, res) => {
-  const user = await authService.getCurrentUser(req.user._id);
+  if (req.user) {
+    return sendResponse(res, 200, { user: req.user }, 'Current user profile fetched successfully');
+  }
+  const user = await authService.getCurrentUser(req.user?._id || req.user?.id);
   return sendResponse(res, 200, { user }, 'Current user profile fetched successfully');
 });
 

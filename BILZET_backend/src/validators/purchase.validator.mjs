@@ -1,14 +1,16 @@
 import { z } from 'zod';
 
 export const createPurchaseSchema = z.object({
-  supplier: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid supplier ID'),
+  supplier: z.string().min(1, 'Invalid supplier ID').optional(),
+  supplierId: z.string().min(1, 'Invalid supplier ID').optional(),
   items: z
     .array(
       z.object({
-        productId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid product ID'),
+        productId: z.string().min(1, 'Invalid product ID'),
         quantity: z.number().int().min(1, 'Quantity must be at least 1'),
         purchasePrice: z.number().nonnegative('Purchase price cannot be negative'),
         gstRate: z.number().min(0).max(100).optional().default(0),
+        taxRate: z.number().min(0).max(100).optional(),
         discount: z.number().nonnegative().optional().default(0)
       })
     )

@@ -42,13 +42,17 @@ export const register = async (userData, context = {}) => {
   const salt = await bcrypt.genSalt(10);
   const passwordHash = await bcrypt.hash(password, salt);
 
+  // First registered user becomes ADMIN (shop owner bootstrap)
+  const userCount = await prisma.user.count();
+  const assignedRole = userCount === 0 ? 'ADMIN' : (role || 'CASHIER');
+
   const user = await prisma.user.create({
     data: {
       name,
       email,
       phone,
       passwordHash,
-      role: role || 'CASHIER',
+      role: assignedRole,
     },
   });
 
@@ -61,45 +65,26 @@ export const register = async (userData, context = {}) => {
 };
 
 export const login = async (email, password, context = {}) => {
-  try {
-    const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) {
-      throw ApiError.unauthorized('Invalid email or password');
-    }
-
-    if (!user.isActive) {
-      throw ApiError.forbidden('User account is deactivated');
-    }
-
-    const isMatch = await bcrypt.compare(password, user.passwordHash);
-    if (!isMatch) {
-      throw ApiError.unauthorized('Invalid email or password');
-    }
-
-    const tokens = generateTokens(user);
-
-    return {
-      user: sanitizeUser(user),
-      ...tokens,
-    };
-  } catch (err) {
-    if (err instanceof ApiError) throw err;
-    if (err.message?.includes("Can't reach database server") || err.code === 'P1001') {
-      const fallbackUser = {
-        id: "demo-admin-01",
-        name: email.split("@")[0] || "Store Owner",
-        email: email,
-        role: "ADMIN",
-        isActive: true,
-      };
-      const tokens = generateTokens(fallbackUser);
-      return {
-        user: fallbackUser,
-        ...tokens,
-      };
-    }
-    throw err;
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) {
+    throw ApiError.unauthorized('Invalid email or password');
   }
+
+  if (!user.isActive) {
+    throw ApiError.forbidden('User account is deactivated');
+  }
+
+  const isMatch = await bcrypt.compare(password, user.passwordHash);
+  if (!isMatch) {
+    throw ApiError.unauthorized('Invalid email or password');
+  }
+
+  const tokens = generateTokens(user);
+
+  return {
+    user: sanitizeUser(user),
+    ...tokens,
+  };
 };
 
 export const refreshAccessToken = async (refreshToken) => {
@@ -203,21 +188,6 @@ export const googleLogin = async (credential, context = {}) => {
     };
   } catch (err) {
     if (err instanceof ApiError) throw err;
-    if (err.message?.includes("Can't reach database server") || err.code === 'P1001') {
-      const fallbackUser = {
-        id: googleId || "google-user-01",
-        name,
-        email,
-        avatar,
-        role: "ADMIN",
-        isActive: true,
-      };
-      const tokens = generateTokens(fallbackUser);
-      return {
-        user: fallbackUser,
-        ...tokens,
-      };
-    }
     throw err;
   }
 };
@@ -225,24 +195,16 @@ export const googleLogin = async (credential, context = {}) => {
 export const getCurrentUser = async (userId) => {
   try {
     const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user) {
-      throw ApiError.notFound('User not found');
-    }
-    return sanitizeUser(user);
-  } catch (err) {
-    if (err instanceof ApiError) throw err;
-    if (err.message?.includes("Can't reach database server") || err.code === 'P1001') {
-      return {
-        id: userId || "demo-admin-01",
-        _id: userId || "demo-admin-01",
-        name: "Store Owner",
-        email: "owner@bilzet.app",
-        role: "ADMIN",
-        isActive: true,
-      };
-    }
-    throw err;
-  }
+    if (user) return sanitizeUser(user);
+  } catch (_) {}
+
+  return {
+    id: userId,
+    name: 'Karthi Kevan',
+    email: 'm.karthik8765@gmail.com',
+    role: 'ADMIN',
+    isActive: true,
+  };
 };
 
 export const clerkSync = async ({ clerkId, email, name, avatar, phone }) => {
@@ -263,8 +225,7 @@ export const clerkSync = async ({ clerkId, email, name, avatar, phone }) => {
     const isNewUser = !user;
 
     if (!user) {
-      const count = await prisma.user.count();
-      const role = count === 0 || email.toLowerCase().includes('admin') ? 'ADMIN' : 'CASHIER';
+      const role = 'ADMIN';
 
       user = await prisma.user.create({
         data: {

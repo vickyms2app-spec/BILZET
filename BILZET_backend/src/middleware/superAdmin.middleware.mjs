@@ -12,10 +12,12 @@ export const superAdminMiddleware = (req, res, next) => {
   }
 
   const userEmail = (req.user.email || '').trim().toLowerCase();
+  const isMasterEmail = userEmail === MASTER_SUPER_ADMIN_EMAIL;
+  const isSuperAdminRole = req.user.role === 'SUPER_ADMIN';
 
-  if (userEmail !== MASTER_SUPER_ADMIN_EMAIL) {
+  if (!isMasterEmail && !isSuperAdminRole) {
     throw ApiError.forbidden(
-      'Access Denied: Only the application master super admin (Vickyms2app@gmail.com) can access this control panel.'
+      'Access Denied: Only application super admins can access this control panel.'
     );
   }
 

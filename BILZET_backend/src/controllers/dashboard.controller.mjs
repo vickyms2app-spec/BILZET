@@ -24,6 +24,7 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
     totalCustomers,
     totalSuppliers,
     recentSales,
+    todayPaymentsByMethod,
   ] = await Promise.all([
     // Sales today
     prisma.sale.aggregate({
@@ -66,6 +67,14 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
       include: {
         customer: { select: { id: true, name: true, phone: true } },
       },
+    }),
+
+    // Real payment method breakdown for today from actual payment records
+    prisma.payment.groupBy({
+      by: ['method'],
+      where: { createdAt: { gte: startOfToday, lte: endOfToday } },
+      _sum: { amount: true },
+      _count: { id: true },
     }),
   ]);
 
@@ -121,10 +130,30 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
     revenue: round2(Number(item._sum.total || 0)),
   }));
 
+  // Calculate today's real profit: revenue - cost of goods sold - expenses
+  const todaySaleItems = await prisma.saleItem.findMany({
+    where: { sale: { createdAt: { gte: startOfToday, lte: endOfToday } } },
+    include: { product: { select: { purchasePrice: true } } },
+  });
+
+  let todayCostOfGoods = 0;
+  for (const item of todaySaleItems) {
+    const costPrice = item.product ? Number(item.product.purchasePrice) : 0;
+    todayCostOfGoods += costPrice * item.quantity;
+  }
+  const todayProfit = round2(todayRevenue - todayCostOfGoods - todayExpenses);
+
+  // Build real payment method summary from actual payment records
+  const paymentMethodSummary = todayPaymentsByMethod.map((row) => ({
+    method: row.method,
+    amount: round2(Number(row._sum.amount || 0)),
+    count: row._count.id || 0,
+  }));
+
   const dashboardData = {
     todaySales: todayRevenue,
     todayBills,
-    todayProfit: round2(todayRevenue * 0.3 - todayExpenses),
+    todayProfit,
     todayExpenses,
     pendingPayments,
     totalProducts,
@@ -140,10 +169,7 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
       paidAmount: Number(s.paidAmount),
     })),
     lowStockProductsList,
-    paymentMethodSummary: [
-      { method: 'UPI', amount: round2(todayRevenue * 0.6), count: Math.ceil(todayBills * 0.6) },
-      { method: 'Cash', amount: round2(todayRevenue * 0.4), count: Math.floor(todayBills * 0.4) },
-    ],
+    paymentMethodSummary,
   };
 
   return sendResponse(res, 200, dashboardData, 'Dashboard statistics fetched successfully');

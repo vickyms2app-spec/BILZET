@@ -18,6 +18,7 @@ router.get('/challans', saleController.getDeliveryChallans);
 router.post('/payments-in', saleController.createPaymentIn);
 
 // Returns
+router.get('/returns', saleController.getSalesReturns);
 router.post('/:id/return', saleController.returnSale);
 
 router.get('/:id', saleController.getSaleById);

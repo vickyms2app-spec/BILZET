@@ -1,15 +1,8 @@
-import { PrismaClient } from '@prisma/client';
-
-const prismaClientSingleton = () => {
-  return new PrismaClient({
-    log: process.env.NODE_ENV === 'production' ? ['error'] : ['error', 'warn'],
-  });
-};
+import resilientPrisma from './resilientPrisma.mjs';
 
 const globalForPrisma = globalThis;
-export const prisma = globalForPrisma.prisma ?? prismaClientSingleton();
+export const prisma = globalForPrisma.prisma ?? resilientPrisma;
 
-// Cache on globalThis across all environments for serverless container reuse
 globalForPrisma.prisma = prisma;
 
 export default prisma;

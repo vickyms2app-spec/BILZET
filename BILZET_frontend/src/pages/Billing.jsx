@@ -262,20 +262,18 @@ export default function Billing() {
         customerGstin: customerGstin || undefined,
         saleType,
         items: items.map((i) => ({
-          productId: i.productId,
+          productId: i.productId || undefined,
           name: i.name,
           quantity: i.qty,
-          unitPrice: i.rate,
+          rate: i.rate,         // ← backend reads item.rate
           discount: i.discount,
-          taxRate: i.gst,
-          lineTotal: (i.rate * i.qty - i.discount) * (1 + i.gst / 100),
+          gstRate: i.gst,       // ← backend reads item.gstRate
         })),
         subtotal,
-        taxAmount,
+        taxTotal: taxAmount,
         grandTotal,
-        amountReceived: Number(amountReceived || 0),
-        balanceDue,
-        paymentMode,
+        paidAmount: Number(amountReceived || 0),
+        paymentMethod: paymentMode.toUpperCase(),
         paymentStatus: paymentStatus.toUpperCase(),
       };
 

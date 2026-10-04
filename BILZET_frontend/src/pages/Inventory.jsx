@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { inventoryApi, warehousesApi } from "../api";
 import { useAuth } from "../store/auth";
+import Modal from "../components/common/Modal";
 
 export default function Inventory() {
   const { user } = useAuth();
@@ -609,240 +610,221 @@ export default function Inventory() {
       {/* ══════════════════════════════════════════════════
           ADJUST STOCK MODAL (FULLY SCROLLABLE, NEVER CUT OFF)
       ══════════════════════════════════════════════════ */}
-      {openModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto p-4 flex items-start sm:items-center justify-center bg-black/60 backdrop-blur-xs">
-          <div className="relative w-full max-w-lg my-auto bg-white rounded-2xl shadow-2xl border border-slate-200/90 overflow-hidden animate-scaleIn">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/70">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 grid place-items-center">
-                  <Boxes size={18} />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-900 leading-snug">
-                    Adjust Stock Level
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    Record inventory additions, deductions or physical count reconciliation
-                  </p>
-                </div>
+      <Modal
+        isOpen={openModal}
+        onClose={() => setOpenModal(false)}
+        title="Adjust Stock Level"
+        subtitle="Record inventory additions, deductions or physical count reconciliation"
+        icon={Boxes}
+        iconColor="text-blue-600 bg-blue-50 border-blue-100"
+        maxWidth="max-w-lg"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setOpenModal(false)}
+              className="px-4 py-2.5 rounded-xl border border-slate-200 font-medium text-slate-600 hover:bg-slate-100 transition text-xs"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="adjust-stock-form"
+              disabled={submitting || willBeNegative || !selectedProduct}
+              className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold flex items-center gap-2 shadow-sm shadow-blue-500/20 transition text-xs disabled:opacity-50"
+            >
+              {submitting && <RefreshCw size={13} className="animate-spin" />}
+              <span>{submitting ? "Saving Adjustment..." : "Confirm & Save Stock"}</span>
+            </button>
+          </>
+        }
+      >
+        <form id="adjust-stock-form" onSubmit={handleSaveAdjust} className="space-y-4 text-xs">
+          {/* Product Selection */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              Select Product <span className="text-rose-500">*</span>
+            </label>
+            <select
+              value={formProductId}
+              onChange={(e) => setFormProductId(e.target.value)}
+              className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition"
+              required
+            >
+              <option value="" disabled>
+                Choose a product from inventory...
+              </option>
+              {inventory.map((prod) => (
+                <option key={prod.id || prod._id} value={prod.id || prod._id}>
+                  {prod.name} ({prod.sku || "No SKU"}) — In Stock: {prod.stock ?? prod.currentStock ?? 0}{" "}
+                  {prod.unit || "pcs"}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Warehouse / Godown Selection */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              Warehouse / Godown Location
+            </label>
+            <select
+              value={formWarehouseId}
+              onChange={(e) => setFormWarehouseId(e.target.value)}
+              className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition"
+            >
+              <option value="">Main Store / Central Godown (Default)</option>
+              {warehouses.map((wh) => (
+                <option key={wh.id} value={wh.id}>
+                  {wh.name} ({wh.code})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Current Stock Banner */}
+          {selectedProduct && (
+            <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                  Current Available Stock
+                </span>
+                <span className="text-base font-extrabold text-slate-900 font-mono">
+                  {currentStock} {selectedProduct.unit || "pcs"}
+                </span>
               </div>
+              <div className="text-right">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                  New Projected Stock
+                </span>
+                <span
+                  className={`text-base font-extrabold font-mono ${
+                    willBeNegative ? "text-rose-600" : "text-emerald-600"
+                  }`}
+                >
+                  {projectedStock} {selectedProduct.unit || "pcs"}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Action Type: Increase vs Decrease */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              Adjustment Type <span className="text-rose-500">*</span>
+            </label>
+            <div className="grid grid-cols-2 gap-2.5">
               <button
                 type="button"
-                onClick={() => setOpenModal(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded-lg transition"
+                onClick={() => setAdjustType("ADD")}
+                className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition flex items-center justify-center gap-1.5 ${
+                  adjustType === "ADD"
+                    ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
+                    : "border-slate-200 text-slate-700 hover:bg-slate-50"
+                }`}
               >
-                <X size={18} />
+                <Plus size={14} />
+                <span>Increase Stock (+ Add)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setAdjustType("REMOVE")}
+                className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition flex items-center justify-center gap-1.5 ${
+                  adjustType === "REMOVE"
+                    ? "bg-rose-600 text-white border-rose-600 shadow-sm"
+                    : "border-slate-200 text-slate-700 hover:bg-slate-50"
+                }`}
+              >
+                <span>− Deduct / Decrease</span>
               </button>
             </div>
-
-            <form onSubmit={handleSaveAdjust} className="p-6 space-y-4">
-              {/* Product Selection */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  Select Product <span className="text-rose-500">*</span>
-                </label>
-                <select
-                  value={formProductId}
-                  onChange={(e) => setFormProductId(e.target.value)}
-                  className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition"
-                  required
-                >
-                  <option value="" disabled>
-                    Choose a product from inventory...
-                  </option>
-                  {inventory.map((prod) => (
-                    <option key={prod.id || prod._id} value={prod.id || prod._id}>
-                      {prod.name} ({prod.sku || "No SKU"}) — In Stock: {prod.stock ?? prod.currentStock ?? 0}{" "}
-                      {prod.unit || "pcs"}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Warehouse / Godown Selection */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  Warehouse / Godown Location
-                </label>
-                <select
-                  value={formWarehouseId}
-                  onChange={(e) => setFormWarehouseId(e.target.value)}
-                  className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition"
-                >
-                  <option value="">Main Store / Central Godown (Default)</option>
-                  {warehouses.map((wh) => (
-                    <option key={wh.id} value={wh.id}>
-                      {wh.name} ({wh.code})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Current Stock Banner */}
-              {selectedProduct && (
-                <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 flex items-center justify-between">
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-                      Current Available Stock
-                    </span>
-                    <span className="text-base font-extrabold text-slate-900 font-mono">
-                      {currentStock} {selectedProduct.unit || "pcs"}
-                    </span>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-                      New Projected Stock
-                    </span>
-                    <span
-                      className={`text-base font-extrabold font-mono ${
-                        willBeNegative ? "text-rose-600" : "text-emerald-600"
-                      }`}
-                    >
-                      {projectedStock} {selectedProduct.unit || "pcs"}
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {/* Action Type: Increase vs Decrease */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  Adjustment Type <span className="text-rose-500">*</span>
-                </label>
-                <div className="grid grid-cols-2 gap-2.5">
-                  <button
-                    type="button"
-                    onClick={() => setAdjustType("ADD")}
-                    className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition flex items-center justify-center gap-1.5 ${
-                      adjustType === "ADD"
-                        ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
-                        : "border-slate-200 text-slate-700 hover:bg-slate-50"
-                    }`}
-                  >
-                    <Plus size={14} />
-                    <span>Increase Stock (+ Add)</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setAdjustType("REMOVE")}
-                    className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition flex items-center justify-center gap-1.5 ${
-                      adjustType === "REMOVE"
-                        ? "bg-rose-600 text-white border-rose-600 shadow-sm"
-                        : "border-slate-200 text-slate-700 hover:bg-slate-50"
-                    }`}
-                  >
-                    <span>− Deduct / Decrease</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Quantity */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  Quantity ({selectedProduct?.unit || "units"}){" "}
-                  <span className="text-rose-500">*</span>
-                </label>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setAdjustQty((q) => Math.max(1, q - 1))}
-                    className="w-10 h-10 rounded-xl border border-slate-200 font-bold text-slate-600 hover:bg-slate-100 flex items-center justify-center text-sm"
-                  >
-                    -
-                  </button>
-                  <input
-                    type="number"
-                    min="1"
-                    value={adjustQty}
-                    onChange={(e) => setAdjustQty(Math.max(1, parseInt(e.target.value) || 1))}
-                    className="flex-1 px-3.5 py-2 border border-slate-200 rounded-xl text-center text-sm font-bold text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 font-mono transition"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setAdjustQty((q) => q + 1)}
-                    className="w-10 h-10 rounded-xl border border-slate-200 font-bold text-slate-600 hover:bg-slate-100 flex items-center justify-center text-sm"
-                  >
-                    +
-                  </button>
-                </div>
-                {willBeNegative && (
-                  <p className="text-rose-600 text-[11px] font-semibold mt-1 flex items-center gap-1">
-                    <AlertTriangle size={12} />
-                    Deduct quantity exceeds current stock level ({currentStock} available).
-                  </p>
-                )}
-              </div>
-
-              {/* Reason Category */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  Reason for Adjustment <span className="text-rose-500">*</span>
-                </label>
-                <select
-                  value={reasonCategory}
-                  onChange={(e) => setReasonCategory(e.target.value)}
-                  className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition"
-                  required
-                >
-                  <option value="Physical Count Reconciliation">Physical Count Reconciliation</option>
-                  <option value="Damaged / Broken / Expired">Damaged / Broken / Expired</option>
-                  <option value="Supplier Restock / Return">Supplier Restock / Return</option>
-                  <option value="Internal Store Consumption">Internal Store Consumption</option>
-                  <option value="Shrinkage / Lost in Transit">Shrinkage / Lost in Transit</option>
-                  <option value="Initial Opening Stock">Initial Opening Stock</option>
-                  <option value="Other / Correction">Other / Custom Correction</option>
-                </select>
-              </div>
-
-              {/* Optional Custom Notes */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  Additional Notes / Audit Reference (Optional)
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Audit ticket #449, rack count difference"
-                  value={customReason}
-                  onChange={(e) => setCustomReason(e.target.value)}
-                  className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition"
-                />
-              </div>
-
-              {/* Audit Sign-off Note */}
-              <div className="text-[11px] text-slate-500 bg-slate-50 p-2.5 rounded-lg border border-slate-200/60 flex items-center justify-between">
-                <span>
-                  Adjusting as: <strong>{user?.name || "System Admin"}</strong>
-                </span>
-                <span className="font-mono text-slate-400">
-                  {new Date().toLocaleDateString("en-IN")}
-                </span>
-              </div>
-
-              {/* Modal Actions */}
-              <div className="flex gap-3 pt-3 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setOpenModal(false)}
-                  className="flex-1 py-2.5 btn-secondary text-xs"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting || willBeNegative || !selectedProduct}
-                  className="flex-1 py-2.5 btn-primary text-xs flex items-center justify-center gap-1.5 disabled:opacity-50"
-                >
-                  {submitting && <RefreshCw size={13} className="animate-spin" />}
-                  <span>{submitting ? "Saving Adjustment..." : "Confirm & Save Stock"}</span>
-                </button>
-              </div>
-            </form>
           </div>
-        </div>
-      )}
+
+          {/* Quantity */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              Quantity ({selectedProduct?.unit || "units"}){" "}
+              <span className="text-rose-500">*</span>
+            </label>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setAdjustQty((q) => Math.max(1, q - 1))}
+                className="w-10 h-10 rounded-xl border border-slate-200 font-bold text-slate-600 hover:bg-slate-100 flex items-center justify-center text-sm"
+              >
+                -
+              </button>
+              <input
+                type="number"
+                min="1"
+                value={adjustQty}
+                onChange={(e) => setAdjustQty(Math.max(1, parseInt(e.target.value) || 1))}
+                className="flex-1 px-3.5 py-2 border border-slate-200 rounded-xl text-center text-sm font-bold text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 font-mono transition"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setAdjustQty((q) => q + 1)}
+                className="w-10 h-10 rounded-xl border border-slate-200 font-bold text-slate-600 hover:bg-slate-100 flex items-center justify-center text-sm"
+              >
+                +
+              </button>
+            </div>
+            {willBeNegative && (
+              <p className="text-rose-600 text-[11px] font-semibold mt-1 flex items-center gap-1">
+                <AlertTriangle size={12} />
+                Deduct quantity exceeds current stock level ({currentStock} available).
+              </p>
+            )}
+          </div>
+
+          {/* Reason Category */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              Reason for Adjustment <span className="text-rose-500">*</span>
+            </label>
+            <select
+              value={reasonCategory}
+              onChange={(e) => setReasonCategory(e.target.value)}
+              className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition"
+              required
+            >
+              <option value="Physical Count Reconciliation">Physical Count Reconciliation</option>
+              <option value="Damaged / Broken / Expired">Damaged / Broken / Expired</option>
+              <option value="Supplier Restock / Return">Supplier Restock / Return</option>
+              <option value="Internal Store Consumption">Internal Store Consumption</option>
+              <option value="Shrinkage / Lost in Transit">Shrinkage / Lost in Transit</option>
+              <option value="Initial Opening Stock">Initial Opening Stock</option>
+              <option value="Other / Correction">Other / Custom Correction</option>
+            </select>
+          </div>
+
+          {/* Optional Custom Notes */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              Additional Notes / Audit Reference (Optional)
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. Audit ticket #449, rack count difference"
+              value={customReason}
+              onChange={(e) => setCustomReason(e.target.value)}
+              className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition"
+            />
+          </div>
+
+          {/* Audit Sign-off Note */}
+          <div className="text-[11px] text-slate-500 bg-slate-50 p-2.5 rounded-lg border border-slate-200/60 flex items-center justify-between">
+            <span>
+              Adjusting as: <strong>{user?.name || "System Admin"}</strong>
+            </span>
+            <span className="font-mono text-slate-400">
+              {new Date().toLocaleDateString("en-IN")}
+            </span>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

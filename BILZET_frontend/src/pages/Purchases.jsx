@@ -16,8 +16,10 @@ import {
   DollarSign,
   Truck,
   Trash2,
+  ArrowDownLeft,
 } from "lucide-react";
 import { useLocation } from "react-router-dom";
+import Modal from "../components/common/Modal";
 
 export default function Purchases({ defaultTab = "invoices" }) {
   const location = useLocation();
@@ -150,9 +152,24 @@ export default function Purchases({ defaultTab = "invoices" }) {
     }
     setSubmitting(true);
     try {
+      const paid =
+        invoiceForm.paymentStatus === "PAID"
+          ? invoiceTotal
+          : invoiceForm.paymentStatus === "PARTIAL"
+          ? Number((invoiceTotal / 2).toFixed(2))
+          : 0;
+
       await purchasesApi.create({
         ...invoiceForm,
+        paidAmount: paid,
         totalAmount: invoiceTotal,
+        items: invoiceForm.items.map((it) => ({
+          ...it,
+          purchasePrice: Number(it.purchasePrice) || 0,
+          quantity: Number(it.quantity) || 1,
+          gstRate: Number(it.taxRate) || 0,
+          taxRate: Number(it.taxRate) || 0,
+        })),
       });
       notify("success", "Purchase invoice recorded and inventory updated!");
       setShowInvoiceModal(false);
@@ -176,7 +193,16 @@ export default function Purchases({ defaultTab = "invoices" }) {
     e.preventDefault();
     setSubmitting(true);
     try {
-      await purchasesApi.createOrder(orderForm);
+      await purchasesApi.createOrder({
+        ...orderForm,
+        items: orderForm.items.map((i) => ({
+          ...i,
+          quantity: Number(i.quantity) || 1,
+          unitPrice: Number(i.unitPrice) || 0,
+          rate: Number(i.unitPrice) || 0,
+          expectedPrice: Number(i.unitPrice) || 0,
+        })),
+      });
       notify("success", "Purchase Order created!");
       setShowOrderModal(false);
       setOrderForm({
@@ -217,7 +243,12 @@ export default function Purchases({ defaultTab = "invoices" }) {
     e.preventDefault();
     setSubmitting(true);
     try {
-      await purchasesApi.createDebitNote(debitForm);
+      const selectedInvoice = invoices.find((inv) => inv.id === debitForm.purchaseId);
+      await purchasesApi.createDebitNote({
+        ...debitForm,
+        supplierId: selectedInvoice?.supplierId,
+        referenceInvoice: selectedInvoice?.invoiceNumber,
+      });
       notify("success", "Debit note registered against supplier account!");
       setShowDebitModal(false);
       setDebitForm({ purchaseId: "", amount: "", reason: "", notes: "" });
@@ -544,402 +575,393 @@ export default function Purchases({ defaultTab = "invoices" }) {
       )}
 
       {/* ── Record Purchase Invoice Modal ── */}
-      {showInvoiceModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto p-4 flex items-start sm:items-center justify-center bg-black/60 backdrop-blur-xs">
-          <div className="relative w-full max-w-2xl my-auto bg-white rounded-2xl p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="font-bold text-slate-800 text-sm">Record Purchase Invoice (Vendor Bill)</h3>
-              <button
-                onClick={() => setShowInvoiceModal(false)}
-                className="text-slate-400 hover:text-slate-600 p-1"
+      <Modal
+        isOpen={showInvoiceModal}
+        onClose={() => setShowInvoiceModal(false)}
+        title="Record Purchase Invoice (Vendor Bill)"
+        subtitle="Record incoming inventory goods & vendor accounts payable"
+        icon={FileText}
+        iconColor="text-indigo-600 bg-indigo-50 border-indigo-100"
+        maxWidth="max-w-2xl"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setShowInvoiceModal(false)}
+              className="px-4 py-2.5 rounded-xl border border-slate-200 font-medium text-slate-600 hover:bg-slate-100 transition text-xs"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="invoice-form"
+              disabled={submitting}
+              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold flex items-center gap-2 shadow-sm shadow-indigo-500/20 transition text-xs disabled:opacity-50"
+            >
+              {submitting && <RefreshCw size={13} className="animate-spin" />}
+              <span>Save & Update Inventory</span>
+            </button>
+          </>
+        }
+      >
+        <form id="invoice-form" onSubmit={handleCreateInvoice} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1.5">Supplier / Vendor *</label>
+              <select
+                required
+                value={invoiceForm.supplierId}
+                onChange={(e) => setInvoiceForm({ ...invoiceForm, supplierId: e.target.value })}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition"
               >
-                <X size={16} />
+                <option value="">Select Supplier</option>
+                {suppliers.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1.5">Vendor Invoice # *</label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. SUP-INV-904"
+                value={invoiceForm.invoiceNumber}
+                onChange={(e) =>
+                  setInvoiceForm({ ...invoiceForm, invoiceNumber: e.target.value })
+                }
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition"
+              />
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1.5">Bill Date</label>
+              <input
+                type="date"
+                value={invoiceForm.invoiceDate}
+                onChange={(e) =>
+                  setInvoiceForm({ ...invoiceForm, invoiceDate: e.target.value })
+                }
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition"
+              />
+            </div>
+          </div>
+
+          {/* Items Section */}
+          <div className="space-y-2 pt-2">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-slate-700">Line Items & Quantities</span>
+              <button
+                type="button"
+                onClick={addInvoiceItem}
+                className="text-indigo-600 font-semibold text-[11px] flex items-center gap-1 hover:underline px-2 py-1 rounded-lg hover:bg-indigo-50 transition"
+              >
+                <Plus size={13} />
+                <span>Add Item</span>
               </button>
             </div>
 
-            <form onSubmit={handleCreateInvoice} className="space-y-4 pt-4 text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Supplier / Vendor *</label>
+            {invoiceForm.items.map((row, idx) => (
+              <div
+                key={idx}
+                className="grid grid-cols-12 gap-2 p-2.5 bg-slate-50/70 border border-slate-200/80 rounded-xl items-center"
+              >
+                <div className="col-span-5">
                   <select
                     required
-                    value={invoiceForm.supplierId}
-                    onChange={(e) => setInvoiceForm({ ...invoiceForm, supplierId: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
+                    value={row.productId}
+                    onChange={(e) => updateInvoiceItem(idx, "productId", e.target.value)}
+                    className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-xs text-slate-800"
                   >
-                    <option value="">Select Supplier</option>
-                    {suppliers.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}
+                    <option value="">Select Product</option>
+                    {products.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
                       </option>
                     ))}
                   </select>
                 </div>
 
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Vendor Invoice # *</label>
+                <div className="col-span-2">
                   <input
-                    type="text"
-                    required
-                    placeholder="e.g. SUP-INV-904"
-                    value={invoiceForm.invoiceNumber}
-                    onChange={(e) =>
-                      setInvoiceForm({ ...invoiceForm, invoiceNumber: e.target.value })
-                    }
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 font-mono"
+                    type="number"
+                    min="1"
+                    placeholder="Qty"
+                    value={row.quantity}
+                    onChange={(e) => updateInvoiceItem(idx, "quantity", e.target.value)}
+                    className="w-full px-2 py-1.5 rounded-lg border border-slate-200 text-right text-xs text-slate-800"
                   />
                 </div>
 
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Bill Date</label>
+                <div className="col-span-2">
                   <input
-                    type="date"
-                    value={invoiceForm.invoiceDate}
-                    onChange={(e) =>
-                      setInvoiceForm({ ...invoiceForm, invoiceDate: e.target.value })
-                    }
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="Rate (₹)"
+                    value={row.purchasePrice}
+                    onChange={(e) => updateInvoiceItem(idx, "purchasePrice", e.target.value)}
+                    className="w-full px-2 py-1.5 rounded-lg border border-slate-200 text-right text-xs text-slate-800"
                   />
                 </div>
-              </div>
 
-              {/* Items Section */}
-              <div className="space-y-2 pt-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-slate-700">Line Items & Quantities</span>
-                  <button
-                    type="button"
-                    onClick={addInvoiceItem}
-                    className="text-indigo-600 font-semibold text-[11px] flex items-center gap-1 hover:underline"
-                  >
-                    <Plus size={13} />
-                    <span>Add Item</span>
-                  </button>
-                </div>
-
-                {invoiceForm.items.map((row, idx) => (
-                  <div
-                    key={idx}
-                    className="grid grid-cols-12 gap-2 p-2.5 bg-slate-50/70 border border-slate-200/80 rounded-xl items-center"
-                  >
-                    <div className="col-span-5">
-                      <select
-                        required
-                        value={row.productId}
-                        onChange={(e) => updateInvoiceItem(idx, "productId", e.target.value)}
-                        className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-xs"
-                      >
-                        <option value="">Select Product</option>
-                        {products.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="col-span-2">
-                      <input
-                        type="number"
-                        min="1"
-                        placeholder="Qty"
-                        value={row.quantity}
-                        onChange={(e) => updateInvoiceItem(idx, "quantity", e.target.value)}
-                        className="w-full px-2 py-1.5 rounded-lg border border-slate-200 text-right text-xs"
-                      />
-                    </div>
-
-                    <div className="col-span-2">
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        placeholder="Rate (₹)"
-                        value={row.purchasePrice}
-                        onChange={(e) => updateInvoiceItem(idx, "purchasePrice", e.target.value)}
-                        className="w-full px-2 py-1.5 rounded-lg border border-slate-200 text-right text-xs"
-                      />
-                    </div>
-
-                    <div className="col-span-2">
-                      <select
-                        value={row.taxRate}
-                        onChange={(e) => updateInvoiceItem(idx, "taxRate", e.target.value)}
-                        className="w-full px-2 py-1.5 rounded-lg border border-slate-200 bg-white text-xs"
-                      >
-                        <option value="0">0%</option>
-                        <option value="5">5%</option>
-                        <option value="12">12%</option>
-                        <option value="18">18%</option>
-                        <option value="28">28%</option>
-                      </select>
-                    </div>
-
-                    <div className="col-span-1 text-center">
-                      <button
-                        type="button"
-                        onClick={() => removeInvoiceItem(idx)}
-                        className="text-slate-400 hover:text-rose-600 p-1"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Summary / Total */}
-              <div className="p-3 bg-indigo-50/50 rounded-xl border border-indigo-100 flex items-center justify-between text-xs">
-                <span className="font-semibold text-slate-700">Calculated Total (incl. GST):</span>
-                <span className="text-base font-bold text-indigo-700">
-                  ₹{invoiceTotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                </span>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Payment Status</label>
+                <div className="col-span-2">
                   <select
-                    value={invoiceForm.paymentStatus}
-                    onChange={(e) =>
-                      setInvoiceForm({ ...invoiceForm, paymentStatus: e.target.value })
-                    }
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
+                    value={row.taxRate}
+                    onChange={(e) => updateInvoiceItem(idx, "taxRate", e.target.value)}
+                    className="w-full px-2 py-1.5 rounded-lg border border-slate-200 bg-white text-xs text-slate-800"
                   >
-                    <option value="PAID">Fully Paid</option>
-                    <option value="PARTIAL">Partially Paid</option>
-                    <option value="UNPAID">Credit / Unpaid</option>
+                    <option value="0">0%</option>
+                    <option value="5">5%</option>
+                    <option value="12">12%</option>
+                    <option value="18">18%</option>
+                    <option value="28">28%</option>
                   </select>
                 </div>
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Remarks</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Received at Central Godown"
-                    value={invoiceForm.notes}
-                    onChange={(e) => setInvoiceForm({ ...invoiceForm, notes: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200"
-                  />
+
+                <div className="col-span-1 text-center">
+                  <button
+                    type="button"
+                    onClick={() => removeInvoiceItem(idx)}
+                    className="text-slate-400 hover:text-rose-600 p-1 rounded hover:bg-rose-50 transition"
+                  >
+                    <Trash2 size={14} />
+                  </button>
                 </div>
               </div>
-
-              <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setShowInvoiceModal(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 font-semibold text-slate-600 hover:bg-slate-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold flex items-center gap-2"
-                >
-                  {submitting && <RefreshCw size={13} className="animate-spin" />}
-                  <span>Save & Update Inventory</span>
-                </button>
-              </div>
-            </form>
+            ))}
           </div>
-        </div>
-      )}
+
+          {/* Summary / Total */}
+          <div className="p-3 bg-indigo-50/60 rounded-xl border border-indigo-100 flex items-center justify-between text-xs">
+            <span className="font-semibold text-slate-700">Calculated Total (incl. GST):</span>
+            <span className="text-base font-bold text-indigo-700">
+              ₹{invoiceTotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1.5">Payment Status</label>
+              <select
+                value={invoiceForm.paymentStatus}
+                onChange={(e) =>
+                  setInvoiceForm({ ...invoiceForm, paymentStatus: e.target.value })
+                }
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition"
+              >
+                <option value="PAID">Fully Paid</option>
+                <option value="PARTIAL">Partially Paid</option>
+                <option value="UNPAID">Credit / Unpaid</option>
+              </select>
+            </div>
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1.5">Remarks</label>
+              <input
+                type="text"
+                placeholder="e.g. Received at Central Godown"
+                value={invoiceForm.notes}
+                onChange={(e) => setInvoiceForm({ ...invoiceForm, notes: e.target.value })}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition"
+              />
+            </div>
+          </div>
+        </form>
+      </Modal>
 
       {/* ── Create Purchase Order Modal ── */}
-      {showOrderModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto p-4 flex items-start sm:items-center justify-center bg-black/60 backdrop-blur-xs">
-          <div className="relative w-full max-w-md my-auto bg-white rounded-2xl p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="font-bold text-slate-800 text-sm">Issue Purchase Order (PO)</h3>
-              <button
-                onClick={() => setShowOrderModal(false)}
-                className="text-slate-400 hover:text-slate-600 p-1"
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateOrder} className="space-y-4 pt-4 text-xs">
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Supplier *</label>
-                <select
-                  required
-                  value={orderForm.supplierId}
-                  onChange={(e) => setOrderForm({ ...orderForm, supplierId: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
-                >
-                  <option value="">Select Vendor</option>
-                  {suppliers.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Expected Delivery Date</label>
-                <input
-                  type="date"
-                  value={orderForm.expectedDelivery}
-                  onChange={(e) =>
-                    setOrderForm({ ...orderForm, expectedDelivery: e.target.value })
-                  }
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200"
-                />
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Product</label>
-                <select
-                  required
-                  value={orderForm.items[0].productId}
-                  onChange={(e) => {
-                    const id = e.target.value;
-                    const p = products.find((x) => x.id === id);
-                    setOrderForm({
-                      ...orderForm,
-                      items: [
-                        {
-                          productId: id,
-                          name: p?.name || "",
-                          quantity: orderForm.items[0].quantity,
-                          unitPrice: p?.purchasePrice || p?.price || 0,
-                        },
-                      ],
-                    });
-                  }}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
-                >
-                  <option value="">Choose item</option>
-                  {products.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Order Quantity</label>
-                <input
-                  type="number"
-                  min="1"
-                  required
-                  value={orderForm.items[0].quantity}
-                  onChange={(e) =>
-                    setOrderForm({
-                      ...orderForm,
-                      items: [{ ...orderForm.items[0], quantity: Number(e.target.value) }],
-                    })
-                  }
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setShowOrderModal(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 font-semibold text-slate-600 hover:bg-slate-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold flex items-center gap-2"
-                >
-                  {submitting && <RefreshCw size={13} className="animate-spin" />}
-                  <span>Generate PO</span>
-                </button>
-              </div>
-            </form>
+      <Modal
+        isOpen={showOrderModal}
+        onClose={() => setShowOrderModal(false)}
+        title="Issue Purchase Order (PO)"
+        subtitle="Official stock procurement order for suppliers"
+        icon={ShoppingBag}
+        iconColor="text-indigo-600 bg-indigo-50 border-indigo-100"
+        maxWidth="max-w-md"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setShowOrderModal(false)}
+              className="px-4 py-2.5 rounded-xl border border-slate-200 font-medium text-slate-600 hover:bg-slate-100 transition text-xs"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="order-form"
+              disabled={submitting}
+              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold flex items-center gap-2 shadow-sm shadow-indigo-500/20 transition text-xs disabled:opacity-50"
+            >
+              {submitting && <RefreshCw size={13} className="animate-spin" />}
+              <span>Generate PO</span>
+            </button>
+          </>
+        }
+      >
+        <form id="order-form" onSubmit={handleCreateOrder} className="space-y-4">
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1.5">Supplier *</label>
+            <select
+              required
+              value={orderForm.supplierId}
+              onChange={(e) => setOrderForm({ ...orderForm, supplierId: e.target.value })}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition"
+            >
+              <option value="">Select Vendor</option>
+              {suppliers.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
           </div>
-        </div>
-      )}
+
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1.5">Expected Delivery Date</label>
+            <input
+              type="date"
+              value={orderForm.expectedDelivery}
+              onChange={(e) =>
+                setOrderForm({ ...orderForm, expectedDelivery: e.target.value })
+              }
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition"
+            />
+          </div>
+
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1.5">Product</label>
+            <select
+              required
+              value={orderForm.items[0].productId}
+              onChange={(e) => {
+                const id = e.target.value;
+                const p = products.find((x) => x.id === id);
+                setOrderForm({
+                  ...orderForm,
+                  items: [
+                    {
+                      productId: id,
+                      name: p?.name || "",
+                      quantity: orderForm.items[0].quantity,
+                      unitPrice: p?.purchasePrice || p?.price || 0,
+                    },
+                  ],
+                });
+              }}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition"
+            >
+              <option value="">Choose item</option>
+              {products.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1.5">Order Quantity</label>
+            <input
+              type="number"
+              min="1"
+              required
+              value={orderForm.items[0].quantity}
+              onChange={(e) =>
+                setOrderForm({
+                  ...orderForm,
+                  items: [{ ...orderForm.items[0], quantity: Number(e.target.value) }],
+                })
+              }
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition"
+            />
+          </div>
+        </form>
+      </Modal>
 
       {/* ── Issue Debit Note Modal ── */}
-      {showDebitModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto p-4 flex items-start sm:items-center justify-center bg-black/60 backdrop-blur-xs">
-          <div className="relative w-full max-w-md my-auto bg-white rounded-2xl p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="font-bold text-slate-800 text-sm">Issue Debit Note / Purchase Return</h3>
-              <button
-                onClick={() => setShowDebitModal(false)}
-                className="text-slate-400 hover:text-slate-600 p-1"
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateDebitNote} className="space-y-4 pt-4 text-xs">
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">
-                  Reference Purchase Invoice *
-                </label>
-                <select
-                  required
-                  value={debitForm.purchaseId}
-                  onChange={(e) => setDebitForm({ ...debitForm, purchaseId: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
-                >
-                  <option value="">Select Invoice to debit</option>
-                  {invoices.map((inv) => (
-                    <option key={inv.id} value={inv.id}>
-                      {inv.invoiceNumber} - {inv.supplier?.name} (₹{inv.totalAmount})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Claim Amount (₹) *</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  required
-                  placeholder="Amount to debit vendor"
-                  value={debitForm.amount}
-                  onChange={(e) => setDebitForm({ ...debitForm, amount: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200"
-                />
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Reason for Return *</label>
-                <textarea
-                  rows="2"
-                  required
-                  placeholder="e.g. Expired batch or rate difference"
-                  value={debitForm.reason}
-                  onChange={(e) => setDebitForm({ ...debitForm, reason: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setShowDebitModal(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 font-semibold text-slate-600 hover:bg-slate-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-semibold flex items-center gap-2"
-                >
-                  {submitting && <RefreshCw size={13} className="animate-spin" />}
-                  <span>Issue Debit Note</span>
-                </button>
-              </div>
-            </form>
+      <Modal
+        isOpen={showDebitModal}
+        onClose={() => setShowDebitModal(false)}
+        title="Issue Debit Note / Purchase Return"
+        subtitle="Record returns or supplier credit notes"
+        icon={ArrowDownLeft}
+        iconColor="text-rose-600 bg-rose-50 border-rose-100"
+        maxWidth="max-w-md"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setShowDebitModal(false)}
+              className="px-4 py-2.5 rounded-xl border border-slate-200 font-medium text-slate-600 hover:bg-slate-100 transition text-xs"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="debit-form"
+              disabled={submitting}
+              className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-semibold flex items-center gap-2 shadow-sm shadow-rose-500/20 transition text-xs disabled:opacity-50"
+            >
+              {submitting && <RefreshCw size={13} className="animate-spin" />}
+              <span>Issue Debit Note</span>
+            </button>
+          </>
+        }
+      >
+        <form id="debit-form" onSubmit={handleCreateDebitNote} className="space-y-4">
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1.5">
+              Reference Purchase Invoice *
+            </label>
+            <select
+              required
+              value={debitForm.purchaseId}
+              onChange={(e) => setDebitForm({ ...debitForm, purchaseId: e.target.value })}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition"
+            >
+              <option value="">Select Invoice to debit</option>
+              {invoices.map((inv) => (
+                <option key={inv.id} value={inv.id}>
+                  {inv.invoiceNumber} - {inv.supplier?.name} (₹{inv.totalAmount})
+                </option>
+              ))}
+            </select>
           </div>
-        </div>
-      )}
+
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1.5">Claim Amount (₹) *</label>
+            <div className="relative">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₹</span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                required
+                placeholder="0.00"
+                value={debitForm.amount}
+                onChange={(e) => setDebitForm({ ...debitForm, amount: e.target.value })}
+                className="w-full pl-8 pr-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1.5">Reason for Return *</label>
+            <textarea
+              rows="3"
+              required
+              placeholder="e.g. Expired batch or rate difference"
+              value={debitForm.reason}
+              onChange={(e) => setDebitForm({ ...debitForm, reason: e.target.value })}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition"
+            />
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

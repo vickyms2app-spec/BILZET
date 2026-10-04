@@ -175,30 +175,6 @@ export const adjustStock = async (adjustmentData, user, context = {}) => {
     });
   } catch (err) {
     if (err instanceof ApiError) throw err;
-    if (err.message?.includes("Can't reach database server") || err.code === 'P1001') {
-      const simulatedPrevStock = 20;
-      const simulatedNewStock = Math.max(0, simulatedPrevStock + Number(quantity));
-      return {
-        product: {
-          id: productId,
-          _id: productId,
-          name: 'Adjusted Product',
-          currentStock: simulatedNewStock,
-          stock: simulatedNewStock,
-        },
-        transaction: {
-          id: 'tx-' + Date.now(),
-          _id: 'tx-' + Date.now(),
-          productId,
-          type: type || 'ADJUST',
-          quantity: Number(quantity),
-          previousStock: simulatedPrevStock,
-          newStock: simulatedNewStock,
-          reason: `${reason || 'Stock Adjustment'}${warehouseId ? ` [Warehouse: ${warehouseId}]` : ''}`,
-          createdAt: new Date().toISOString(),
-        },
-      };
-    }
     throw err;
   }
 };

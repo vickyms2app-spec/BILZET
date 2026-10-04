@@ -11,6 +11,7 @@ import {
 } from "@clerk/clerk-react";
 import { useAuth } from "../../store/auth";
 import { useNavigate } from "react-router-dom";
+import { registerTokenProvider, setTokens } from "../../api/http";
 
 /**
  * ClerkAuthSync
@@ -23,6 +24,19 @@ export function ClerkAuthSync() {
   const { getToken } = useClerkAuth();
   const syncClerkUser = useAuth((s) => s.syncClerkUser);
   const navigate = useNavigate();
+  const [syncError, setSyncError] = React.useState(null);
+
+  // Register live Clerk session token provider
+  useEffect(() => {
+    if (isSignedIn && getToken) {
+      registerTokenProvider(getToken);
+      getToken()
+        .then((tok) => {
+          if (tok) setTokens(tok);
+        })
+        .catch(() => {});
+    }
+  }, [isSignedIn, getToken]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -56,12 +70,9 @@ export function ClerkAuthSync() {
           }
         })
         .catch((err) => {
-          console.warn("Clerk session synchronization warning:", err);
-          if (!isCancelled) {
-            syncClerkUser(clerkUser, null).then(() => {
-              navigate("/dashboard", { replace: true });
-            });
-          }
+          if (isCancelled) return;
+          console.error("Clerk session synchronization failed:", err);
+          setSyncError("Unable to connect to the server. Please try again later.");
         });
     }
 
@@ -69,6 +80,30 @@ export function ClerkAuthSync() {
       isCancelled = true;
     };
   }, [isLoaded, isSignedIn, clerkUser]);
+
+  if (syncError) {
+    return (
+      <div
+        style={{
+          position: "fixed",
+          bottom: "1rem",
+          left: "50%",
+          transform: "translateX(-50%)",
+          background: "#fef2f2",
+          border: "1px solid #fecaca",
+          borderRadius: "0.75rem",
+          padding: "0.75rem 1.25rem",
+          fontSize: "0.75rem",
+          color: "#dc2626",
+          fontWeight: 600,
+          zIndex: 9999,
+          boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+        }}
+      >
+        {syncError}
+      </div>
+    );
+  }
 
   return null;
 }

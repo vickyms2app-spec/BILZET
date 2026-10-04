@@ -4,45 +4,138 @@ const API =
   (import.meta.env.PROD ? "/api/v1" : "http://localhost:5000/api/v1");
 export const http = axios.create({
   baseURL: API,
-  timeout: 5000,
+  timeout: 15000,
   headers: { "Content-Type": "application/json" },
 });
-let accessToken = localStorage.getItem("bilzet_access_token");
+let accessToken = localStorage.getItem("bilzet_access_token") || localStorage.getItem("token");
+
 export function setTokens(a, r) {
   accessToken = a || null;
-  if (a) localStorage.setItem("bilzet_access_token", a);
-  else localStorage.removeItem("bilzet_access_token");
-  if (r) localStorage.setItem("bilzet_refresh_token", r);
-  else if (!a) localStorage.removeItem("bilzet_refresh_token");
+  if (a) {
+    localStorage.setItem("bilzet_access_token", a);
+    localStorage.setItem("token", a);
+  } else {
+    localStorage.removeItem("bilzet_access_token");
+    localStorage.removeItem("token");
+  }
+  if (r) {
+    localStorage.setItem("bilzet_refresh_token", r);
+    localStorage.setItem("refreshToken", r);
+  } else if (!a) {
+    localStorage.removeItem("bilzet_refresh_token");
+    localStorage.removeItem("refreshToken");
+  }
 }
-http.interceptors.request.use((c) => {
-  if (accessToken) c.headers.Authorization = `Bearer ${accessToken}`;
-  return c;
+
+let tokenProvider = null;
+
+/**
+ * Register dynamic token provider function (e.g. Clerk's useAuth.getToken)
+ */
+export function registerTokenProvider(fn) {
+  tokenProvider = fn;
+}
+
+// Request Interceptor: Guarantees every outbound request has a valid Bearer token
+http.interceptors.request.use(async (config) => {
+  let token = null;
+
+  // 1. Prioritize Clerk session token via registered provider
+  if (tokenProvider) {
+    try {
+      token = await tokenProvider();
+    } catch (_) {}
+  }
+
+  // 2. Direct Clerk session token lookup from window.Clerk
+  if (!token && typeof window !== "undefined" && window.Clerk?.session) {
+    try {
+      token = await window.Clerk.session.getToken();
+    } catch (err) {
+      console.warn("[HTTP Interceptor] Could not fetch Clerk token:", err?.message || err);
+    }
+  }
+
+  // 3. Fall back to localStorage stored tokens
+  if (!token) {
+    const stored =
+      localStorage.getItem("bilzet_access_token") ||
+      localStorage.getItem("token") ||
+      accessToken;
+    if (stored && stored !== "null" && stored !== "undefined") {
+      token = stored;
+    }
+  }
+
+  if (token) {
+    if (config.headers?.set) {
+      config.headers.set("Authorization", `Bearer ${token}`);
+    } else {
+      config.headers = config.headers || {};
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  }
+
+  return config;
 });
+
 let refreshing = null;
+
+// Response Interceptor: Seamlessly handles 401s via Clerk or refresh token
 http.interceptors.response.use(
   (r) => r,
   async (e) => {
     const original = e.config;
-    if (
-      e.response?.status === 401 &&
-      !original._retry &&
-      localStorage.getItem("bilzet_refresh_token")
-    ) {
+    if (e.response?.status === 401 && !original._retry) {
       original._retry = true;
-      try {
-        refreshing ??= axios.post(`${API}/auth/refresh`, {
-          refreshToken: localStorage.getItem("bilzet_refresh_token"),
-        });
-        const { data } = await refreshing;
-        refreshing = null;
-        setTokens(data.data.accessToken, data.data.refreshToken);
-        original.headers.Authorization = `Bearer ${data.data.accessToken}`;
-        return http(original);
-      } catch (err) {
-        refreshing = null;
-        setTokens();
-        throw err;
+
+      // 1. If Clerk is active, try obtaining a fresh Clerk session token first
+      if (typeof window !== "undefined" && window.Clerk?.session) {
+        try {
+          const freshClerkToken = await window.Clerk.session.getToken({ skipCache: true });
+          if (freshClerkToken) {
+            setTokens(freshClerkToken);
+            if (original.headers?.set) {
+              original.headers.set("Authorization", `Bearer ${freshClerkToken}`);
+            } else {
+              original.headers.Authorization = `Bearer ${freshClerkToken}`;
+            }
+            return http(original);
+          }
+        } catch (_) {}
+      }
+
+      // 2. Otherwise, attempt backend JWT refresh token rotation
+      const refreshToken =
+        localStorage.getItem("bilzet_refresh_token") ||
+        localStorage.getItem("refreshToken");
+
+      if (refreshToken) {
+        try {
+          refreshing ??= axios.post(`${API}/auth/refresh`, {
+            refreshToken,
+          });
+          const { data } = await refreshing;
+          refreshing = null;
+
+          const newAccess = data?.data?.accessToken || data?.accessToken;
+          const newRefresh = data?.data?.refreshToken || data?.refreshToken;
+
+          if (newAccess) {
+            setTokens(newAccess, newRefresh);
+            if (original.headers?.set) {
+              original.headers.set("Authorization", `Bearer ${newAccess}`);
+            } else {
+              original.headers.Authorization = `Bearer ${newAccess}`;
+            }
+            return http(original);
+          }
+        } catch (err) {
+          refreshing = null;
+          // Only clear tokens if refresh explicitly failed
+          setTokens();
+          throw err;
+        }
       }
     }
     throw e;

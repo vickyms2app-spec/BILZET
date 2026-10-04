@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { productsApi, categoriesApi } from "../api";
 import { Plus, Search, Trash2, Pencil, Package, AlertTriangle, Layers, Tag, CheckCircle2, X } from "lucide-react";
 import { apiError } from "../api/http";
+import Modal from "../components/common/Modal";
 
 export default function Products() {
   const [data, setData] = useState(null);
@@ -28,11 +29,13 @@ export default function Products() {
   async function save(e) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
+    const catVal = f.get("category") || f.get("categoryId") || undefined;
     const p = {
       name: f.get("name"),
       sku: f.get("sku"),
       barcode: f.get("barcode") || undefined,
-      category: f.get("category"),
+      category: catVal,
+      categoryId: catVal,
       brand: f.get("brand") || undefined,
       unit: f.get("unit") || "piece",
       purchasePrice: +f.get("purchasePrice"),
@@ -43,8 +46,9 @@ export default function Products() {
       isActive: true,
     };
     try {
-      if (edit) {
-        await productsApi.update(edit._id, p);
+      const editId = edit?.id || edit?._id;
+      if (editId) {
+        await productsApi.update(editId, p);
       } else {
         await productsApi.create(p);
       }
@@ -288,176 +292,165 @@ export default function Products() {
       {/* ══════════════════════════════════════════════════
           CREATE / EDIT MODAL
       ══════════════════════════════════════════════════ */}
-      {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center">
-                  <Tag size={16} />
-                </div>
-                <h2 className="text-base font-bold text-slate-900">
-                  {edit ? "Edit Product" : "Add New Product"}
-                </h2>
-              </div>
-              <button
-                onClick={() => setOpen(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            <form onSubmit={save} className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
-              <div className="sm:col-span-2">
-                <label className="block font-semibold text-slate-700 mb-1">Product Name *</label>
-                <input
-                  name="name"
-                  required
-                  defaultValue={edit?.name}
-                  placeholder="e.g. Basmati Rice 1kg"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 font-medium"
-                />
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">SKU Code *</label>
-                <input
-                  name="sku"
-                  required
-                  defaultValue={edit?.sku}
-                  placeholder="e.g. BR-1001"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Barcode</label>
-                <input
-                  name="barcode"
-                  defaultValue={edit?.barcode}
-                  placeholder="e.g. 8901030383822"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Category *</label>
-                <select
-                  name="category"
-                  required
-                  defaultValue={edit?.category?._id || edit?.category}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 bg-white"
-                >
-                  <option value="">Select Category</option>
-                  {cats.map((c) => (
-                    <option key={c._id} value={c._id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Brand</label>
-                <input
-                  name="brand"
-                  defaultValue={edit?.brand}
-                  placeholder="e.g. India Gate"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 font-medium"
-                />
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Unit</label>
-                <select
-                  name="unit"
-                  defaultValue={edit?.unit || "piece"}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 bg-white"
-                >
-                  <option value="piece">piece</option>
-                  <option value="kg">kg</option>
-                  <option value="litre">litre</option>
-                  <option value="box">box</option>
-                  <option value="pack">pack</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Purchase Price (₹) *</label>
-                <input
-                  name="purchasePrice"
-                  type="number"
-                  step="0.01"
-                  required
-                  defaultValue={edit?.purchasePrice || 0}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 font-semibold"
-                />
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Selling Price (₹) *</label>
-                <input
-                  name="sellingPrice"
-                  type="number"
-                  step="0.01"
-                  required
-                  defaultValue={edit?.sellingPrice || 0}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 font-semibold text-blue-600"
-                />
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">GST Rate (%)</label>
-                <input
-                  name="gstRate"
-                  type="number"
-                  step="0.01"
-                  defaultValue={edit?.gstRate || 0}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 font-medium"
-                />
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Initial Stock</label>
-                <input
-                  name="stock"
-                  type="number"
-                  defaultValue={edit?.stock || 0}
-                  disabled={!!edit}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 font-medium disabled:bg-slate-100 disabled:text-slate-400"
-                />
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Minimum Alert Stock</label>
-                <input
-                  name="minimumStock"
-                  type="number"
-                  defaultValue={edit?.minimumStock || 5}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 font-medium"
-                />
-              </div>
-
-              <div className="sm:col-span-2 pt-3 border-t border-slate-100 flex items-center justify-end gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setOpen(false)}
-                  className="btn-secondary text-xs py-2 px-4"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="btn-primary text-xs py-2 px-5 font-semibold"
-                >
-                  {edit ? "Save Changes" : "Create Product"}
-                </button>
-              </div>
-            </form>
+      <Modal
+        isOpen={open}
+        onClose={() => setOpen(false)}
+        title={edit ? "Edit Product" : "Add New Product"}
+        subtitle={edit ? "Update SKU, pricing and catalog parameters" : "Catalog a new item in your central product inventory"}
+        icon={Tag}
+        iconColor="text-blue-600 bg-blue-50 border-blue-100"
+        maxWidth="max-w-xl"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="px-4 py-2.5 rounded-xl border border-slate-200 font-medium text-slate-600 hover:bg-slate-100 transition text-xs"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="product-form"
+              className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-sm shadow-blue-500/20 transition text-xs"
+            >
+              {edit ? "Save Changes" : "Create Product"}
+            </button>
+          </>
+        }
+      >
+        <form id="product-form" onSubmit={save} className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
+          <div className="sm:col-span-2">
+            <label className="block font-semibold text-slate-700 mb-1">Product Name *</label>
+            <input
+              name="name"
+              required
+              defaultValue={edit?.name}
+              placeholder="e.g. Basmati Rice 1kg"
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 font-medium text-slate-800"
+            />
           </div>
-        </div>
-      )}
+
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1">SKU Code *</label>
+            <input
+              name="sku"
+              required
+              defaultValue={edit?.sku}
+              placeholder="e.g. BR-1001"
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 font-mono text-slate-800"
+            />
+          </div>
+
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1">Barcode</label>
+            <input
+              name="barcode"
+              defaultValue={edit?.barcode}
+              placeholder="e.g. 8901030383822"
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 font-mono text-slate-800"
+            />
+          </div>
+
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1">Category *</label>
+            <select
+              name="category"
+              required
+              defaultValue={edit?.categoryId || edit?.category?._id || edit?.category?.id || edit?.category || ""}
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 bg-white text-slate-800"
+            >
+              <option value="">Select Category</option>
+              {cats.map((c) => (
+                <option key={c.id || c._id} value={c.id || c._id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1">Brand</label>
+            <input
+              name="brand"
+              defaultValue={edit?.brand}
+              placeholder="e.g. India Gate"
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 font-medium text-slate-800"
+            />
+          </div>
+
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1">Unit</label>
+            <select
+              name="unit"
+              defaultValue={edit?.unit || "piece"}
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 bg-white text-slate-800"
+            >
+              <option value="piece">piece</option>
+              <option value="kg">kg</option>
+              <option value="litre">litre</option>
+              <option value="box">box</option>
+              <option value="pack">pack</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1">Purchase Price (₹) *</label>
+            <input
+              name="purchasePrice"
+              type="number"
+              step="0.01"
+              required
+              defaultValue={edit?.purchasePrice || 0}
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 font-semibold text-slate-800"
+            />
+          </div>
+
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1">Selling Price (₹) *</label>
+            <input
+              name="sellingPrice"
+              type="number"
+              step="0.01"
+              required
+              defaultValue={edit?.sellingPrice || 0}
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 font-semibold text-blue-600"
+            />
+          </div>
+
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1">GST Rate (%)</label>
+            <input
+              name="gstRate"
+              type="number"
+              step="0.01"
+              defaultValue={edit?.gstRate || 0}
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 font-medium text-slate-800"
+            />
+          </div>
+
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1">Initial Stock</label>
+            <input
+              name="stock"
+              type="number"
+              defaultValue={edit?.stock || 0}
+              disabled={!!edit}
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 font-medium disabled:bg-slate-100 disabled:text-slate-400"
+            />
+          </div>
+
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1">Minimum Alert Stock</label>
+            <input
+              name="minimumStock"
+              type="number"
+              defaultValue={edit?.minimumStock || 5}
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 font-medium text-slate-800"
+            />
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

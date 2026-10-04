@@ -87,7 +87,11 @@ export default function StockTransfers() {
 
     setSubmitting(true);
     try {
-      await warehousesApi.transfer(form);
+      await warehousesApi.transfer({
+        ...form,
+        fromWarehouseId: form.sourceWarehouseId,
+        toWarehouseId: form.destinationWarehouseId,
+      });
       setSuccessMsg("Stock transferred atomically across godowns!");
       setShowModal(false);
       setForm({

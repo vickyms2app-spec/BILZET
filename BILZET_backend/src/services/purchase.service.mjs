@@ -59,7 +59,7 @@ export const createPurchase = async (purchaseData, user = {}, context = {}) => {
 
     const qty = Number(item.quantity || item.qty || 1);
     const price = Number(item.purchasePrice || item.rate || product.purchasePrice || 0);
-    const gstRate = Number(item.gstRate ?? item.gst ?? product.gstRate ?? 0);
+    const gstRate = Number(item.gstRate ?? item.taxRate ?? item.gst ?? product.gstRate ?? 0);
     const itemSubtotal = round2(qty * price);
     const itemTax = round2((itemSubtotal * gstRate) / 100);
     const itemTotal = round2(itemSubtotal + itemTax);
@@ -78,7 +78,10 @@ export const createPurchase = async (purchaseData, user = {}, context = {}) => {
   }
 
   const grandTotal = Math.max(0, round2(subtotal + taxTotal - Number(discountTotal || 0)));
-  const paid = Math.max(0, round2(paidAmount));
+  let paid = Math.max(0, round2(paidAmount));
+  if ((paidAmount === undefined || paidAmount === null || paidAmount === 0) && purchaseData.paymentStatus === 'PAID') {
+    paid = grandTotal;
+  }
   const due = Math.max(0, round2(grandTotal - paid));
 
   let paymentStatus = 'PAID';
@@ -244,8 +247,8 @@ export const createPurchaseOrder = async (poData) => {
 
   items.forEach((item) => {
     const qty = Number(item.quantity || 1);
-    const rate = Number(item.expectedPrice || item.rate || 0);
-    const gst = Number(item.gstRate || 0);
+    const rate = Number(item.expectedPrice || item.unitPrice || item.rate || 0);
+    const gst = Number(item.gstRate || item.taxRate || 0);
     const lineSub = round2(qty * rate);
     subtotal = round2(subtotal + lineSub);
     taxTotal = round2(taxTotal + (lineSub * gst) / 100);
@@ -333,7 +336,22 @@ export const createPurchaseReturn = async (returnData) => {
 
 // ─── DEBIT NOTES ───
 export const createDebitNote = async (debitData) => {
-  const { supplierId, referenceInvoice, amount, reason } = debitData;
+  let { supplierId, referenceInvoice, amount, reason, purchaseId } = debitData;
+  if (!supplierId && purchaseId) {
+    const purchase = await prisma.purchase.findUnique({
+      where: { id: purchaseId },
+      select: { supplierId: true, invoiceNumber: true },
+    });
+    if (purchase) {
+      supplierId = purchase.supplierId;
+      if (!referenceInvoice) referenceInvoice = purchase.invoiceNumber;
+    }
+  }
+
+  if (!supplierId) {
+    throw ApiError.badRequest('Supplier ID or valid Purchase reference is required');
+  }
+
   const debitNoteNumber = `DN-${Date.now().toString().slice(-6)}`;
 
   return await prisma.debitNote.create({

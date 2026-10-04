@@ -74,14 +74,29 @@ export const deleteWarehouse = asyncHandler(async (req, res) => {
 
 // ─── STOCK TRANSFERS ───
 export const transferStock = asyncHandler(async (req, res) => {
-  const { fromWarehouseId, toWarehouseId, productId, quantity, notes } = req.body;
+  const {
+    fromWarehouseId,
+    toWarehouseId,
+    sourceWarehouseId,
+    destinationWarehouseId,
+    productId,
+    quantity,
+    notes,
+  } = req.body;
+
+  const srcWhId = fromWarehouseId || sourceWarehouseId;
+  const destWhId = toWarehouseId || destinationWarehouseId;
+
+  if (!srcWhId || !destWhId) {
+    throw ApiError.badRequest('Both source and destination warehouses are required');
+  }
 
   const qty = Number(quantity);
   if (!qty || qty <= 0) {
     throw ApiError.badRequest('Transfer quantity must be greater than 0');
   }
 
-  if (fromWarehouseId === toWarehouseId) {
+  if (srcWhId === destWhId) {
     throw ApiError.badRequest('Source and destination warehouses cannot be the same');
   }
 
@@ -92,7 +107,7 @@ export const transferStock = asyncHandler(async (req, res) => {
     const sourceStock = await tx.warehouseStock.findUnique({
       where: {
         warehouseId_productId: {
-          warehouseId: fromWarehouseId,
+          warehouseId: srcWhId,
           productId,
         },
       },
@@ -108,7 +123,7 @@ export const transferStock = asyncHandler(async (req, res) => {
     await tx.warehouseStock.update({
       where: {
         warehouseId_productId: {
-          warehouseId: fromWarehouseId,
+          warehouseId: srcWhId,
           productId,
         },
       },
@@ -119,13 +134,13 @@ export const transferStock = asyncHandler(async (req, res) => {
     await tx.warehouseStock.upsert({
       where: {
         warehouseId_productId: {
-          warehouseId: toWarehouseId,
+          warehouseId: destWhId,
           productId,
         },
       },
       update: { quantity: { increment: qty } },
       create: {
-        warehouseId: toWarehouseId,
+        warehouseId: destWhId,
         productId,
         quantity: qty,
       },
@@ -135,12 +150,12 @@ export const transferStock = asyncHandler(async (req, res) => {
     const transfer = await tx.stockTransfer.create({
       data: {
         transferNumber,
-        fromWarehouseId,
-        toWarehouseId,
+        fromWarehouseId: srcWhId,
+        toWarehouseId: destWhId,
         productId,
         quantity: qty,
         notes: notes || null,
-        createdById: req.user?._id || null,
+        createdById: req.user?.id || req.user?._id || null,
       },
     });
 
