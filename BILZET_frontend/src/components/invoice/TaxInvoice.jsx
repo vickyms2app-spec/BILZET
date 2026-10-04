@@ -203,8 +203,13 @@ export default function TaxInvoice({
     state: shopSettings?.state || "Tamil Nadu",
     logoUrl: shopSettings?.logoUrl || null,
     showHsnSummary: shopSettings?.showHsnSummary === true,
-    showBankDetails: shopSettings?.showBankDetails === true,
-    showQrCode: shopSettings?.showQrCode === true,
+    showBankDetails: shopSettings?.showBankDetails !== false,
+    showQrCode: shopSettings?.showQrCode !== false,
+    showWatermark: shopSettings?.showWatermark !== false,
+    showLogo: shopSettings?.showLogo !== false,
+    showStatusBadge: shopSettings?.showStatusBadge !== false,
+    showSignatory: shopSettings?.showSignatory !== false,
+    showTerms: shopSettings?.showTerms !== false,
     bankName: shopSettings?.bankName || "HDFC Bank Ltd",
     accountNumber: shopSettings?.accountNumber || "50200012345678",
     ifsc: shopSettings?.ifsc || "HDFC0001234",
@@ -350,231 +355,466 @@ export default function TaxInvoice({
         </div>
 
         {/* ══════════════════════════════════════════════════
-            PRINTABLE A4 INVOICE SHEET (MATCHING USER REFERENCE)
+            PRINTABLE A4 INVOICE SHEET (DYNAMIC 11 TEMPLATES)
         ══════════════════════════════════════════════════ */}
         <div
           ref={printRef}
           id="printable-tax-invoice"
-          className="relative bg-white text-slate-800 text-xs font-sans border-2 overflow-hidden p-8 sm:p-10 space-y-6"
-          style={{ minHeight: "1050px", borderColor: activeTheme.border }}
+          className={`relative bg-white text-slate-800 text-xs overflow-hidden ${
+            settings.template === "classic_border"
+              ? "font-serif border-4 border-double rounded-none p-8 sm:p-10 space-y-5"
+              : settings.template === "compact"
+              ? "font-sans border rounded-xl p-5 sm:p-6 space-y-3.5"
+              : settings.template === "corporate"
+              ? "font-sans border border-slate-300 rounded-none p-8 sm:p-10 space-y-5"
+              : settings.template === "retail"
+              ? "font-mono border-2 border-dashed rounded-xl p-6 sm:p-8 space-y-4"
+              : settings.template === "hotel_restaurant"
+              ? "font-serif border border-amber-200 rounded-2xl p-8 sm:p-10 space-y-5 bg-[#fffdfa]"
+              : settings.template === "clean_minimal"
+              ? "font-sans border border-slate-200 rounded-xl p-8 sm:p-10 space-y-7"
+              : settings.template === "side_ribbon"
+              ? "font-sans border-2 rounded-2xl p-8 sm:p-10 pl-16 sm:pl-20 space-y-6"
+              : settings.template === "premium"
+              ? "font-serif border-2 rounded-xl p-8 sm:p-10 space-y-6 bg-[#fafaf9] shadow-lg ring-1 ring-amber-400/30"
+              : settings.template === "elegant"
+              ? "font-sans border-2 rounded-3xl p-8 sm:p-10 space-y-6"
+              : settings.template === "geometric"
+              ? "font-mono border-2 rounded-none p-8 sm:p-10 space-y-6"
+              : "font-sans border-2 rounded-2xl p-8 sm:p-10 space-y-6" // default: modern
+          }`}
+          style={{
+            minHeight: settings.template === "compact" ? "850px" : "1050px",
+            borderColor:
+              settings.template === "premium"
+                ? "#b45309"
+                : settings.template === "classic_border"
+                ? activeTheme.primary
+                : activeTheme.border,
+          }}
         >
-          {/* ── Top-Right Corner Artwork Arc ─────────────────── */}
-          <div className="absolute top-0 right-0 w-36 h-36 overflow-hidden pointer-events-none z-0">
-            <svg viewBox="0 0 120 120" className="w-full h-full">
-              <circle cx="120" cy="0" r="95" fill="none" stroke={activeTheme.primary} strokeWidth="18" opacity="0.95" />
-              <circle cx="120" cy="0" r="60" fill={activeTheme.dark} />
-            </svg>
-          </div>
+          {/* ── 1. Template-Specific Corner / Background Art ── */}
+          {/* A. Modern: Concentric Circles & Dual Triangles */}
+          {settings.template === "modern" && (
+            <>
+              <div className="absolute top-0 right-0 w-36 h-36 overflow-hidden pointer-events-none z-0">
+                <svg viewBox="0 0 120 120" className="w-full h-full">
+                  <circle cx="120" cy="0" r="95" fill="none" stroke={activeTheme.primary} strokeWidth="18" opacity="0.95" />
+                  <circle cx="120" cy="0" r="60" fill={activeTheme.dark} />
+                </svg>
+              </div>
+              <div className="absolute bottom-0 left-0 w-32 h-32 overflow-hidden pointer-events-none z-0">
+                <svg viewBox="0 0 100 100" className="w-full h-full">
+                  <polygon points="0,100 0,60 40,100" fill={activeTheme.border} opacity="0.9" />
+                  <polygon points="0,100 0,80 20,100" fill={activeTheme.primary} />
+                </svg>
+              </div>
+            </>
+          )}
 
-          {/* ── Bottom-Left Corner Artwork Triangles ─────────── */}
-          <div className="absolute bottom-0 left-0 w-32 h-32 overflow-hidden pointer-events-none z-0">
-            <svg viewBox="0 0 100 100" className="w-full h-full">
-              <polygon points="0,100 0,60 40,100" fill={activeTheme.border} opacity="0.9" />
-              <polygon points="0,100 0,80 20,100" fill={activeTheme.primary} />
-            </svg>
-          </div>
+          {/* B. Classic Border: Ornate Corner Bracket Markers */}
+          {settings.template === "classic_border" && (
+            <>
+              <div className="absolute top-3 left-3 text-slate-400 pointer-events-none select-none text-base font-mono">╔══</div>
+              <div className="absolute top-3 right-3 text-slate-400 pointer-events-none select-none text-base font-mono">══╗</div>
+              <div className="absolute bottom-3 left-3 text-slate-400 pointer-events-none select-none text-base font-mono">╚══</div>
+              <div className="absolute bottom-3 right-3 text-slate-400 pointer-events-none select-none text-base font-mono">══╝</div>
+            </>
+          )}
 
-          {/* ── Background Watermark: BILZET ─────────────────── */}
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-0">
-            <span
-              className="text-8xl sm:text-9xl font-black uppercase tracking-widest text-slate-300 transform -rotate-30"
-              style={{ opacity: 0.12 }}
-            >
-              BILZET
-            </span>
-          </div>
-
-          {/* ── 1. Header Section ────────────────────────────── */}
-          <div className="relative z-10 flex items-start justify-between">
-            {/* Left: Company Logo */}
-            <div className="w-1/3 pt-1">
-              {settings.logoUrl ? (
-                <img
-                  src={settings.logoUrl}
-                  alt="Company Logo"
-                  className="max-h-12 max-w-[150px] object-contain"
-                />
-              ) : (
-                <span className="text-xs font-semibold text-slate-400">Company Logo</span>
-              )}
-            </div>
-
-            {/* Center: TAX INVOICE & Company Name */}
-            <div className="w-1/3 text-center">
-              <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase">
-                {settings.title}
-              </h1>
-              <p className="text-sm font-bold text-slate-800 mt-0.5 tracking-normal">
-                {settings.companyName}
-              </p>
-            </div>
-
-            {/* Right: BILZET Brand & Status Badge */}
-            <div className="w-1/3 flex flex-col items-end pr-2 pt-0.5">
-              <span
-                className="text-2xl font-black tracking-wider uppercase"
-                style={{ color: activeTheme.primary }}
-              >
-                BILZET
-              </span>
-              <span
-                className="mt-1.5 px-3.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase border"
-                style={
-                  inv.paymentStatus === "PAID"
-                    ? { backgroundColor: activeTheme.light, color: activeTheme.dark, borderColor: activeTheme.border }
-                    : { backgroundColor: "#fef3c7", color: "#92400e", borderColor: "#fde68a" }
-                }
-              >
-                {inv.paymentStatus}
-              </span>
-            </div>
-          </div>
-
-          {/* ── 2. Information Cards (Bill To & Document Info) ─ */}
-          <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-            {/* Left Card: Bill To */}
+          {/* C. Side Ribbon: Full Height Colored Left Ribbon */}
+          {settings.template === "side_ribbon" && (
             <div
-              className="border rounded-2xl p-4 bg-white space-y-1 text-xs text-slate-700 shadow-2xs"
-              style={{ borderColor: activeTheme.border }}
+              className="absolute top-0 bottom-0 left-0 w-12 sm:w-14 flex flex-col items-center justify-between py-8 text-white select-none z-10"
+              style={{ backgroundColor: activeTheme.primary }}
             >
-              <p className="font-bold text-slate-900 text-sm mb-1.5">Bill To</p>
-              <p className="font-semibold text-slate-800">{inv.customer.name}</p>
-              <p className="text-slate-600">{inv.customer.phone}</p>
-              <p className="text-slate-600">{inv.customer.address}</p>
-              <p className="text-slate-700">
-                GSTIN: <span className="font-medium text-slate-800">{inv.customer.gstin || "N/A"}</span>
-              </p>
-              <p className="text-slate-700">
-                State: <span className="font-medium text-slate-800">{inv.customer.state}</span>
-              </p>
+              <div className="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center font-black text-xs">
+                BZ
+              </div>
+              <span
+                className="font-black text-xs tracking-widest rotate-180 uppercase"
+                style={{ writingMode: "vertical-rl" }}
+              >
+                {settings.title} &middot; BILZET
+              </span>
+              <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[9px] font-bold">
+                ✓
+              </div>
             </div>
+          )}
 
-            {/* Right Card: Document Info */}
+          {/* D. Corporate: Solid Top Accent Band */}
+          {settings.template === "corporate" && (
             <div
-              className="border rounded-2xl p-4 bg-white space-y-1.5 text-xs text-slate-700 shadow-2xs"
-              style={{ borderColor: activeTheme.border }}
-            >
-              <p>
-                <span className="font-bold text-slate-900">Document No:</span>{" "}
-                <span className="font-medium text-slate-800">{inv.invoiceNumber}</span>
-              </p>
-              <p>
-                <span className="font-bold text-slate-900">Date:</span>{" "}
-                <span className="font-medium text-slate-800">{inv.date}</span>
-              </p>
-              <p>
-                <span className="font-bold text-slate-900">Sale:</span>{" "}
-                <span className="font-medium text-slate-800">{inv.saleType}</span>
-              </p>
-              <p>
-                <span className="font-bold text-slate-900">Place of Supply:</span>{" "}
-                <span className="font-medium text-slate-800">{inv.placeOfSupply}</span>
-              </p>
-            </div>
-          </div>
+              className="absolute top-0 left-0 right-0 h-2 z-0"
+              style={{ backgroundColor: activeTheme.primary }}
+            />
+          )}
 
-          {/* ── 3. Line Items Table ──────────────────────────── */}
+          {/* E. Premium: Luxury Gold Accent Header */}
+          {settings.template === "premium" && (
+            <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-amber-400 via-amber-600 to-amber-500 z-0" />
+          )}
+
+          {/* F. Geometric: Angled Polygon Cut */}
+          {settings.template === "geometric" && (
+            <div className="absolute top-0 right-0 w-48 h-16 pointer-events-none z-0 overflow-hidden">
+              <svg viewBox="0 0 200 60" className="w-full h-full">
+                <polygon points="40,0 200,0 200,60 0,60" fill={activeTheme.light} opacity="0.8" />
+                <polygon points="120,0 200,0 200,60 80,60" fill={activeTheme.primary} opacity="0.9" />
+              </svg>
+            </div>
+          )}
+
+          {/* G. Hotel / Restaurant: Crest Accent */}
+          {settings.template === "hotel_restaurant" && (
+            <div className="absolute top-3 right-4 text-amber-900/15 pointer-events-none select-none text-3xl font-serif">
+              ⚜
+            </div>
+          )}
+
+          {/* ── Background Watermark (If toggled) ─────────────── */}
+          {settings.showWatermark && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-0">
+              <span
+                className="text-8xl sm:text-9xl font-black uppercase tracking-widest text-slate-300 transform -rotate-30"
+                style={{
+                  opacity:
+                    settings.template === "clean_minimal"
+                      ? 0.05
+                      : settings.template === "premium"
+                      ? 0.07
+                      : 0.12,
+                }}
+              >
+                {settings.template === "hotel_restaurant"
+                  ? "GUEST FOLIO"
+                  : settings.template === "retail"
+                  ? "BILZET POS"
+                  : "BILZET"}
+              </span>
+            </div>
+          )}
+
+          {/* ── 2. Header Section ────────────────────────────── */}
+          {/* Variant A: Corporate Header Banner */}
+          {settings.template === "corporate" ? (
+            <div
+              className="relative z-10 p-5 rounded-xl text-white flex items-center justify-between shadow-sm"
+              style={{ backgroundColor: activeTheme.dark }}
+            >
+              <div>
+                <h1 className="text-xl sm:text-2xl font-black uppercase tracking-wider">
+                  {settings.title}
+                </h1>
+                <p className="text-xs font-semibold text-slate-200 mt-0.5">
+                  {settings.companyName}
+                </p>
+                <p className="text-[11px] text-slate-300">
+                  {settings.phone} &middot; GSTIN: {settings.gstin}
+                </p>
+              </div>
+              <div className="text-right">
+                <span className="text-2xl font-black tracking-widest block">
+                  BILZET
+                </span>
+                {settings.showStatusBadge && (
+                  <span className="inline-block mt-1 px-3 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider bg-white/20 text-white">
+                    {inv.paymentStatus}
+                  </span>
+                )}
+              </div>
+            </div>
+          ) : settings.template === "classic_border" ? (
+            /* Variant B: Classic Boxed Header */
+            <div className="relative z-10 space-y-2">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-900">
+                <div>
+                  <h2 className="text-lg font-bold font-serif">{settings.companyName}</h2>
+                  <p className="text-[11px] text-slate-600">{settings.address} &middot; {settings.phone}</p>
+                </div>
+                {settings.showLogo && settings.logoUrl && (
+                  <img src={settings.logoUrl} alt="Logo" className="max-h-10 object-contain" />
+                )}
+              </div>
+              <div className="border-y-2 border-slate-900 py-1.5 text-center my-1">
+                <h1 className="text-xl sm:text-2xl font-black uppercase tracking-widest font-serif">
+                  {settings.title}
+                </h1>
+                <p className="text-[10px] text-slate-600 font-mono">
+                  GSTIN: {settings.gstin} &middot; State: {settings.state}
+                </p>
+              </div>
+            </div>
+          ) : settings.template === "retail" ? (
+            /* Variant C: Retail Barcode Header */
+            <div className="relative z-10 flex items-center justify-between border-b pb-2.5">
+              <div>
+                <h1 className="text-xl font-black uppercase tracking-tight">{settings.title}</h1>
+                <p className="text-xs font-bold text-slate-800">{settings.companyName}</p>
+                <p className="text-[11px] text-slate-500 font-mono">{settings.phone}</p>
+              </div>
+              <div className="text-right">
+                <div className="font-mono tracking-widest text-[10px] bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                  ||| |||| | ||| || ||| {inv.invoiceNumber}
+                </div>
+                <span className="text-[10px] font-bold text-emerald-600 block mt-0.5">
+                  ● RETAIL POS RECEIPT
+                </span>
+              </div>
+            </div>
+          ) : (
+            /* Variant D: Standard / Modern / Minimal / Premium / Elegant / Geometric */
+            <div className="relative z-10 flex items-start justify-between">
+              {/* Left: Company Logo */}
+              <div className="w-1/3 pt-1">
+                {settings.showLogo && settings.logoUrl ? (
+                  <img
+                    src={settings.logoUrl}
+                    alt="Company Logo"
+                    className="max-h-12 max-w-[150px] object-contain"
+                  />
+                ) : settings.showLogo ? (
+                  <div className="flex items-center gap-2">
+                    <div
+                      className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-xs shadow-xs"
+                      style={{ backgroundColor: activeTheme.primary }}
+                    >
+                      BZ
+                    </div>
+                    <span className="text-xs font-semibold text-slate-500">Company Logo</span>
+                  </div>
+                ) : null}
+              </div>
+
+              {/* Center: TAX INVOICE & Company Name */}
+              <div className="w-1/3 text-center">
+                <h1
+                  className={`text-2xl font-black tracking-tight uppercase ${
+                    settings.template === "premium" ? "font-serif text-amber-950" : "text-slate-900"
+                  }`}
+                >
+                  {settings.title}
+                </h1>
+                <p className="text-sm font-bold text-slate-800 mt-0.5 tracking-normal">
+                  {settings.companyName}
+                </p>
+                {settings.template === "clean_minimal" && (
+                  <p className="text-[10px] text-slate-400 font-mono mt-0.5">
+                    GSTIN: {settings.gstin}
+                  </p>
+                )}
+              </div>
+
+              {/* Right: BILZET Brand & Status Badge */}
+              <div className="w-1/3 flex flex-col items-end pr-2 pt-0.5">
+                <span
+                  className="text-2xl font-black tracking-wider uppercase"
+                  style={{ color: activeTheme.primary }}
+                >
+                  BILZET
+                </span>
+                {settings.showStatusBadge && (
+                  <span
+                    className="mt-1.5 px-3.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase border"
+                    style={
+                      inv.paymentStatus === "PAID"
+                        ? {
+                            backgroundColor: activeTheme.light,
+                            color: activeTheme.dark,
+                            borderColor: activeTheme.border,
+                          }
+                        : {
+                            backgroundColor: "#fef3c7",
+                            color: "#92400e",
+                            borderColor: "#fde68a",
+                          }
+                    }
+                  >
+                    {inv.paymentStatus}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── 3. Information Cards / Metadata Strip ─────────── */}
+          {settings.template === "compact" ? (
+            /* Compact Single-Strip Metadata */
+            <div className="relative z-10 p-2.5 rounded-lg bg-slate-50 border border-slate-200 grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+              <div>
+                <span className="font-bold text-slate-700">Customer:</span>{" "}
+                <span className="text-slate-900 font-medium">{inv.customer.name}</span>
+              </div>
+              <div>
+                <span className="font-bold text-slate-700">Phone:</span>{" "}
+                <span className="font-mono text-slate-900">{inv.customer.phone}</span>
+              </div>
+              <div>
+                <span className="font-bold text-slate-700">Doc No:</span>{" "}
+                <span className="font-mono font-bold text-slate-900">{inv.invoiceNumber}</span>
+              </div>
+              <div>
+                <span className="font-bold text-slate-700">Date:</span>{" "}
+                <span className="font-mono text-slate-900">{inv.date}</span>
+              </div>
+            </div>
+          ) : settings.template === "corporate" ? (
+            /* Corporate 3-Column Metadata Strip */
+            <div className="relative z-10 grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 text-xs">
+              <div>
+                <p className="font-bold uppercase tracking-wider text-[10px] text-slate-500 mb-1">Billed To</p>
+                <p className="font-bold text-slate-900">{inv.customer.name}</p>
+                <p className="text-slate-600">{inv.customer.phone}</p>
+                <p className="text-slate-600">{inv.customer.address}</p>
+              </div>
+              <div>
+                <p className="font-bold uppercase tracking-wider text-[10px] text-slate-500 mb-1">Invoice Details</p>
+                <p><span className="font-semibold">Doc No:</span> {inv.invoiceNumber}</p>
+                <p><span className="font-semibold">Date:</span> {inv.date}</p>
+                <p><span className="font-semibold">Sale:</span> {inv.saleType}</p>
+              </div>
+              <div>
+                <p className="font-bold uppercase tracking-wider text-[10px] text-slate-500 mb-1">Tax Compliance</p>
+                <p><span className="font-semibold">Cust GSTIN:</span> {inv.customer.gstin || "N/A"}</p>
+                <p><span className="font-semibold">Place of Supply:</span> {inv.placeOfSupply}</p>
+                <p><span className="font-semibold">State Code:</span> 33</p>
+              </div>
+            </div>
+          ) : settings.template === "hotel_restaurant" ? (
+            /* Hospitality Folio Metadata */
+            <div className="relative z-10 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs p-3 rounded-xl bg-amber-50/70 border border-amber-200 text-amber-950 font-serif">
+              <div><span className="font-bold">Guest:</span> {inv.customer.name}</div>
+              <div><span className="font-bold">Table No:</span> 12</div>
+              <div><span className="font-bold">Server:</span> Karthik</div>
+              <div><span className="font-bold">Folio / Bill:</span> {inv.invoiceNumber}</div>
+            </div>
+          ) : (
+            /* Standard 2 Rounded Cards (Bill To & Document Info) */
+            <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+              {/* Left Card: Bill To */}
+              <div
+                className={`p-4 text-xs shadow-2xs space-y-1 ${
+                  settings.template === "clean_minimal"
+                    ? "border-l-2 pl-3 rounded-none bg-transparent"
+                    : settings.template === "classic_border"
+                    ? "border-2 rounded-none bg-white font-serif"
+                    : settings.template === "premium"
+                    ? "border rounded-xl bg-stone-50 font-serif border-amber-300"
+                    : "border rounded-2xl bg-white"
+                }`}
+                style={{
+                  borderColor:
+                    settings.template === "clean_minimal"
+                      ? activeTheme.primary
+                      : settings.template === "classic_border"
+                      ? "#334155"
+                      : activeTheme.border,
+                }}
+              >
+                <p className="font-bold text-slate-900 text-sm mb-1.5">Bill To</p>
+                <p className="font-semibold text-slate-800">{inv.customer.name}</p>
+                <p className="text-slate-600">{inv.customer.phone}</p>
+                <p className="text-slate-600">{inv.customer.address}</p>
+                <p className="text-slate-700">
+                  GSTIN: <span className="font-medium text-slate-800">{inv.customer.gstin || "N/A"}</span>
+                </p>
+                <p className="text-slate-700">
+                  State: <span className="font-medium text-slate-800">{inv.customer.state}</span>
+                </p>
+              </div>
+
+              {/* Right Card: Document Info */}
+              <div
+                className={`p-4 text-xs shadow-2xs space-y-1.5 ${
+                  settings.template === "clean_minimal"
+                    ? "border-l-2 pl-3 rounded-none bg-transparent"
+                    : settings.template === "classic_border"
+                    ? "border-2 rounded-none bg-white font-serif"
+                    : settings.template === "premium"
+                    ? "border rounded-xl bg-stone-50 font-serif border-amber-300"
+                    : "border rounded-2xl bg-white"
+                }`}
+                style={{
+                  borderColor:
+                    settings.template === "clean_minimal"
+                      ? activeTheme.primary
+                      : settings.template === "classic_border"
+                      ? "#334155"
+                      : activeTheme.border,
+                }}
+              >
+                <p>
+                  <span className="font-bold text-slate-900">Document No:</span>{" "}
+                  <span className="font-medium text-slate-800">{inv.invoiceNumber}</span>
+                </p>
+                <p>
+                  <span className="font-bold text-slate-900">Date:</span>{" "}
+                  <span className="font-medium text-slate-800">{inv.date}</span>
+                </p>
+                <p>
+                  <span className="font-bold text-slate-900">Sale:</span>{" "}
+                  <span className="font-medium text-slate-800">{inv.saleType}</span>
+                </p>
+                <p>
+                  <span className="font-bold text-slate-900">Place of Supply:</span>{" "}
+                  <span className="font-medium text-slate-800">{inv.placeOfSupply}</span>
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* ── 4. Line Items Table ──────────────────────────── */}
           <div
-            className="relative z-10 border overflow-x-auto"
+            className={`relative z-10 border overflow-x-auto ${
+              settings.template === "clean_minimal" ? "border-x-0 rounded-none" : "rounded-xl"
+            }`}
             style={{ borderColor: activeTheme.tableBorder }}
           >
             <table className="w-full text-xs text-left border-collapse">
               <thead>
                 <tr
                   className="font-bold text-[11px]"
-                  style={{ backgroundColor: activeTheme.light, color: activeTheme.dark }}
+                  style={
+                    settings.template === "classic_border" || settings.template === "corporate"
+                      ? { backgroundColor: activeTheme.dark, color: "#ffffff" }
+                      : settings.template === "premium"
+                      ? { backgroundColor: "#fef3c7", color: "#78350f" }
+                      : { backgroundColor: activeTheme.light, color: activeTheme.dark }
+                  }
                 >
-                  <th
-                    className="py-2.5 px-3 text-center border-r w-[6%]"
-                    style={{ borderColor: activeTheme.tableBorder }}
-                  >
-                    #
-                  </th>
-                  <th
-                    className="py-2.5 px-3 text-left border-r w-[28%]"
-                    style={{ borderColor: activeTheme.tableBorder }}
-                  >
-                    Item
-                  </th>
-                  <th
-                    className="py-2.5 px-2 text-center border-r w-[14%]"
-                    style={{ borderColor: activeTheme.tableBorder }}
-                  >
-                    HSN/SAC
-                  </th>
-                  <th
-                    className="py-2.5 px-2 text-center border-r w-[10%]"
-                    style={{ borderColor: activeTheme.tableBorder }}
-                  >
-                    Qty
-                  </th>
-                  <th
-                    className="py-2.5 px-2 text-center border-r w-[12%]"
-                    style={{ borderColor: activeTheme.tableBorder }}
-                  >
-                    Rate
-                  </th>
-                  <th
-                    className="py-2.5 px-2 text-center border-r w-[8%]"
-                    style={{ borderColor: activeTheme.tableBorder }}
-                  >
-                    GST
-                  </th>
-                  <th
-                    className="py-2.5 px-3 text-right border-r w-[11%]"
-                    style={{ borderColor: activeTheme.tableBorder }}
-                  >
-                    Taxable
-                  </th>
+                  <th className="py-2.5 px-3 text-center border-r w-[6%]" style={{ borderColor: activeTheme.tableBorder }}>#</th>
+                  <th className="py-2.5 px-3 text-left border-r w-[28%]" style={{ borderColor: activeTheme.tableBorder }}>Item</th>
+                  <th className="py-2.5 px-2 text-center border-r w-[14%]" style={{ borderColor: activeTheme.tableBorder }}>HSN/SAC</th>
+                  <th className="py-2.5 px-2 text-center border-r w-[10%]" style={{ borderColor: activeTheme.tableBorder }}>Qty</th>
+                  <th className="py-2.5 px-2 text-center border-r w-[12%]" style={{ borderColor: activeTheme.tableBorder }}>Rate</th>
+                  <th className="py-2.5 px-2 text-center border-r w-[8%]" style={{ borderColor: activeTheme.tableBorder }}>GST</th>
+                  <th className="py-2.5 px-3 text-right border-r w-[11%]" style={{ borderColor: activeTheme.tableBorder }}>Taxable</th>
                   <th className="py-2.5 px-3 text-right w-[11%]">Total</th>
                 </tr>
               </thead>
-              <tbody
-                className="divide-y bg-white text-slate-800"
-                style={{ borderColor: activeTheme.tableBorder }}
-              >
+              <tbody className="divide-y bg-white text-slate-800" style={{ borderColor: activeTheme.tableBorder }}>
                 {inv.items.map((item, idx) => (
                   <tr key={idx} className="hover:bg-slate-50/50">
-                    <td
-                      className="py-2.5 px-3 text-center border-r text-slate-600 font-medium"
-                      style={{ borderColor: activeTheme.tableBorder }}
-                    >
+                    <td className="py-2.5 px-3 text-center border-r text-slate-600 font-medium" style={{ borderColor: activeTheme.tableBorder }}>
                       {idx + 1}
                     </td>
-                    <td
-                      className="py-2.5 px-3 text-left border-r font-medium text-slate-900"
-                      style={{ borderColor: activeTheme.tableBorder }}
-                    >
+                    <td className="py-2.5 px-3 text-left border-r font-medium text-slate-900" style={{ borderColor: activeTheme.tableBorder }}>
                       {item.name}
                     </td>
-                    <td
-                      className="py-2.5 px-2 text-center border-r font-mono text-slate-700"
-                      style={{ borderColor: activeTheme.tableBorder }}
-                    >
+                    <td className="py-2.5 px-2 text-center border-r font-mono text-slate-700" style={{ borderColor: activeTheme.tableBorder }}>
                       {item.hsn}
                     </td>
-                    <td
-                      className="py-2.5 px-2 text-center border-r font-medium text-slate-800"
-                      style={{ borderColor: activeTheme.tableBorder }}
-                    >
+                    <td className="py-2.5 px-2 text-center border-r font-medium text-slate-800" style={{ borderColor: activeTheme.tableBorder }}>
                       {item.qty} {item.unit || "pcs"}
                     </td>
-                    <td
-                      className="py-2.5 px-2 text-center border-r font-mono text-slate-700"
-                      style={{ borderColor: activeTheme.tableBorder }}
-                    >
+                    <td className="py-2.5 px-2 text-center border-r font-mono text-slate-700" style={{ borderColor: activeTheme.tableBorder }}>
                       ₹{Number(item.rate).toFixed(2)}
                     </td>
-                    <td
-                      className="py-2.5 px-2 text-center border-r font-medium text-slate-700"
-                      style={{ borderColor: activeTheme.tableBorder }}
-                    >
+                    <td className="py-2.5 px-2 text-center border-r font-medium text-slate-700" style={{ borderColor: activeTheme.tableBorder }}>
                       {item.gst}%
                     </td>
-                    <td
-                      className="py-2.5 px-3 text-right border-r font-mono text-slate-900 font-medium"
-                      style={{ borderColor: activeTheme.tableBorder }}
-                    >
+                    <td className="py-2.5 px-3 text-right border-r font-mono text-slate-900 font-medium" style={{ borderColor: activeTheme.tableBorder }}>
                       ₹{Number(item.taxable).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
                     <td className="py-2.5 px-3 text-right font-mono font-semibold text-slate-900">
@@ -586,7 +826,42 @@ export default function TaxInvoice({
             </table>
           </div>
 
-          {/* ── 4. Calculations & Totals (Right-Aligned) ─────── */}
+          {/* ── Optional: HSN / SAC Summary Grid ─────────────── */}
+          {settings.showHsnSummary && (
+            <div className="relative z-10 pt-1">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                HSN / SAC Tax Breakdown Summary
+              </p>
+              <table className="w-full text-[10px] text-center border border-collapse rounded-lg overflow-hidden" style={{ borderColor: activeTheme.tableBorder }}>
+                <thead style={{ backgroundColor: activeTheme.light, color: activeTheme.dark }}>
+                  <tr>
+                    <th className="py-1 px-2 border-r" style={{ borderColor: activeTheme.tableBorder }}>HSN/SAC</th>
+                    <th className="py-1 px-2 border-r" style={{ borderColor: activeTheme.tableBorder }}>Taxable Value</th>
+                    <th className="py-1 px-2 border-r" style={{ borderColor: activeTheme.tableBorder }}>CGST Rate</th>
+                    <th className="py-1 px-2 border-r" style={{ borderColor: activeTheme.tableBorder }}>CGST Amt</th>
+                    <th className="py-1 px-2 border-r" style={{ borderColor: activeTheme.tableBorder }}>SGST Rate</th>
+                    <th className="py-1 px-2 border-r" style={{ borderColor: activeTheme.tableBorder }}>SGST Amt</th>
+                    <th className="py-1 px-2">Total Tax</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white">
+                  {inv.items.map((i, idx) => (
+                    <tr key={idx} className="border-t" style={{ borderColor: activeTheme.tableBorder }}>
+                      <td className="py-1 px-2 border-r font-mono">{i.hsn}</td>
+                      <td className="py-1 px-2 border-r font-mono">₹{i.taxable.toFixed(2)}</td>
+                      <td className="py-1 px-2 border-r">{i.gst / 2}%</td>
+                      <td className="py-1 px-2 border-r font-mono">₹{((i.taxable * (i.gst / 2)) / 100).toFixed(2)}</td>
+                      <td className="py-1 px-2 border-r">{i.gst / 2}%</td>
+                      <td className="py-1 px-2 border-r font-mono">₹{((i.taxable * (i.gst / 2)) / 100).toFixed(2)}</td>
+                      <td className="py-1 px-2 font-mono font-bold">₹{(((i.taxable * i.gst) / 100)).toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* ── 5. Calculations & Totals (Right-Aligned) ─────── */}
           <div className="relative z-10 flex justify-end pt-1">
             <div className="w-full sm:w-80 space-y-1.5 text-xs">
               <div className="flex justify-between py-1 text-slate-700">
@@ -645,45 +920,48 @@ export default function TaxInvoice({
             </div>
           </div>
 
-          {/* ── Optional: Bank Payment Details & UPI QR (If toggled) ── */}
+          {/* ── Optional: Bank Settlement Details & UPI QR ──── */}
           {settings.showBankDetails && (
             <div className="relative z-10 p-3 bg-blue-50/50 border border-blue-200 rounded-xl flex items-center justify-between text-[11px] text-slate-700">
               <div className="space-y-0.5">
                 <p className="font-bold uppercase tracking-wider text-slate-800 text-[10px]">
                   Bank Settlement Details:
                 </p>
-                <p><strong>Bank:</strong> {settings.bankName} · <strong>A/C:</strong> {settings.accountNumber}</p>
-                <p><strong>IFSC:</strong> {settings.ifsc} · <strong>UPI:</strong> {settings.upiId}</p>
+                <p><strong>Bank:</strong> {settings.bankName} &middot; <strong>A/C:</strong> {settings.accountNumber}</p>
+                <p><strong>IFSC:</strong> {settings.ifsc} &middot; <strong>UPI:</strong> {settings.upiId}</p>
               </div>
               {settings.showQrCode && (
                 <div className="text-center shrink-0">
-                  <img src={qrImgSrc} alt="UPI QR" className="w-16 h-16 rounded border border-slate-300" />
+                  <img src={qrImgSrc} alt="UPI QR" className="w-16 h-16 rounded border border-slate-300 bg-white p-0.5" />
                 </div>
               )}
             </div>
           )}
 
-          {/* ── 5. Footer / Terms & Signature ─────────────────── */}
-          <div className="relative z-10 pt-4 grid grid-cols-1 sm:grid-cols-2 gap-6 items-end">
-            {/* Left: Footer / Terms */}
-            <div className="space-y-1 text-xs text-slate-600">
-              <p className="font-bold text-slate-900 text-xs">Footer / Terms</p>
-              <p className="text-[11px] leading-relaxed">Thank you for your business.</p>
-              <p className="text-[11px] leading-relaxed">
-                Goods/services once accepted are subject to applicable business terms.
-              </p>
-            </div>
+          {/* ── 6. Footer / Terms & Signature ─────────────────── */}
+          {(settings.showTerms || settings.showSignatory) && (
+            <div className="relative z-10 pt-4 grid grid-cols-1 sm:grid-cols-2 gap-6 items-end border-t border-slate-100">
+              {/* Left: Footer / Terms */}
+              {settings.showTerms ? (
+                <div className="space-y-1 text-xs text-slate-600">
+                  <p className="font-bold text-slate-900 text-xs">Footer / Terms</p>
+                  <p className="text-[11px] leading-relaxed whitespace-pre-line">{settings.terms}</p>
+                </div>
+              ) : <div />}
 
-            {/* Right: Authorized Signature */}
-            <div className="text-right space-y-6">
-              <div className="h-6" />
-              <p className="text-xs text-slate-600 font-medium">Authorized Signature</p>
+              {/* Right: Authorized Signature */}
+              {settings.showSignatory && (
+                <div className="text-right space-y-6">
+                  <div className="h-6" />
+                  <p className="text-xs text-slate-600 font-medium">Authorized Signature</p>
+                </div>
+              )}
             </div>
-          </div>
+          )}
 
-          {/* ── 6. Bottom Brand Watermark Line ────────────────── */}
-          <div className="relative z-10 text-center pt-6 text-[11px] text-slate-400 font-medium">
-            Generated by BILZET
+          {/* ── 7. Bottom Brand Watermark Line ────────────────── */}
+          <div className="relative z-10 text-center pt-4 text-[11px] text-slate-400 font-medium">
+            Generated by BILZET &middot; {settings.template.toUpperCase()} TEMPLATE
           </div>
         </div>
       </div>

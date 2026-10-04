@@ -60,10 +60,13 @@ export default function Settings() {
       themeColor: parsed.themeColor || "#2563eb",
       invoiceTitle: parsed.invoiceTitle || "TAX INVOICE",
       showHsnSummary: parsed.showHsnSummary === true,
-      showBankDetails: parsed.showBankDetails === true,
-      showQrCode: parsed.showQrCode === true,
+      showBankDetails: parsed.showBankDetails !== false,
+      showQrCode: parsed.showQrCode !== false,
       showSignatory: parsed.showSignatory !== false,
       showTerms: parsed.showTerms !== false,
+      showWatermark: parsed.showWatermark !== false,
+      showLogo: parsed.showLogo !== false,
+      showStatusBadge: parsed.showStatusBadge !== false,
       showAmountInWords: parsed.showAmountInWords !== false,
 
       // Bank & UPI details
@@ -464,7 +467,323 @@ export default function Settings() {
             </div>
           </div>
 
-          {/* ── CARD 4: LIVE PREVIEW ─────────────────────── */}
+          {/* ── CARD 4: 11 INVOICE CONFIGURATION SETTINGS ─────── */}
+          <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/90 shadow-xs space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center font-black text-sm shadow-sm shadow-blue-500/20">
+                  11
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-sm font-bold text-slate-900">11 Key Invoice Settings</h2>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      Real-time Config
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Fine-tune document parameters, GST compliance tables, branding assets, and payment settlement
+                  </p>
+                </div>
+              </div>
+              <span className="text-[11px] font-semibold text-slate-500 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200/60 self-start sm:self-auto">
+                All 11 Settings Synced Below
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* SETTING 1: Paper Size */}
+              <div className="p-4 rounded-xl border border-slate-200/80 bg-slate-50/50 hover:bg-white hover:border-slate-300 transition space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-md bg-blue-100 text-blue-700 text-[10px] font-black flex items-center justify-center">1</span>
+                    <span className="text-xs font-bold text-slate-800">Paper Size &amp; Format</span>
+                  </div>
+                  <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
+                    {form.paperSize}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500">Standard document or point-of-sale thermal roll format</p>
+                <div className="grid grid-cols-2 gap-1.5 pt-1">
+                  {PAPER_SIZES.map((p) => {
+                    const active = form.paperSize === p.id;
+                    return (
+                      <button
+                        type="button"
+                        key={p.id}
+                        onClick={() => handleSelectPaperSize(p)}
+                        className={`text-[10px] font-bold py-1.5 px-2 rounded-lg border text-left transition truncate flex items-center justify-between ${
+                          active
+                            ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+                            : "bg-white text-slate-700 border-slate-200 hover:border-slate-300"
+                        }`}
+                      >
+                        <span className="truncate">{p.label}</span>
+                        {!p.isFree && !hasSubscription && <Lock size={9} className="shrink-0 ml-1 text-amber-300" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* SETTING 2: Invoice Template Layout */}
+              <div className="p-4 rounded-xl border border-slate-200/80 bg-slate-50/50 hover:bg-white hover:border-slate-300 transition space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-md bg-indigo-100 text-indigo-700 text-[10px] font-black flex items-center justify-center">2</span>
+                    <span className="text-xs font-bold text-slate-800">Template Layout</span>
+                  </div>
+                  <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200">
+                    11 Styles
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500">Select which aesthetic layout structures your bill</p>
+                <select
+                  value={form.template}
+                  onChange={(e) => {
+                    const tmpl = INVOICE_TEMPLATES.find((t) => t.id === e.target.value);
+                    if (tmpl) handleSelectTemplate(tmpl);
+                  }}
+                  className={`${inputCls} text-[11px] py-1.5 font-bold text-slate-800`}
+                >
+                  {INVOICE_TEMPLATES.map((tmpl) => (
+                    <option key={tmpl.id} value={tmpl.id}>
+                      {tmpl.name} {tmpl.isFree ? "(Free)" : "👑 (Pro)"}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* SETTING 3: Color Palette Theme */}
+              <div className="p-4 rounded-xl border border-slate-200/80 bg-slate-50/50 hover:bg-white hover:border-slate-300 transition space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-md bg-emerald-100 text-emerald-700 text-[10px] font-black flex items-center justify-center">3</span>
+                    <span className="text-xs font-bold text-slate-800">Color Palette</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div
+                      className="w-3 h-3 rounded-full border border-black/10"
+                      style={{
+                        backgroundColor:
+                          COLOR_THEMES.find((c) => c.id === form.colorTheme)?.primary || "#2563eb",
+                      }}
+                    />
+                    <span className="text-[10px] font-bold text-slate-600">
+                      {COLOR_THEMES.find((c) => c.id === form.colorTheme)?.label || "Blue"}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-[11px] text-slate-500">Header accents, borders, and line-item coloring</p>
+                <select
+                  value={form.colorTheme}
+                  onChange={(e) => {
+                    const color = COLOR_THEMES.find((c) => c.id === e.target.value);
+                    if (color) handleSelectColor(color);
+                  }}
+                  className={`${inputCls} text-[11px] py-1.5 font-bold text-slate-800`}
+                >
+                  {COLOR_THEMES.map((theme) => (
+                    <option key={theme.id} value={theme.id}>
+                      {theme.label} {theme.isFree ? "(Free)" : "👑 (Pro)"}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* SETTING 4: Document Title */}
+              <div className="p-4 rounded-xl border border-slate-200/80 bg-slate-50/50 hover:bg-white hover:border-slate-300 transition space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-md bg-amber-100 text-amber-800 text-[10px] font-black flex items-center justify-center">4</span>
+                    <span className="text-xs font-bold text-slate-800">Document Title</span>
+                  </div>
+                  <span className="text-[10px] font-mono font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded">
+                    Heading
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500">Statutory title printed at the top of the invoice</p>
+                <select
+                  value={form.invoiceTitle}
+                  onChange={(e) => handleChange("invoiceTitle", e.target.value)}
+                  className={`${inputCls} text-[11px] py-1.5 font-bold text-slate-800`}
+                >
+                  <option value="TAX INVOICE">TAX INVOICE (GST Standard)</option>
+                  <option value="RETAIL INVOICE">RETAIL INVOICE</option>
+                  <option value="BILL OF SUPPLY">BILL OF SUPPLY (Exempt / Comp.)</option>
+                  <option value="CASH MEMO">TAX INVOICE / CASH MEMO</option>
+                  <option value="PROFORMA INVOICE">PROFORMA INVOICE (Estimate)</option>
+                </select>
+              </div>
+
+              {/* SETTING 5: Invoice Series Prefix */}
+              <div className="p-4 rounded-xl border border-slate-200/80 bg-slate-50/50 hover:bg-white hover:border-slate-300 transition space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-md bg-purple-100 text-purple-700 text-[10px] font-black flex items-center justify-center">5</span>
+                    <span className="text-xs font-bold text-slate-800">Series Number Prefix</span>
+                  </div>
+                  <span className="text-[10px] font-mono font-bold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200">
+                    {form.invoicePrefix}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500">Unique alphanumeric series for your financial year</p>
+                <input
+                  type="text"
+                  value={form.invoicePrefix}
+                  onChange={(e) => handleChange("invoicePrefix", e.target.value)}
+                  placeholder="INV-2026-"
+                  className={`${inputCls} text-[11px] py-1.5 font-mono uppercase font-bold`}
+                />
+              </div>
+
+              {/* SETTING 6: Company Logo Visibility */}
+              <div className="p-4 rounded-xl border border-slate-200/80 bg-slate-50/50 hover:bg-white hover:border-slate-300 transition flex items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-md bg-teal-100 text-teal-700 text-[10px] font-black flex items-center justify-center">6</span>
+                    <span className="text-xs font-bold text-slate-800">Company Logo</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500">Show brand logo badge at document header</p>
+                  <span className={`text-[10px] font-bold ${form.showLogo ? "text-emerald-600" : "text-slate-400"}`}>
+                    {form.showLogo ? "● Logo Visible" : "○ Logo Hidden"}
+                  </span>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={!!form.showLogo}
+                    onChange={(e) => handleChange("showLogo", e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
+                </label>
+              </div>
+
+              {/* SETTING 7: Background Watermark */}
+              <div className="p-4 rounded-xl border border-slate-200/80 bg-slate-50/50 hover:bg-white hover:border-slate-300 transition flex items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-md bg-rose-100 text-rose-700 text-[10px] font-black flex items-center justify-center">7</span>
+                    <span className="text-xs font-bold text-slate-800">Background Watermark</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500">Subtle diagonal watermark security stamp</p>
+                  <span className={`text-[10px] font-bold ${form.showWatermark ? "text-emerald-600" : "text-slate-400"}`}>
+                    {form.showWatermark ? "● Watermark Active" : "○ Watermark Hidden"}
+                  </span>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={!!form.showWatermark}
+                    onChange={(e) => handleChange("showWatermark", e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
+                </label>
+              </div>
+
+              {/* SETTING 8: Payment Status Badge */}
+              <div className="p-4 rounded-xl border border-slate-200/80 bg-slate-50/50 hover:bg-white hover:border-slate-300 transition flex items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-md bg-sky-100 text-sky-700 text-[10px] font-black flex items-center justify-center">8</span>
+                    <span className="text-xs font-bold text-slate-800">Payment Status Badge</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500">PAID / UNPAID pill badge printed at top right</p>
+                  <span className={`text-[10px] font-bold ${form.showStatusBadge ? "text-emerald-600" : "text-slate-400"}`}>
+                    {form.showStatusBadge ? "● Status Badge On" : "○ Status Badge Off"}
+                  </span>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={!!form.showStatusBadge}
+                    onChange={(e) => handleChange("showStatusBadge", e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
+                </label>
+              </div>
+
+              {/* SETTING 9: HSN/SAC Summary Grid */}
+              <div className="p-4 rounded-xl border border-slate-200/80 bg-slate-50/50 hover:bg-white hover:border-slate-300 transition flex items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-md bg-cyan-100 text-cyan-700 text-[10px] font-black flex items-center justify-center">9</span>
+                    <span className="text-xs font-bold text-slate-800">HSN/SAC Summary Grid</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500">Itemized statutory CGST &amp; SGST tax breakdown table</p>
+                  <span className={`text-[10px] font-bold ${form.showHsnSummary ? "text-emerald-600" : "text-slate-400"}`}>
+                    {form.showHsnSummary ? "● HSN Table Enabled" : "○ HSN Table Disabled"}
+                  </span>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={!!form.showHsnSummary}
+                    onChange={(e) => handleChange("showHsnSummary", e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
+                </label>
+              </div>
+
+              {/* SETTING 10: Bank Settlement & UPI QR */}
+              <div className="p-4 rounded-xl border border-slate-200/80 bg-slate-50/50 hover:bg-white hover:border-slate-300 transition flex items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-black flex items-center justify-center">10</span>
+                    <span className="text-xs font-bold text-slate-800">Bank &amp; UPI QR Code</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500">Scan &amp; pay UPI QR code and bank account info</p>
+                  <span className={`text-[10px] font-bold ${form.showBankDetails || form.showQrCode ? "text-emerald-600" : "text-slate-400"}`}>
+                    {form.showBankDetails || form.showQrCode ? "● Payment QR & Bank Active" : "○ Payment Info Hidden"}
+                  </span>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={!!(form.showBankDetails || form.showQrCode)}
+                    onChange={(e) => {
+                      handleChange("showBankDetails", e.target.checked);
+                      handleChange("showQrCode", e.target.checked);
+                    }}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
+                </label>
+              </div>
+
+              {/* SETTING 11: Terms & Authorized Signatory */}
+              <div className="p-4 rounded-xl border border-slate-200/80 bg-slate-50/50 hover:bg-white hover:border-slate-300 transition flex items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-md bg-amber-100 text-amber-900 text-[10px] font-black flex items-center justify-center">11</span>
+                    <span className="text-xs font-bold text-slate-800">Terms &amp; Signature Box</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500">Footer return policies and official signature block</p>
+                  <span className={`text-[10px] font-bold ${form.showTerms && form.showSignatory ? "text-emerald-600" : "text-slate-400"}`}>
+                    {form.showTerms && form.showSignatory ? "● Terms & Signatory Active" : "○ Footer Elements Off"}
+                  </span>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={!!(form.showTerms && form.showSignatory)}
+                    onChange={(e) => {
+                      handleChange("showTerms", e.target.checked);
+                      handleChange("showSignatory", e.target.checked);
+                    }}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
+                </label>
+              </div>
+            </div>
+          </div>
+
+          {/* ── CARD 5: LIVE PREVIEW ─────────────────────── */}
           <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/90 shadow-xs space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -738,6 +1057,21 @@ export default function Settings() {
             <h2 className="text-sm font-bold text-slate-900">Visible Elements &amp; Compliance</h2>
             <div className="divide-y divide-slate-100">
               {[
+                {
+                  key: "showLogo",
+                  title: "Company Trade Logo Badge",
+                  desc: "Display company logo or icon badge in the invoice header",
+                },
+                {
+                  key: "showWatermark",
+                  title: "Diagonal Security Background Watermark",
+                  desc: "Prints subtle diagonal watermark stamp across sheet body",
+                },
+                {
+                  key: "showStatusBadge",
+                  title: "PAID / UNPAID Status Pill Badge",
+                  desc: "Color-coded payment status badge in header",
+                },
                 {
                   key: "showHsnSummary",
                   title: "HSN / SAC Tax Summary Grid",
