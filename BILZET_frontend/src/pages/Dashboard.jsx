@@ -45,7 +45,7 @@ import {
 import { mockDashboardData } from "../api/mockData";
 import { useAuth } from "../store/auth";
 import Modal from "../components/common/Modal";
-import TaxInvoice from "../components/invoice/TaxInvoice";
+import TaxInvoice, { COLOR_THEMES } from "../components/invoice/TaxInvoice";
 
 export default function Dashboard() {
   const nav = useNavigate();
@@ -53,7 +53,24 @@ export default function Dashboard() {
 
   // Primary API Data State
   const [data, setData] = useState(mockDashboardData);
-  const [shopSettings, setShopSettings] = useState(null);
+  const [shopSettings, setShopSettings] = useState(() => {
+    try {
+      const savedLocal = localStorage.getItem("bilzet_invoice_settings");
+      if (savedLocal) return JSON.parse(savedLocal);
+    } catch (e) {}
+    return {
+      shopName: "BILZET Retail Mart",
+      ownerName: "karthikeyan",
+      phone: "+91 98765 43210",
+      email: "billing@bilzet.app",
+      address: "123 Commercial Plaza, Main Market",
+      gstin: "33ABCDE1234F1Z5",
+      state: "Tamil Nadu",
+      invoiceTitle: "TAX INVOICE",
+      colorTheme: "trust_blue",
+      template: "modern",
+    };
+  });
   const [availableProducts, setAvailableProducts] = useState([]);
   const [availableCustomers, setAvailableCustomers] = useState([]);
 
@@ -73,16 +90,24 @@ export default function Dashboard() {
   const [inventoryTab, setInventoryTab] = useState("low"); // 'all' | 'low' | 'out'
 
   // ══════════════════════════════════════════════════
-  // EMBEDDED FAST POS BILLING STATE
+  // EMBEDDED FAST POS BILLING STATE (MATCHING INVOICE SETTINGS)
   // ══════════════════════════════════════════════════
-  const [posCustomer, setPosCustomer] = useState("");
-  const [posCustomerPhone, setPosCustomerPhone] = useState("");
+  const [posCustomer, setPosCustomer] = useState("Ramesh Traders");
+  const [posCustomerPhone, setPosCustomerPhone] = useState("9876543210");
+  const [posCustomerAddress, setPosCustomerAddress] = useState("123 Commercial Plaza, Bengaluru");
+  const [posCustomerGstin, setPosCustomerGstin] = useState("33ABCDE1234F1Z5");
+  const [posCustomerState, setPosCustomerState] = useState("Tamil Nadu");
+  const [posSaleType, setPosSaleType] = useState("B2B");
+  const [posPlaceOfSupply, setPosPlaceOfSupply] = useState("Tamil Nadu");
+  const [posPaymentStatus, setPosPaymentStatus] = useState("UNPAID");
+  const [posReceived, setPosReceived] = useState(0);
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
   const [posDate, setPosDate] = useState(() => {
     const now = new Date();
     const d = String(now.getDate()).padStart(2, "0");
     const m = String(now.getMonth() + 1).padStart(2, "0");
     const y = now.getFullYear();
-    return `${d}-${m}-${y}`;
+    return `${y}-${m}-${d}`;
   });
   const [posInvoiceNo, setPosInvoiceNo] = useState(
     () => `INV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`
@@ -97,6 +122,7 @@ export default function Dashboard() {
       id: "p1",
       name: "Parle-G Biscuits",
       code: "PRD001",
+      hsn: "1905",
       qty: 5,
       rate: 15.0,
       discount: 0.0,
@@ -106,6 +132,7 @@ export default function Dashboard() {
       id: "p2",
       name: "Aashirvaad Atta",
       code: "PRD002",
+      hsn: "1101",
       qty: 2,
       rate: 320.0,
       discount: 0.0,
@@ -115,6 +142,7 @@ export default function Dashboard() {
       id: "p3",
       name: "Sunflower Oil",
       code: "PRD003",
+      hsn: "1512",
       qty: 1,
       rate: 180.0,
       discount: 0.0,
@@ -189,7 +217,13 @@ export default function Dashboard() {
         setAvailableCustomers(Array.isArray(cList) ? cList : []);
       }
       if (settRes.status === "fulfilled" && settRes.value) {
-        setShopSettings(settRes.value);
+        try {
+          const localSaved = localStorage.getItem("bilzet_invoice_settings");
+          const parsedLocal = localSaved ? JSON.parse(localSaved) : {};
+          setShopSettings({ ...settRes.value, ...parsedLocal });
+        } catch (e) {
+          setShopSettings(settRes.value);
+        }
       }
     } catch (e) {
       console.warn("Dashboard sync completed with fallbacks:", e);
@@ -218,30 +252,89 @@ export default function Dashboard() {
     });
   }, []);
 
-  // POS Totals
-  const posSubtotal = useMemo(() => {
-    return posItems.reduce((acc, item) => {
-      const gross = Number(item.rate || 0) * Number(item.qty || 1);
-      const disc = Number(item.discount || 0);
-      return acc + Math.max(0, gross - disc);
-    }, 0);
+  // Theme & Shop Settings resolution for Invoice Setting Invoice
+  const activeTheme = useMemo(() => {
+    return (
+      COLOR_THEMES.find(
+        (t) =>
+          t.id === shopSettings?.colorTheme ||
+          t.primary === shopSettings?.themeColor
+      ) || COLOR_THEMES[0]
+    );
+  }, [shopSettings]);
+
+  const activeShopSettings = useMemo(
+    () => ({
+      invoiceTitle: shopSettings?.invoiceTitle || "TAX INVOICE",
+      ownerName: shopSettings?.ownerName || "karthikeyan",
+      shopName: shopSettings?.shopName || "BILZET Retail Mart",
+      phone: shopSettings?.phone || "+91 98765 43210",
+      email: shopSettings?.email || "billing@bilzet.app",
+      address: shopSettings?.address || "123 Commercial Plaza, Main Market",
+      gstin: shopSettings?.gstin || "33ABCDE1234F1Z5",
+      state: shopSettings?.state || "Tamil Nadu",
+      logoUrl: shopSettings?.logoUrl || null,
+    }),
+    [shopSettings]
+  );
+
+  const matchingCustomers = useMemo(() => {
+    if (!posCustomer.trim()) return availableCustomers.slice(0, 5);
+    const q = posCustomer.toLowerCase();
+    return availableCustomers
+      .filter(
+        (c) =>
+          c.name?.toLowerCase().includes(q) ||
+          c.phone?.includes(q) ||
+          c.gstin?.toLowerCase().includes(q)
+      )
+      .slice(0, 5);
+  }, [posCustomer, availableCustomers]);
+
+  // Line items calculations matching invoice template
+  const itemsWithCalculations = useMemo(() => {
+    return posItems.map((item) => {
+      const qty = Number(item.qty || 1);
+      const rate = Number(item.rate || 0);
+      const discount = Number(item.discount || 0);
+      const gst = Number(item.taxRate !== undefined ? item.taxRate : (item.gst !== undefined ? item.gst : 5));
+      const taxable = Math.max(0, rate * qty - discount);
+      const taxAmt = (taxable * gst) / 100;
+      const total = taxable + taxAmt;
+      return {
+        ...item,
+        qty,
+        rate,
+        discount,
+        gst,
+        taxable,
+        taxAmt,
+        total,
+        hsn: item.hsn || item.code || "1904",
+      };
+    });
   }, [posItems]);
 
-  const posDiscount = useMemo(() => {
-    return posItems.reduce((acc, item) => acc + Number(item.discount || 0), 0);
-  }, [posItems]);
+  const posSubtotal = useMemo(() => {
+    return itemsWithCalculations.reduce((acc, i) => acc + i.taxable, 0);
+  }, [itemsWithCalculations]);
 
   const posTaxAmount = useMemo(() => {
-    return posItems.reduce((acc, item) => {
-      const net = Math.max(
-        0,
-        Number(item.rate || 0) * Number(item.qty || 1) - Number(item.discount || 0)
-      );
-      return acc + net * (Number(item.taxRate || 0) / 100);
-    }, 0);
-  }, [posItems]);
+    return itemsWithCalculations.reduce((acc, i) => acc + i.taxAmt, 0);
+  }, [itemsWithCalculations]);
 
-  const posTotalAmount = posSubtotal + posTaxAmount;
+  const posCgst = useMemo(() => posTaxAmount / 2, [posTaxAmount]);
+  const posSgst = useMemo(() => posTaxAmount / 2, [posTaxAmount]);
+
+  const posTotalAmount = useMemo(() => {
+    return posSubtotal + posTaxAmount;
+  }, [posSubtotal, posTaxAmount]);
+
+  const posBalanceDue = useMemo(() => {
+    const received =
+      posPaymentStatus === "PAID" ? posTotalAmount : Number(posReceived || 0);
+    return Math.max(0, posTotalAmount - received);
+  }, [posTotalAmount, posReceived, posPaymentStatus]);
 
   // POS Handlers
   const handleQtyChange = (idx, delta) => {
@@ -265,7 +358,13 @@ export default function Dashboard() {
   const handleClearPos = () => {
     setPosItems([]);
     setPosCustomer("");
+    setPosCustomerPhone("");
+    setPosCustomerAddress("");
+    setPosCustomerGstin("");
+    setPosCustomerState("Tamil Nadu");
     setPosNotes("");
+    setPosReceived(0);
+    setPosPaymentStatus("UNPAID");
     setPosInvoiceNo(
       `INV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`
     );
@@ -285,6 +384,7 @@ export default function Dashboard() {
           id: product._id || product.id || String(Date.now()),
           name: product.name,
           code: product.code || product.barcode || `PRD${prev.length + 1}`,
+          hsn: product.hsn || product.code || "1904",
           qty: 1,
           rate: Number(product.sellingPrice || product.price || 50),
           discount: 0,
@@ -304,26 +404,42 @@ export default function Dashboard() {
     setPosSaving(true);
     const invoicePayload = {
       invoiceNumber: posInvoiceNo,
-      date: new Date().toISOString(),
+      date: posDate,
+      saleType: posSaleType,
+      placeOfSupply: posPlaceOfSupply,
       customer: {
-        name: posCustomer || "Walk-in Customer",
+        name: posCustomer || "Sample Customer",
         phone: posCustomerPhone || "",
+        address: posCustomerAddress || "",
+        gstin: posCustomerGstin || "",
+        state: posCustomerState || posPlaceOfSupply,
       },
-      items: posItems.map((item) => ({
+      items: itemsWithCalculations.map((item) => ({
         name: item.name,
-        hsn: item.code || "1904",
+        hsn: item.hsn,
+        qty: item.qty,
         quantity: item.qty,
         rate: item.rate,
         discount: item.discount,
-        taxRate: item.taxRate,
-        gstRate: item.taxRate,
-        total: (item.qty * item.rate - item.discount) * (1 + item.taxRate / 100),
+        gst: item.gst,
+        taxPercent: item.gst,
+        taxRate: item.gst,
+        taxable: item.taxable,
+        total: item.total,
       })),
       subtotal: posSubtotal,
+      cgst: posCgst,
+      sgst: posSgst,
+      taxTotal: posTaxAmount,
       taxAmount: posTaxAmount,
       grandTotal: posTotalAmount,
-      paymentMode: "Cash",
-      paymentStatus: "Paid",
+      received:
+        posPaymentStatus === "PAID"
+          ? posTotalAmount
+          : Number(posReceived || 0),
+      balanceDue: posBalanceDue,
+      paymentStatus: posPaymentStatus,
+      paymentMethod: "Cash / UPI",
       notes: posNotes,
       status: "COMPLETED",
     };
@@ -527,7 +643,7 @@ export default function Dashboard() {
         {/* ────────────────────────────────────────────────
             LEFT COLUMN (DASHBOARD OVERVIEW & ANALYTICS)
         ──────────────────────────────────────────────── */}
-        <div className="lg:col-span-7 xl:col-span-7 space-y-4">
+        <div className="lg:col-span-6 xl:col-span-6 space-y-4">
           {/* 1. Header Greeting & Date Badge */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-2xs">
             <div>
@@ -897,118 +1013,316 @@ export default function Dashboard() {
         </div>
 
         {/* ────────────────────────────────────────────────
-            RIGHT COLUMN: NEW BILL (POS) INTERACTIVE PANEL
+            RIGHT COLUMN: BILL INVOICE (MATCHING INVOICE SETTINGS)
         ──────────────────────────────────────────────── */}
-        <div className="lg:col-span-5 xl:col-span-5">
-          <div className="card p-4 sm:p-5 space-y-3.5 bg-white shadow-sm border border-slate-200/90 sticky top-20">
-            {/* Header: Title + Subtitle + Action Badges */}
-            <div className="flex items-center justify-between pb-2.5 border-b border-slate-100 gap-2">
-              <div>
-                <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight flex items-center gap-2">
-                  <span>New Bill (POS)</span>
-                </h2>
-                <p className="text-[11px] text-slate-500 font-normal">
-                  Create a new invoice quickly and easily
+        <div className="lg:col-span-6 xl:col-span-6 sticky top-20">
+          <div
+            className="relative bg-white text-slate-800 text-xs font-sans border-2 rounded-2xl overflow-hidden p-4 sm:p-6 space-y-4 shadow-md transition-all"
+            style={{ borderColor: activeTheme.border }}
+          >
+            {/* ── Top-Right Corner Artwork Arc ─────────────────── */}
+            <div className="absolute top-0 right-0 w-28 h-28 sm:w-36 sm:h-36 overflow-hidden pointer-events-none z-0">
+              <svg viewBox="0 0 120 120" className="w-full h-full">
+                <circle
+                  cx="120"
+                  cy="0"
+                  r="95"
+                  fill="none"
+                  stroke={activeTheme.primary}
+                  strokeWidth="18"
+                  opacity="0.95"
+                />
+                <circle cx="120" cy="0" r="60" fill={activeTheme.dark} />
+              </svg>
+            </div>
+
+            {/* ── Bottom-Left Corner Artwork Triangles ─────────── */}
+            <div className="absolute bottom-0 left-0 w-24 h-24 sm:w-28 sm:h-28 overflow-hidden pointer-events-none z-0">
+              <svg viewBox="0 0 100 100" className="w-full h-full">
+                <polygon
+                  points="0,100 0,60 40,100"
+                  fill={activeTheme.border}
+                  opacity="0.9"
+                />
+                <polygon
+                  points="0,100 0,80 20,100"
+                  fill={activeTheme.primary}
+                />
+              </svg>
+            </div>
+
+            {/* ── Background Watermark: BILZET ─────────────────── */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-0">
+              <span
+                className="text-6xl sm:text-8xl font-black uppercase tracking-widest text-slate-300 transform -rotate-30"
+                style={{ opacity: 0.1 }}
+              >
+                BILZET
+              </span>
+            </div>
+
+            {/* ── 1. Header Section ────────────────────────────── */}
+            <div className="relative z-10 flex items-start justify-between gap-2">
+              {/* Left: Company Logo */}
+              <div className="w-1/3 pt-1">
+                {activeShopSettings.logoUrl ? (
+                  <img
+                    src={activeShopSettings.logoUrl}
+                    alt="Company Logo"
+                    className="max-h-10 max-w-[120px] object-contain"
+                  />
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <div
+                      className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-black text-xs shadow-xs"
+                      style={{ backgroundColor: activeTheme.primary }}
+                    >
+                      BZ
+                    </div>
+                    <div>
+                      <span className="text-xs font-bold text-slate-600 block leading-tight">
+                        Company Logo
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-mono">
+                        {activeShopSettings.phone}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Center: TAX INVOICE & Company/Owner Name */}
+              <div className="w-1/3 text-center">
+                <h1 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight uppercase">
+                  {activeShopSettings.invoiceTitle}
+                </h1>
+                <p className="text-xs sm:text-sm font-bold text-slate-800 tracking-normal mt-0.5">
+                  {activeShopSettings.ownerName}
                 </p>
               </div>
 
-              <div className="flex items-center gap-1.5 shrink-0">
+              {/* Right: BILZET Brand & Status Badge */}
+              <div className="w-1/3 flex flex-col items-end pr-1 sm:pr-2 pt-0.5">
+                <span
+                  className="text-xl sm:text-2xl font-black tracking-wider uppercase"
+                  style={{ color: activeTheme.primary }}
+                >
+                  BILZET
+                </span>
                 <button
                   type="button"
-                  onClick={() => {
-                    alert("Current bill held successfully in local drafts.");
-                  }}
-                  className="px-2.5 py-1 rounded-lg border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 text-xs font-semibold shadow-2xs transition"
+                  onClick={() =>
+                    setPosPaymentStatus((prev) =>
+                      prev === "PAID" ? "UNPAID" : "PAID"
+                    )
+                  }
+                  className="mt-1 px-3 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase border transition cursor-pointer hover:opacity-90 shadow-2xs"
+                  style={
+                    posPaymentStatus === "PAID"
+                      ? {
+                          backgroundColor: activeTheme.light,
+                          color: activeTheme.dark,
+                          borderColor: activeTheme.border,
+                        }
+                      : {
+                          backgroundColor: "#fef3c7",
+                          color: "#92400e",
+                          borderColor: "#fde68a",
+                        }
+                  }
+                  title="Click to toggle status (UNPAID / PAID)"
                 >
-                  Hold
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    alert("Bill saved as draft.");
-                  }}
-                  className="px-2.5 py-1 rounded-lg border border-purple-200 text-purple-700 bg-purple-50/50 hover:bg-purple-50 text-xs font-semibold shadow-2xs transition"
-                >
-                  Draft
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSaveAndPrintBill}
-                  disabled={posSaving}
-                  className="px-3 py-1 rounded-lg bg-gradient-to-r from-blue-600 to-blue-500 text-white text-xs font-bold shadow-xs hover:from-blue-700 hover:to-blue-600 transition flex items-center gap-1"
-                >
-                  <Printer size={12} />
-                  <span>Save &amp; Print</span>
+                  {posPaymentStatus}
                 </button>
               </div>
             </div>
 
-            {/* Row 1: Customer Selection + Date + Invoice No */}
-            <div className="grid grid-cols-12 gap-2 text-xs">
-              <div className="col-span-6 space-y-1">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                  Customer
-                </label>
-                <div className="relative flex items-center">
-                  <input
-                    type="text"
-                    value={posCustomer}
-                    onChange={(e) => setPosCustomer(e.target.value)}
-                    placeholder="Search customer..."
-                    className="w-full pl-7 pr-12 py-1.5 rounded-lg border border-slate-200 bg-slate-50/50 text-xs text-slate-800 placeholder-slate-400 focus:outline-hidden focus:border-blue-500 focus:bg-white transition"
-                  />
-                  <Search
-                    size={12}
-                    className="absolute left-2.5 text-slate-400 pointer-events-none"
-                  />
+            {/* ── 2. Information Cards (Bill To & Document Info) ─ */}
+            <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 gap-3 pt-0.5">
+              {/* Left Card: Bill To */}
+              <div
+                className="border rounded-2xl p-3 sm:p-3.5 bg-white/95 backdrop-blur-xs space-y-1.5 text-xs text-slate-700 shadow-2xs relative"
+                style={{ borderColor: activeTheme.border }}
+              >
+                <div className="flex items-center justify-between pb-1 border-b border-slate-100">
+                  <span className="font-bold text-slate-900 text-xs sm:text-sm">
+                    Bill To
+                  </span>
                   <button
                     type="button"
                     onClick={() => setShowAddCustomerModal(true)}
-                    className="absolute right-1 text-[10px] font-bold text-blue-600 hover:text-blue-700 px-1.5 py-0.5 rounded bg-blue-50 hover:bg-blue-100 transition"
+                    className="text-[10px] font-bold px-2 py-0.5 rounded-full border transition hover:opacity-90"
+                    style={{
+                      color: activeTheme.primary,
+                      backgroundColor: activeTheme.light,
+                      borderColor: activeTheme.border,
+                    }}
                   >
                     + Add
                   </button>
                 </div>
-              </div>
 
-              <div className="col-span-3 space-y-1">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                  Date
-                </label>
-                <input
-                  type="text"
-                  value={posDate}
-                  onChange={(e) => setPosDate(e.target.value)}
-                  className="w-full px-2 py-1.5 rounded-lg border border-slate-200 bg-slate-50/50 text-xs text-slate-800 focus:outline-hidden focus:border-blue-500 focus:bg-white transition text-center font-mono"
-                />
-              </div>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={posCustomer}
+                    onChange={(e) => {
+                      setPosCustomer(e.target.value);
+                      setShowCustomerDropdown(true);
+                    }}
+                    onFocus={() => setShowCustomerDropdown(true)}
+                    onBlur={() => {
+                      setTimeout(() => setShowCustomerDropdown(false), 200);
+                    }}
+                    placeholder="Customer Name..."
+                    className="w-full px-2 py-1 rounded-lg border border-slate-200 bg-slate-50/70 text-xs font-semibold text-slate-900 focus:bg-white focus:outline-hidden transition"
+                  />
 
-              <div className="col-span-3 space-y-1">
-                <div className="flex items-center justify-between">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                    Invoice No.
-                  </label>
-                  <Settings size={10} className="text-slate-400 cursor-pointer" />
+                  {showCustomerDropdown && matchingCustomers.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 z-30 mt-1 max-h-36 overflow-y-auto bg-white rounded-xl shadow-lg border border-slate-200 py-1 divide-y divide-slate-100">
+                      {matchingCustomers.map((c) => (
+                        <button
+                          key={c._id || c.id || c.name}
+                          type="button"
+                          onMouseDown={() => {
+                            setPosCustomer(c.name);
+                            setPosCustomerPhone(c.phone || "");
+                            setPosCustomerAddress(c.address || "");
+                            setPosCustomerGstin(c.gstin || "");
+                            setPosCustomerState(c.state || "Tamil Nadu");
+                            setShowCustomerDropdown(false);
+                          }}
+                          className="w-full px-2.5 py-1.5 text-left hover:bg-slate-50 transition flex items-center justify-between text-xs"
+                        >
+                          <span className="font-medium text-slate-800">
+                            {c.name}
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-mono">
+                            {c.phone}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <input
-                  type="text"
-                  value={posInvoiceNo}
-                  onChange={(e) => setPosInvoiceNo(e.target.value)}
-                  className="w-full px-2 py-1.5 rounded-lg border border-slate-200 bg-slate-50/50 text-xs text-slate-800 font-mono font-semibold focus:outline-hidden focus:border-blue-500 focus:bg-white transition"
-                />
+
+                <div className="grid grid-cols-2 gap-1 text-[11px]">
+                  <input
+                    type="text"
+                    value={posCustomerPhone}
+                    onChange={(e) => setPosCustomerPhone(e.target.value)}
+                    placeholder="Phone"
+                    className="px-2 py-0.5 rounded border border-slate-200 bg-slate-50/50 text-[11px] text-slate-700 focus:bg-white focus:outline-hidden"
+                  />
+                  <input
+                    type="text"
+                    value={posCustomerGstin}
+                    onChange={(e) => setPosCustomerGstin(e.target.value)}
+                    placeholder="GSTIN"
+                    className="px-2 py-0.5 rounded border border-slate-200 bg-slate-50/50 text-[11px] text-slate-700 uppercase focus:bg-white focus:outline-hidden"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-1 text-[11px]">
+                  <input
+                    type="text"
+                    value={posCustomerAddress}
+                    onChange={(e) => setPosCustomerAddress(e.target.value)}
+                    placeholder="Address"
+                    className="px-2 py-0.5 rounded border border-slate-200 bg-slate-50/50 text-[11px] text-slate-700 focus:bg-white focus:outline-hidden"
+                  />
+                  <input
+                    type="text"
+                    value={posCustomerState}
+                    onChange={(e) => setPosCustomerState(e.target.value)}
+                    placeholder="State"
+                    className="px-2 py-0.5 rounded border border-slate-200 bg-slate-50/50 text-[11px] text-slate-700 focus:bg-white focus:outline-hidden"
+                  />
+                </div>
+              </div>
+
+              {/* Right Card: Document Info */}
+              <div
+                className="border rounded-2xl p-3 sm:p-3.5 bg-white/95 backdrop-blur-xs space-y-1.5 text-xs text-slate-700 shadow-2xs"
+                style={{ borderColor: activeTheme.border }}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-900">Document No:</span>
+                  <input
+                    type="text"
+                    value={posInvoiceNo}
+                    onChange={(e) => setPosInvoiceNo(e.target.value)}
+                    className="w-32 text-right font-mono font-bold text-slate-800 px-1.5 py-0.5 rounded border border-slate-200 bg-slate-50/70 text-xs focus:bg-white focus:outline-hidden"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-900">Date:</span>
+                  <input
+                    type="date"
+                    value={posDate}
+                    onChange={(e) => setPosDate(e.target.value)}
+                    className="w-32 text-right font-mono text-slate-800 px-1.5 py-0.5 rounded border border-slate-200 bg-slate-50/70 text-xs focus:bg-white focus:outline-hidden"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-900">Sale:</span>
+                  <select
+                    value={posSaleType}
+                    onChange={(e) => setPosSaleType(e.target.value)}
+                    className="w-24 text-right font-medium text-slate-800 px-1.5 py-0.5 rounded border border-slate-200 bg-slate-50/70 text-xs focus:bg-white focus:outline-hidden"
+                  >
+                    <option value="B2B">B2B</option>
+                    <option value="B2C">B2C</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-900">
+                    Place of Supply:
+                  </span>
+                  <input
+                    type="text"
+                    value={posPlaceOfSupply}
+                    onChange={(e) => setPosPlaceOfSupply(e.target.value)}
+                    className="w-32 text-right font-medium text-slate-800 px-1.5 py-0.5 rounded border border-slate-200 bg-slate-50/70 text-xs focus:bg-white focus:outline-hidden"
+                  />
+                </div>
               </div>
             </div>
 
-            {/* Row 2: Product Search & Barcode Scan Bar */}
-            <div className="flex items-center gap-2">
+            {/* ── 3. Product Search & Barcode Scan Bar ────────────── */}
+            <div className="relative z-10 flex items-center gap-2">
               <div className="relative flex-1 flex items-center">
                 <input
                   id="pos-search-input"
                   type="text"
                   value={posProductSearch}
                   onChange={(e) => setPosProductSearch(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && posProductSearch.trim()) {
+                      const query = posProductSearch.trim().toLowerCase();
+                      const found = availableProducts.find(
+                        (p) =>
+                          p.name?.toLowerCase().includes(query) ||
+                          p.code?.toLowerCase().includes(query) ||
+                          p.barcode?.includes(query)
+                      );
+                      if (found) {
+                        handleAddPosProductFromSearch(found);
+                      } else {
+                        handleAddPosProductFromSearch({
+                          name: posProductSearch.trim(),
+                          code: `PRD${posItems.length + 1}`,
+                          sellingPrice: 100,
+                          gstRate: 5,
+                        });
+                      }
+                    }
+                  }}
                   placeholder="Search product by name, code or barcode..."
-                  className="w-full pl-8 pr-8 py-1.5 rounded-lg border border-slate-200 bg-slate-50/50 text-xs text-slate-800 placeholder-slate-400 focus:outline-hidden focus:border-blue-500 focus:bg-white transition"
+                  className="w-full pl-8 pr-8 py-1.5 rounded-xl border border-slate-200 bg-white text-xs text-slate-800 placeholder-slate-400 focus:outline-hidden focus:border-blue-500 shadow-2xs transition"
                 />
                 <Search
                   size={13}
@@ -1023,7 +1337,12 @@ export default function Dashboard() {
               <button
                 type="button"
                 onClick={() => setShowAddProductModal(true)}
-                className="px-2.5 py-1.5 rounded-lg border border-purple-200 bg-purple-50/70 hover:bg-purple-100 text-purple-700 text-xs font-bold shrink-0 transition flex items-center gap-1"
+                className="px-2.5 py-1.5 rounded-xl border font-bold text-xs shrink-0 transition flex items-center gap-1 shadow-2xs hover:opacity-90"
+                style={{
+                  borderColor: activeTheme.border,
+                  color: activeTheme.dark,
+                  backgroundColor: activeTheme.light,
+                }}
               >
                 <Plus size={12} strokeWidth={2.5} />
                 <span>Product</span>
@@ -1042,9 +1361,7 @@ export default function Dashboard() {
                   if (found) {
                     handleAddPosProductFromSearch(found);
                   } else {
-                    alert(
-                      "Barcode scanner simulated: product added to bill."
-                    );
+                    alert("Barcode scan: Quick item added to bill.");
                     handleAddPosProductFromSearch({
                       name: "Quick Scan Item",
                       code: `BAR-${Math.floor(100 + Math.random() * 900)}`,
@@ -1053,118 +1370,205 @@ export default function Dashboard() {
                     });
                   }
                 }}
-                className="px-2.5 py-1.5 rounded-lg border border-blue-200 bg-blue-50/70 hover:bg-blue-100 text-blue-700 text-xs font-bold shrink-0 transition flex items-center gap-1"
+                className="px-2.5 py-1.5 rounded-xl text-white font-bold text-xs shrink-0 transition flex items-center gap-1 shadow-2xs hover:opacity-90"
+                style={{ backgroundColor: activeTheme.primary }}
               >
                 <Scan size={12} />
                 <span>Scan</span>
               </button>
             </div>
 
-            {/* Line Items Table */}
-            <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
-              <div className="max-h-48 overflow-y-auto">
-                <table className="w-full text-xs text-left">
-                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 text-[10px] font-bold uppercase tracking-wider sticky top-0 z-10">
+            {/* ── 4. Line Items Table (Matching Invoice Settings) ── */}
+            <div
+              className="relative z-10 border rounded-xl overflow-hidden shadow-2xs"
+              style={{ borderColor: activeTheme.tableBorder }}
+            >
+              <div className="max-h-56 overflow-y-auto">
+                <table className="w-full text-xs text-left border-collapse">
+                  <thead
+                    className="font-bold text-[11px] sticky top-0 z-10"
+                    style={{
+                      backgroundColor: activeTheme.light,
+                      color: activeTheme.dark,
+                    }}
+                  >
                     <tr>
-                      <th className="py-2 px-2 w-6 text-center">#</th>
-                      <th className="py-2 px-2">Product</th>
-                      <th className="py-2 px-2 text-center">Qty</th>
-                      <th className="py-2 px-2 text-right">Unit Price (₹)</th>
-                      <th className="py-2 px-1 text-right">Discount (₹)</th>
-                      <th className="py-2 px-1 text-center">Tax</th>
-                      <th className="py-2 px-2 text-right">Total (₹)</th>
-                      <th className="py-2 px-1 w-6 text-center"></th>
+                      <th
+                        className="py-2 px-2 text-center border-r w-[6%]"
+                        style={{ borderColor: activeTheme.tableBorder }}
+                      >
+                        #
+                      </th>
+                      <th
+                        className="py-2 px-2.5 text-left border-r w-[26%]"
+                        style={{ borderColor: activeTheme.tableBorder }}
+                      >
+                        Item
+                      </th>
+                      <th
+                        className="py-2 px-1.5 text-center border-r w-[12%]"
+                        style={{ borderColor: activeTheme.tableBorder }}
+                      >
+                        HSN/SAC
+                      </th>
+                      <th
+                        className="py-2 px-1 text-center border-r w-[12%]"
+                        style={{ borderColor: activeTheme.tableBorder }}
+                      >
+                        Qty
+                      </th>
+                      <th
+                        className="py-2 px-1 text-center border-r w-[11%]"
+                        style={{ borderColor: activeTheme.tableBorder }}
+                      >
+                        Rate
+                      </th>
+                      <th
+                        className="py-2 px-1 text-center border-r w-[8%]"
+                        style={{ borderColor: activeTheme.tableBorder }}
+                      >
+                        GST
+                      </th>
+                      <th
+                        className="py-2 px-2 text-right border-r w-[11%]"
+                        style={{ borderColor: activeTheme.tableBorder }}
+                      >
+                        Taxable
+                      </th>
+                      <th
+                        className="py-2 px-2 text-right border-r w-[10%]"
+                        style={{ borderColor: activeTheme.tableBorder }}
+                      >
+                        Total
+                      </th>
+                      <th className="py-2 px-1 text-center w-[4%]"></th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 bg-white">
-                    {posItems.length === 0 ? (
+                  <tbody
+                    className="divide-y bg-white text-slate-800"
+                    style={{ borderColor: activeTheme.tableBorder }}
+                  >
+                    {itemsWithCalculations.length === 0 ? (
                       <tr>
                         <td
-                          colSpan={8}
+                          colSpan={9}
                           className="py-8 text-center text-xs text-slate-400"
                         >
                           No products added yet. Click "+ Add Item" below.
                         </td>
                       </tr>
                     ) : (
-                      posItems.map((item, idx) => {
-                        const lineTotal =
-                          (item.qty * item.rate - item.discount) *
-                          (1 + item.taxRate / 100);
-                        return (
-                          <tr
-                            key={item.id || idx}
-                            className="hover:bg-slate-50/80 transition"
+                      itemsWithCalculations.map((item, idx) => (
+                        <tr
+                          key={item.id || idx}
+                          className="hover:bg-slate-50/70 transition"
+                        >
+                          <td
+                            className="py-2 px-2 text-center border-r text-slate-500 font-mono text-[11px]"
+                            style={{ borderColor: activeTheme.tableBorder }}
                           >
-                            <td className="py-2 px-2 text-center font-mono text-slate-400 text-[11px]">
-                              {idx + 1}
-                            </td>
-                            <td className="py-2 px-2">
-                              <p className="font-semibold text-slate-900 truncate max-w-[110px]">
-                                {item.name}
-                              </p>
-                              <p className="text-[10px] font-mono text-slate-400">
-                                {item.code}
-                              </p>
-                            </td>
-                            <td className="py-2 px-2 text-center">
-                              <div className="inline-flex items-center gap-1 border border-slate-200 rounded-lg px-1.5 py-0.5 bg-slate-50">
-                                <button
-                                  type="button"
-                                  onClick={() => handleQtyChange(idx, -1)}
-                                  className="text-slate-400 hover:text-slate-700 transition"
-                                >
-                                  <Minus size={10} />
-                                </button>
-                                <span className="font-bold text-slate-800 text-[11px] w-4 text-center">
-                                  {item.qty}
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => handleQtyChange(idx, 1)}
-                                  className="text-slate-400 hover:text-slate-700 transition"
-                                >
-                                  <Plus size={10} />
-                                </button>
-                              </div>
-                            </td>
-                            <td className="py-2 px-2 text-right font-mono font-medium text-slate-700">
-                              {Number(item.rate).toFixed(2)}
-                            </td>
-                            <td className="py-2 px-1 text-right font-mono text-slate-400">
-                              {Number(item.discount).toFixed(2)}
-                            </td>
-                            <td className="py-2 px-1 text-center font-mono text-slate-500 text-[11px]">
-                              {item.taxRate}%
-                            </td>
-                            <td className="py-2 px-2 text-right font-mono font-bold text-slate-900">
-                              {lineTotal.toFixed(2)}
-                            </td>
-                            <td className="py-2 px-1 text-center">
+                            {idx + 1}
+                          </td>
+                          <td
+                            className="py-2 px-2.5 border-r font-medium text-slate-900"
+                            style={{ borderColor: activeTheme.tableBorder }}
+                          >
+                            <p className="truncate max-w-[120px] font-semibold">
+                              {item.name}
+                            </p>
+                            <p className="text-[10px] font-mono text-slate-400">
+                              {item.code}
+                            </p>
+                          </td>
+                          <td
+                            className="py-2 px-1.5 text-center border-r font-mono text-slate-600 text-[11px]"
+                            style={{ borderColor: activeTheme.tableBorder }}
+                          >
+                            {item.hsn}
+                          </td>
+                          <td
+                            className="py-2 px-1 text-center border-r"
+                            style={{ borderColor: activeTheme.tableBorder }}
+                          >
+                            <div className="inline-flex items-center gap-1 border border-slate-200 rounded-lg px-1 py-0.5 bg-slate-50">
                               <button
                                 type="button"
-                                onClick={() => handleDeletePosItem(idx)}
-                                className="text-slate-300 hover:text-rose-500 transition p-1"
+                                onClick={() => handleQtyChange(idx, -1)}
+                                className="text-slate-400 hover:text-slate-700 transition"
                               >
-                                <Trash2 size={12} />
+                                <Minus size={9} />
                               </button>
-                            </td>
-                          </tr>
-                        );
-                      })
+                              <span className="font-bold text-slate-800 text-[11px] w-4 text-center">
+                                {item.qty}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleQtyChange(idx, 1)}
+                                className="text-slate-400 hover:text-slate-700 transition"
+                              >
+                                <Plus size={9} />
+                              </button>
+                            </div>
+                          </td>
+                          <td
+                            className="py-2 px-1 text-center border-r font-mono text-slate-700"
+                            style={{ borderColor: activeTheme.tableBorder }}
+                          >
+                            ₹{Number(item.rate).toFixed(2)}
+                          </td>
+                          <td
+                            className="py-2 px-1 text-center border-r font-medium text-slate-700 text-[11px]"
+                            style={{ borderColor: activeTheme.tableBorder }}
+                          >
+                            {item.gst}%
+                          </td>
+                          <td
+                            className="py-2 px-2 text-right border-r font-mono text-slate-800"
+                            style={{ borderColor: activeTheme.tableBorder }}
+                          >
+                            ₹{item.taxable.toFixed(2)}
+                          </td>
+                          <td
+                            className="py-2 px-2 text-right border-r font-mono font-bold text-slate-900"
+                            style={{ borderColor: activeTheme.tableBorder }}
+                          >
+                            ₹{item.total.toFixed(2)}
+                          </td>
+                          <td className="py-2 px-1 text-center">
+                            <button
+                              type="button"
+                              onClick={() => handleDeletePosItem(idx)}
+                              className="text-slate-300 hover:text-rose-500 transition p-1"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))
                     )}
                   </tbody>
                 </table>
               </div>
 
-              {/* Add Item Trigger Button */}
-              <div className="p-2 bg-slate-50/60 border-t border-slate-200 flex items-center justify-between">
+              {/* Add Item Bottom Trigger */}
+              <div
+                className="p-2 border-t flex items-center justify-between"
+                style={{
+                  backgroundColor: "#f8fafc",
+                  borderColor: activeTheme.tableBorder,
+                }}
+              >
                 <button
                   type="button"
                   onClick={() => setShowAddItemModal(true)}
-                  className="px-3 py-1.5 rounded-lg border border-blue-200 bg-blue-50/70 hover:bg-blue-100 text-blue-700 text-xs font-bold transition flex items-center gap-1.5 shadow-2xs"
+                  className="px-3 py-1 rounded-lg border text-xs font-bold transition flex items-center gap-1.5 shadow-2xs hover:opacity-90"
+                  style={{
+                    borderColor: activeTheme.border,
+                    color: activeTheme.dark,
+                    backgroundColor: activeTheme.light,
+                  }}
                 >
-                  <Plus size={13} strokeWidth={2.5} />
+                  <Plus size={12} strokeWidth={2.5} />
                   <span>Add Item</span>
                 </button>
                 <span className="text-[11px] text-slate-500 font-medium">
@@ -1173,76 +1577,122 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Notes & Totals Area */}
-            <div className="space-y-2.5">
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                  Notes (Optional)
-                </label>
-                <textarea
-                  value={posNotes}
-                  onChange={(e) => setPosNotes(e.target.value)}
-                  placeholder="Add notes to this invoice..."
-                  rows={1}
-                  className="w-full mt-1 p-2 rounded-lg border border-slate-200 bg-slate-50/50 text-xs text-slate-800 placeholder-slate-400 focus:outline-hidden focus:border-blue-500 focus:bg-white transition"
-                />
-              </div>
-
-              {/* Totals Summary Box */}
-              <div className="rounded-xl p-3 bg-blue-50/40 border border-blue-100/80 space-y-1.5">
-                <div className="flex items-center justify-between text-xs text-slate-600">
-                  <span>Subtotal</span>
-                  <span className="font-mono font-medium">
-                    ₹ {posSubtotal.toFixed(2)}
+            {/* ── 5. Calculations & Totals (Right-Aligned) ──────── */}
+            <div className="relative z-10 flex justify-end pt-1">
+              <div className="w-full sm:w-72 space-y-1 text-xs">
+                {/* Subtotal */}
+                <div className="flex justify-between py-1 text-slate-700">
+                  <span className="font-medium">Subtotal</span>
+                  <span className="font-mono font-bold text-slate-900">
+                    ₹
+                    {posSubtotal.toLocaleString("en-IN", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
                   </span>
                 </div>
 
-                <div className="flex items-center justify-between text-xs text-slate-600">
-                  <span>Discount</span>
-                  <span className="font-mono text-emerald-600 font-medium">
-                    - ₹ {posDiscount.toFixed(2)}
+                {/* CGST */}
+                <div className="flex justify-between py-1 border-t border-dashed border-slate-300 text-slate-700">
+                  <span className="font-medium">CGST</span>
+                  <span className="font-mono font-bold text-slate-900">
+                    ₹
+                    {posCgst.toLocaleString("en-IN", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
                   </span>
                 </div>
 
-                <div className="flex items-center justify-between text-xs text-slate-600 pb-1.5 border-b border-blue-100">
-                  <span>Tax (Estimated 5%)</span>
-                  <span className="font-mono font-medium">
-                    ₹ {posTaxAmount.toFixed(2)}
+                {/* SGST */}
+                <div className="flex justify-between py-1 text-slate-700">
+                  <span className="font-medium">SGST</span>
+                  <span className="font-mono font-bold text-slate-900">
+                    ₹
+                    {posSgst.toLocaleString("en-IN", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
                   </span>
                 </div>
 
-                {/* Total Amount Pill */}
-                <div className="rounded-xl p-2.5 bg-gradient-to-r from-blue-600 to-blue-500 text-white flex items-center justify-between shadow-xs">
-                  <span className="font-bold text-sm">Total Amount</span>
-                  <span className="font-mono font-black text-lg">
-                    ₹ {posTotalAmount.toFixed(2)}
+                {/* Grand Total */}
+                <div
+                  className="flex justify-between py-1.5 border-t-2 text-sm"
+                  style={{ borderColor: activeTheme.primary }}
+                >
+                  <span className="font-black text-slate-900">Grand Total</span>
+                  <span className="font-mono font-black text-slate-900">
+                    ₹
+                    {posTotalAmount.toLocaleString("en-IN", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </span>
+                </div>
+
+                {/* Received */}
+                <div className="flex items-center justify-between py-1 text-slate-700">
+                  <span className="font-medium">Received</span>
+                  <div className="flex items-center gap-1">
+                    <span className="font-mono text-slate-500">₹</span>
+                    <input
+                      type="number"
+                      value={
+                        posPaymentStatus === "PAID"
+                          ? posTotalAmount
+                          : posReceived
+                      }
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        setPosReceived(val);
+                        if (val >= posTotalAmount && posTotalAmount > 0) {
+                          setPosPaymentStatus("PAID");
+                        } else {
+                          setPosPaymentStatus("UNPAID");
+                        }
+                      }}
+                      className="w-24 text-right font-mono font-bold text-slate-900 px-1.5 py-0.5 rounded border border-slate-200 bg-slate-50/70 text-xs focus:bg-white focus:outline-hidden"
+                    />
+                  </div>
+                </div>
+
+                {/* Balance Due */}
+                <div className="flex justify-between py-1 border-t border-dashed border-slate-300 text-xs">
+                  <span className="font-bold text-slate-900">Balance Due</span>
+                  <span className="font-mono font-bold text-slate-900">
+                    ₹
+                    {posBalanceDue.toLocaleString("en-IN", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* Bottom 4 Action Buttons */}
-            <div className="grid grid-cols-4 gap-2 pt-1">
+            {/* ── 6. Bottom Action Buttons ───────────────────────── */}
+            <div className="relative z-10 grid grid-cols-4 gap-2 pt-2 border-t border-slate-100">
               <button
                 type="button"
                 onClick={handleClearPos}
-                className="py-2 px-2 rounded-xl border border-rose-200 bg-rose-50/40 hover:bg-rose-50 text-rose-600 text-xs font-bold transition text-center shadow-2xs"
+                className="py-2 px-1.5 rounded-xl border border-rose-200 bg-rose-50/50 hover:bg-rose-100 text-rose-600 text-xs font-bold transition text-center shadow-2xs"
               >
                 Clear All
               </button>
 
               <button
                 type="button"
-                onClick={() => alert("Bill placed on hold.")}
-                className="py-2 px-2 rounded-xl border border-slate-200 bg-slate-50/80 hover:bg-slate-100 text-slate-700 text-xs font-bold transition text-center shadow-2xs"
+                onClick={() => alert("Current bill placed on hold.")}
+                className="py-2 px-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-bold transition text-center shadow-2xs"
               >
                 Hold Bill
               </button>
 
               <button
                 type="button"
-                onClick={() => alert("Draft saved.")}
-                className="py-2 px-2 rounded-xl border border-purple-200 bg-purple-50/60 hover:bg-purple-100 text-purple-700 text-xs font-bold transition text-center shadow-2xs"
+                onClick={() => alert("Bill saved as draft.")}
+                className="py-2 px-1.5 rounded-xl border border-purple-200 bg-purple-50/50 hover:bg-purple-100 text-purple-700 text-xs font-bold transition text-center shadow-2xs"
               >
                 Save Draft
               </button>
@@ -1251,7 +1701,8 @@ export default function Dashboard() {
                 type="button"
                 onClick={handleSaveAndPrintBill}
                 disabled={posSaving}
-                className="py-2 px-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white text-xs font-bold transition text-center shadow-xs flex items-center justify-center gap-1.5"
+                className="py-2 px-1.5 rounded-xl text-white text-xs font-bold transition text-center shadow-xs flex items-center justify-center gap-1 hover:opacity-95 active:scale-95 cursor-pointer"
+                style={{ backgroundColor: activeTheme.primary }}
               >
                 <Printer size={13} />
                 <span>Save &amp; Print</span>
