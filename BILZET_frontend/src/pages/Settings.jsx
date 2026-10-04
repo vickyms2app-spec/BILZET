@@ -35,6 +35,283 @@ export const PAPER_SIZES = [
   { id: "Thermal 58mm", label: "Thermal 58mm", badge: "PREMIUM", isFree: false, isPro: true },
 ];
 
+function InvoiceLayoutWireframe({ templateId, accent = "#2563eb" }) {
+  switch (templateId) {
+    case "classic_border":
+      return (
+        <div className="w-full h-full p-1 border-2 border-double border-slate-700 font-serif flex flex-col justify-between text-[6px]">
+          <div className="flex justify-between items-center border-b border-slate-700 pb-0.5">
+            <span className="font-bold text-[7px]">╔══</span>
+            <span className="font-bold tracking-widest text-[6px]">CLASSIC</span>
+            <span className="font-bold text-[7px]">══╗</span>
+          </div>
+          <div className="border border-slate-300 p-0.5 rounded-none space-y-0.5">
+            <div className="h-0.5 w-3/4 bg-slate-400" />
+            <div className="h-0.5 w-1/2 bg-slate-300" />
+          </div>
+          <div className="space-y-0.5">
+            <div className="h-1 w-full bg-slate-800" />
+            <div className="h-0.5 w-full bg-slate-200" />
+            <div className="h-0.5 w-full bg-slate-200" />
+          </div>
+          <div className="flex justify-between items-center text-[7px] text-slate-500">
+            <span>╚══</span>
+            <span>══╝</span>
+          </div>
+        </div>
+      );
+
+    case "compact":
+      return (
+        <div className="w-full h-full p-1 flex flex-col justify-between text-[6px]">
+          <div className="flex justify-between items-center border-b border-cyan-300 pb-0.5">
+            <span className="font-black text-cyan-700 text-[7px]">COMPACT</span>
+            <span className="text-[6px] text-slate-400">1-PAGE</span>
+          </div>
+          <div className="h-2 w-full bg-cyan-50 border border-cyan-200 rounded flex items-center px-1 gap-1">
+            <div className="h-1 w-1/4 bg-cyan-300 rounded" />
+            <div className="h-1 w-1/4 bg-cyan-200 rounded" />
+            <div className="h-1 w-1/4 bg-cyan-200 rounded" />
+          </div>
+          <div className="space-y-0.5">
+            <div className="h-1 w-full bg-cyan-700 rounded-xs" />
+            <div className="h-0.5 w-full bg-slate-200" />
+            <div className="h-0.5 w-full bg-slate-200" />
+            <div className="h-0.5 w-full bg-slate-200" />
+          </div>
+          <div className="flex justify-end">
+            <div className="h-1 w-1/3 bg-cyan-600 rounded-xs" />
+          </div>
+        </div>
+      );
+
+    case "corporate":
+      return (
+        <div className="w-full h-full flex flex-col justify-between overflow-hidden">
+          <div className="bg-slate-800 text-white px-1 py-0.5 flex justify-between items-center text-[6px]">
+            <span className="font-black text-[7px] tracking-wider">CORPORATE</span>
+            <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+          </div>
+          <div className="p-1 flex flex-col justify-between flex-1 space-y-1">
+            <div className="grid grid-cols-3 gap-0.5">
+              <div className="h-2 bg-slate-100 border border-slate-200 rounded-xs" />
+              <div className="h-2 bg-slate-100 border border-slate-200 rounded-xs" />
+              <div className="h-2 bg-slate-100 border border-slate-200 rounded-xs" />
+            </div>
+            <div className="space-y-0.5">
+              <div className="h-1 w-full bg-slate-700" />
+              <div className="h-0.5 w-full bg-slate-200" />
+              <div className="h-0.5 w-full bg-slate-200" />
+            </div>
+            <div className="flex justify-end">
+              <div className="h-1 w-2/5 bg-slate-800" />
+            </div>
+          </div>
+        </div>
+      );
+
+    case "retail":
+      return (
+        <div className="w-full h-full p-1 border border-dashed border-orange-400 font-mono flex flex-col justify-between text-[6px]">
+          <div className="flex justify-between items-center border-b border-dashed border-orange-300 pb-0.5">
+            <span className="font-bold text-orange-700 text-[7px]">RETAIL POS</span>
+            <span className="tracking-tighter font-black text-[6px] text-slate-800">|||||||</span>
+          </div>
+          <div className="text-center font-bold text-[6px] text-slate-400 py-0.5 border-b border-dashed border-slate-200">
+            RECEIPT #0042
+          </div>
+          <div className="space-y-0.5">
+            <div className="flex justify-between"><div className="h-0.5 w-1/2 bg-slate-700" /><div className="h-0.5 w-1/4 bg-slate-700" /></div>
+            <div className="flex justify-between"><div className="h-0.5 w-1/3 bg-slate-400" /><div className="h-0.5 w-1/4 bg-slate-400" /></div>
+            <div className="flex justify-between"><div className="h-0.5 w-2/5 bg-slate-400" /><div className="h-0.5 w-1/4 bg-slate-400" /></div>
+          </div>
+          <div className="border-t border-dashed border-orange-400 pt-0.5 flex justify-between items-center">
+            <span className="font-bold text-orange-700 text-[6px]">TOTAL</span>
+            <div className="h-1 w-1/3 bg-orange-600 rounded-xs" />
+          </div>
+        </div>
+      );
+
+    case "hotel_restaurant":
+      return (
+        <div className="w-full h-full p-1 bg-[#fffdf8] border border-amber-300 font-serif flex flex-col justify-between text-[6px]">
+          <div className="flex justify-between items-center border-b border-amber-200 pb-0.5">
+            <span className="font-bold text-amber-900 text-[7px]">GUEST FOLIO</span>
+            <span className="text-amber-800 text-[8px]">⚜</span>
+          </div>
+          <div className="grid grid-cols-2 gap-0.5 p-0.5 bg-amber-50/80 rounded border border-amber-200/80">
+            <span className="text-[5px] text-amber-900 font-semibold">Table 12</span>
+            <span className="text-[5px] text-amber-900 text-right">Server: KT</span>
+          </div>
+          <div className="space-y-0.5">
+            <div className="h-1 w-full bg-amber-800/80" />
+            <div className="h-0.5 w-full bg-amber-100" />
+            <div className="h-0.5 w-full bg-amber-100" />
+          </div>
+          <div className="flex justify-between items-center border-t border-amber-200 pt-0.5">
+            <span className="text-[5px] text-amber-700 italic">Thank you</span>
+            <div className="h-1 w-1/3 bg-amber-800 rounded-xs" />
+          </div>
+        </div>
+      );
+
+    case "clean_minimal":
+      return (
+        <div className="w-full h-full p-1.5 flex flex-col justify-between text-[6px]">
+          <div className="flex items-center gap-1 border-b border-slate-100 pb-0.5">
+            <div className="w-0.5 h-2.5 bg-slate-800 rounded-full" />
+            <span className="font-bold text-slate-800 text-[7px] tracking-widest">MINIMAL</span>
+          </div>
+          <div className="space-y-0.5 pl-1.5 border-l border-slate-300">
+            <div className="h-0.5 w-3/4 bg-slate-600" />
+            <div className="h-0.5 w-1/2 bg-slate-400" />
+          </div>
+          <div className="space-y-1">
+            <div className="h-0.5 w-full bg-slate-800" />
+            <div className="h-0.5 w-full bg-slate-100" />
+            <div className="h-0.5 w-full bg-slate-100" />
+          </div>
+          <div className="flex justify-end">
+            <div className="h-0.5 w-1/3 bg-slate-900" />
+          </div>
+        </div>
+      );
+
+    case "side_ribbon":
+      return (
+        <div className="w-full h-full flex relative overflow-hidden">
+          <div className="w-3 bg-purple-600 h-full flex flex-col items-center justify-between py-1 text-white text-[5px] font-black shrink-0">
+            <span>B</span>
+            <span className="rotate-90 origin-center text-[4px] tracking-widest">RIB</span>
+            <span>✓</span>
+          </div>
+          <div className="p-1 pl-1.5 flex flex-col justify-between flex-1 space-y-1">
+            <div className="flex justify-between items-center border-b border-purple-200 pb-0.5">
+              <span className="font-bold text-purple-800 text-[7px]">RIBBON</span>
+            </div>
+            <div className="space-y-0.5">
+              <div className="h-0.5 w-3/4 bg-slate-300" />
+              <div className="h-0.5 w-1/2 bg-slate-200" />
+            </div>
+            <div className="space-y-0.5">
+              <div className="h-1 w-full bg-purple-600 rounded-xs" />
+              <div className="h-0.5 w-full bg-slate-200" />
+              <div className="h-0.5 w-full bg-slate-200" />
+            </div>
+            <div className="flex justify-end">
+              <div className="h-1 w-1/3 bg-purple-700 rounded-xs" />
+            </div>
+          </div>
+        </div>
+      );
+
+    case "premium":
+      return (
+        <div className="w-full h-full flex flex-col justify-between bg-[#fafaf9] border border-amber-300 overflow-hidden text-[6px]">
+          <div className="h-1.5 w-full bg-gradient-to-r from-amber-400 via-amber-600 to-amber-500" />
+          <div className="p-1 flex flex-col justify-between flex-1 space-y-1 font-serif">
+            <div className="flex justify-between items-center">
+              <span className="font-bold text-amber-950 text-[7px]">PREMIUM</span>
+              <div className="w-2 h-2 rounded-full border border-amber-500 flex items-center justify-center text-[5px] text-amber-700">★</div>
+            </div>
+            <div className="border border-amber-200 bg-amber-50/50 p-0.5 rounded-xs space-y-0.5">
+              <div className="h-0.5 w-3/4 bg-amber-800" />
+              <div className="h-0.5 w-1/2 bg-amber-600" />
+            </div>
+            <div className="space-y-0.5">
+              <div className="h-1 w-full bg-amber-800" />
+              <div className="h-0.5 w-full bg-amber-100" />
+              <div className="h-0.5 w-full bg-amber-100" />
+            </div>
+            <div className="flex justify-end">
+              <div className="h-1 w-2/5 bg-amber-900 rounded-xs" />
+            </div>
+          </div>
+        </div>
+      );
+
+    case "elegant":
+      return (
+        <div className="w-full h-full p-1 rounded-xl border border-pink-300 flex flex-col justify-between text-[6px]">
+          <div className="flex justify-between items-center">
+            <span className="font-bold text-pink-700 text-[7px]">ELEGANT</span>
+            <span className="px-1 py-0.2 rounded-full bg-pink-100 text-pink-700 font-bold text-[5px]">PAID</span>
+          </div>
+          <div className="grid grid-cols-2 gap-0.5">
+            <div className="h-2 rounded-md bg-pink-50/80 border border-pink-200" />
+            <div className="h-2 rounded-md bg-pink-50/80 border border-pink-200" />
+          </div>
+          <div className="space-y-0.5">
+            <div className="h-1 w-full bg-pink-600 rounded-full" />
+            <div className="h-0.5 w-full bg-slate-200 rounded-full" />
+            <div className="h-0.5 w-full bg-slate-200 rounded-full" />
+          </div>
+          <div className="flex justify-end">
+            <div className="h-1 w-1/3 bg-pink-600 rounded-full" />
+          </div>
+        </div>
+      );
+
+    case "geometric":
+      return (
+        <div className="w-full h-full p-1 font-mono border border-blue-500 rounded-none flex flex-col justify-between relative overflow-hidden text-[6px]">
+          <div className="absolute top-0 right-0 w-6 h-3 bg-blue-600" style={{ clipPath: "polygon(40% 0, 100% 0, 100% 100%, 0% 100%)" }} />
+          <div className="flex justify-between items-center z-10 border-b border-blue-400 pb-0.5">
+            <span className="font-bold text-blue-800 text-[7px]">GEOMETRIC</span>
+          </div>
+          <div className="grid grid-cols-2 gap-0.5">
+            <div className="border border-blue-200 p-0.5 space-y-0.5">
+              <div className="h-0.5 w-full bg-blue-400" />
+              <div className="h-0.5 w-2/3 bg-blue-300" />
+            </div>
+            <div className="border border-blue-200 p-0.5 space-y-0.5">
+              <div className="h-0.5 w-full bg-blue-400" />
+              <div className="h-0.5 w-2/3 bg-blue-300" />
+            </div>
+          </div>
+          <div className="space-y-0.5">
+            <div className="h-1 w-full bg-blue-800" />
+            <div className="h-0.5 w-full bg-blue-100" />
+            <div className="h-0.5 w-full bg-blue-100" />
+          </div>
+          <div className="flex justify-end">
+            <div className="h-1 w-1/3 bg-blue-700" />
+          </div>
+        </div>
+      );
+
+    default: // modern
+      return (
+        <div className="w-full h-full p-1.5 flex flex-col justify-between relative overflow-hidden text-[6px]">
+          <div className="absolute top-0 right-0 w-6 h-6 overflow-hidden pointer-events-none">
+            <div className="w-6 h-6 rounded-full border-2 border-blue-500 absolute -top-3 -right-3" />
+          </div>
+          <div className="flex justify-between items-start">
+            <span className="font-black text-blue-600 text-[7px] uppercase tracking-wider">MODERN</span>
+          </div>
+          <div className="grid grid-cols-2 gap-1 my-0.5">
+            <div className="h-2.5 rounded bg-blue-50/80 border border-blue-100 p-0.5 space-y-0.5">
+              <div className="h-0.5 w-3/4 bg-blue-400 rounded-full" />
+              <div className="h-0.5 w-1/2 bg-blue-200 rounded-full" />
+            </div>
+            <div className="h-2.5 rounded bg-blue-50/80 border border-blue-100 p-0.5 space-y-0.5">
+              <div className="h-0.5 w-3/4 bg-blue-400 rounded-full" />
+              <div className="h-0.5 w-1/2 bg-blue-200 rounded-full" />
+            </div>
+          </div>
+          <div className="space-y-0.5">
+            <div className="h-1 w-full bg-blue-600 rounded" />
+            <div className="h-0.5 w-full bg-slate-200 rounded" />
+            <div className="h-0.5 w-full bg-slate-200 rounded" />
+          </div>
+          <div className="flex justify-end">
+            <div className="h-1 w-1/3 bg-blue-700 rounded" />
+          </div>
+        </div>
+      );
+  }
+}
+
 export default function Settings() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -311,17 +588,23 @@ export default function Settings() {
             </div>
           </div>
 
-          {/* ── CARD 2: INVOICE TEMPLATES ────────────────── */}
+          {/* ── CARD 2: INVOICE LAYOUTS (11 DISTINCT TEMPLATES) ── */}
           <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/90 shadow-xs space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
-                <h2 className="text-sm font-bold text-slate-900">Invoice Templates</h2>
+                <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  Invoice Layouts (11 Distinct Templates)
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                    Layout Switcher
+                  </span>
+                </h2>
                 <p className="text-[11px] text-slate-400 mt-0.5">
-                  <span className="text-emerald-600 font-bold">3 Free Templates</span> (Modern, Classic Border, Compact) &middot; Balance 8 templates with Subscription
+                  Templates define the structural layouts of your invoices (header, customer cards, tables &amp; summary).
+                  <span className="ml-1 text-emerald-600 font-bold">3 Free Layouts</span> &middot; 8 Subscription Layouts
                 </p>
               </div>
-              <span className="text-[10px] font-bold text-blue-600 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-lg uppercase tracking-wider">
-                {form.template}
+              <span className="text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-lg uppercase tracking-wider self-start sm:self-auto">
+                Current: {form.template.replace(/_/g, " ")}
               </span>
             </div>
 
@@ -335,38 +618,23 @@ export default function Settings() {
                     key={tmpl.id}
                     onClick={() => handleSelectTemplate(tmpl)}
                     className="group cursor-pointer flex flex-col transition"
-                    title={isLocked ? "👑 Subscription required" : tmpl.name}
+                    title={isLocked ? "👑 Subscription required" : `${tmpl.name} Layout`}
                   >
                     <div
-                      className={`h-20 rounded-xl border-2 transition relative p-2.5 flex flex-col justify-between overflow-hidden bg-white ${
+                      className={`h-24 rounded-xl border-2 transition relative p-1.5 flex flex-col justify-between overflow-hidden bg-white ${
                         isSelected
-                          ? "border-blue-500 shadow-sm ring-2 ring-blue-500/20 bg-blue-50/10"
+                          ? "border-blue-600 shadow-md ring-2 ring-blue-500/25 bg-blue-50/10"
                           : "border-slate-200 hover:border-slate-300"
                       }`}
                     >
-                      {/* Mini Top Row: INVOICE and corner decorative tab */}
-                      <div className="flex items-start justify-between">
-                        <span className="text-[8px] font-black text-blue-600 tracking-wider uppercase">
-                          INVOICE
-                        </span>
-                        <div
-                          className="w-5 h-3 rounded-bl-md absolute top-0 right-0 shadow-2xs"
-                          style={{ backgroundColor: tmpl.accent || "#334155" }}
-                        />
-                      </div>
-
-                      {/* Mini line item placeholders */}
-                      <div className="space-y-1 my-auto">
-                        <div className="h-0.5 w-full bg-slate-200/70 rounded" />
-                        <div className="h-0.5 w-3/4 bg-slate-200/70 rounded" />
-                        <div className="h-0.5 w-5/6 bg-slate-200/70 rounded" />
-                      </div>
+                      {/* Miniature Layout Wireframe */}
+                      <InvoiceLayoutWireframe templateId={tmpl.id} accent={tmpl.accent} />
 
                       {/* Lock overlay for premium templates on free plan */}
                       {isLocked && (
-                        <div className="absolute inset-0 bg-slate-900/10 backdrop-blur-[0.5px] flex items-center justify-center">
-                          <div className="w-5 h-5 rounded-full bg-white/95 shadow-xs flex items-center justify-center text-amber-600">
-                            <Lock size={10} />
+                        <div className="absolute inset-0 bg-slate-900/25 backdrop-blur-[0.5px] flex items-center justify-center">
+                          <div className="w-6 h-6 rounded-full bg-white shadow-md flex items-center justify-center text-amber-600">
+                            <Lock size={11} />
                           </div>
                         </div>
                       )}
@@ -533,13 +801,13 @@ export default function Settings() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="w-5 h-5 rounded-md bg-indigo-100 text-indigo-700 text-[10px] font-black flex items-center justify-center">2</span>
-                    <span className="text-xs font-bold text-slate-800">Template Layout</span>
+                    <span className="text-xs font-bold text-slate-800">Invoice Layout (11 Templates)</span>
                   </div>
                   <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200">
-                    11 Styles
+                    11 Layouts
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-500">Select which aesthetic layout structures your bill</p>
+                <p className="text-[11px] text-slate-500">Choose the structural layout format for your invoice</p>
                 <select
                   value={form.template}
                   onChange={(e) => {
