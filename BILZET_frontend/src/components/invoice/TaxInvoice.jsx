@@ -159,7 +159,10 @@ export default function TaxInvoice({
     : Math.max(0, grandTotalVal - receivedVal);
 
   const inv = {
-    invoiceNumber: invoice?.invoiceNumber || invoice?.billNumber || "INV-0001",
+    invoiceNumber:
+      invoice?.invoiceNumber ||
+      invoice?.billNumber ||
+      `${shopSettings?.invoicePrefix || "INV-2026-"}0001`,
     date: invoice?.createdAt
       ? new Date(invoice.createdAt).toISOString().split("T")[0]
       : (invoice?.date || "2026-10-04"),
@@ -194,8 +197,9 @@ export default function TaxInvoice({
     template: shopSettings?.template || "modern",
     paperSize: shopSettings?.paperSize || "A4",
     title: shopSettings?.invoiceTitle || "TAX INVOICE",
-    companyName: shopSettings?.ownerName || shopSettings?.shopName || "karthikeyan",
+    companyName: shopSettings?.shopName || shopSettings?.ownerName || "BILZET Retail Mart",
     shopName: shopSettings?.shopName || "BILZET Retail Mart",
+    ownerName: shopSettings?.ownerName || "karthikeyan",
     phone: shopSettings?.phone || "+91 98765 43210",
     email: shopSettings?.email || "billing@bilzet.app",
     address: shopSettings?.address || "123 Commercial Plaza, Main Market",
@@ -522,7 +526,9 @@ export default function TaxInvoice({
 
           {/* ── 2. Header Section ────────────────────────────── */}
           {/* Variant A: Corporate Header Banner */}
+          {/* ── 2. Header Section ────────────────────────────── */}
           {settings.template === "corporate" ? (
+            /* 1. Corporate: Dark Executive Top Banner */
             <div
               className="relative z-10 p-5 rounded-xl text-white flex items-center justify-between shadow-sm"
               style={{ backgroundColor: activeTheme.dark }}
@@ -531,16 +537,19 @@ export default function TaxInvoice({
                 <h1 className="text-xl sm:text-2xl font-black uppercase tracking-wider">
                   {settings.title}
                 </h1>
-                <p className="text-xs font-semibold text-slate-200 mt-0.5">
-                  {settings.companyName}
+                <p className="text-sm font-bold text-slate-100 mt-0.5">
+                  {settings.shopName}
                 </p>
                 <p className="text-[11px] text-slate-300">
-                  {settings.phone} &middot; GSTIN: {settings.gstin}
+                  {settings.address} &middot; Ph: {settings.phone}
+                </p>
+                <p className="text-[11px] text-slate-300 font-mono">
+                  GSTIN: {settings.gstin}
                 </p>
               </div>
               <div className="text-right">
-                <span className="text-2xl font-black tracking-widest block">
-                  BILZET
+                <span className="text-xl font-black tracking-widest block uppercase">
+                  {settings.shopName.split(" ")[0]}
                 </span>
                 {settings.showStatusBadge && (
                   <span className="inline-block mt-1 px-3 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider bg-white/20 text-white">
@@ -550,19 +559,19 @@ export default function TaxInvoice({
               </div>
             </div>
           ) : settings.template === "classic_border" ? (
-            /* Variant B: Classic Boxed Header */
+            /* 2. Classic Border: Formal Boxed Header */
             <div className="relative z-10 space-y-2">
               <div className="flex items-center justify-between pb-2 border-b border-slate-900">
                 <div>
-                  <h2 className="text-lg font-bold font-serif">{settings.companyName}</h2>
-                  <p className="text-[11px] text-slate-600">{settings.address} &middot; {settings.phone}</p>
+                  <h2 className="text-xl font-bold font-serif">{settings.shopName}</h2>
+                  <p className="text-[11px] text-slate-600">{settings.address} &middot; Ph: {settings.phone}</p>
                 </div>
                 {settings.showLogo && settings.logoUrl && (
                   <img src={settings.logoUrl} alt="Logo" className="max-h-10 object-contain" />
                 )}
               </div>
-              <div className="border-y-2 border-slate-900 py-1.5 text-center my-1">
-                <h1 className="text-xl sm:text-2xl font-black uppercase tracking-widest font-serif">
+              <div className="border-y-2 border-slate-900 py-2 text-center my-1">
+                <h1 className="text-2xl font-black uppercase tracking-widest font-serif">
                   {settings.title}
                 </h1>
                 <p className="text-[10px] text-slate-600 font-mono">
@@ -571,24 +580,173 @@ export default function TaxInvoice({
               </div>
             </div>
           ) : settings.template === "retail" ? (
-            /* Variant C: Retail Barcode Header */
-            <div className="relative z-10 flex items-center justify-between border-b pb-2.5">
+            /* 3. Retail: Barcode Graphic POS Header */
+            <div className="relative z-10 flex items-center justify-between border-b pb-3 border-dashed border-slate-400">
               <div>
                 <h1 className="text-xl font-black uppercase tracking-tight">{settings.title}</h1>
-                <p className="text-xs font-bold text-slate-800">{settings.companyName}</p>
-                <p className="text-[11px] text-slate-500 font-mono">{settings.phone}</p>
+                <p className="text-sm font-bold text-slate-900 uppercase">{settings.shopName}</p>
+                <p className="text-[11px] text-slate-600 font-mono">{settings.address} &middot; Ph: {settings.phone}</p>
+                <p className="text-[10px] text-slate-500 font-mono">GSTIN: {settings.gstin}</p>
               </div>
               <div className="text-right">
-                <div className="font-mono tracking-widest text-[10px] bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                <div className="font-mono tracking-widest text-[10px] bg-slate-100 px-2.5 py-1 rounded border border-slate-300">
                   ||| |||| | ||| || ||| {inv.invoiceNumber}
                 </div>
-                <span className="text-[10px] font-bold text-emerald-600 block mt-0.5">
-                  ● RETAIL POS RECEIPT
+                <span className="text-[10px] font-bold text-emerald-600 block mt-1">
+                  ● RETAIL POS CASH MEMO
                 </span>
               </div>
             </div>
+          ) : settings.template === "clean_minimal" ? (
+            /* 4. Clean Minimal: Left-Aligned Scandinavian Minimal */
+            <div className="relative z-10 flex items-start justify-between border-b pb-4 border-slate-200">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: activeTheme.primary }}>
+                  {settings.title}
+                </span>
+                <h1 className="text-2xl font-light tracking-tight text-slate-900 mt-0.5">
+                  {settings.shopName}
+                </h1>
+                <p className="text-xs text-slate-500 mt-1">{settings.address} &middot; Ph: {settings.phone}</p>
+                <p className="text-[11px] text-slate-400 font-mono">GSTIN: {settings.gstin}</p>
+              </div>
+              <div className="text-right">
+                <span className="text-base font-bold font-mono text-slate-900">{inv.invoiceNumber}</span>
+                <p className="text-xs text-slate-500 font-mono mt-0.5">{inv.date}</p>
+                {settings.showStatusBadge && (
+                  <span className="inline-block mt-2 px-2.5 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider bg-slate-100 text-slate-700 border border-slate-200">
+                    {inv.paymentStatus}
+                  </span>
+                )}
+              </div>
+            </div>
+          ) : settings.template === "geometric" ? (
+            /* 5. Geometric: Monospace Technical Grid Header */
+            <div className="relative z-10 flex items-center justify-between border-2 p-3.5 border-slate-800 bg-slate-50/80 font-mono">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 text-[9px] font-bold text-white bg-slate-900">SYS_ID: #01</span>
+                  <span className="text-xs font-bold uppercase tracking-wider">{settings.title}</span>
+                </div>
+                <h1 className="text-xl font-black uppercase mt-1 tracking-tight text-slate-900">
+                  {settings.shopName}
+                </h1>
+                <p className="text-[11px] text-slate-600 font-mono">LOC: {settings.address} // TEL: {settings.phone}</p>
+                <p className="text-[11px] text-slate-600 font-mono">TAX_REG: {settings.gstin}</p>
+              </div>
+              <div className="text-right font-mono">
+                <div className="text-xs font-bold text-slate-900 border border-slate-400 px-2.5 py-1 bg-white inline-block">
+                  DOC_REF: {inv.invoiceNumber}
+                </div>
+                <div className="text-[11px] text-slate-600 mt-1">DATE: {inv.date}</div>
+                {settings.showStatusBadge && (
+                  <div className="text-[10px] font-bold text-emerald-800 bg-emerald-100 border border-emerald-300 px-2 py-0.5 mt-1 inline-block">
+                    STATUS: {inv.paymentStatus}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : settings.template === "elegant" ? (
+            /* 6. Elegant: Soft Pill Curved Header */
+            <div className="relative z-10 p-5 rounded-3xl bg-gradient-to-r from-slate-50 to-indigo-50/30 border border-slate-200/80 flex items-center justify-between shadow-xs">
+              <div className="space-y-1">
+                <span className="px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase bg-white border border-slate-200 text-slate-700 shadow-2xs">
+                  {settings.title}
+                </span>
+                <h1 className="text-2xl font-bold tracking-tight text-slate-900 pt-1">
+                  {settings.shopName}
+                </h1>
+                <p className="text-xs text-slate-600">{settings.address} &middot; Ph: {settings.phone}</p>
+                <p className="text-[11px] text-slate-500 font-mono">GSTIN: {settings.gstin}</p>
+              </div>
+              <div className="text-right space-y-1">
+                <div className="text-sm font-bold text-slate-900 font-mono bg-white px-3 py-1.5 rounded-2xl border border-slate-200 inline-block shadow-2xs">
+                  {inv.invoiceNumber}
+                </div>
+                <p className="text-xs text-slate-500">{inv.date}</p>
+                {settings.showStatusBadge && (
+                  <span className="inline-block px-3 py-0.5 rounded-full text-[10px] font-bold tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    {inv.paymentStatus}
+                  </span>
+                )}
+              </div>
+            </div>
+          ) : settings.template === "hotel_restaurant" ? (
+            /* 7. Hotel / Restaurant: Hospitality Folio Header */
+            <div className="relative z-10 text-center border-b pb-4 border-amber-300 font-serif space-y-1">
+              <div className="text-2xl text-amber-700">⚜</div>
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-wide text-amber-950 uppercase">
+                {settings.shopName}
+              </h1>
+              <p className="text-xs text-amber-900/80 italic font-serif">
+                {settings.title} &middot; Fine Hospitality &amp; Dining
+              </p>
+              <p className="text-[11px] text-amber-900/70">{settings.address} &middot; Ph: {settings.phone}</p>
+              <p className="text-[10px] text-amber-800 font-mono">GSTIN: {settings.gstin}</p>
+            </div>
+          ) : settings.template === "premium" ? (
+            /* 8. Premium: Luxury Gold Accent Header */
+            <div className="relative z-10 flex items-start justify-between border-b-2 border-amber-400/80 pb-4 font-serif">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-amber-700 bg-amber-100/80 px-2.5 py-0.5 rounded">
+                  {settings.title} &middot; LUXURY SUITE
+                </span>
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-amber-950 mt-1">
+                  {settings.shopName}
+                </h1>
+                <p className="text-xs text-stone-600 mt-0.5">{settings.address} &middot; Ph: {settings.phone}</p>
+                <p className="text-[11px] text-stone-500 font-mono">GSTIN: {settings.gstin}</p>
+              </div>
+              <div className="text-right font-serif">
+                <span className="text-sm font-bold font-mono text-amber-950 block">{inv.invoiceNumber}</span>
+                <p className="text-xs text-stone-600">{inv.date}</p>
+                {settings.showStatusBadge && (
+                  <span className="inline-block mt-1 px-3 py-0.5 rounded text-[10px] font-bold tracking-wider bg-amber-600 text-white shadow-xs">
+                    {inv.paymentStatus}
+                  </span>
+                )}
+              </div>
+            </div>
+          ) : settings.template === "side_ribbon" ? (
+            /* 9. Side Ribbon Header */
+            <div className="relative z-10 flex items-start justify-between border-b pb-4" style={{ borderColor: activeTheme.border }}>
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded text-white" style={{ backgroundColor: activeTheme.primary }}>
+                  {settings.title}
+                </span>
+                <h1 className="text-2xl font-black uppercase tracking-tight text-slate-900 mt-1">
+                  {settings.shopName}
+                </h1>
+                <p className="text-xs text-slate-600">{settings.address} &middot; Ph: {settings.phone}</p>
+                <p className="text-[11px] text-slate-500 font-mono">GSTIN: {settings.gstin}</p>
+              </div>
+              <div className="text-right">
+                <span className="text-sm font-bold font-mono text-slate-900">{inv.invoiceNumber}</span>
+                <p className="text-xs text-slate-500">{inv.date}</p>
+                {settings.showStatusBadge && (
+                  <span className="inline-block mt-1 px-3 py-0.5 rounded-full text-[10px] font-bold text-white shadow-xs" style={{ backgroundColor: activeTheme.primary }}>
+                    {inv.paymentStatus}
+                  </span>
+                )}
+              </div>
+            </div>
+          ) : settings.template === "compact" ? (
+            /* 10. Compact: Dense Header */
+            <div className="relative z-10 flex items-center justify-between border-b pb-2 border-slate-200 text-xs">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded bg-blue-600 text-white font-black text-xs flex items-center justify-center">BZ</div>
+                <div>
+                  <h1 className="text-base font-bold text-slate-900 leading-tight">{settings.shopName}</h1>
+                  <p className="text-[10px] text-slate-500">{settings.phone} &middot; GSTIN: {settings.gstin}</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="text-xs font-black uppercase tracking-wider text-blue-600">{settings.title}</span>
+                <p className="text-[10px] font-mono text-slate-700">{inv.invoiceNumber} &middot; {inv.date}</p>
+              </div>
+            </div>
           ) : (
-            /* Variant D: Standard / Modern / Minimal / Premium / Elegant / Geometric */
+            /* 11. Modern (Default): Circular Corner Art with Modern Dual Cards */
             <div className="relative z-10 flex items-start justify-between">
               {/* Left: Company Logo */}
               <div className="w-1/3 pt-1">
@@ -623,20 +781,14 @@ export default function TaxInvoice({
                     ● Heading: {settings.title}
                   </span>
                 )}
-                <h1
-                  className={`text-2xl font-black tracking-tight uppercase ${
-                    settings.template === "premium" ? "font-serif text-amber-950" : "text-slate-900"
-                  }`}
-                >
+                <h1 className="text-2xl font-black tracking-tight uppercase text-slate-900">
                   {settings.title}
                 </h1>
                 <p className="text-sm font-bold text-slate-800 mt-0.5 tracking-normal">
-                  {settings.companyName}
+                  {settings.shopName}
                 </p>
-                {settings.template === "clean_minimal" && (
-                  <p className="text-[10px] text-slate-400 font-mono mt-0.5">
-                    GSTIN: {settings.gstin}
-                  </p>
+                {settings.ownerName && (
+                  <p className="text-[11px] text-slate-500">Prop: {settings.ownerName}</p>
                 )}
               </div>
 
@@ -646,7 +798,7 @@ export default function TaxInvoice({
                   className="text-2xl font-black tracking-wider uppercase"
                   style={{ color: activeTheme.primary }}
                 >
-                  BILZET
+                  {settings.shopName ? settings.shopName.split(" ")[0] : "BILZET"}
                 </span>
                 {settings.showChangeIndicators && (
                   <span className="text-[8px] font-bold text-sky-700 bg-sky-50 border border-sky-200 px-1.5 py-0.2 rounded-full inline-block mt-1 print:hidden">
@@ -728,6 +880,24 @@ export default function TaxInvoice({
               <div><span className="font-bold">Server:</span> Karthik</div>
               <div><span className="font-bold">Folio / Bill:</span> {inv.invoiceNumber}</div>
             </div>
+          ) : settings.template === "geometric" ? (
+            /* Geometric Technical Metadata Box */
+            <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 border-2 border-slate-800 bg-white font-mono text-xs">
+              <div className="space-y-1">
+                <p className="font-bold text-slate-900 uppercase">RECIPIENT_DATA:</p>
+                <p className="font-medium text-slate-800">{inv.customer.name}</p>
+                <p className="text-slate-600">TEL: {inv.customer.phone}</p>
+                <p className="text-slate-600">ADDR: {inv.customer.address}</p>
+                <p className="text-slate-700">GST: {inv.customer.gstin || "UNREGISTERED"}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="font-bold text-slate-900 uppercase">INVOICE_PARAMETERS:</p>
+                <p>DOC_NUM: <span className="font-bold">{inv.invoiceNumber}</span></p>
+                <p>TIMESTAMP: {inv.date}</p>
+                <p>TAX_TYPE: {inv.saleType}</p>
+                <p>POS_LOC: {inv.placeOfSupply}</p>
+              </div>
+            </div>
           ) : (
             /* Standard 2 Rounded Cards (Bill To & Document Info) */
             <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
@@ -735,11 +905,13 @@ export default function TaxInvoice({
               <div
                 className={`p-4 text-xs shadow-2xs space-y-1 ${
                   settings.template === "clean_minimal"
-                    ? "border-l-2 pl-3 rounded-none bg-transparent"
+                    ? "border-l-4 pl-3.5 rounded-none bg-transparent"
                     : settings.template === "classic_border"
                     ? "border-2 rounded-none bg-white font-serif"
                     : settings.template === "premium"
                     ? "border rounded-xl bg-stone-50 font-serif border-amber-300"
+                    : settings.template === "elegant"
+                    ? "border rounded-3xl bg-slate-50/50 shadow-xs border-slate-200"
                     : "border rounded-2xl bg-white"
                 }`}
                 style={{
@@ -767,11 +939,13 @@ export default function TaxInvoice({
               <div
                 className={`p-4 text-xs shadow-2xs space-y-1.5 ${
                   settings.template === "clean_minimal"
-                    ? "border-l-2 pl-3 rounded-none bg-transparent"
+                    ? "border-l-4 pl-3.5 rounded-none bg-transparent"
                     : settings.template === "classic_border"
                     ? "border-2 rounded-none bg-white font-serif"
                     : settings.template === "premium"
                     ? "border rounded-xl bg-stone-50 font-serif border-amber-300"
+                    : settings.template === "elegant"
+                    ? "border rounded-3xl bg-slate-50/50 shadow-xs border-slate-200"
                     : "border rounded-2xl bg-white"
                 }`}
                 style={{

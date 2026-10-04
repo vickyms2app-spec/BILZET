@@ -462,18 +462,10 @@ export default function Settings() {
   };
 
   const handleSelectTemplate = (tmpl) => {
-    if (!tmpl.isFree && !hasSubscription) {
-      setUpgradeModal({ open: true, item: tmpl.name, type: "template" });
-      return;
-    }
     handleChange("template", tmpl.id);
   };
 
   const handleSelectColor = (theme) => {
-    if (!theme.isFree && !hasSubscription) {
-      setUpgradeModal({ open: true, item: theme.label, type: "color" });
-      return;
-    }
     setLastChange({
       title: `Color palette set to "${theme.label}"`,
       field: "colorTheme",
@@ -487,15 +479,30 @@ export default function Settings() {
   };
 
   const handleSelectPaperSize = (p) => {
-    if (p.isPro && !hasSubscription) {
-      setUpgradeModal({ open: true, item: `${p.label} Printing`, type: "paper size" });
-      return;
-    }
     handleChange("paperSize", p.id);
   };
 
   const handleSubmit = (e) => {
     if (e) e.preventDefault();
+    const activeTemplate = INVOICE_TEMPLATES.find((t) => t.id === form.template);
+    const activeColor = COLOR_THEMES.find((c) => c.id === form.colorTheme);
+    const isProTemplate = activeTemplate && !activeTemplate.isFree;
+    const isProColor = activeColor && !activeColor.isFree;
+    const isProPaper = form.paperSize === "Thermal 80mm" || form.paperSize === "Thermal 58mm";
+
+    if ((isProTemplate || isProColor || isProPaper) && !hasSubscription) {
+      setUpgradeModal({
+        open: true,
+        item: isProTemplate
+          ? `${activeTemplate.name} Layout`
+          : isProColor
+          ? `${activeColor.label} Palette`
+          : form.paperSize,
+        type: isProTemplate ? "template" : isProColor ? "color theme" : "paper size",
+      });
+      return;
+    }
+
     localStorage.setItem("bilzet_invoice_settings", JSON.stringify(form));
     settingsApi.update(form).catch(() => {});
     setSaved(true);
@@ -608,11 +615,10 @@ export default function Settings() {
       </div>
 
       {/* ══════════════════════════════════════════════════
-          TAB 1: INVOICE STUDIO & THEMES (MATCHES USER SCREENSHOT)
+          TOP: LIVE BILL CHANGES INSPECTOR (ALL TABS)
       ══════════════════════════════════════════════════ */}
-      {activeTab === "customizer" && (
-        <div className="space-y-6">
-          {/* ── TOP: LIVE BILL CHANGES INSPECTOR ──────────── */}
+      <div className="space-y-6">
+        {/* ── TOP: LIVE BILL CHANGES INSPECTOR ──────────── */}
           <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-950 text-white p-4 sm:p-5 rounded-2xl border border-blue-800/40 shadow-lg space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-2.5">
@@ -705,10 +711,13 @@ export default function Settings() {
             </div>
           </div>
 
-          {/* ── RESPONSIVE DUAL-COLUMN LAYOUT (CONTROLS LEFT, STICKY BILL RIGHT) ── */}
-          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-            {/* LEFT: CONTROLS (7 Cols) */}
-            <div className="xl:col-span-7 space-y-6">
+      {/* ── RESPONSIVE DUAL-COLUMN LAYOUT (CONTROLS LEFT, STICKY BILL RIGHT) ── */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+        {/* LEFT: CONTROLS (7 Cols) */}
+        <div className="xl:col-span-7 space-y-6">
+          {/* TAB 1: INVOICE STUDIO & THEMES */}
+          {activeTab === "customizer" && (
+            <div className="space-y-6">
               {/* ── CARD 1: PAPER SIZE ───────────────────────── */}
           <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/90 shadow-xs space-y-3">
             <div className="flex items-center justify-between">
@@ -1207,88 +1216,8 @@ export default function Settings() {
             </div>
           </div>
 
-            </div>
-
-            {/* RIGHT: STICKY LIVE BILL PREVIEW (5 Cols) */}
-            <div className="xl:col-span-5 xl:sticky xl:top-6 space-y-4">
-              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-sm space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                    <h2 className="text-sm font-bold text-slate-900">Live Bill Preview</h2>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 font-bold border border-blue-200">
-                      {form.paperSize} &middot; {form.template}
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setShowFullPreview(true)}
-                    className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1.5 transition"
-                  >
-                    <Eye size={13} />
-                    <span>Fullscreen</span>
-                  </button>
-                </div>
-
-                {/* Quick Toggle Ribbon directly on Live Preview */}
-                <div className="flex flex-wrap items-center gap-1.5 p-2 bg-slate-50 rounded-xl border border-slate-200/70 text-[10px]">
-                  <span className="text-slate-500 font-bold mr-1">Quick:</span>
-                  <button
-                    type="button"
-                    onClick={() => handleChange("showWatermark", !form.showWatermark)}
-                    className={`px-2 py-0.5 rounded-lg border font-semibold transition ${
-                      form.showWatermark
-                        ? "bg-rose-50 text-rose-700 border-rose-200"
-                        : "bg-white text-slate-500 border-slate-200"
-                    }`}
-                  >
-                    💧 Watermark {form.showWatermark ? "✓" : "✗"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleChange("showLogo", !form.showLogo)}
-                    className={`px-2 py-0.5 rounded-lg border font-semibold transition ${
-                      form.showLogo
-                        ? "bg-teal-50 text-teal-700 border-teal-200"
-                        : "bg-white text-slate-500 border-slate-200"
-                    }`}
-                  >
-                    🖼️ Logo {form.showLogo ? "✓" : "✗"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleChange("showStatusBadge", !form.showStatusBadge)}
-                    className={`px-2 py-0.5 rounded-lg border font-semibold transition ${
-                      form.showStatusBadge
-                        ? "bg-sky-50 text-sky-700 border-sky-200"
-                        : "bg-white text-slate-500 border-slate-200"
-                    }`}
-                  >
-                    🛡️ Badge {form.showStatusBadge ? "✓" : "✗"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleChange("showHsnSummary", !form.showHsnSummary)}
-                    className={`px-2 py-0.5 rounded-lg border font-semibold transition ${
-                      form.showHsnSummary
-                        ? "bg-cyan-50 text-cyan-700 border-cyan-200"
-                        : "bg-white text-slate-500 border-slate-200"
-                    }`}
-                  >
-                    📊 HSN {form.showHsnSummary ? "✓" : "✗"}
-                  </button>
-                </div>
-
-                <div className="bg-slate-100/70 border border-slate-200 rounded-2xl p-2 sm:p-3 overflow-x-auto flex justify-center max-h-[750px] overflow-y-auto">
-                  <div className="w-full shadow-md rounded-xl overflow-hidden bg-white scale-[0.88] origin-top">
-                    <TaxInvoice shopSettings={{ ...form, showChangeIndicators: highlightSections }} isModal={false} />
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
-        </div>
-      )}
+        )}
 
       {/* ══════════════════════════════════════════════════
           TAB 2: SHOP PROFILE & GST
@@ -1608,6 +1537,95 @@ export default function Settings() {
           </div>
         </div>
       )}
+
+        </div>
+
+        {/* RIGHT: STICKY LIVE BILL PREVIEW (5 Cols) */}
+        <div className="xl:col-span-5 xl:sticky xl:top-6 space-y-4">
+          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-sm space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                <h2 className="text-sm font-bold text-slate-900">Live Bill Preview</h2>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 font-bold border border-blue-200">
+                  {form.paperSize} &middot; {form.template}
+                </span>
+                {(!INVOICE_TEMPLATES.find((t) => t.id === form.template)?.isFree ||
+                  !COLOR_THEMES.find((c) => c.id === form.colorTheme)?.isFree) &&
+                  !hasSubscription && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 font-bold border border-amber-300 inline-flex items-center gap-1 shadow-2xs">
+                      👑 Pro Preview
+                    </span>
+                  )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowFullPreview(true)}
+                className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1.5 transition"
+              >
+                <Eye size={13} />
+                <span>Fullscreen</span>
+              </button>
+            </div>
+
+            {/* Quick Toggle Ribbon directly on Live Preview */}
+            <div className="flex flex-wrap items-center gap-1.5 p-2 bg-slate-50 rounded-xl border border-slate-200/70 text-[10px]">
+              <span className="text-slate-500 font-bold mr-1">Quick:</span>
+              <button
+                type="button"
+                onClick={() => handleChange("showWatermark", !form.showWatermark)}
+                className={`px-2 py-0.5 rounded-lg border font-semibold transition ${
+                  form.showWatermark
+                    ? "bg-rose-50 text-rose-700 border-rose-200"
+                    : "bg-white text-slate-500 border-slate-200"
+                }`}
+              >
+                💧 Watermark {form.showWatermark ? "✓" : "✗"}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleChange("showLogo", !form.showLogo)}
+                className={`px-2 py-0.5 rounded-lg border font-semibold transition ${
+                  form.showLogo
+                    ? "bg-teal-50 text-teal-700 border-teal-200"
+                    : "bg-white text-slate-500 border-slate-200"
+                }`}
+              >
+                🖼️ Logo {form.showLogo ? "✓" : "✗"}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleChange("showStatusBadge", !form.showStatusBadge)}
+                className={`px-2 py-0.5 rounded-lg border font-semibold transition ${
+                  form.showStatusBadge
+                    ? "bg-sky-50 text-sky-700 border-sky-200"
+                    : "bg-white text-slate-500 border-slate-200"
+                }`}
+              >
+                🛡️ Badge {form.showStatusBadge ? "✓" : "✗"}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleChange("showHsnSummary", !form.showHsnSummary)}
+                className={`px-2 py-0.5 rounded-lg border font-semibold transition ${
+                  form.showHsnSummary
+                    ? "bg-cyan-50 text-cyan-700 border-cyan-200"
+                    : "bg-white text-slate-500 border-slate-200"
+                }`}
+              >
+                📊 HSN {form.showHsnSummary ? "✓" : "✗"}
+              </button>
+            </div>
+
+            <div className="bg-slate-100/70 border border-slate-200 rounded-2xl p-2 sm:p-3 overflow-x-auto flex justify-center max-h-[750px] overflow-y-auto">
+              <div className="w-full shadow-md rounded-xl overflow-hidden bg-white scale-[0.88] origin-top">
+                <TaxInvoice shopSettings={{ ...form, showChangeIndicators: highlightSections }} isModal={false} />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      </div>
 
       {/* ══════════════════════════════════════════════════
           MODAL: FULLSCREEN PREVIEW
