@@ -114,6 +114,7 @@ const navSections = [
     key: "system",
     items: [
       { label: "Business Settings", path: "/settings", icon: Settings },
+      { label: "Subscription Plan", path: "/subscription", icon: CreditCard },
       { label: "Security Audit Trail", path: "/audit-logs", icon: History },
       { label: "GST & Tax Filing", path: "/gst", icon: Percent },
       { label: "Support & Help", path: "/support", icon: LifeBuoy },
@@ -966,6 +967,15 @@ export default function Layout({ children }) {
                     >
                       <Settings size={14} className="text-slate-500" />
                       <span>Business Settings</span>
+                    </NavLink>
+
+                    <NavLink
+                      to="/subscription"
+                      onClick={() => setUserDropdown(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-slate-700 hover:bg-slate-50 font-medium transition"
+                    >
+                      <CreditCard size={14} className="text-slate-500" />
+                      <span>Subscription &amp; Plans</span>
                     </NavLink>
 
                     <NavLink

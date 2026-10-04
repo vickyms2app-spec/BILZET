@@ -206,6 +206,22 @@ export default function AppRoutes() {
         }
       />
       <Route
+        path="/subscription"
+        element={
+          <Protected>
+            <Plans />
+          </Protected>
+        }
+      />
+      <Route
+        path="/subscriptions"
+        element={
+          <Protected>
+            <Plans />
+          </Protected>
+        }
+      />
+      <Route
         path="/support"
         element={
           <Protected>
