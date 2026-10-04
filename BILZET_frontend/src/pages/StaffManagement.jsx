@@ -16,8 +16,16 @@ import {
   X,
   RefreshCw,
   Award,
+  Lock,
+  Unlock,
+  Eye,
+  EyeOff,
+  Shield,
 } from "lucide-react";
 import { staffApi } from "../api";
+import { useAuth } from "../store/auth";
+import { useSecurityStore } from "../store/securityStore";
+import { isAdminUser, isAdminEmail, maskSalary, maskCurrency } from "../utils/security";
 
 export default function StaffManagement({ defaultTab = "directory" }) {
   const location = useLocation();
@@ -28,6 +36,13 @@ export default function StaffManagement({ defaultTab = "directory" }) {
   const [payrolls, setPayrolls] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+
+  const { user } = useAuth();
+  const { adminRevealed } = useSecurityStore();
+  const isAuthorizedAdmin = isAdminUser(user) || isAdminEmail(user?.email);
+  const canViewSalaries = isAuthorizedAdmin || adminRevealed;
+  const [showSalaries, setShowSalaries] = useState(false);
+  const revealSalaries = canViewSalaries && (showSalaries || adminRevealed);
 
   // Modals
   const [showAddModal, setShowAddModal] = useState(false);
@@ -172,6 +187,26 @@ export default function StaffManagement({ defaultTab = "directory" }) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 self-start sm:self-center">
+          {canViewSalaries ? (
+            <button
+              type="button"
+              onClick={() => setShowSalaries(!showSalaries)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100 transition shadow-2xs"
+              title="Toggle admin confidential salary visibility"
+            >
+              {revealSalaries ? <EyeOff size={14} /> : <Eye size={14} />}
+              <span>{revealSalaries ? "Mask Salaries" : "Reveal Salaries (Admin)"}</span>
+            </button>
+          ) : (
+            <span
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 text-slate-500 border border-slate-200"
+              title="Confidential salaries are protected under enterprise security"
+            >
+              <Lock size={12} className="text-slate-400" />
+              <span>Salaries Masked</span>
+            </span>
+          )}
+
           <button
             type="button"
             onClick={() => setShowAddModal(true)}
@@ -337,8 +372,8 @@ export default function StaffManagement({ defaultTab = "directory" }) {
                 <div className="mt-4 pt-2 flex items-center justify-between">
                   <div className="text-[11px] text-slate-500">
                     Base Salary:{" "}
-                    <strong className="text-slate-800">
-                      ₹{Number(staff.salary || 0).toLocaleString("en-IN")}/mo
+                    <strong className={`font-mono ${revealSalaries ? "text-slate-900" : "text-slate-400 tracking-wider"}`}>
+                      {maskSalary(staff.salary, revealSalaries, "/mo")}
                     </strong>
                   </div>
                   <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
@@ -483,14 +518,14 @@ export default function StaffManagement({ defaultTab = "directory" }) {
                       <td className="py-3 px-4 font-semibold text-slate-800">
                         {p.staff?.name || "Staff Member"}
                       </td>
-                      <td className="py-3 px-4 text-right text-slate-600">
-                        ₹{Number(p.baseSalary || 0).toLocaleString("en-IN")}
+                      <td className="py-3 px-4 text-right text-slate-600 font-mono">
+                        {maskCurrency(p.baseSalary, revealSalaries)}
                       </td>
-                      <td className="py-3 px-4 text-right text-rose-600">
-                        ₹{Number(p.deductions || 0).toLocaleString("en-IN")}
+                      <td className="py-3 px-4 text-right text-rose-600 font-mono">
+                        {maskCurrency(p.deductions, revealSalaries)}
                       </td>
-                      <td className="py-3 px-4 text-right font-bold text-emerald-700">
-                        ₹{Number(p.netSalary || 0).toLocaleString("en-IN")}
+                      <td className="py-3 px-4 text-right font-bold text-emerald-700 font-mono">
+                        {maskCurrency(p.netSalary, revealSalaries)}
                       </td>
                       <td className="py-3 px-4">
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">

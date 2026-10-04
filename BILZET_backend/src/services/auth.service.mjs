@@ -4,6 +4,33 @@ import prisma from '../config/prisma.mjs';
 import { ApiError } from '../utils/ApiError.mjs';
 import { env } from '../config/env.mjs';
 
+const ADMIN_EMAILS = [
+  'vickyms2app@gmail.com',
+  'vicky@bilzet.com',
+  'admin@bilzet.com',
+  'karthik@bilzet.com',
+];
+
+export const isAdminEmail = (email) => {
+  if (!email) return false;
+  const em = String(email).toLowerCase().trim();
+  const envAdmins = (process.env.ADMIN_EMAILS || '')
+    .toLowerCase()
+    .split(',')
+    .map((e) => e.trim())
+    .filter(Boolean);
+
+  return (
+    ADMIN_EMAILS.includes(em) ||
+    envAdmins.includes(em) ||
+    em.startsWith('admin@') ||
+    em.endsWith('@bilzet.app') ||
+    em.endsWith('@bilzet.com') ||
+    em === 'vickyms2app@gmail.com' ||
+    em.includes('admin')
+  );
+};
+
 const generateTokens = (user) => {
   const payload = {
     id: user.id,
@@ -168,13 +195,14 @@ export const googleLogin = async (credential, context = {}) => {
         });
       }
     } else {
+      const role = isAdminEmail(email) ? 'ADMIN' : 'STAFF';
       user = await prisma.user.create({
         data: {
           name,
           email,
           googleId,
           avatar,
-          role: 'ADMIN',
+          role,
           isActive: true,
         }
       });
@@ -225,7 +253,7 @@ export const clerkSync = async ({ clerkId, email, name, avatar, phone }) => {
     const isNewUser = !user;
 
     if (!user) {
-      const role = 'ADMIN';
+      const role = isAdminEmail(email) ? 'ADMIN' : 'STAFF';
 
       user = await prisma.user.create({
         data: {
@@ -267,7 +295,7 @@ export const clerkSync = async ({ clerkId, email, name, avatar, phone }) => {
       name: name || email.split('@')[0],
       email,
       avatar,
-      role: 'ADMIN',
+      role: isAdminEmail(email) ? 'ADMIN' : 'STAFF',
       isActive: true,
     };
     const tokens = generateTokens(fallbackUser);

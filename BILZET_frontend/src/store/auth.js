@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { authApi } from "../api";
 import { setTokens } from "../api/http";
+import { isAdminEmail } from "../utils/security";
 
 export const useAuth = create((set) => ({
   user: null,
@@ -35,7 +36,7 @@ export const useAuth = create((set) => ({
             id: cu.id,
             name,
             email,
-            role: "ADMIN",
+            role: isAdminEmail(email) ? "ADMIN" : "STAFF",
             isActive: true,
           },
           loading: false,

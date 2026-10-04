@@ -97,25 +97,12 @@ function StandardProtectedWrapper({ children, roles }) {
   return <Layout>{children}</Layout>;
 }
 
-export function isAdminEmail(email) {
-  if (!email) return false;
-  const em = String(email).toLowerCase().trim();
-  return (
-    em.startsWith("admin@") ||
-    em.endsWith("@bilzet.app") ||
-    em.endsWith("@bilzet.com") ||
-    em === "vickyms2app@gmail.com" ||
-    em.includes("admin")
-  );
-}
+import { isAdminEmail, isAdminUser } from "../utils/security";
+export { isAdminEmail, isAdminUser };
 
 function AdminEmailGuard({ children }) {
   const { user } = useAuth();
-  const allowed =
-    user &&
-    (user.role === "SUPERADMIN" ||
-      isAdminEmail(user.email) ||
-      user.role === "ADMIN");
+  const allowed = isAdminUser(user) || isAdminEmail(user?.email);
 
   if (!allowed) {
     return <Navigate to="/dashboard" replace />;

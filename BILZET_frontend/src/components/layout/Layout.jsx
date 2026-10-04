@@ -46,6 +46,8 @@ import {
   CheckCircle2,
   AlertTriangle,
   ArrowUpRight,
+  Lock,
+  Unlock,
 } from "lucide-react";
 import { useAuth } from "../../store/auth";
 import { useConnectionStatus } from "../../hooks/useConnectionStatus";
@@ -53,7 +55,8 @@ import Logo from "../common/Logo";
 import { useClerk } from "@clerk/clerk-react";
 import { hasClerk } from "../../config/clerk";
 import { customersApi, productsApi, salesApi } from "../../api";
-import { isAdminEmail } from "../../routes/AppRoutes";
+import { isAdminEmail, isAdminUser } from "../../utils/security";
+import { useSecurityStore } from "../../store/securityStore";
 
 const navSections = [
   {
@@ -124,6 +127,8 @@ export default function Layout({ children }) {
   const [collapsedSections, setCollapsedSections] = useState({});
   const [userDropdown, setUserDropdown] = useState(false);
   const { user, logout } = useAuth();
+  const { adminRevealed, toggleAdminReveal } = useSecurityStore();
+  const isAuthorizedAdmin = isAdminUser(user) || isAdminEmail(user?.email);
   const { status: connStatus, checkConnection } = useConnectionStatus();
   const nav = useNavigate();
   const location = useLocation();
@@ -902,6 +907,23 @@ export default function Layout({ children }) {
               <span>New Bill</span>
             </NavLink>
 
+            {/* Admin Sensitive Details Master Switch */}
+            {isAuthorizedAdmin && (
+              <button
+                type="button"
+                onClick={toggleAdminReveal}
+                className={`hidden lg:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition shadow-2xs border ${
+                  adminRevealed
+                    ? "bg-amber-500/10 text-amber-700 border-amber-300 hover:bg-amber-500/20"
+                    : "bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100"
+                }`}
+                title="Admin Master Toggle: Reveal or mask sensitive credentials across entire website"
+              >
+                {adminRevealed ? <Unlock size={13} className="text-amber-600" /> : <Lock size={13} className="text-purple-600" />}
+                <span>{adminRevealed ? "Vault Unmasked" : "Secure Masked"}</span>
+              </button>
+            )}
+
             {/* User Dropdown Chip */}
             <div className="relative">
               <button
@@ -955,15 +977,15 @@ export default function Layout({ children }) {
                       <span>Security Logs</span>
                     </NavLink>
 
-                    {/* Admin section only accessible if user's email matches admin email */}
-                    {isAdminEmail(user?.email) && (
+                    {/* Admin section only accessible if user is authorized admin */}
+                    {isAuthorizedAdmin && (
                       <NavLink
                         to="/admin"
                         onClick={() => setUserDropdown(false)}
                         className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-purple-700 bg-purple-50/70 hover:bg-purple-100/70 font-semibold transition mt-1"
                       >
                         <Shield size={14} className="text-purple-600" />
-                        <span>Admin Console</span>
+                        <span>Admin Console &amp; Vault</span>
                       </NavLink>
                     )}
 

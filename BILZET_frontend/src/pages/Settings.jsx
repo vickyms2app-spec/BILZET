@@ -18,6 +18,10 @@ import {
 } from "lucide-react";
 import { settingsApi } from "../api";
 import TaxInvoice from "../components/invoice/TaxInvoice";
+import { useAuth } from "../store/auth";
+import { useSecurityStore } from "../store/securityStore";
+import { isAdminUser, isAdminEmail, maskAccountNumber, maskIFSC, maskUPI } from "../utils/security";
+import { Lock, Unlock, EyeOff } from "lucide-react";
 
 export default function Settings() {
   const [searchParams] = useSearchParams();
@@ -64,6 +68,12 @@ export default function Settings() {
       upiId: parsed.upiId || "bilzet@hdfcbank",
     };
   });
+
+  const { user } = useAuth();
+  const { adminRevealed } = useSecurityStore();
+  const isAuthorizedAdmin = isAdminUser(user) || isAdminEmail(user?.email);
+  const canViewBankDetails = isAuthorizedAdmin || adminRevealed;
+  const [showFullBankDetails, setShowFullBankDetails] = useState(false);
 
   const [saved, setSaved] = useState(false);
   const [showFullPreview, setShowFullPreview] = useState(false);
@@ -509,35 +519,119 @@ export default function Settings() {
           {/* ──────────────── TAB 3: BANK & UPI QR ──────────────── */}
           {activeTab === "bank" && (
             <div className="card p-6 space-y-5">
-              <div className="flex items-center gap-2.5 pb-4 border-b border-slate-100">
-                <Building2 size={18} className="text-emerald-600" />
-                <div>
-                  <h2 className="text-sm font-bold text-slate-900">Direct Bank Settlement &amp; UPI Payment QR</h2>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Printed on invoice bills for seamless customer payments via GPay, PhonePe, Paytm, or NEFT
-                  </p>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
+                    <Building2 size={18} />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-sm font-bold text-slate-900">Direct Bank Settlement &amp; UPI Payment QR</h2>
+                      {canViewBankDetails ? (
+                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                          <CheckCircle2 size={11} /> Admin Access Granted
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                          <Lock size={11} /> Masked (Non-Admin)
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Printed on invoice bills for customer payments via GPay, PhonePe, Paytm, or NEFT
+                    </p>
+                  </div>
                 </div>
+
+                {canViewBankDetails && (
+                  <button
+                    type="button"
+                    onClick={() => setShowFullBankDetails(!showFullBankDetails)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-slate-200 hover:bg-slate-50 text-slate-700 transition"
+                  >
+                    {showFullBankDetails ? <EyeOff size={13} /> : <Eye size={13} />}
+                    <span>{showFullBankDetails ? "Mask Financial Details" : "Reveal Full Details"}</span>
+                  </button>
+                )}
               </div>
+
+              {!canViewBankDetails && (
+                <div className="bg-amber-50 border border-amber-200/80 rounded-2xl p-4 flex items-start gap-3">
+                  <Lock className="text-amber-600 mt-0.5 shrink-0" size={18} />
+                  <div>
+                    <h4 className="text-xs font-bold text-amber-900">Protected Settlement Account (Admin Access Required)</h4>
+                    <p className="text-[11px] text-amber-800 mt-0.5 leading-relaxed">
+                      Direct settlement account numbers and routing IFSC credentials are protected by enterprise security policy. Only authenticated administrators with authorized credentials can view or modify settlement details.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-600 mb-1.5">Bank Name</label>
-                  <input value={form.bankName} onChange={(e) => handleChange("bankName", e.target.value)} placeholder="HDFC Bank / State Bank of India" className={inputCls} />
+                  <input
+                    value={form.bankName}
+                    disabled={!canViewBankDetails}
+                    onChange={(e) => handleChange("bankName", e.target.value)}
+                    placeholder="HDFC Bank / State Bank of India"
+                    className={`${inputCls} ${!canViewBankDetails ? "bg-slate-100 cursor-not-allowed text-slate-500" : ""}`}
+                  />
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-slate-600 mb-1.5">Beneficiary / Account Holder Name</label>
-                  <input value={form.accountHolder} onChange={(e) => handleChange("accountHolder", e.target.value)} placeholder="BILZET Retail Mart" className={inputCls} />
+                  <input
+                    value={form.accountHolder}
+                    disabled={!canViewBankDetails}
+                    onChange={(e) => handleChange("accountHolder", e.target.value)}
+                    placeholder="BILZET Retail Mart"
+                    className={`${inputCls} ${!canViewBankDetails ? "bg-slate-100 cursor-not-allowed text-slate-500" : ""}`}
+                  />
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-slate-600 mb-1.5">Bank Account Number</label>
-                  <input value={form.accountNumber} onChange={(e) => handleChange("accountNumber", e.target.value)} placeholder="50200012345678" className={`${inputCls} font-mono font-bold`} />
+                  <input
+                    type="text"
+                    value={
+                      canViewBankDetails && showFullBankDetails
+                        ? form.accountNumber
+                        : maskAccountNumber(form.accountNumber, false)
+                    }
+                    disabled={!canViewBankDetails || !showFullBankDetails}
+                    onChange={(e) => handleChange("accountNumber", e.target.value)}
+                    placeholder="50200012345678"
+                    className={`${inputCls} font-mono font-bold ${
+                      !canViewBankDetails || !showFullBankDetails
+                        ? "bg-slate-100 text-slate-500 cursor-not-allowed tracking-widest"
+                        : "text-slate-900"
+                    }`}
+                  />
+                  {!showFullBankDetails && canViewBankDetails && (
+                    <span className="text-[10px] text-slate-400 mt-1 block">
+                      Click &quot;Reveal Full Details&quot; above to view and edit the exact account number.
+                    </span>
+                  )}
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-slate-600 mb-1.5">IFSC Code (11 Characters)</label>
-                  <input value={form.ifsc} onChange={(e) => handleChange("ifsc", e.target.value.toUpperCase())} placeholder="HDFC0001234" className={`${inputCls} font-mono uppercase font-bold`} />
+                  <input
+                    value={
+                      canViewBankDetails && showFullBankDetails
+                        ? form.ifsc
+                        : maskIFSC(form.ifsc, false)
+                    }
+                    disabled={!canViewBankDetails || !showFullBankDetails}
+                    onChange={(e) => handleChange("ifsc", e.target.value.toUpperCase())}
+                    placeholder="HDFC0001234"
+                    className={`${inputCls} font-mono uppercase font-bold ${
+                      !canViewBankDetails || !showFullBankDetails
+                        ? "bg-slate-100 text-slate-500 cursor-not-allowed"
+                        : "text-slate-900"
+                    }`}
+                  />
                 </div>
 
                 <div className="sm:col-span-2">
@@ -545,10 +639,17 @@ export default function Settings() {
                     Shop UPI VPA ID (For Instant Scan &amp; Pay QR Code)
                   </label>
                   <input
-                    value={form.upiId}
+                    value={
+                      canViewBankDetails
+                        ? form.upiId
+                        : maskUPI(form.upiId, false)
+                    }
+                    disabled={!canViewBankDetails}
                     onChange={(e) => handleChange("upiId", e.target.value)}
                     placeholder="bilzet@hdfcbank or phone@paytm"
-                    className={`${inputCls} font-mono font-bold text-emerald-700`}
+                    className={`${inputCls} font-mono font-bold text-emerald-700 ${
+                      !canViewBankDetails ? "bg-slate-100 cursor-not-allowed text-slate-500" : ""
+                    }`}
                   />
                   <p className="text-[11px] text-slate-400 mt-1.5">
                     Each invoice automatically embeds an authentic UPI QR code encoded with your UPI ID and the exact invoice bill amount.
