@@ -210,6 +210,7 @@ export default function TaxInvoice({
     showStatusBadge: shopSettings?.showStatusBadge !== false,
     showSignatory: shopSettings?.showSignatory !== false,
     showTerms: shopSettings?.showTerms !== false,
+    showChangeIndicators: shopSettings?.showChangeIndicators === true,
     bankName: shopSettings?.bankName || "HDFC Bank Ltd",
     accountNumber: shopSettings?.accountNumber || "50200012345678",
     ifsc: shopSettings?.ifsc || "HDFC0001234",
@@ -393,6 +394,22 @@ export default function TaxInvoice({
                 : activeTheme.border,
           }}
         >
+          {/* ── Live Inspection Mode Badge ────────────────────── */}
+          {settings.showChangeIndicators && (
+            <div className="absolute top-2 left-2 z-30 print:hidden flex flex-wrap items-center gap-1.5">
+              <span className="text-[9px] font-black text-white bg-blue-600 px-2 py-0.5 rounded-full shadow flex items-center gap-1 animate-pulse">
+                ● Layout: {settings.template.toUpperCase()}
+              </span>
+              <span className="text-[9px] font-bold text-slate-800 bg-white/95 border border-slate-300 px-2 py-0.5 rounded-full shadow-xs flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: activeTheme.primary }} />
+                Theme: {activeTheme.label}
+              </span>
+              <span className="text-[9px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-full shadow-xs">
+                Size: {settings.paperSize}
+              </span>
+            </div>
+          )}
+
           {/* ── 1. Template-Specific Corner / Background Art ── */}
           {/* A. Modern: Concentric Circles & Dual Triangles */}
           {settings.template === "modern" && (
@@ -476,6 +493,13 @@ export default function TaxInvoice({
           {/* ── Background Watermark (If toggled) ─────────────── */}
           {settings.showWatermark && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-0">
+              {settings.showChangeIndicators && (
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 print:hidden z-10 pointer-events-none">
+                  <span className="text-[9px] font-bold text-rose-700 bg-white/95 border border-rose-300 px-2.5 py-0.5 rounded-full shadow-xs">
+                    💧 Watermark Layer Active
+                  </span>
+                </div>
+              )}
               <span
                 className="text-8xl sm:text-9xl font-black uppercase tracking-widest text-slate-300 transform -rotate-30"
                 style={{
@@ -568,6 +592,11 @@ export default function TaxInvoice({
             <div className="relative z-10 flex items-start justify-between">
               {/* Left: Company Logo */}
               <div className="w-1/3 pt-1">
+                {settings.showChangeIndicators && (
+                  <span className="text-[8px] font-bold text-teal-700 bg-teal-50 border border-teal-200 px-1.5 py-0.2 rounded-full block w-fit mb-1 print:hidden">
+                    ● Logo ({settings.showLogo ? "Visible" : "Off"})
+                  </span>
+                )}
                 {settings.showLogo && settings.logoUrl ? (
                   <img
                     src={settings.logoUrl}
@@ -589,6 +618,11 @@ export default function TaxInvoice({
 
               {/* Center: TAX INVOICE & Company Name */}
               <div className="w-1/3 text-center">
+                {settings.showChangeIndicators && (
+                  <span className="text-[8px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.2 rounded-full inline-block mb-1 print:hidden">
+                    ● Heading: {settings.title}
+                  </span>
+                )}
                 <h1
                   className={`text-2xl font-black tracking-tight uppercase ${
                     settings.template === "premium" ? "font-serif text-amber-950" : "text-slate-900"
@@ -614,9 +648,14 @@ export default function TaxInvoice({
                 >
                   BILZET
                 </span>
+                {settings.showChangeIndicators && (
+                  <span className="text-[8px] font-bold text-sky-700 bg-sky-50 border border-sky-200 px-1.5 py-0.2 rounded-full inline-block mt-1 print:hidden">
+                    ● Badge: {settings.showStatusBadge ? "On" : "Off"}
+                  </span>
+                )}
                 {settings.showStatusBadge && (
                   <span
-                    className="mt-1.5 px-3.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase border"
+                    className="mt-1 px-3.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase border"
                     style={
                       inv.paymentStatus === "PAID"
                         ? {
@@ -829,9 +868,16 @@ export default function TaxInvoice({
           {/* ── Optional: HSN / SAC Summary Grid ─────────────── */}
           {settings.showHsnSummary && (
             <div className="relative z-10 pt-1">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
-                HSN / SAC Tax Breakdown Summary
-              </p>
+              <div className="flex items-center gap-2 mb-1">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                  HSN / SAC Tax Breakdown Summary
+                </p>
+                {settings.showChangeIndicators && (
+                  <span className="print:hidden text-[8px] font-bold text-cyan-700 bg-cyan-50 border border-cyan-200 px-1.5 py-0.2 rounded-full">
+                    ● Tax Breakdown Grid Active
+                  </span>
+                )}
+              </div>
               <table className="w-full text-[10px] text-center border border-collapse rounded-lg overflow-hidden" style={{ borderColor: activeTheme.tableBorder }}>
                 <thead style={{ backgroundColor: activeTheme.light, color: activeTheme.dark }}>
                   <tr>
@@ -924,9 +970,16 @@ export default function TaxInvoice({
           {settings.showBankDetails && (
             <div className="relative z-10 p-3 bg-blue-50/50 border border-blue-200 rounded-xl flex items-center justify-between text-[11px] text-slate-700">
               <div className="space-y-0.5">
-                <p className="font-bold uppercase tracking-wider text-slate-800 text-[10px]">
-                  Bank Settlement Details:
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="font-bold uppercase tracking-wider text-slate-800 text-[10px]">
+                    Bank Settlement Details:
+                  </p>
+                  {settings.showChangeIndicators && (
+                    <span className="print:hidden text-[8px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded-full">
+                      ● Bank &amp; QR Active
+                    </span>
+                  )}
+                </div>
                 <p><strong>Bank:</strong> {settings.bankName} &middot; <strong>A/C:</strong> {settings.accountNumber}</p>
                 <p><strong>IFSC:</strong> {settings.ifsc} &middot; <strong>UPI:</strong> {settings.upiId}</p>
               </div>
@@ -944,7 +997,14 @@ export default function TaxInvoice({
               {/* Left: Footer / Terms */}
               {settings.showTerms ? (
                 <div className="space-y-1 text-xs text-slate-600">
-                  <p className="font-bold text-slate-900 text-xs">Footer / Terms</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-bold text-slate-900 text-xs">Footer / Terms</p>
+                    {settings.showChangeIndicators && (
+                      <span className="print:hidden text-[8px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.2 rounded-full">
+                        ● Terms Printed
+                      </span>
+                    )}
+                  </div>
                   <p className="text-[11px] leading-relaxed whitespace-pre-line">{settings.terms}</p>
                 </div>
               ) : <div />}
@@ -953,7 +1013,14 @@ export default function TaxInvoice({
               {settings.showSignatory && (
                 <div className="text-right space-y-6">
                   <div className="h-6" />
-                  <p className="text-xs text-slate-600 font-medium">Authorized Signature</p>
+                  <div className="flex items-center justify-end gap-1.5">
+                    {settings.showChangeIndicators && (
+                      <span className="print:hidden text-[8px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.2 rounded-full">
+                        ● Signatory Box
+                      </span>
+                    )}
+                    <p className="text-xs text-slate-600 font-medium">Authorized Signature</p>
+                  </div>
                 </div>
               )}
             </div>

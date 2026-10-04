@@ -404,7 +404,56 @@ export default function Settings() {
       .catch(() => {});
   }, []);
 
+  const [lastChange, setLastChange] = useState({
+    title: "Initial Configuration",
+    field: "template",
+    time: "Ready",
+  });
+  const [highlightSections, setHighlightSections] = useState(true);
+
+  const formatChangeName = (field, val) => {
+    switch (field) {
+      case "template": {
+        const tmpl = INVOICE_TEMPLATES.find((t) => t.id === val);
+        return `Switched layout to "${tmpl?.name || val}"`;
+      }
+      case "colorTheme": {
+        const col = COLOR_THEMES.find((c) => c.id === val);
+        return `Color palette set to "${col?.label || val}"`;
+      }
+      case "paperSize":
+        return `Paper format set to "${val}"`;
+      case "invoiceTitle":
+        return `Document heading set to "${val}"`;
+      case "invoicePrefix":
+        return `Invoice prefix set to "${val}"`;
+      case "showLogo":
+        return `Company logo ${val ? "visible on bill" : "hidden"}`;
+      case "showWatermark":
+        return `Background watermark ${val ? "enabled on bill" : "hidden"}`;
+      case "showStatusBadge":
+        return `Payment status badge ${val ? "shown on bill" : "hidden"}`;
+      case "showHsnSummary":
+        return `HSN/SAC summary grid ${val ? "enabled on bill" : "hidden"}`;
+      case "showBankDetails":
+        return `Bank settlement details ${val ? "printed on bill" : "hidden"}`;
+      case "showQrCode":
+        return `UPI QR Code ${val ? "printed on bill" : "hidden"}`;
+      case "showTerms":
+        return `Terms & conditions ${val ? "printed on bill" : "hidden"}`;
+      case "showSignatory":
+        return `Authorized signature box ${val ? "visible on bill" : "hidden"}`;
+      default:
+        return `${field} updated`;
+    }
+  };
+
   const handleChange = (field, val) => {
+    setLastChange({
+      title: formatChangeName(field, val),
+      field,
+      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+    });
     setForm((prev) => {
       const next = { ...prev, [field]: val };
       localStorage.setItem("bilzet_invoice_settings", JSON.stringify(next));
@@ -425,8 +474,16 @@ export default function Settings() {
       setUpgradeModal({ open: true, item: theme.label, type: "color" });
       return;
     }
-    handleChange("colorTheme", theme.id);
-    handleChange("themeColor", theme.primary);
+    setLastChange({
+      title: `Color palette set to "${theme.label}"`,
+      field: "colorTheme",
+      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+    });
+    setForm((prev) => {
+      const next = { ...prev, colorTheme: theme.id, themeColor: theme.primary };
+      localStorage.setItem("bilzet_invoice_settings", JSON.stringify(next));
+      return next;
+    });
   };
 
   const handleSelectPaperSize = (p) => {
@@ -555,7 +612,104 @@ export default function Settings() {
       ══════════════════════════════════════════════════ */}
       {activeTab === "customizer" && (
         <div className="space-y-6">
-          {/* ── CARD 1: PAPER SIZE ───────────────────────── */}
+          {/* ── TOP: LIVE BILL CHANGES INSPECTOR ──────────── */}
+          <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-950 text-white p-4 sm:p-5 rounded-2xl border border-blue-800/40 shadow-lg space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="relative flex items-center justify-center w-3 h-3">
+                  <span className="w-3 h-3 rounded-full bg-emerald-400 animate-ping opacity-75" />
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 absolute" />
+                </div>
+                <h3 className="font-bold text-xs uppercase tracking-wider text-emerald-400 flex items-center gap-2">
+                  <span>Live Bill Inspector</span>
+                  <span className="text-[10px] lowercase font-normal text-slate-300">
+                    &middot; real-time preview of what you change
+                  </span>
+                </h3>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setHighlightSections(!highlightSections)}
+                  className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition flex items-center gap-1.5 ${
+                    highlightSections
+                      ? "bg-blue-600 text-white border-blue-500 shadow-sm"
+                      : "bg-white/10 hover:bg-white/20 text-slate-300 border-white/20"
+                  }`}
+                  title="Toggle section callout tags directly on the bill"
+                >
+                  <Eye size={13} />
+                  <span>{highlightSections ? "Visual Callouts ON" : "Visual Callouts OFF"}</span>
+                </button>
+                <span className="text-[11px] text-slate-400">
+                  {lastChange.time}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5 pt-2.5 border-t border-white/10">
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-amber-400 font-bold shrink-0">✨ Live Applied:</span>
+                <span className="font-bold text-white bg-white/15 px-2.5 py-0.5 rounded-lg border border-white/15">
+                  {lastChange.title}
+                </span>
+              </div>
+
+              {/* Active Bill Customization Chips */}
+              <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+                <span className="px-2 py-0.5 rounded-md bg-blue-500/20 text-blue-300 border border-blue-400/30 font-semibold">
+                  📐 {form.paperSize}
+                </span>
+                <span className="px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 font-semibold">
+                  🏛️ {form.template}
+                </span>
+                <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 font-semibold flex items-center gap-1">
+                  <span
+                    className="w-1.5 h-1.5 rounded-full"
+                    style={{
+                      backgroundColor:
+                        COLOR_THEMES.find((c) => c.id === form.colorTheme)?.primary || "#2563eb",
+                    }}
+                  />
+                  🎨 {COLOR_THEMES.find((c) => c.id === form.colorTheme)?.label || "Blue"}
+                </span>
+                <span
+                  className={`px-2 py-0.5 rounded-md font-semibold border ${
+                    form.showWatermark
+                      ? "bg-rose-500/20 text-rose-300 border-rose-400/30"
+                      : "bg-slate-800 text-slate-400 border-slate-700"
+                  }`}
+                >
+                  💧 Watermark: {form.showWatermark ? "ON" : "OFF"}
+                </span>
+                <span
+                  className={`px-2 py-0.5 rounded-md font-semibold border ${
+                    form.showStatusBadge
+                      ? "bg-sky-500/20 text-sky-300 border-sky-400/30"
+                      : "bg-slate-800 text-slate-400 border-slate-700"
+                  }`}
+                >
+                  🛡️ Badge: {form.showStatusBadge ? "ON" : "OFF"}
+                </span>
+                <span
+                  className={`px-2 py-0.5 rounded-md font-semibold border ${
+                    form.showHsnSummary
+                      ? "bg-cyan-500/20 text-cyan-300 border-cyan-400/30"
+                      : "bg-slate-800 text-slate-400 border-slate-700"
+                  }`}
+                >
+                  📊 HSN: {form.showHsnSummary ? "ON" : "OFF"}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* ── RESPONSIVE DUAL-COLUMN LAYOUT (CONTROLS LEFT, STICKY BILL RIGHT) ── */}
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+            {/* LEFT: CONTROLS (7 Cols) */}
+            <div className="xl:col-span-7 space-y-6">
+              {/* ── CARD 1: PAPER SIZE ───────────────────────── */}
           <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/90 shadow-xs space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-bold text-slate-900">Paper Size</h2>
@@ -1053,29 +1207,83 @@ export default function Settings() {
             </div>
           </div>
 
-          {/* ── CARD 5: LIVE PREVIEW ─────────────────────── */}
-          <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/90 shadow-xs space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                <h2 className="text-sm font-bold text-slate-900">Live Preview</h2>
-                <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-bold border border-blue-200">
-                  {form.paperSize} &middot; {form.template}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowFullPreview(true)}
-                className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1.5 transition"
-              >
-                <Eye size={13} />
-                <span>Fullscreen View</span>
-              </button>
             </div>
 
-            <div className="bg-slate-100/70 border border-slate-200 rounded-2xl p-4 sm:p-6 overflow-x-auto flex justify-center">
-              <div className="max-w-4xl w-full shadow-lg rounded-2xl overflow-hidden bg-white">
-                <TaxInvoice shopSettings={form} isModal={false} />
+            {/* RIGHT: STICKY LIVE BILL PREVIEW (5 Cols) */}
+            <div className="xl:col-span-5 xl:sticky xl:top-6 space-y-4">
+              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-sm space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <h2 className="text-sm font-bold text-slate-900">Live Bill Preview</h2>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 font-bold border border-blue-200">
+                      {form.paperSize} &middot; {form.template}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowFullPreview(true)}
+                    className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1.5 transition"
+                  >
+                    <Eye size={13} />
+                    <span>Fullscreen</span>
+                  </button>
+                </div>
+
+                {/* Quick Toggle Ribbon directly on Live Preview */}
+                <div className="flex flex-wrap items-center gap-1.5 p-2 bg-slate-50 rounded-xl border border-slate-200/70 text-[10px]">
+                  <span className="text-slate-500 font-bold mr-1">Quick:</span>
+                  <button
+                    type="button"
+                    onClick={() => handleChange("showWatermark", !form.showWatermark)}
+                    className={`px-2 py-0.5 rounded-lg border font-semibold transition ${
+                      form.showWatermark
+                        ? "bg-rose-50 text-rose-700 border-rose-200"
+                        : "bg-white text-slate-500 border-slate-200"
+                    }`}
+                  >
+                    💧 Watermark {form.showWatermark ? "✓" : "✗"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleChange("showLogo", !form.showLogo)}
+                    className={`px-2 py-0.5 rounded-lg border font-semibold transition ${
+                      form.showLogo
+                        ? "bg-teal-50 text-teal-700 border-teal-200"
+                        : "bg-white text-slate-500 border-slate-200"
+                    }`}
+                  >
+                    🖼️ Logo {form.showLogo ? "✓" : "✗"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleChange("showStatusBadge", !form.showStatusBadge)}
+                    className={`px-2 py-0.5 rounded-lg border font-semibold transition ${
+                      form.showStatusBadge
+                        ? "bg-sky-50 text-sky-700 border-sky-200"
+                        : "bg-white text-slate-500 border-slate-200"
+                    }`}
+                  >
+                    🛡️ Badge {form.showStatusBadge ? "✓" : "✗"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleChange("showHsnSummary", !form.showHsnSummary)}
+                    className={`px-2 py-0.5 rounded-lg border font-semibold transition ${
+                      form.showHsnSummary
+                        ? "bg-cyan-50 text-cyan-700 border-cyan-200"
+                        : "bg-white text-slate-500 border-slate-200"
+                    }`}
+                  >
+                    📊 HSN {form.showHsnSummary ? "✓" : "✗"}
+                  </button>
+                </div>
+
+                <div className="bg-slate-100/70 border border-slate-200 rounded-2xl p-2 sm:p-3 overflow-x-auto flex justify-center max-h-[750px] overflow-y-auto">
+                  <div className="w-full shadow-md rounded-xl overflow-hidden bg-white scale-[0.88] origin-top">
+                    <TaxInvoice shopSettings={{ ...form, showChangeIndicators: highlightSections }} isModal={false} />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
