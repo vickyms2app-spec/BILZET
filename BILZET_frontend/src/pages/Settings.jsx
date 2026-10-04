@@ -28,6 +28,13 @@ import { useAuth } from "../store/auth";
 import { useSecurityStore } from "../store/securityStore";
 import { isAdminUser, isAdminEmail, maskAccountNumber, maskIFSC, maskUPI } from "../utils/security";
 
+export const PAPER_SIZES = [
+  { id: "A4", label: "A4", isFree: true, isPro: false },
+  { id: "A5", label: "A5", isFree: true, isPro: false },
+  { id: "Thermal 80mm", label: "Thermal 80mm", badge: "PRO", isFree: false, isPro: true },
+  { id: "Thermal 58mm", label: "Thermal 58mm", badge: "PREMIUM", isFree: false, isPro: true },
+];
+
 export default function Settings() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -279,12 +286,7 @@ export default function Settings() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2.5 pt-1">
-              {[
-                { id: "A4", label: "A4", isPro: false },
-                { id: "A5", label: "A5", isPro: false },
-                { id: "Thermal 80mm", label: "Thermal 80mm", badge: "PRO", isPro: true },
-                { id: "Thermal 58mm", label: "Thermal 58mm", badge: "PREMIUM", isPro: true },
-              ].map((p) => {
+              {PAPER_SIZES.map((p) => {
                 const isSelected = form.paperSize === p.id;
                 return (
                   <button
