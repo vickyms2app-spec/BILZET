@@ -258,20 +258,36 @@ export default function Layout({ children }) {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
+  const displayedNavSections = useMemo(() => {
+    return navSections.map((sec) => {
+      if (sec.key === "system" && isAuthorizedAdmin) {
+        if (!sec.items.some((i) => i.path === "/admin")) {
+          return {
+            ...sec,
+            items: [
+              ...sec.items,
+              { label: "Admin Console & Vault", path: "/admin", icon: Shield, highlight: true },
+            ],
+          };
+        }
+      }
+      return sec;
+    });
+  }, [isAuthorizedAdmin]);
+
   // Dynamic breadcrumb matching
   const currentBreadcrumb = useMemo(() => {
     const path = location.pathname;
-    for (const sec of navSections) {
+    for (const sec of displayedNavSections) {
       const match = sec.items.find((i) => i.path === path);
       if (match) {
         return { category: sec.title, page: match.label, icon: match.icon };
       }
     }
     if (path.startsWith("/invoices/")) return { category: "Sales & Billing", page: "Invoice Details", icon: FileText };
-    if (path === "/admin") return { category: "Administration", page: "User Management", icon: Shield };
-    if (path === "/app-admin") return { category: "Super Admin", page: "Master Control", icon: Shield };
+    if (path === "/admin" || path === "/app-admin") return { category: "Administration", page: "Admin Console & Vault", icon: Shield };
     return { category: "Overview", page: "BILZET Business ERP", icon: LayoutGrid };
-  }, [location.pathname]);
+  }, [location.pathname, displayedNavSections]);
 
   const clerk = hasClerk ? useClerk() : null;
 
@@ -359,7 +375,7 @@ export default function Layout({ children }) {
 
         {/* Navigation list */}
         <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-3 scrollbar-thin scrollbar-thumb-white/10 hover:scrollbar-thumb-white/20">
-          {navSections.map((section, sIdx) => {
+          {displayedNavSections.map((section, sIdx) => {
             const isSectionCollapsed = !!collapsedSections[section.key];
 
             return (
@@ -461,13 +477,13 @@ export default function Layout({ children }) {
                   </div>
                 </div>
 
-                {user?.email?.toLowerCase() === "vickyms2app@gmail.com" && (
+                {isAuthorizedAdmin && (
                   <NavLink
-                    to="/app-admin"
-                    className="w-full mb-1.5 py-1 px-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:brightness-110 text-white text-[10px] font-bold rounded-lg transition flex items-center justify-center gap-1.5 shadow-xs"
+                    to="/admin"
+                    className="w-full mb-1.5 py-1 px-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:brightness-110 text-white text-[10px] font-bold rounded-lg transition flex items-center justify-center gap-1.5 shadow-xs"
                   >
                     <Shield size={11} />
-                    <span>Master Admin</span>
+                    <span>Admin Console & Vault</span>
                   </NavLink>
                 )}
 
@@ -535,7 +551,7 @@ export default function Layout({ children }) {
             </div>
 
             <nav className="flex-1 overflow-y-auto py-2 space-y-3">
-              {navSections.map((section) => (
+              {displayedNavSections.map((section) => (
                 <div key={section.title} className="space-y-1">
                   <div className="px-3 pt-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                     {section.title}

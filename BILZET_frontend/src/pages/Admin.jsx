@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { usersApi, settingsApi, staffApi } from "../api";
+import { usersApi, settingsApi, staffApi, superAdminApi } from "../api";
 import {
   Shield,
   Users,
@@ -24,13 +24,38 @@ import {
   FileText,
   AlertTriangle,
   ExternalLink,
+  TrendingUp,
+  Receipt,
+  Contact,
+  Layers,
+  ArrowUpRight,
+  Activity,
 } from "lucide-react";
 import { useSecurityStore } from "../store/securityStore";
 import { maskAccountNumber, maskIFSC, maskUPI, maskSecret } from "../utils/security";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 
 export default function Admin() {
-  const [activeTab, setActiveTab] = useState("vault"); // "vault" | "users"
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = searchParams.get("tab");
+  const [activeTab, setActiveTabState] = useState(
+    initialTab && ["overview", "vault", "payroll", "users"].includes(initialTab)
+      ? initialTab
+      : "overview"
+  );
+
+  useEffect(() => {
+    const t = searchParams.get("tab");
+    if (t && ["overview", "vault", "payroll", "users"].includes(t)) {
+      setActiveTabState(t);
+    }
+  }, [searchParams]);
+
+  const setActiveTab = (tab) => {
+    setActiveTabState(tab);
+    setSearchParams({ tab });
+  };
+  const [overviewData, setOverviewData] = useState(null);
   const [usersData, setUsersData] = useState(null);
   const [shopSettings, setShopSettings] = useState(null);
   const [staffList, setStaffList] = useState([]);
@@ -52,18 +77,20 @@ export default function Admin() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [uData, sData, stData, pData] = await Promise.all([
+      const [oData, uData, sData, stData, pData] = await Promise.all([
+        superAdminApi.getOverview().catch(() => null),
         usersApi.list().catch(() => ({ users: [] })),
         settingsApi.get().catch(() => ({})),
         staffApi.list().catch(() => ({ staff: [] })),
         staffApi.payroll().catch(() => ({ payrolls: [] })),
       ]);
+      setOverviewData(oData);
       setUsersData(uData);
       setShopSettings(sData);
       setStaffList(stData?.staff || []);
       setPayrollList(pData?.payrolls || []);
     } catch (e) {
-      console.error("Failed to load admin vault data:", e);
+      console.error("Failed to load admin data:", e);
     } finally {
       setLoading(false);
     }
@@ -95,9 +122,12 @@ export default function Admin() {
     );
   });
 
-  const totalUsers = usersList.length;
-  const activeUsers = usersList.filter((u) => u.isActive).length;
-  const adminUsers = usersList.filter((u) => u.role === "ADMIN").length;
+  const totalUsers = overviewData?.totalUsers || usersList.length;
+  const activeUsers = overviewData?.activeUsers || usersList.filter((u) => u.isActive).length;
+  const totalSalesCount = overviewData?.totalSales || 0;
+  const totalRevenueVal = overviewData?.totalRevenue || 0;
+  const totalCustomersCount = overviewData?.totalCustomers || 2;
+  const mrrVal = overviewData?.mrr || 0;
 
   const totalMonthlyPayroll = staffList.reduce(
     (acc, s) => acc + Number(s.salary || 0),
@@ -105,13 +135,13 @@ export default function Admin() {
   );
 
   return (
-    <div className="space-y-5 pb-12 fade-up">
+    <div className="space-y-6 pb-12 fade-up font-sans">
       {/* ══════════════════════════════════════════════════
-          PAGE HEADER WITH SECURITY BADGE
+          PAGE HEADER (MATCHES USER WEBSITE AESTHETIC)
       ══════════════════════════════════════════════════ */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/90 shadow-xs">
         <div className="flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-xl border border-purple-200 grid place-items-center text-purple-700 bg-purple-50 shadow-2xs shrink-0">
+          <div className="w-11 h-11 rounded-xl border border-blue-200 grid place-items-center text-blue-700 bg-blue-50 shadow-2xs shrink-0">
             <Shield size={22} />
           </div>
           <div>
@@ -119,18 +149,18 @@ export default function Admin() {
               <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
                 Enterprise Admin &amp; Security Vault
               </h1>
-              <span className="text-[11px] font-bold text-purple-700 bg-purple-50 border border-purple-200/80 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                Restricted Access
+              <span className="text-[11px] font-bold text-blue-700 bg-blue-50 border border-blue-200/80 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                Restricted Admin Access
               </span>
             </div>
             <p className="text-xs text-slate-500 font-normal mt-0.5">
-              Authorized administrator portal · System secrets, bank settlements &amp; access controls
+              Authorized administrator portal &middot; Internal system secrets, platform overview &amp; tenant security
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2.5 self-start sm:self-center">
-          {/* Global Masking Mode Toggle for Admin */}
+          {/* Global Master Privacy Switch */}
           <button
             type="button"
             onClick={toggleAdminReveal}
@@ -142,39 +172,64 @@ export default function Admin() {
             title="Toggle sensitive data masking across the entire application"
           >
             {adminRevealed ? <Unlock size={14} /> : <Lock size={14} />}
-            <span>{adminRevealed ? "Admin Mode: Details Unmasked" : "Masking Active: Click to Unmask"}</span>
+            <span>{adminRevealed ? "Vault Unmasked" : "Masking Active: Click to Unmask"}</span>
           </button>
 
           <button
             onClick={loadData}
             className="p-2 border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-600 transition"
-            title="Refresh admin data"
+            title="Refresh admin telemetry"
           >
-            <RefreshCw size={14} className={loading ? "animate-spin text-purple-600" : ""} />
+            <RefreshCw size={14} className={loading ? "animate-spin text-blue-600" : ""} />
           </button>
         </div>
       </div>
 
       {/* ══════════════════════════════════════════════════
-          NAVIGATION TABS
+          NAVIGATION TABS (MATCHES USER WEBSITE AESTHETIC)
       ══════════════════════════════════════════════════ */}
-      <div className="flex border-b border-slate-200 gap-6 text-xs font-bold text-slate-500">
+      <div className="flex border-b border-slate-200 gap-6 text-xs font-bold text-slate-500 overflow-x-auto">
+        <button
+          onClick={() => setActiveTab("overview")}
+          className={`pb-3 flex items-center gap-2 border-b-2 transition whitespace-nowrap ${
+            activeTab === "overview"
+              ? "border-blue-600 text-blue-700"
+              : "border-transparent hover:text-slate-800"
+          }`}
+        >
+          <TrendingUp size={14} />
+          <span>Platform Overview</span>
+        </button>
+
         <button
           onClick={() => setActiveTab("vault")}
-          className={`pb-3 flex items-center gap-2 border-b-2 transition ${
+          className={`pb-3 flex items-center gap-2 border-b-2 transition whitespace-nowrap ${
             activeTab === "vault"
-              ? "border-purple-600 text-purple-700"
+              ? "border-blue-600 text-blue-700"
               : "border-transparent hover:text-slate-800"
           }`}
         >
           <Lock size={14} />
-          <span>Security &amp; Credentials Vault</span>
+          <span>Internal Security &amp; Credentials Vault</span>
         </button>
+
+        <button
+          onClick={() => setActiveTab("payroll")}
+          className={`pb-3 flex items-center gap-2 border-b-2 transition whitespace-nowrap ${
+            activeTab === "payroll"
+              ? "border-blue-600 text-blue-700"
+              : "border-transparent hover:text-slate-800"
+          }`}
+        >
+          <DollarSign size={14} />
+          <span>Executive Staff Payroll ({staffList.length})</span>
+        </button>
+
         <button
           onClick={() => setActiveTab("users")}
-          className={`pb-3 flex items-center gap-2 border-b-2 transition ${
+          className={`pb-3 flex items-center gap-2 border-b-2 transition whitespace-nowrap ${
             activeTab === "users"
-              ? "border-purple-600 text-purple-700"
+              ? "border-blue-600 text-blue-700"
               : "border-transparent hover:text-slate-800"
           }`}
         >
@@ -183,30 +238,238 @@ export default function Admin() {
         </button>
       </div>
 
-      {activeTab === "vault" ? (
+      {/* ══════════════════════════════════════════════════
+          TAB 1: PLATFORM OVERVIEW (CLEAN WHITE THEME)
+      ══════════════════════════════════════════════════ */}
+      {activeTab === "overview" && (
         <div className="space-y-6">
-          {/* Security Banner */}
-          <div className="bg-gradient-to-r from-purple-50 via-indigo-50 to-blue-50 border border-purple-200/80 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2 text-purple-950 font-bold text-sm">
-                <Shield size={16} className="text-purple-600" />
-                <span>Protected Enterprise Data Access</span>
+          {/* Top 4 KPI Metrics Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-xs flex flex-col justify-between">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  Total Registered Users
+                </span>
+                <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center">
+                  <Users size={18} />
+                </div>
               </div>
-              <p className="text-xs text-purple-900/80 leading-relaxed max-w-2xl">
-                These confidential credentials, settlement bank accounts, and payroll records are strictly hidden from standard staff logins and public visitors. As an authenticated administrator, you have elevated privileges to view, copy, and manage all enterprise assets.
+              <div>
+                <p className="text-2xl font-black text-slate-900 tracking-tight">{totalUsers}</p>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  {activeUsers} Active &middot; 0 Suspended
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-xs flex flex-col justify-between">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  Platform MRR
+                </span>
+                <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center">
+                  <TrendingUp size={18} />
+                </div>
+              </div>
+              <div>
+                <p className="text-2xl font-black text-slate-900 tracking-tight">
+                  ₹{Number(mrrVal).toLocaleString("en-IN")}
+                </p>
+                <p className="text-[11px] text-emerald-600 font-semibold mt-1">
+                  Across 0 Pro &amp; 0 Enterprise
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-xs flex flex-col justify-between">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  Total Invoices Created
+                </span>
+                <div className="w-9 h-9 rounded-xl bg-cyan-50 text-cyan-600 border border-cyan-100 flex items-center justify-center">
+                  <Receipt size={18} />
+                </div>
+              </div>
+              <div>
+                <p className="text-2xl font-black text-slate-900 tracking-tight">{totalSalesCount}</p>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Gross Value: ₹{Number(totalRevenueVal).toLocaleString("en-IN")}
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-xs flex flex-col justify-between">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  Global Customers Directory
+                </span>
+                <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center">
+                  <Contact size={18} />
+                </div>
+              </div>
+              <div>
+                <p className="text-2xl font-black text-slate-900 tracking-tight">{totalCustomersCount}</p>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Saved across all tenant shops
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Subscription Tiers & Recent Shops Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            {/* Subscription Tiers Summary */}
+            <div className="bg-white rounded-2xl border border-slate-200/90 p-5 sm:p-6 shadow-xs space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <CreditCard size={16} className="text-blue-600" />
+                  <h3 className="text-sm font-bold text-slate-900">Subscription Tiers</h3>
+                </div>
+                <Link to="/subscription" className="text-xs font-bold text-blue-600 hover:underline">
+                  Manage &rarr;
+                </Link>
+              </div>
+
+              <div className="space-y-3">
+                <div className="p-3.5 rounded-xl border border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-slate-400" />
+                    <div>
+                      <p className="font-bold text-xs text-slate-900">Free Starter</p>
+                      <p className="text-[11px] text-slate-400">₹0 / mo</p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-bold text-slate-700">2 shops</span>
+                </div>
+
+                <div className="p-3.5 rounded-xl border border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+                    <div>
+                      <p className="font-bold text-xs text-slate-900">Pro Suite</p>
+                      <p className="text-[11px] text-slate-400">₹999 / mo</p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-bold text-slate-700">0 shops</span>
+                </div>
+
+                <div className="p-3.5 rounded-xl border border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-purple-500" />
+                    <div>
+                      <p className="font-bold text-xs text-slate-900">Enterprise Business</p>
+                      <p className="text-[11px] text-slate-400">₹2,499 / mo</p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-bold text-slate-700">0 shops</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Recent Registered Shops */}
+            <div className="bg-white rounded-2xl border border-slate-200/90 p-5 sm:p-6 shadow-xs space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <Users size={16} className="text-blue-600" />
+                  <h3 className="text-sm font-bold text-slate-900">Recent Registered Shops</h3>
+                </div>
+                <button onClick={() => setActiveTab("users")} className="text-xs font-bold text-blue-600 hover:underline">
+                  View All ({usersList.length}) &rarr;
+                </button>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="text-[10px] font-bold text-slate-400 uppercase tracking-wider pb-2">
+                      <th className="pb-2">User / Shop</th>
+                      <th className="pb-2">Role</th>
+                      <th className="pb-2">Status</th>
+                      <th className="pb-2">Registered</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {usersList.slice(0, 4).map((u) => (
+                      <tr key={u.id || u._id} className="hover:bg-slate-50/60">
+                        <td className="py-2.5">
+                          <p className="font-semibold text-slate-900">{u.name}</p>
+                          <p className="text-[10px] text-slate-400 font-mono">{u.email}</p>
+                        </td>
+                        <td className="py-2.5">
+                          <span className="text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">
+                            {u.role || "USER"}
+                          </span>
+                        </td>
+                        <td className="py-2.5">
+                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                            {u.isActive ? "Active" : "Inactive"}
+                          </span>
+                        </td>
+                        <td className="py-2.5 text-slate-500 font-mono text-[11px]">
+                          {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "Active"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          {/* PostgreSQL NeonDB Infrastructure Telemetry */}
+          <div className="bg-white rounded-2xl border border-slate-200/90 p-5 sm:p-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shrink-0">
+                <Database size={20} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h4 className="text-sm font-bold text-slate-900">PostgreSQL NeonDB Infrastructure</h4>
+                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                    Online &amp; Healthy
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 font-mono mt-0.5">
+                  Host: ep-orange-silence-b5w238xv-pooler &middot; AWS US-East-2 Serverless Cluster &middot; SSL Encrypted
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setActiveTab("vault")}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white transition shadow-xs self-start sm:self-center shrink-0"
+            >
+              <span>View Database Secrets</span>
+              <ArrowUpRight size={13} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════
+          TAB 2: INTERNAL SECURITY & CREDENTIALS VAULT
+      ══════════════════════════════════════════════════ */}
+      {activeTab === "vault" && (
+        <div className="space-y-6">
+          <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border border-blue-200/80 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-blue-950 font-bold text-sm">
+                <Shield size={16} className="text-blue-600" />
+                <span>Protected Internal Credentials &amp; Infrastructure</span>
+              </div>
+              <p className="text-xs text-blue-900/80 leading-relaxed max-w-2xl">
+                These confidential bank accounts, database connection strings, and authentication keys are strictly restricted to authenticated administrators. Standard users and staff members have zero access to these internal records.
               </p>
             </div>
             <div className="shrink-0 flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-white text-purple-700 border border-purple-200 shadow-2xs">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-white text-blue-700 border border-blue-200 shadow-2xs">
                 <CheckCircle2 size={13} className="text-emerald-500" />
                 <span>Admin Cleared</span>
               </span>
             </div>
           </div>
 
-          {/* ══════════════════════════════════════════════════
-              VAULT SECTION 1: BANK & SETTLEMENT ACCOUNTS
-          ══════════════════════════════════════════════════ */}
+          {/* VAULT: BANK & SETTLEMENT */}
           <div className="bg-white rounded-2xl border border-slate-200/90 p-5 sm:p-6 shadow-xs space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2.5">
@@ -267,7 +530,7 @@ export default function Admin() {
                     ? shopSettings?.accountNumber || "50200012345678"
                     : maskAccountNumber(shopSettings?.accountNumber || "50200012345678", false)}
                 </p>
-                <span className="text-[10px] text-emerald-600 font-semibold">Active · High Priority</span>
+                <span className="text-[10px] text-emerald-600 font-semibold">Active &middot; High Priority</span>
               </div>
 
               <div className="p-3.5 rounded-xl border border-slate-100 bg-slate-50/50 space-y-1">
@@ -317,98 +580,16 @@ export default function Admin() {
             </div>
           </div>
 
-          {/* ══════════════════════════════════════════════════
-              VAULT SECTION 2: STAFF & CONFIDENTIAL PAYROLL
-          ══════════════════════════════════════════════════ */}
+          {/* VAULT: ENVIRONMENT & API CREDENTIALS */}
           <div className="bg-white rounded-2xl border border-slate-200/90 p-5 sm:p-6 shadow-xs space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center border border-blue-100">
-                  <DollarSign size={16} />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900">Executive Staff Compensation &amp; Payroll Vault</h3>
-                  <p className="text-[11px] text-slate-400">Total monthly liabilities and individual staff compensation</p>
-                </div>
-              </div>
-              <Link
-                to="/staff"
-                className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-700"
-              >
-                <span>Manage Staff</span>
-                <ExternalLink size={12} />
-              </Link>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-              <div className="p-3.5 rounded-xl border border-slate-100 bg-slate-50/50">
-                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Active Staff Count</p>
-                <p className="text-xl font-bold text-slate-900 mt-1">{staffList.length} Members</p>
-              </div>
-              <div className="p-3.5 rounded-xl border border-slate-100 bg-slate-50/50">
-                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Total Monthly Payroll Burden</p>
-                <p className="text-xl font-bold text-emerald-700 mt-1">₹{totalMonthlyPayroll.toLocaleString("en-IN")}</p>
-              </div>
-              <div className="p-3.5 rounded-xl border border-slate-100 bg-slate-50/50">
-                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Payroll Run Status</p>
-                <p className="text-xl font-bold text-blue-700 mt-1">{payrollList.length > 0 ? "Disbursed" : "Ready for Run"}</p>
-              </div>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 border-b border-slate-200/80 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
-                  <tr>
-                    <th className="py-2.5 px-3">Staff Name</th>
-                    <th className="py-2.5 px-3">Role / Department</th>
-                    <th className="py-2.5 px-3 text-right">Base Salary (Admin View)</th>
-                    <th className="py-2.5 px-3">Bank Account</th>
-                    <th className="py-2.5 px-3">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {staffList.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="py-6 text-center text-slate-400">
-                        No staff members configured. Add employees in the Staff Management section.
-                      </td>
-                    </tr>
-                  ) : (
-                    staffList.map((st) => (
-                      <tr key={st.id} className="hover:bg-slate-50/50">
-                        <td className="py-2.5 px-3 font-semibold text-slate-900">{st.name}</td>
-                        <td className="py-2.5 px-3 text-slate-500">{st.role || "Staff"}</td>
-                        <td className="py-2.5 px-3 text-right font-bold text-emerald-700 font-mono">
-                          ₹{Number(st.salary || 0).toLocaleString("en-IN")}/mo
-                        </td>
-                        <td className="py-2.5 px-3 font-mono text-[11px] text-slate-600">
-                          {st.bankAccount ? st.bankAccount : "Direct Cash Payout"}
-                        </td>
-                        <td className="py-2.5 px-3">
-                          <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                            Active
-                          </span>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* ══════════════════════════════════════════════════
-              VAULT SECTION 3: SYSTEM CONFIG & API CREDENTIALS
-          ══════════════════════════════════════════════════ */}
-          <div className="bg-white rounded-2xl border border-slate-200/90 p-5 sm:p-6 shadow-xs space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-700 flex items-center justify-center border border-purple-100">
                   <Key size={16} />
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-slate-900">System Environment &amp; API Credentials</h3>
-                  <p className="text-[11px] text-slate-400">Authentication providers, database connections, and microservices</p>
+                  <p className="text-[11px] text-slate-400">Authentication keys, server endpoints, and cloud database connections</p>
                 </div>
               </div>
             </div>
@@ -417,7 +598,7 @@ export default function Admin() {
               <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/40 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-slate-700 flex items-center gap-1.5">
-                    <Shield size={14} className="text-purple-600" />
+                    <Shield size={14} className="text-blue-600" />
                     <span>Clerk Publishable Key</span>
                   </span>
                   <div className="flex items-center gap-1">
@@ -449,14 +630,14 @@ export default function Admin() {
                 </p>
                 <div className="flex items-center gap-2 text-[10px] text-slate-500">
                   <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                  <span>Google OAuth Active · Multi-Session Enabled</span>
+                  <span>Google OAuth Active &middot; Multi-Session Enabled</span>
                 </div>
               </div>
 
               <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/40 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-slate-700 flex items-center gap-1.5">
-                    <Database size={14} className="text-blue-600" />
+                    <Database size={14} className="text-emerald-600" />
                     <span>PostgreSQL Database (NeonDB)</span>
                   </span>
                   <div className="flex items-center gap-1">
@@ -476,16 +657,100 @@ export default function Admin() {
                 </p>
                 <div className="flex items-center gap-2 text-[10px] text-slate-500">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span>Status: Connected · Resilient In-Memory Fallback Active</span>
+                  <span>Status: Connected &middot; Resilient In-Memory Fallback Active</span>
                 </div>
               </div>
             </div>
           </div>
         </div>
-      ) : (
-        /* ══════════════════════════════════════════════════
-            TAB 2: USER DIRECTORY & ACCESS CONTROL
-        ══════════════════════════════════════════════════ */
+      )}
+
+      {/* ══════════════════════════════════════════════════
+          TAB 3: EXECUTIVE STAFF PAYROLL VAULT
+      ══════════════════════════════════════════════════ */}
+      {activeTab === "payroll" && (
+        <div className="bg-white rounded-2xl border border-slate-200/90 p-5 sm:p-6 shadow-xs space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center border border-blue-100">
+                <DollarSign size={16} />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Executive Staff Compensation &amp; Payroll Vault</h3>
+                <p className="text-[11px] text-slate-400">Total monthly liabilities and individual staff compensation</p>
+              </div>
+            </div>
+            <Link
+              to="/staff"
+              className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-700"
+            >
+              <span>Manage Staff</span>
+              <ExternalLink size={12} />
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+            <div className="p-3.5 rounded-xl border border-slate-100 bg-slate-50/50">
+              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Active Staff Count</p>
+              <p className="text-xl font-bold text-slate-900 mt-1">{staffList.length} Members</p>
+            </div>
+            <div className="p-3.5 rounded-xl border border-slate-100 bg-slate-50/50">
+              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Total Monthly Payroll Burden</p>
+              <p className="text-xl font-bold text-emerald-700 mt-1">₹{totalMonthlyPayroll.toLocaleString("en-IN")}</p>
+            </div>
+            <div className="p-3.5 rounded-xl border border-slate-100 bg-slate-50/50">
+              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Payroll Run Status</p>
+              <p className="text-xl font-bold text-blue-700 mt-1">{payrollList.length > 0 ? "Disbursed" : "Ready for Run"}</p>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 border-b border-slate-200/80 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                <tr>
+                  <th className="py-2.5 px-3">Staff Name</th>
+                  <th className="py-2.5 px-3">Role / Department</th>
+                  <th className="py-2.5 px-3 text-right">Base Salary (Admin View)</th>
+                  <th className="py-2.5 px-3">Bank Account</th>
+                  <th className="py-2.5 px-3">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {staffList.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-6 text-center text-slate-400">
+                      No staff members configured. Add employees in the Staff Management section.
+                    </td>
+                  </tr>
+                ) : (
+                  staffList.map((st) => (
+                    <tr key={st.id} className="hover:bg-slate-50/50">
+                      <td className="py-2.5 px-3 font-semibold text-slate-900">{st.name}</td>
+                      <td className="py-2.5 px-3 text-slate-500">{st.role || "Staff"}</td>
+                      <td className="py-2.5 px-3 text-right font-bold text-emerald-700 font-mono">
+                        ₹{Number(st.salary || 0).toLocaleString("en-IN")}/mo
+                      </td>
+                      <td className="py-2.5 px-3 font-mono text-[11px] text-slate-600">
+                        {st.bankAccount ? st.bankAccount : "Direct Cash Payout"}
+                      </td>
+                      <td className="py-2.5 px-3">
+                        <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          Active
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════
+          TAB 4: USER DIRECTORY & ACCESS CONTROL
+      ══════════════════════════════════════════════════ */}
+      {activeTab === "users" && (
         <div className="space-y-4">
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
             <div className="card p-4 flex items-center gap-3">
@@ -514,7 +779,9 @@ export default function Admin() {
               </div>
               <div>
                 <p className="text-[11px] font-medium text-slate-500">Administrators</p>
-                <p className="text-lg font-bold text-purple-700">{adminUsers}</p>
+                <p className="text-lg font-bold text-purple-700">
+                  {usersList.filter((u) => u.role === "ADMIN").length}
+                </p>
               </div>
             </div>
           </div>
@@ -540,7 +807,7 @@ export default function Admin() {
 
             {loading ? (
               <div className="py-16 flex flex-col items-center justify-center text-slate-400 gap-2">
-                <div className="w-7 h-7 rounded-full border-2 border-purple-500 border-t-transparent animate-spin" />
+                <div className="w-7 h-7 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
                 <p className="text-xs font-medium">Loading user accounts...</p>
               </div>
             ) : !usersList.length ? (
@@ -565,7 +832,7 @@ export default function Admin() {
                       <tr key={u.id || u._id} className="hover:bg-slate-50/60 transition">
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2.5">
-                            <div className="w-7 h-7 rounded-lg bg-purple-50 text-purple-700 font-bold text-xs flex items-center justify-center border border-purple-100 uppercase">
+                            <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-700 font-bold text-xs flex items-center justify-center border border-blue-100 uppercase">
                               {u.name ? u.name.charAt(0) : "U"}
                             </div>
                             <span className="font-semibold text-slate-900">{u.name}</span>

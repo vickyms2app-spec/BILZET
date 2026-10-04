@@ -20,6 +20,8 @@ import Referral from "../pages/Referral";
 import Plans from "../pages/Plans";
 import Support from "../pages/Support";
 import { ClerkSsoCallback } from "../components/auth/ClerkAuth";
+import { isAdminEmail, isAdminUser } from "../utils/security";
+export { isAdminEmail, isAdminUser };
 
 // New ERP Modules
 import Warehouses from "../pages/Warehouses";
@@ -67,7 +69,7 @@ function ClerkProtectedWrapper({ children, roles }) {
     return <Navigate to="/sign-in" replace />;
   }
 
-  if (roles && user && !roles.includes(user.role) && user.role !== "GUEST") {
+  if (roles && user && !roles.includes(user.role) && !isAdminUser(user) && !isAdminEmail(user?.email) && user.role !== "GUEST") {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -91,14 +93,11 @@ function StandardProtectedWrapper({ children, roles }) {
   }
 
   if (!user) return <Navigate to="/login" replace />;
-  if (roles && !roles.includes(user.role) && user.role !== "GUEST") {
+  if (roles && !roles.includes(user.role) && !isAdminUser(user) && !isAdminEmail(user?.email) && user.role !== "GUEST") {
     return <Navigate to="/dashboard" replace />;
   }
   return <Layout>{children}</Layout>;
 }
-
-import { isAdminEmail, isAdminUser } from "../utils/security";
-export { isAdminEmail, isAdminUser };
 
 function AdminEmailGuard({ children }) {
   const { user } = useAuth();
@@ -403,7 +402,7 @@ export default function AppRoutes() {
       <Route
         path="/admin"
         element={
-          <Protected roles={["ADMIN", "SUPERADMIN"]}>
+          <Protected>
             <AdminEmailGuard>
               <Admin />
             </AdminEmailGuard>
@@ -411,58 +410,14 @@ export default function AppRoutes() {
         }
       />
 
-      {/* ══════ Dedicated Application Super Admin Portal ══════ */}
-      <Route path="/app-admin/login" element={<SuperAdminLogin />} />
-      <Route
-        path="/app-admin"
-        element={
-          <SuperAdminRoute>
-            <SuperAdminLayout>
-              <SuperAdminDashboard />
-            </SuperAdminLayout>
-          </SuperAdminRoute>
-        }
-      />
-      <Route
-        path="/app-admin/users"
-        element={
-          <SuperAdminRoute>
-            <SuperAdminLayout>
-              <SuperAdminUsers />
-            </SuperAdminLayout>
-          </SuperAdminRoute>
-        }
-      />
-      <Route
-        path="/app-admin/subscriptions"
-        element={
-          <SuperAdminRoute>
-            <SuperAdminLayout>
-              <SuperAdminSubscriptions />
-            </SuperAdminLayout>
-          </SuperAdminRoute>
-        }
-      />
-      <Route
-        path="/app-admin/customers"
-        element={
-          <SuperAdminRoute>
-            <SuperAdminLayout>
-              <SuperAdminCustomers />
-            </SuperAdminLayout>
-          </SuperAdminRoute>
-        }
-      />
-      <Route
-        path="/app-admin/settings"
-        element={
-          <SuperAdminRoute>
-            <SuperAdminLayout>
-              <SuperAdminSettings />
-            </SuperAdminLayout>
-          </SuperAdminRoute>
-        }
-      />
+      {/* ══════ Dedicated Application Super Admin Portal -> Unified into Main Admin ══════ */}
+      <Route path="/app-admin/login" element={<Navigate to="/admin" replace />} />
+      <Route path="/app-admin" element={<Navigate to="/admin" replace />} />
+      <Route path="/app-admin/users" element={<Navigate to="/admin?tab=users" replace />} />
+      <Route path="/app-admin/subscriptions" element={<Navigate to="/admin?tab=overview" replace />} />
+      <Route path="/app-admin/customers" element={<Navigate to="/customers" replace />} />
+      <Route path="/app-admin/settings" element={<Navigate to="/admin?tab=vault" replace />} />
+      <Route path="/app-admin/*" element={<Navigate to="/admin" replace />} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
