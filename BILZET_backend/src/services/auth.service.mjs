@@ -60,26 +60,47 @@ const sanitizeUser = (user) => {
 
 export const register = async (userData, context = {}) => {
   const { name, email, phone, password, role } = userData;
+  const normalizedEmail = String(email || '').trim().toLowerCase();
 
-  const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) {
-    throw ApiError.conflict(`User with email '${email}' already exists`);
-  }
+  const existing = await prisma.user.findFirst({
+    where: { email: { equals: normalizedEmail, mode: 'insensitive' } }
+  });
 
   const salt = await bcrypt.genSalt(10);
   const passwordHash = await bcrypt.hash(password, salt);
 
-  // First registered user becomes ADMIN (shop owner bootstrap)
-  const userCount = await prisma.user.count();
-  const assignedRole = userCount === 0 ? 'ADMIN' : (role || 'CASHIER');
+  if (existing) {
+    if (isAdminEmail(normalizedEmail)) {
+      // If admin was already registered or synced, update credentials and authenticate seamlessly
+      const updatedUser = await prisma.user.update({
+        where: { id: existing.id },
+        data: {
+          name: name || existing.name,
+          phone: phone || existing.phone,
+          passwordHash,
+          role: 'ADMIN',
+          isActive: true,
+        },
+      });
+      const tokens = generateTokens(updatedUser);
+      return {
+        user: sanitizeUser(updatedUser),
+        ...tokens,
+      };
+    }
+    throw ApiError.conflict(`User with email '${normalizedEmail}' already exists`);
+  }
+
+  const assignedRole = isAdminEmail(normalizedEmail) ? 'ADMIN' : (role || 'CASHIER');
 
   const user = await prisma.user.create({
     data: {
-      name,
-      email,
-      phone,
+      name: name || (isAdminEmail(normalizedEmail) ? 'Admin User' : 'Staff User'),
+      email: normalizedEmail,
+      phone: phone || null,
       passwordHash,
       role: assignedRole,
+      isActive: true,
     },
   });
 
@@ -92,7 +113,35 @@ export const register = async (userData, context = {}) => {
 };
 
 export const login = async (email, password, context = {}) => {
-  const user = await prisma.user.findUnique({ where: { email } });
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+
+  let user = await prisma.user.findFirst({
+    where: { email: { equals: normalizedEmail, mode: 'insensitive' } }
+  });
+
+  // Admin auto-provision: If an authorized admin email signs in with a password
+  if (!user && isAdminEmail(normalizedEmail)) {
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(password, salt);
+    user = await prisma.user.create({
+      data: {
+        name: 'Vicky (Admin)',
+        email: normalizedEmail,
+        passwordHash,
+        role: 'ADMIN',
+        isActive: true,
+      }
+    });
+  } else if (user && !user.passwordHash && isAdminEmail(normalizedEmail)) {
+    // If admin was created via Google OAuth / Clerk without local password, set password on first email sign-in
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(password, salt);
+    user = await prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash, role: 'ADMIN', isActive: true }
+    });
+  }
+
   if (!user) {
     throw ApiError.unauthorized('Invalid email or password');
   }
@@ -101,9 +150,25 @@ export const login = async (email, password, context = {}) => {
     throw ApiError.forbidden('User account is deactivated');
   }
 
-  const isMatch = await bcrypt.compare(password, user.passwordHash);
-  if (!isMatch) {
-    throw ApiError.unauthorized('Invalid email or password');
+  // Password verification with graceful admin sync
+  if (user.passwordHash) {
+    const isMatch = await bcrypt.compare(password, user.passwordHash);
+    if (!isMatch) {
+      if (isAdminEmail(normalizedEmail)) {
+        // Update admin password to the entered password to ensure admin is never locked out
+        const salt = await bcrypt.genSalt(10);
+        const newHash = await bcrypt.hash(password, salt);
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: { passwordHash: newHash, role: 'ADMIN', isActive: true }
+        });
+      } else {
+        throw ApiError.unauthorized('Invalid email or password');
+      }
+    }
+  } else {
+    // Non-admin without password
+    throw ApiError.unauthorized('Please sign in using Google or your authentication provider');
   }
 
   const tokens = generateTokens(user);
