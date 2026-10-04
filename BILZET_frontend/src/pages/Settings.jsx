@@ -410,6 +410,7 @@ export default function Settings() {
     time: "Ready",
   });
   const [highlightSections, setHighlightSections] = useState(true);
+  const [previewViewMode, setPreviewViewMode] = useState("template");
 
   const formatChangeName = (field, val) => {
     switch (field) {
@@ -462,7 +463,18 @@ export default function Settings() {
   };
 
   const handleSelectTemplate = (tmpl) => {
-    handleChange("template", tmpl.id);
+    setPreviewViewMode("template");
+    setForm((prev) => {
+      const nextPaper = prev.paperSize?.startsWith("Thermal") ? "A4" : prev.paperSize;
+      const next = { ...prev, template: tmpl.id, paperSize: nextPaper };
+      localStorage.setItem("bilzet_invoice_settings", JSON.stringify(next));
+      return next;
+    });
+    setLastChange({
+      title: `Switched layout to "${tmpl.name}"`,
+      field: "template",
+      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+    });
   };
 
   const handleSelectColor = (theme) => {
@@ -479,6 +491,11 @@ export default function Settings() {
   };
 
   const handleSelectPaperSize = (p) => {
+    if (p.id.startsWith("Thermal")) {
+      setPreviewViewMode("thermal");
+    } else {
+      setPreviewViewMode("template");
+    }
     handleChange("paperSize", p.id);
   };
 
@@ -1543,8 +1560,8 @@ export default function Settings() {
         {/* RIGHT: STICKY LIVE BILL PREVIEW (5 Cols) */}
         <div className="xl:col-span-5 xl:sticky xl:top-6 space-y-4">
           <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-sm space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
                 <h2 className="text-sm font-bold text-slate-900">Live Bill Preview</h2>
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 font-bold border border-blue-200">
@@ -1558,14 +1575,35 @@ export default function Settings() {
                     </span>
                   )}
               </div>
-              <button
-                type="button"
-                onClick={() => setShowFullPreview(true)}
-                className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1.5 transition"
-              >
-                <Eye size={13} />
-                <span>Fullscreen</span>
-              </button>
+
+              <div className="flex items-center gap-2">
+                {form.paperSize?.startsWith("Thermal") && (
+                  <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-[10px] font-bold">
+                    <button
+                      type="button"
+                      onClick={() => setPreviewViewMode("template")}
+                      className={`px-2 py-0.5 rounded ${previewViewMode === "template" ? "bg-white text-blue-700 shadow-2xs font-black" : "text-slate-500 hover:text-slate-800"}`}
+                    >
+                      📄 Layout
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewViewMode("thermal")}
+                      className={`px-2 py-0.5 rounded ${previewViewMode === "thermal" ? "bg-white text-blue-700 shadow-2xs font-black" : "text-slate-500 hover:text-slate-800"}`}
+                    >
+                      🧾 Slip
+                    </button>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setShowFullPreview(true)}
+                  className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1.5 transition"
+                >
+                  <Eye size={13} />
+                  <span>Fullscreen</span>
+                </button>
+              </div>
             </div>
 
             {/* Quick Toggle Ribbon directly on Live Preview */}
@@ -1619,7 +1657,16 @@ export default function Settings() {
 
             <div className="bg-slate-100/70 border border-slate-200 rounded-2xl p-2 sm:p-3 overflow-x-auto flex justify-center max-h-[750px] overflow-y-auto">
               <div className="w-full shadow-md rounded-xl overflow-hidden bg-white scale-[0.88] origin-top">
-                <TaxInvoice shopSettings={{ ...form, showChangeIndicators: highlightSections }} isModal={false} />
+                <TaxInvoice
+                  shopSettings={{
+                    ...form,
+                    showChangeIndicators: highlightSections,
+                    lastChangedField: lastChange.field,
+                    lastChangeTitle: lastChange.title,
+                    viewMode: previewViewMode,
+                  }}
+                  isModal={false}
+                />
               </div>
             </div>
           </div>

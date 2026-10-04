@@ -92,6 +92,8 @@ export default function TaxInvoice({
   shopSettings,
   onClose,
   isModal = false,
+  lastChangedField = "",
+  lastChangeTitle = "",
 }) {
   const printRef = useRef(null);
 
@@ -187,11 +189,10 @@ export default function TaxInvoice({
     paymentMethod: invoice?.paymentMethod || "Cash / UPI",
   };
 
-  // Customization settings
+  // Customization settings: only render pure thermal receipt if template is "thermal" OR viewMode is "thermal"
   const isThermal =
     shopSettings?.template === "thermal" ||
-    shopSettings?.paperSize === "Thermal 80mm" ||
-    shopSettings?.paperSize === "Thermal 58mm";
+    shopSettings?.viewMode === "thermal";
 
   const settings = {
     template: shopSettings?.template || "modern",
@@ -214,12 +215,18 @@ export default function TaxInvoice({
     showStatusBadge: shopSettings?.showStatusBadge !== false,
     showSignatory: shopSettings?.showSignatory !== false,
     showTerms: shopSettings?.showTerms !== false,
-    showChangeIndicators: shopSettings?.showChangeIndicators === true,
+    showChangeIndicators: shopSettings?.showChangeIndicators !== false,
     bankName: shopSettings?.bankName || "HDFC Bank Ltd",
     accountNumber: shopSettings?.accountNumber || "50200012345678",
     ifsc: shopSettings?.ifsc || "HDFC0001234",
     upiId: shopSettings?.upiId || "bilzet@hdfcbank",
     terms: shopSettings?.terms || "Thank you for your business.\nGoods/services once accepted are subject to applicable business terms.",
+  };
+
+  const activeChangedField = lastChangedField || shopSettings?.lastChangedField || "";
+  const activeChangeTitle = lastChangeTitle || shopSettings?.lastChangeTitle || "";
+  const isFieldChanged = (field) => {
+    return activeChangedField === field && settings.showChangeIndicators;
   };
 
   const handlePrint = () => {
@@ -398,10 +405,23 @@ export default function TaxInvoice({
                 : activeTheme.border,
           }}
         >
+          {/* ── Active Real-Time Change Banner ──────────────── */}
+          {activeChangeTitle && settings.showChangeIndicators && (
+            <div className="relative z-30 mb-3 p-2.5 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white flex items-center justify-between text-xs font-bold shadow-md animate-pulse print:hidden">
+              <span className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping shrink-0" />
+                <span>✏️ Live Change on Bill: {activeChangeTitle}</span>
+              </span>
+              <span className="text-[10px] bg-white/20 px-2.5 py-0.5 rounded-full font-mono uppercase tracking-wider">
+                Updated
+              </span>
+            </div>
+          )}
+
           {/* ── Live Inspection Mode Badge ────────────────────── */}
           {settings.showChangeIndicators && (
-            <div className="absolute top-2 left-2 z-30 print:hidden flex flex-wrap items-center gap-1.5">
-              <span className="text-[9px] font-black text-white bg-blue-600 px-2 py-0.5 rounded-full shadow flex items-center gap-1 animate-pulse">
+            <div className="relative z-20 mb-3 print:hidden flex flex-wrap items-center gap-1.5 pb-2 border-b border-slate-100">
+              <span className="text-[9px] font-black text-white bg-blue-600 px-2 py-0.5 rounded-full shadow flex items-center gap-1">
                 ● Layout: {settings.template.toUpperCase()}
               </span>
               <span className="text-[9px] font-bold text-slate-800 bg-white/95 border border-slate-300 px-2 py-0.5 rounded-full shadow-xs flex items-center gap-1">
@@ -411,6 +431,11 @@ export default function TaxInvoice({
               <span className="text-[9px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-full shadow-xs">
                 Size: {settings.paperSize}
               </span>
+              {activeChangedField && (
+                <span className="text-[9px] font-black text-amber-800 bg-amber-100 border border-amber-300 px-2.5 py-0.5 rounded-full shadow-xs animate-bounce">
+                  ✨ Focus: {activeChangedField}
+                </span>
+              )}
             </div>
           )}
 
