@@ -54,6 +54,39 @@ function numberToWordsINR(num) {
   return `Rupees ${res.trim()} Only`;
 }
 
+export const COLOR_THEMES = [
+  { id: "trust_blue", label: "Trust Blue", primary: "#2563eb", secondary: "#3b82f6", light: "#dbeafe", dark: "#1e3a8a", border: "#93c5fd", tableBorder: "#bfdbfe" },
+  { id: "growth_green", label: "Growth Green", primary: "#16a34a", secondary: "#22c55e", light: "#dcfce7", dark: "#14532d", border: "#86efac", tableBorder: "#bbf7d0" },
+  { id: "professional_slate", label: "Professional Slate", primary: "#475569", secondary: "#64748b", light: "#f1f5f9", dark: "#0f172a", border: "#cbd5e1", tableBorder: "#e2e8f0" },
+  { id: "indigo_focus", label: "Indigo Focus", primary: "#4f46e5", secondary: "#6366f1", light: "#e0e7ff", dark: "#312e81", border: "#a5b4fc", tableBorder: "#c7d2fe" },
+  { id: "calm_teal", label: "Calm Teal", primary: "#0d9488", secondary: "#14b8a6", light: "#ccfbf1", dark: "#134e4a", border: "#5eead4", tableBorder: "#99f6e4" },
+  { id: "retail_orange", label: "Retail Orange", primary: "#ea580c", secondary: "#f97316", light: "#ffedd5", dark: "#7c2d12", border: "#fdba74", tableBorder: "#fed7aa" },
+  { id: "bold_ruby", label: "Bold Ruby", primary: "#e11d48", secondary: "#f43f5e", light: "#ffe4e6", dark: "#881337", border: "#fda4af", tableBorder: "#fecdd3" },
+  { id: "premium_purple", label: "Premium Purple", primary: "#9333ea", secondary: "#a855f7", light: "#f3e8ff", dark: "#581c87", border: "#d8b4fe", tableBorder: "#e9d5ff" },
+  { id: "fresh_cyan", label: "Fresh Cyan", primary: "#0891b2", secondary: "#06b6d4", light: "#cffafe", dark: "#164e63", border: "#67e8f9", tableBorder: "#a5f3fc" },
+  { id: "cafe_brown", label: "Cafe Brown", primary: "#854d0e", secondary: "#a16207", light: "#fef9c3", dark: "#422006", border: "#fde047", tableBorder: "#fef08a" },
+  { id: "luxury_gold", label: "Luxury Gold", primary: "#b45309", secondary: "#d97706", light: "#fef3c7", dark: "#451a03", border: "#fcd34d", tableBorder: "#fde68a" },
+  { id: "elegant_rose", label: "Elegant Rose", primary: "#db2777", secondary: "#ec4899", light: "#fce7f3", dark: "#831843", border: "#f9a8d4", tableBorder: "#fbcfe8" },
+  { id: "executive_navy", label: "Executive Navy", primary: "#1e3a8a", secondary: "#1d4ed8", light: "#dbeafe", dark: "#0f172a", border: "#93c5fd", tableBorder: "#bfdbfe" },
+  { id: "creative_violet", label: "Creative Violet", primary: "#7c3aed", secondary: "#8b5cf6", light: "#ede9fe", dark: "#4c1d95", border: "#c4b5fd", tableBorder: "#ddd6fe" },
+  { id: "forest", label: "Forest", primary: "#15803d", secondary: "#16a34a", light: "#dcfce7", dark: "#14532d", border: "#86efac", tableBorder: "#bbf7d0" },
+  { id: "mono_premium", label: "Mono Premium", primary: "#18181b", secondary: "#27272a", light: "#f4f4f5", dark: "#09090b", border: "#d4d4d8", tableBorder: "#e4e4e7" },
+];
+
+export const INVOICE_TEMPLATES = [
+  { id: "modern", name: "Modern", accent: "#2563eb", tag: "Most Popular" },
+  { id: "classic_border", name: "Classic Border", accent: "#16a34a", tag: "GST Official" },
+  { id: "compact", name: "Compact", accent: "#0891b2", tag: "Space Saver" },
+  { id: "corporate", name: "Corporate", accent: "#334155", tag: "Audits" },
+  { id: "retail", name: "Retail", accent: "#ea580c", tag: "POS Ready" },
+  { id: "hotel_restaurant", name: "Hotel / Restaurant", accent: "#854d0e", tag: "Hospitality" },
+  { id: "clean_minimal", name: "Clean Minimal", accent: "#475569", tag: "Editorial" },
+  { id: "side_ribbon", name: "Side Ribbon", accent: "#7c3aed", tag: "Creative" },
+  { id: "premium", name: "Premium", accent: "#b45309", tag: "Executive" },
+  { id: "elegant", name: "Elegant", accent: "#db2777", tag: "Luxury" },
+  { id: "geometric", name: "Geometric", accent: "#2563eb", tag: "Modern Accent" },
+];
+
 export default function TaxInvoice({
   invoice,
   shopSettings,
@@ -61,6 +94,11 @@ export default function TaxInvoice({
   isModal = false,
 }) {
   const printRef = useRef(null);
+
+  // Resolve active color theme
+  const activeTheme = COLOR_THEMES.find(
+    (t) => t.id === shopSettings?.colorTheme || t.primary === shopSettings?.themeColor
+  ) || COLOR_THEMES[0];
 
   // Parse items safely with proper calculations
   const rawItems = invoice?.items && invoice.items.length > 0 ? invoice.items : null;
@@ -147,8 +185,14 @@ export default function TaxInvoice({
   };
 
   // Customization settings
+  const isThermal =
+    shopSettings?.template === "thermal" ||
+    shopSettings?.paperSize === "Thermal 80mm" ||
+    shopSettings?.paperSize === "Thermal 58mm";
+
   const settings = {
     template: shopSettings?.template || "modern",
+    paperSize: shopSettings?.paperSize || "A4",
     title: shopSettings?.invoiceTitle || "TAX INVOICE",
     companyName: shopSettings?.ownerName || shopSettings?.shopName || "karthikeyan",
     shopName: shopSettings?.shopName || "BILZET Retail Mart",
@@ -173,7 +217,7 @@ export default function TaxInvoice({
   };
 
   // Thermal Receipt Render Mode
-  if (settings.template === "thermal") {
+  if (isThermal) {
     return (
       <div className={`${isModal ? "fixed inset-0 z-50 overflow-y-auto bg-black/75 backdrop-blur-sm flex items-center justify-center p-4" : ""}`}>
         <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl relative">
@@ -311,22 +355,22 @@ export default function TaxInvoice({
         <div
           ref={printRef}
           id="printable-tax-invoice"
-          className="relative bg-white text-slate-800 text-xs font-sans border-2 border-[#93c5fd] overflow-hidden p-8 sm:p-10 space-y-6"
-          style={{ minHeight: "1050px" }}
+          className="relative bg-white text-slate-800 text-xs font-sans border-2 overflow-hidden p-8 sm:p-10 space-y-6"
+          style={{ minHeight: "1050px", borderColor: activeTheme.border }}
         >
           {/* ── Top-Right Corner Artwork Arc ─────────────────── */}
           <div className="absolute top-0 right-0 w-36 h-36 overflow-hidden pointer-events-none z-0">
             <svg viewBox="0 0 120 120" className="w-full h-full">
-              <circle cx="120" cy="0" r="95" fill="none" stroke="#2563eb" strokeWidth="18" opacity="0.95" />
-              <circle cx="120" cy="0" r="60" fill="#1e3a8a" />
+              <circle cx="120" cy="0" r="95" fill="none" stroke={activeTheme.primary} strokeWidth="18" opacity="0.95" />
+              <circle cx="120" cy="0" r="60" fill={activeTheme.dark} />
             </svg>
           </div>
 
           {/* ── Bottom-Left Corner Artwork Triangles ─────────── */}
           <div className="absolute bottom-0 left-0 w-32 h-32 overflow-hidden pointer-events-none z-0">
             <svg viewBox="0 0 100 100" className="w-full h-full">
-              <polygon points="0,100 0,60 40,100" fill="#93c5fd" opacity="0.9" />
-              <polygon points="0,100 0,80 20,100" fill="#2563eb" />
+              <polygon points="0,100 0,60 40,100" fill={activeTheme.border} opacity="0.9" />
+              <polygon points="0,100 0,80 20,100" fill={activeTheme.primary} />
             </svg>
           </div>
 
@@ -367,15 +411,19 @@ export default function TaxInvoice({
 
             {/* Right: BILZET Brand & Status Badge */}
             <div className="w-1/3 flex flex-col items-end pr-2 pt-0.5">
-              <span className="text-2xl font-black text-[#1e5aff] tracking-wider uppercase">
+              <span
+                className="text-2xl font-black tracking-wider uppercase"
+                style={{ color: activeTheme.primary }}
+              >
                 BILZET
               </span>
               <span
-                className={`mt-1.5 px-3.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase border ${
+                className="mt-1.5 px-3.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase border"
+                style={
                   inv.paymentStatus === "PAID"
-                    ? "bg-emerald-100 text-emerald-800 border-emerald-300"
-                    : "bg-[#fef3c7] text-[#92400e] border-[#fde68a]"
-                }`}
+                    ? { backgroundColor: activeTheme.light, color: activeTheme.dark, borderColor: activeTheme.border }
+                    : { backgroundColor: "#fef3c7", color: "#92400e", borderColor: "#fde68a" }
+                }
               >
                 {inv.paymentStatus}
               </span>
@@ -385,7 +433,10 @@ export default function TaxInvoice({
           {/* ── 2. Information Cards (Bill To & Document Info) ─ */}
           <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
             {/* Left Card: Bill To */}
-            <div className="border border-[#93c5fd] rounded-2xl p-4 bg-white space-y-1 text-xs text-slate-700 shadow-2xs">
+            <div
+              className="border rounded-2xl p-4 bg-white space-y-1 text-xs text-slate-700 shadow-2xs"
+              style={{ borderColor: activeTheme.border }}
+            >
               <p className="font-bold text-slate-900 text-sm mb-1.5">Bill To</p>
               <p className="font-semibold text-slate-800">{inv.customer.name}</p>
               <p className="text-slate-600">{inv.customer.phone}</p>
@@ -399,7 +450,10 @@ export default function TaxInvoice({
             </div>
 
             {/* Right Card: Document Info */}
-            <div className="border border-[#93c5fd] rounded-2xl p-4 bg-white space-y-1.5 text-xs text-slate-700 shadow-2xs">
+            <div
+              className="border rounded-2xl p-4 bg-white space-y-1.5 text-xs text-slate-700 shadow-2xs"
+              style={{ borderColor: activeTheme.border }}
+            >
               <p>
                 <span className="font-bold text-slate-900">Document No:</span>{" "}
                 <span className="font-medium text-slate-800">{inv.invoiceNumber}</span>
@@ -420,42 +474,107 @@ export default function TaxInvoice({
           </div>
 
           {/* ── 3. Line Items Table ──────────────────────────── */}
-          <div className="relative z-10 border border-[#bfdbfe] overflow-x-auto">
+          <div
+            className="relative z-10 border overflow-x-auto"
+            style={{ borderColor: activeTheme.tableBorder }}
+          >
             <table className="w-full text-xs text-left border-collapse">
               <thead>
-                <tr className="bg-[#dbeafe] text-[#1e40af] font-bold text-[11px]">
-                  <th className="py-2.5 px-3 text-center border-r border-[#bfdbfe] w-[6%]">#</th>
-                  <th className="py-2.5 px-3 text-left border-r border-[#bfdbfe] w-[28%]">Item</th>
-                  <th className="py-2.5 px-2 text-center border-r border-[#bfdbfe] w-[14%]">HSN/SAC</th>
-                  <th className="py-2.5 px-2 text-center border-r border-[#bfdbfe] w-[10%]">Qty</th>
-                  <th className="py-2.5 px-2 text-center border-r border-[#bfdbfe] w-[12%]">Rate</th>
-                  <th className="py-2.5 px-2 text-center border-r border-[#bfdbfe] w-[8%]">GST</th>
-                  <th className="py-2.5 px-3 text-right border-r border-[#bfdbfe] w-[11%]">Taxable</th>
+                <tr
+                  className="font-bold text-[11px]"
+                  style={{ backgroundColor: activeTheme.light, color: activeTheme.dark }}
+                >
+                  <th
+                    className="py-2.5 px-3 text-center border-r w-[6%]"
+                    style={{ borderColor: activeTheme.tableBorder }}
+                  >
+                    #
+                  </th>
+                  <th
+                    className="py-2.5 px-3 text-left border-r w-[28%]"
+                    style={{ borderColor: activeTheme.tableBorder }}
+                  >
+                    Item
+                  </th>
+                  <th
+                    className="py-2.5 px-2 text-center border-r w-[14%]"
+                    style={{ borderColor: activeTheme.tableBorder }}
+                  >
+                    HSN/SAC
+                  </th>
+                  <th
+                    className="py-2.5 px-2 text-center border-r w-[10%]"
+                    style={{ borderColor: activeTheme.tableBorder }}
+                  >
+                    Qty
+                  </th>
+                  <th
+                    className="py-2.5 px-2 text-center border-r w-[12%]"
+                    style={{ borderColor: activeTheme.tableBorder }}
+                  >
+                    Rate
+                  </th>
+                  <th
+                    className="py-2.5 px-2 text-center border-r w-[8%]"
+                    style={{ borderColor: activeTheme.tableBorder }}
+                  >
+                    GST
+                  </th>
+                  <th
+                    className="py-2.5 px-3 text-right border-r w-[11%]"
+                    style={{ borderColor: activeTheme.tableBorder }}
+                  >
+                    Taxable
+                  </th>
                   <th className="py-2.5 px-3 text-right w-[11%]">Total</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#bfdbfe] bg-white text-slate-800">
+              <tbody
+                className="divide-y bg-white text-slate-800"
+                style={{ borderColor: activeTheme.tableBorder }}
+              >
                 {inv.items.map((item, idx) => (
-                  <tr key={idx} className="hover:bg-blue-50/20">
-                    <td className="py-2.5 px-3 text-center border-r border-[#bfdbfe] text-slate-600 font-medium">
+                  <tr key={idx} className="hover:bg-slate-50/50">
+                    <td
+                      className="py-2.5 px-3 text-center border-r text-slate-600 font-medium"
+                      style={{ borderColor: activeTheme.tableBorder }}
+                    >
                       {idx + 1}
                     </td>
-                    <td className="py-2.5 px-3 text-left border-r border-[#bfdbfe] font-medium text-slate-900">
+                    <td
+                      className="py-2.5 px-3 text-left border-r font-medium text-slate-900"
+                      style={{ borderColor: activeTheme.tableBorder }}
+                    >
                       {item.name}
                     </td>
-                    <td className="py-2.5 px-2 text-center border-r border-[#bfdbfe] font-mono text-slate-700">
+                    <td
+                      className="py-2.5 px-2 text-center border-r font-mono text-slate-700"
+                      style={{ borderColor: activeTheme.tableBorder }}
+                    >
                       {item.hsn}
                     </td>
-                    <td className="py-2.5 px-2 text-center border-r border-[#bfdbfe] font-medium text-slate-800">
+                    <td
+                      className="py-2.5 px-2 text-center border-r font-medium text-slate-800"
+                      style={{ borderColor: activeTheme.tableBorder }}
+                    >
                       {item.qty} {item.unit || "pcs"}
                     </td>
-                    <td className="py-2.5 px-2 text-center border-r border-[#bfdbfe] font-mono text-slate-700">
+                    <td
+                      className="py-2.5 px-2 text-center border-r font-mono text-slate-700"
+                      style={{ borderColor: activeTheme.tableBorder }}
+                    >
                       ₹{Number(item.rate).toFixed(2)}
                     </td>
-                    <td className="py-2.5 px-2 text-center border-r border-[#bfdbfe] font-medium text-slate-700">
+                    <td
+                      className="py-2.5 px-2 text-center border-r font-medium text-slate-700"
+                      style={{ borderColor: activeTheme.tableBorder }}
+                    >
                       {item.gst}%
                     </td>
-                    <td className="py-2.5 px-3 text-right border-r border-[#bfdbfe] font-mono text-slate-900 font-medium">
+                    <td
+                      className="py-2.5 px-3 text-right border-r font-mono text-slate-900 font-medium"
+                      style={{ borderColor: activeTheme.tableBorder }}
+                    >
                       ₹{Number(item.taxable).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
                     <td className="py-2.5 px-3 text-right font-mono font-semibold text-slate-900">
@@ -500,7 +619,10 @@ export default function TaxInvoice({
                 </div>
               )}
 
-              <div className="flex justify-between py-2 border-t-2 border-[#1e5aff] text-sm">
+              <div
+                className="flex justify-between py-2 border-t-2 text-sm"
+                style={{ borderColor: activeTheme.primary }}
+              >
                 <span className="font-black text-slate-900">Grand Total</span>
                 <span className="font-mono font-black text-slate-900">
                   ₹{Number(inv.grandTotal).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
