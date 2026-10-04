@@ -709,17 +709,19 @@ export default function Purchases({ defaultTab = "invoices" }) {
                 </div>
 
                 <div className="col-span-2">
-                  <select
-                    value={row.taxRate}
-                    onChange={(e) => updateInvoiceItem(idx, "taxRate", e.target.value)}
-                    className="w-full px-2 py-1.5 rounded-lg border border-slate-200 bg-white text-xs text-slate-800"
-                  >
-                    <option value="0">0%</option>
-                    <option value="5">5%</option>
-                    <option value="12">12%</option>
-                    <option value="18">18%</option>
-                    <option value="28">28%</option>
-                  </select>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      placeholder="GST %"
+                      value={row.taxRate}
+                      onChange={(e) => updateInvoiceItem(idx, "taxRate", Number(e.target.value))}
+                      className="w-full pl-2 pr-5 py-1.5 rounded-lg border border-slate-200 text-right text-xs text-slate-800 font-mono font-bold focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20"
+                    />
+                    <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-bold">%</span>
+                  </div>
                 </div>
 
                 <div className="col-span-1 text-center">

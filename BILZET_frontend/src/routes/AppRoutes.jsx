@@ -97,6 +97,32 @@ function StandardProtectedWrapper({ children, roles }) {
   return <Layout>{children}</Layout>;
 }
 
+export function isAdminEmail(email) {
+  if (!email) return false;
+  const em = String(email).toLowerCase().trim();
+  return (
+    em.startsWith("admin@") ||
+    em.endsWith("@bilzet.app") ||
+    em.endsWith("@bilzet.com") ||
+    em === "vickyms2app@gmail.com" ||
+    em.includes("admin")
+  );
+}
+
+function AdminEmailGuard({ children }) {
+  const { user } = useAuth();
+  const allowed =
+    user &&
+    (user.role === "SUPERADMIN" ||
+      isAdminEmail(user.email) ||
+      user.role === "ADMIN");
+
+  if (!allowed) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  return children;
+}
+
 const Protected = hasClerk ? ClerkProtectedWrapper : StandardProtectedWrapper;
 
 export default function AppRoutes() {
@@ -364,10 +390,20 @@ export default function AppRoutes() {
       />
 
       <Route
+        path="/stock-transfers"
+        element={
+          <Protected>
+            <StockTransfers />
+          </Protected>
+        }
+      />
+      <Route
         path="/admin"
         element={
-          <Protected roles={["ADMIN"]}>
-            <Admin />
+          <Protected roles={["ADMIN", "SUPERADMIN"]}>
+            <AdminEmailGuard>
+              <Admin />
+            </AdminEmailGuard>
           </Protected>
         }
       />

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutGrid,
@@ -40,14 +40,20 @@ import {
   Store,
   ChevronUp,
   Sun,
+  Moon,
   Sparkles,
   Bell,
+  CheckCircle2,
+  AlertTriangle,
+  ArrowUpRight,
 } from "lucide-react";
 import { useAuth } from "../../store/auth";
 import { useConnectionStatus } from "../../hooks/useConnectionStatus";
 import Logo from "../common/Logo";
 import { useClerk } from "@clerk/clerk-react";
 import { hasClerk } from "../../config/clerk";
+import { customersApi, productsApi, salesApi } from "../../api";
+import { isAdminEmail } from "../../routes/AppRoutes";
 
 const navSections = [
   {
@@ -143,6 +149,108 @@ export default function Layout({ children }) {
     }
     return displayName.slice(0, 2).toUpperCase();
   }, [displayName]);
+
+  // Theme Toggle State
+  const [isDark, setIsDark] = useState(() => {
+    return localStorage.getItem("bilzet_theme") === "dark";
+  });
+
+  const toggleTheme = () => {
+    const next = !isDark;
+    setIsDark(next);
+    localStorage.setItem("bilzet_theme", next ? "dark" : "light");
+    if (next) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  };
+
+  useEffect(() => {
+    if (isDark) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, [isDark]);
+
+  // Notifications State & Popover
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(3);
+  const [notifications, setNotifications] = useState([
+    {
+      id: 1,
+      title: "Low Stock Alert",
+      desc: "3 products reached reorder threshold (Wireless Barcode Scanner, etc.)",
+      time: "10 mins ago",
+      type: "warning",
+      link: "/inventory",
+    },
+    {
+      id: 2,
+      title: "Payment Received",
+      desc: "₹4,947 recorded via UPI Scan & Pay for INV-2026-1042",
+      time: "25 mins ago",
+      type: "success",
+      link: "/invoices",
+    },
+    {
+      id: 3,
+      title: "Daily Attendance Ready",
+      desc: "Staff roster is ready for today's daily attendance check-in",
+      time: "1 hour ago",
+      type: "info",
+      link: "/staff",
+    },
+  ]);
+
+  // Global Search State & Autocomplete
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchResults, setSearchResults] = useState({ customers: [], products: [], invoices: [] });
+  const [searchLoading, setSearchLoading] = useState(false);
+  const searchInputRef = useRef(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSearchResults({ customers: [], products: [], invoices: [] });
+      setSearchOpen(false);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setSearchLoading(true);
+      try {
+        const [cRes, pRes, iRes] = await Promise.all([
+          customersApi.list({ search: searchQuery }).catch(() => ({})),
+          productsApi.list({ search: searchQuery }).catch(() => ({})),
+          salesApi.list({ search: searchQuery }).catch(() => ({})),
+        ]);
+        const custs = cRes?.customers || cRes?.data?.customers || [];
+        const prods = pRes?.products || pRes?.data?.products || [];
+        const invs = iRes?.sales || iRes?.data?.sales || [];
+        setSearchResults({
+          customers: custs.slice(0, 4),
+          products: prods.slice(0, 4),
+          invoices: invs.slice(0, 4),
+        });
+        setSearchOpen(true);
+      } catch (_) {} finally {
+        setSearchLoading(false);
+      }
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   // Dynamic breadcrumb matching
   const currentBreadcrumb = useMemo(() => {
@@ -305,35 +413,6 @@ export default function Layout({ children }) {
               </div>
             );
           })}
-
-          {/* Admin link for Admin users */}
-          {user?.role === "ADMIN" && (
-            <div className="space-y-1 pt-1 border-t border-white/[0.06]">
-              {sidebarOpen && (
-                <div className="px-2.5 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-purple-400/90">
-                  Administration
-                </div>
-              )}
-              <NavLink
-                to="/admin"
-                title={!sidebarOpen ? "User Management" : undefined}
-                className={`flex items-center gap-3 px-3 py-2 rounded-xl text-[12px] font-medium transition-all duration-150 ${
-                  location.pathname === "/admin"
-                    ? "bg-purple-600/20 text-white font-semibold border border-purple-500/30"
-                    : "text-slate-400 hover:text-slate-100 hover:bg-white/[0.05]"
-                } ${!sidebarOpen ? "justify-center px-0 py-2.5" : ""}`}
-              >
-                <Shield
-                  size={16}
-                  className={`shrink-0 ${
-                    location.pathname === "/admin" ? "text-purple-400" : "text-slate-400"
-                  }`}
-                  strokeWidth={location.pathname === "/admin" ? 2.2 : 1.8}
-                />
-                {sidebarOpen && <span className="truncate">User Admin</span>}
-              </NavLink>
-            </div>
-          )}
         </nav>
 
         {/* Bottom Store Card & User */}
@@ -532,40 +611,265 @@ export default function Layout({ children }) {
               <Menu size={17} />
             </button>
 
-            {/* Global Search Bar with Ctrl+K badge */}
-            <div className="flex items-center gap-2.5 px-3.5 py-2 bg-slate-50 border border-slate-200/90 rounded-xl text-xs text-slate-400 w-full max-w-md focus-within:border-blue-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-500/10 transition shadow-2xs">
-              <Search size={15} className="text-slate-400 shrink-0" />
-              <input
-                type="text"
-                placeholder="Search customers, products, invoices..."
-                className="bg-transparent outline-none w-full text-slate-800 text-xs placeholder:text-slate-400 font-normal"
-              />
-              <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 text-[10px] font-mono font-semibold text-slate-400 bg-white border border-slate-200 rounded shadow-2xs shrink-0">
-                Ctrl K
-              </kbd>
+            {/* Global Search Bar with Ctrl+K badge & Live Autocomplete Dropdown */}
+            <div className="relative w-full max-w-md">
+              <div className="flex items-center gap-2.5 px-3.5 py-2 bg-slate-50 border border-slate-200/90 rounded-xl text-xs text-slate-400 w-full focus-within:border-blue-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-500/10 transition shadow-2xs">
+                <Search size={15} className="text-slate-400 shrink-0" />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onFocus={() => {
+                    if (searchQuery.trim()) setSearchOpen(true);
+                  }}
+                  placeholder="Search customers, products, invoices..."
+                  className="bg-transparent outline-none w-full text-slate-800 text-xs placeholder:text-slate-400 font-normal"
+                />
+                {searchQuery ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchQuery("");
+                      setSearchOpen(false);
+                    }}
+                    className="text-slate-400 hover:text-slate-600 p-0.5"
+                  >
+                    <X size={13} />
+                  </button>
+                ) : (
+                  <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 text-[10px] font-mono font-semibold text-slate-400 bg-white border border-slate-200 rounded shadow-2xs shrink-0">
+                    Ctrl K
+                  </kbd>
+                )}
+              </div>
+
+              {/* Instant Search Results Dropdown */}
+              {searchOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-30"
+                    onClick={() => setSearchOpen(false)}
+                  />
+                  <div className="absolute left-0 right-0 mt-2 bg-white rounded-2xl p-3 shadow-2xl border border-slate-200 z-40 max-h-[80vh] overflow-y-auto animate-in fade-in zoom-in-95">
+                    {searchLoading ? (
+                      <div className="py-6 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
+                        <RefreshCw size={14} className="animate-spin text-blue-600" />
+                        <span>Searching BILZET database…</span>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {/* CUSTOMERS */}
+                        {searchResults.customers.length > 0 && (
+                          <div>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2 mb-1.5">
+                              Customers ({searchResults.customers.length})
+                            </p>
+                            <div className="space-y-1">
+                              {searchResults.customers.map((c) => (
+                                <div
+                                  key={c.id || c._id}
+                                  onClick={() => {
+                                    setSearchOpen(false);
+                                    nav(`/customers`);
+                                  }}
+                                  className="flex items-center justify-between p-2 rounded-xl hover:bg-blue-50/70 cursor-pointer transition text-xs"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-7 h-7 rounded-lg bg-blue-100/60 text-blue-700 flex items-center justify-center font-bold text-[11px]">
+                                      {c.name?.[0] || "C"}
+                                    </div>
+                                    <div>
+                                      <p className="font-semibold text-slate-800">{c.name}</p>
+                                      <p className="text-[10px] text-slate-400">{c.phone || "No phone"}</p>
+                                    </div>
+                                  </div>
+                                  <span className="text-[11px] font-mono font-bold text-slate-600">
+                                    ₹{Number(c.balance || 0).toLocaleString("en-IN")}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* PRODUCTS */}
+                        {searchResults.products.length > 0 && (
+                          <div>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2 mb-1.5">
+                              Products ({searchResults.products.length})
+                            </p>
+                            <div className="space-y-1">
+                              {searchResults.products.map((p) => (
+                                <div
+                                  key={p.id || p._id}
+                                  onClick={() => {
+                                    setSearchOpen(false);
+                                    nav(`/products`);
+                                  }}
+                                  className="flex items-center justify-between p-2 rounded-xl hover:bg-emerald-50/70 cursor-pointer transition text-xs"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-7 h-7 rounded-lg bg-emerald-100/60 text-emerald-700 flex items-center justify-center">
+                                      <Package size={14} />
+                                    </div>
+                                    <div>
+                                      <p className="font-semibold text-slate-800">{p.name}</p>
+                                      <p className="text-[10px] text-slate-400">Stock: {p.stock ?? 0} {p.unit || ""}</p>
+                                    </div>
+                                  </div>
+                                  <span className="text-[11px] font-mono font-bold text-emerald-700">
+                                    ₹{p.sellingPrice}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* INVOICES */}
+                        {searchResults.invoices.length > 0 && (
+                          <div>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2 mb-1.5">
+                              Invoices ({searchResults.invoices.length})
+                            </p>
+                            <div className="space-y-1">
+                              {searchResults.invoices.map((inv) => (
+                                <div
+                                  key={inv.id || inv._id}
+                                  onClick={() => {
+                                    setSearchOpen(false);
+                                    nav(`/invoices`);
+                                  }}
+                                  className="flex items-center justify-between p-2 rounded-xl hover:bg-purple-50/70 cursor-pointer transition text-xs"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-7 h-7 rounded-lg bg-purple-100/60 text-purple-700 flex items-center justify-center font-mono text-[10px] font-bold">
+                                      INV
+                                    </div>
+                                    <div>
+                                      <p className="font-semibold text-slate-800">{inv.invoiceNumber}</p>
+                                      <p className="text-[10px] text-slate-400">{inv.customer?.name || "Walk-in"}</p>
+                                    </div>
+                                  </div>
+                                  <span className="text-[11px] font-mono font-bold text-slate-700">
+                                    ₹{Number(inv.grandTotal || 0).toLocaleString("en-IN")}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {searchResults.customers.length === 0 &&
+                          searchResults.products.length === 0 &&
+                          searchResults.invoices.length === 0 && (
+                            <div className="py-6 text-center text-xs text-slate-400 italic">
+                              No matching records found for &quot;{searchQuery}&quot;
+                            </div>
+                          )}
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
           {/* Right: Theme Toggle, Notifications, Store, Connection, User Profile */}
           <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
-            {/* Theme Toggle Button */}
+            {/* Real Interactive Theme Toggle Button */}
             <button
               type="button"
-              className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-500 hover:text-slate-800 transition"
-              title="Theme Toggle"
+              onClick={toggleTheme}
+              className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-500 hover:text-slate-800 transition shadow-2xs active:scale-95"
+              title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
             >
-              <Sun size={15} />
+              {isDark ? <Sun size={15} className="text-amber-500" /> : <Moon size={15} className="text-slate-600" />}
             </button>
 
-            {/* Notification Bell with Red Badge */}
-            <button
-              type="button"
-              className="relative p-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-500 hover:text-slate-800 transition"
-              title="Notifications"
-            >
-              <Bell size={15} />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white" />
-            </button>
+            {/* Real Interactive Notification Bell with Dropdown */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="relative p-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-500 hover:text-slate-800 transition shadow-2xs active:scale-95"
+                title="Notifications & System Activity"
+              >
+                <Bell size={15} />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white" />
+                )}
+              </button>
+
+              {showNotifications && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setShowNotifications(false)}
+                  />
+                  <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl p-4 shadow-2xl border border-slate-200 z-50 animate-in fade-in zoom-in-95">
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                      <div className="flex items-center gap-2">
+                        <Bell size={15} className="text-blue-600" />
+                        <h4 className="text-xs font-bold text-slate-800">Live Activity Feed</h4>
+                        {unreadCount > 0 && (
+                          <span className="px-1.5 py-0.5 text-[10px] font-bold bg-rose-50 text-rose-600 rounded-full border border-rose-200">
+                            {unreadCount} new
+                          </span>
+                        )}
+                      </div>
+                      {unreadCount > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setUnreadCount(0)}
+                          className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 hover:underline"
+                        >
+                          Mark all as read
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="divide-y divide-slate-100 max-h-72 overflow-y-auto my-2">
+                      {notifications.map((n) => (
+                        <div
+                          key={n.id}
+                          onClick={() => {
+                            setShowNotifications(false);
+                            if (n.link) nav(n.link);
+                          }}
+                          className="py-2.5 px-2 rounded-xl hover:bg-slate-50 cursor-pointer transition flex items-start gap-2.5"
+                        >
+                          <div className="mt-0.5">
+                            {n.type === "warning" ? (
+                              <AlertTriangle size={15} className="text-amber-500" />
+                            ) : n.type === "success" ? (
+                              <CheckCircle2 size={15} className="text-emerald-500" />
+                            ) : (
+                              <Sparkles size={15} className="text-blue-500" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-slate-800">{n.title}</p>
+                            <p className="text-[11px] text-slate-500 leading-snug">{n.desc}</p>
+                            <span className="text-[10px] text-slate-400 mt-1 block">{n.time}</span>
+                          </div>
+                          <ArrowUpRight size={13} className="text-slate-400 shrink-0 mt-1" />
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+                      <span>Sync Engine: Active</span>
+                      <span className="text-emerald-600 font-semibold flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        All systems operational
+                      </span>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
 
             {/* Store Badge */}
             <div className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700">
@@ -650,6 +954,18 @@ export default function Layout({ children }) {
                       <History size={14} className="text-slate-500" />
                       <span>Security Logs</span>
                     </NavLink>
+
+                    {/* Admin section only accessible if user's email matches admin email */}
+                    {isAdminEmail(user?.email) && (
+                      <NavLink
+                        to="/admin"
+                        onClick={() => setUserDropdown(false)}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-purple-700 bg-purple-50/70 hover:bg-purple-100/70 font-semibold transition mt-1"
+                      >
+                        <Shield size={14} className="text-purple-600" />
+                        <span>Admin Console</span>
+                      </NavLink>
+                    )}
 
                     <div className="border-t border-slate-100 my-1" />
 

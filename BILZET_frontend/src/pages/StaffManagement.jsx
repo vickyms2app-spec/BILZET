@@ -171,34 +171,37 @@ export default function StaffManagement({ defaultTab = "directory" }) {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 self-start sm:self-center">
-          {activeTab === "directory" && (
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition shadow-2xs"
-            >
-              <Plus size={15} />
-              <span>Add Staff</span>
-            </button>
-          )}
-          {activeTab === "attendance" && (
-            <button
-              onClick={() => setShowAttendanceModal(true)}
-              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition shadow-2xs"
-            >
-              <Calendar size={14} />
-              <span>Mark Daily Attendance</span>
-            </button>
-          )}
-          {activeTab === "payroll" && (
-            <button
-              onClick={() => setShowPayrollModal(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition shadow-2xs"
-            >
-              <Plus size={15} />
-              <span>Process Payroll</span>
-            </button>
-          )}
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-center">
+          <button
+            type="button"
+            onClick={() => setShowAddModal(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition shadow-2xs"
+          >
+            <Plus size={14} />
+            <span>Add Staff</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab("attendance");
+              setShowAttendanceModal(true);
+            }}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition shadow-2xs"
+          >
+            <Calendar size={14} />
+            <span>Take Attendance</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab("payroll");
+              setShowPayrollModal(true);
+            }}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition shadow-2xs"
+          >
+            <DollarSign size={14} />
+            <span>Process Payroll</span>
+          </button>
         </div>
       </div>
 
@@ -346,8 +349,29 @@ export default function StaffManagement({ defaultTab = "directory" }) {
             ))}
         </div>
       ) : activeTab === "attendance" ? (
-        /* Attendance History Table */
-        <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-xs">
+        /* Attendance History View with Step-by-Step Guidance Banner */
+        <div className="space-y-4">
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/80 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-blue-900 font-bold text-sm">
+                <Calendar size={16} className="text-blue-600" />
+                <span>How to Take Staff Attendance</span>
+              </div>
+              <p className="text-xs text-blue-800 leading-relaxed max-w-xl">
+                1. Click <strong>&quot;Take Today&apos;s Attendance&quot;</strong> · 2. Select shift date · 3. Mark each employee as <em>Present</em>, <em>Half-Day</em>, or <em>Absent</em> · 4. Save to auto-tally payroll days.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowAttendanceModal(true)}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition shrink-0"
+            >
+              <Calendar size={14} />
+              <span>Take Today&apos;s Attendance Now</span>
+            </button>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-xs">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
@@ -399,15 +423,37 @@ export default function StaffManagement({ defaultTab = "directory" }) {
             </table>
           </div>
         </div>
+        </div>
       ) : (
-        /* Payroll Table */
-        <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-xs">
-          <div className="p-4 border-b border-slate-200/80 flex items-center justify-between">
-            <div>
-              <h3 className="font-bold text-slate-800 text-xs">Staff Payroll & Salary Statements</h3>
-              <p className="text-[11px] text-slate-400">Monthly payout records, working days and deductions</p>
+        /* Payroll View with Step-by-Step Guidance Banner */
+        <div className="space-y-4">
+          <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/80 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-emerald-950 font-bold text-sm">
+                <DollarSign size={16} className="text-emerald-600" />
+                <span>How to Process Monthly Payroll</span>
+              </div>
+              <p className="text-xs text-emerald-800 leading-relaxed max-w-xl">
+                1. Click <strong>&quot;Run &amp; Disburse Payroll&quot;</strong> · 2. Select calculation month &amp; year · 3. System tallies attendance days and calculates base vs. net salary · 4. Confirm to record payout ledgers.
+              </p>
             </div>
+            <button
+              type="button"
+              onClick={() => setShowPayrollModal(true)}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition shrink-0"
+            >
+              <DollarSign size={14} />
+              <span>Run &amp; Disburse Payroll Now</span>
+            </button>
           </div>
+
+          <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-xs">
+            <div className="p-4 border-b border-slate-200/80 flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-slate-800 text-xs">Staff Payroll &amp; Salary Statements</h3>
+                <p className="text-[11px] text-slate-400">Monthly payout records, working days and deductions</p>
+              </div>
+            </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
@@ -457,6 +503,7 @@ export default function StaffManagement({ defaultTab = "directory" }) {
               </tbody>
             </table>
           </div>
+        </div>
         </div>
       )}
 

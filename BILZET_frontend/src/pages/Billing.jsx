@@ -40,6 +40,7 @@ export default function Billing() {
   const [customerAddress, setCustomerAddress] = useState("");
   const [saleType, setSaleType] = useState("B2C — Customer");
   const [showGstOptions, setShowGstOptions] = useState(false);
+  const [showCustDropdown, setShowCustDropdown] = useState(false);
 
   // Available data
   const [availableProducts, setAvailableProducts] = useState([]);
@@ -410,19 +411,87 @@ export default function Billing() {
                 <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                   Customer Name <span className="text-rose-500">*</span>
                 </label>
-                <input
-                  type="text"
-                  list="client-suggestions"
-                  placeholder="e.g. Kumar Stores or Retail"
-                  value={customerName}
-                  onChange={(e) => handleCustomerSelect(e.target.value)}
-                  className="w-full px-3.5 py-2.5 text-xs sm:text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-3 focus:ring-blue-500/10 bg-slate-50/30 transition placeholder:text-slate-400"
-                />
-                <datalist id="client-suggestions">
-                  {availableCustomers.map((c) => (
-                    <option key={c.id} value={c.name} />
-                  ))}
-                </datalist>
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Search or type customer name..."
+                    value={customerName}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setCustomerName(val);
+                      setShowCustDropdown(true);
+                      const match = availableCustomers.find(
+                        (c) => c.name.toLowerCase() === val.toLowerCase()
+                      );
+                      if (match) {
+                        if (match.phone) setMobileNumber(match.phone);
+                        if (match.gstin) setCustomerGstin(match.gstin);
+                        if (match.address) setCustomerAddress(match.address);
+                      }
+                    }}
+                    onFocus={() => {
+                      if (customerName.trim()) setShowCustDropdown(true);
+                    }}
+                    className="w-full px-3.5 py-2.5 text-xs sm:text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-3 focus:ring-blue-500/10 bg-slate-50/30 transition placeholder:text-slate-400 font-medium"
+                  />
+
+                  {/* Rich Autocomplete Dropdown */}
+                  {showCustDropdown && customerName.trim() && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-20"
+                        onClick={() => setShowCustDropdown(false)}
+                      />
+                      <div className="absolute left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-slate-200 z-30 max-h-56 overflow-y-auto divide-y divide-slate-100 animate-in fade-in">
+                        {availableCustomers
+                          .filter(
+                            (c) =>
+                              c.name?.toLowerCase().includes(customerName.toLowerCase()) ||
+                              c.phone?.includes(customerName)
+                          )
+                          .slice(0, 6)
+                          .map((c) => (
+                            <div
+                              key={c.id || c._id}
+                              onClick={() => {
+                                setCustomerName(c.name);
+                                if (c.phone) setMobileNumber(c.phone);
+                                if (c.gstin) setCustomerGstin(c.gstin);
+                                if (c.address) setCustomerAddress(c.address);
+                                setShowCustDropdown(false);
+                              }}
+                              className="p-2.5 hover:bg-blue-50/80 cursor-pointer flex items-center justify-between text-xs transition"
+                            >
+                              <div>
+                                <p className="font-semibold text-slate-800">{c.name}</p>
+                                <p className="text-[11px] text-slate-400">
+                                  {c.phone || "No phone"} {c.address ? `· ${c.address}` : ""}
+                                </p>
+                              </div>
+                              {c.balance !== undefined && (
+                                <span
+                                  className={`text-[11px] font-mono font-bold ${
+                                    c.balance > 0 ? "text-amber-600" : "text-slate-500"
+                                  }`}
+                                >
+                                  ₹{Number(c.balance).toLocaleString("en-IN")}
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        {availableCustomers.filter(
+                          (c) =>
+                            c.name?.toLowerCase().includes(customerName.toLowerCase()) ||
+                            c.phone?.includes(customerName)
+                        ).length === 0 && (
+                          <div className="p-2.5 text-xs text-slate-400 italic">
+                            New walk-in customer: &quot;{customerName}&quot; (details auto-saved with bill)
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
 
               <div>
@@ -752,16 +821,27 @@ export default function Billing() {
         {/* RIGHT COLUMN: LIVE INVOICE PREVIEW */}
         <div className="lg:col-span-5 sticky top-20">
           <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-5 sm:p-6 font-sans">
-            {/* Invoice Top header */}
-            <div className="flex items-start justify-between pb-4 border-b border-slate-100">
-              <Logo variant="full" theme="light" size="sm" />
+            {/* Invoice Top header with Active Customization */}
+            <div
+              className="flex items-start justify-between p-4 rounded-xl mb-4 transition text-white"
+              style={{
+                backgroundColor:
+                  shopSettings?.template === "minimal"
+                    ? "#0f172a"
+                    : shopSettings?.themeColor || "#1a5cff",
+              }}
+            >
+              <Logo variant="full" theme="dark" size="sm" />
               <div className="text-right">
-                <h3 className="text-base font-bold text-slate-900 tracking-wider">
-                  TAX INVOICE
+                <h3 className="text-base font-bold tracking-wider text-white">
+                  {shopSettings?.invoiceTitle || "TAX INVOICE"}
                 </h3>
-                <p className="text-xs font-medium text-slate-600 mt-0.5">
-                  {shopSettings?.shopName || "Garden Greens Mart"}
+                <p className="text-xs font-medium text-white/90 mt-0.5">
+                  {shopSettings?.shopName || "BILZET Retail Mart"}
                 </p>
+                <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-white/20 text-white mt-1 inline-block">
+                  {shopSettings?.template || "Modern"} Layout
+                </span>
               </div>
             </div>
 
@@ -991,18 +1071,39 @@ export default function Billing() {
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">GST Rate</label>
-                  <select
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-semibold text-slate-700">GST Rate (%)</label>
+                    <span className="text-[10px] text-blue-600 font-bold">Manual Editable</span>
+                  </div>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
                     value={itemForm.taxRate}
-                    onChange={(e) => setItemForm({ ...itemForm, taxRate: Number(e.target.value) })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
-                  >
-                    <option value="0">0% Excluded</option>
-                    <option value="5">5% GST</option>
-                    <option value="12">12% GST</option>
-                    <option value="18">18% GST</option>
-                    <option value="28">28% GST</option>
-                  </select>
+                    onChange={(e) =>
+                      setItemForm({ ...itemForm, taxRate: Number(e.target.value) })
+                    }
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 font-bold font-mono focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
+                    placeholder="e.g. 18 or 3"
+                  />
+                  {/* Preset quick buttons */}
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    {[0, 5, 12, 18, 28].map((rate) => (
+                      <button
+                        key={rate}
+                        type="button"
+                        onClick={() => setItemForm({ ...itemForm, taxRate: rate })}
+                        className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition ${
+                          itemForm.taxRate === rate
+                            ? "bg-blue-600 text-white"
+                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                        }`}
+                      >
+                        {rate}%
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 

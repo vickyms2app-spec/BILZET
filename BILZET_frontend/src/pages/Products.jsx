@@ -419,14 +419,36 @@ export default function Products() {
           </div>
 
           <div>
-            <label className="block font-semibold text-slate-700 mb-1">GST Rate (%)</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="font-semibold text-slate-700">GST Rate (%)</label>
+              <span className="text-[10px] text-blue-600 font-bold">Manual / Custom</span>
+            </div>
             <input
+              id="product-gst-input"
               name="gstRate"
               type="number"
+              min="0"
+              max="100"
               step="0.01"
               defaultValue={edit?.gstRate || 0}
-              className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 font-medium text-slate-800"
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 font-bold font-mono text-slate-800"
+              placeholder="e.g. 18, 5, 3, or 0.25"
             />
+            <div className="flex flex-wrap gap-1 mt-1.5">
+              {[0, 5, 12, 18, 28].map((rate) => (
+                <button
+                  key={rate}
+                  type="button"
+                  onClick={() => {
+                    const el = document.getElementById("product-gst-input");
+                    if (el) el.value = rate;
+                  }}
+                  className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-600 transition border border-slate-200/60"
+                >
+                  {rate}%
+                </button>
+              ))}
+            </div>
           </div>
 
           <div>
