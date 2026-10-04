@@ -19,6 +19,8 @@ import {
   Unlock,
   EyeOff,
   ChevronDown,
+  X,
+  Crown,
 } from "lucide-react";
 import { settingsApi } from "../api";
 import TaxInvoice, { COLOR_THEMES, INVOICE_TEMPLATES } from "../components/invoice/TaxInvoice";
@@ -79,9 +81,26 @@ export default function Settings() {
   const canViewBankDetails = isAuthorizedAdmin || adminRevealed;
   const [showFullBankDetails, setShowFullBankDetails] = useState(false);
 
+  // Subscription plan determination
+  const userPlan = (() => {
+    if (isAuthorizedAdmin) return "Pro Enterprise (Admin)";
+    try {
+      const sub = JSON.parse(localStorage.getItem("bilzet_subscription") || "{}");
+      return sub.currentPlan || "Free";
+    } catch (_) {
+      return "Free";
+    }
+  })();
+
+  const hasSubscription = isAuthorizedAdmin || userPlan === "Pro" || userPlan === "Enterprise";
+
   const [saved, setSaved] = useState(false);
   const [showFullPreview, setShowFullPreview] = useState(false);
-  const [showAdvancedToggles, setShowAdvancedToggles] = useState(false);
+  const [upgradeModal, setUpgradeModal] = useState({
+    open: false,
+    item: "",
+    type: "",
+  });
 
   useEffect(() => {
     settingsApi
@@ -104,6 +123,31 @@ export default function Settings() {
       localStorage.setItem("bilzet_invoice_settings", JSON.stringify(next));
       return next;
     });
+  };
+
+  const handleSelectTemplate = (tmpl) => {
+    if (!tmpl.isFree && !hasSubscription) {
+      setUpgradeModal({ open: true, item: tmpl.name, type: "template" });
+      return;
+    }
+    handleChange("template", tmpl.id);
+  };
+
+  const handleSelectColor = (theme) => {
+    if (!theme.isFree && !hasSubscription) {
+      setUpgradeModal({ open: true, item: theme.label, type: "color" });
+      return;
+    }
+    handleChange("colorTheme", theme.id);
+    handleChange("themeColor", theme.primary);
+  };
+
+  const handleSelectPaperSize = (p) => {
+    if (p.isPro && !hasSubscription) {
+      setUpgradeModal({ open: true, item: `${p.label} Printing`, type: "paper size" });
+      return;
+    }
+    handleChange("paperSize", p.id);
   };
 
   const handleSubmit = (e) => {
@@ -132,12 +176,16 @@ export default function Settings() {
               <h1 className="text-xl font-bold text-slate-900 tracking-tight">
                 Invoice Studio &amp; Settings
               </h1>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200/80">
-                GST Ready
+              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
+                hasSubscription
+                  ? "bg-amber-50 text-amber-800 border-amber-200"
+                  : "bg-blue-50 text-blue-700 border-blue-200/80"
+              }`}>
+                {hasSubscription ? "👑 PRO ACTIVE" : "FREE STARTER TIER"}
               </span>
             </div>
             <p className="text-xs text-slate-500 font-normal mt-0.5">
-              Customize paper sizes, visual layout templates, color themes, and dynamic live invoice preview
+              3 Free Templates &amp; 3 Free Color Themes included &middot; Balance templates and palettes unlocked with Pro Suite
             </p>
           </div>
         </div>
@@ -229,17 +277,17 @@ export default function Settings() {
 
             <div className="flex flex-wrap items-center gap-2.5 pt-1">
               {[
-                { id: "A4", label: "A4" },
-                { id: "A5", label: "A5" },
-                { id: "Thermal 80mm", label: "Thermal 80mm", badge: "PRO" },
-                { id: "Thermal 58mm", label: "Thermal 58mm", badge: "PREMIUM" },
+                { id: "A4", label: "A4", isPro: false },
+                { id: "A5", label: "A5", isPro: false },
+                { id: "Thermal 80mm", label: "Thermal 80mm", badge: "PRO", isPro: true },
+                { id: "Thermal 58mm", label: "Thermal 58mm", badge: "PREMIUM", isPro: true },
               ].map((p) => {
                 const isSelected = form.paperSize === p.id;
                 return (
                   <button
                     key={p.id}
                     type="button"
-                    onClick={() => handleChange("paperSize", p.id)}
+                    onClick={() => handleSelectPaperSize(p)}
                     className={`px-4 py-2 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 ${
                       isSelected
                         ? "border-2 border-blue-600 bg-white text-blue-600 font-bold shadow-xs ring-1 ring-blue-500/20"
@@ -261,7 +309,12 @@ export default function Settings() {
           {/* ── CARD 2: INVOICE TEMPLATES ────────────────── */}
           <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/90 shadow-xs space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-bold text-slate-900">Invoice Templates</h2>
+              <div>
+                <h2 className="text-sm font-bold text-slate-900">Invoice Templates</h2>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  <span className="text-emerald-600 font-bold">3 Free Templates</span> (Modern, Classic Border, Compact) &middot; Balance 8 templates with Subscription
+                </p>
+              </div>
               <span className="text-[10px] font-bold text-blue-600 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-lg uppercase tracking-wider">
                 {form.template}
               </span>
@@ -270,11 +323,14 @@ export default function Settings() {
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-3.5">
               {INVOICE_TEMPLATES.map((tmpl) => {
                 const isSelected = form.template === tmpl.id;
+                const isLocked = !tmpl.isFree && !hasSubscription;
+
                 return (
                   <div
                     key={tmpl.id}
-                    onClick={() => handleChange("template", tmpl.id)}
+                    onClick={() => handleSelectTemplate(tmpl)}
                     className="group cursor-pointer flex flex-col transition"
+                    title={isLocked ? "👑 Subscription required" : tmpl.name}
                   >
                     <div
                       className={`h-20 rounded-xl border-2 transition relative p-2.5 flex flex-col justify-between overflow-hidden bg-white ${
@@ -300,14 +356,35 @@ export default function Settings() {
                         <div className="h-0.5 w-3/4 bg-slate-200/70 rounded" />
                         <div className="h-0.5 w-5/6 bg-slate-200/70 rounded" />
                       </div>
+
+                      {/* Lock overlay for premium templates on free plan */}
+                      {isLocked && (
+                        <div className="absolute inset-0 bg-slate-900/10 backdrop-blur-[0.5px] flex items-center justify-center">
+                          <div className="w-5 h-5 rounded-full bg-white/95 shadow-xs flex items-center justify-center text-amber-600">
+                            <Lock size={10} />
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <span
-                      className={`text-[11px] font-semibold mt-1.5 truncate ${
-                        isSelected ? "text-blue-600 font-bold" : "text-slate-700"
-                      }`}
-                    >
-                      {tmpl.name}
-                    </span>
+
+                    <div className="flex items-center justify-between mt-1.5 gap-1">
+                      <span
+                        className={`text-[11px] font-semibold truncate ${
+                          isSelected ? "text-blue-600 font-bold" : "text-slate-700"
+                        }`}
+                      >
+                        {tmpl.name}
+                      </span>
+                      {tmpl.isFree ? (
+                        <span className="text-[8px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1 py-0.5 rounded leading-none shrink-0">
+                          FREE
+                        </span>
+                      ) : (
+                        <span className="text-[8px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-1 py-0.5 rounded leading-none shrink-0 flex items-center gap-0.5">
+                          👑 PRO
+                        </span>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -316,28 +393,33 @@ export default function Settings() {
 
           {/* ── CARD 3: COLOR THEMES ─────────────────────── */}
           <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/90 shadow-xs space-y-3">
-            <div>
-              <h2 className="text-sm font-bold text-slate-900">Color Themes</h2>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Themes change the invoice background, borders, accents, table headers and corner styling — not just font color.
-              </p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+              <div>
+                <h2 className="text-sm font-bold text-slate-900">Color Themes</h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Themes change invoice backgrounds, borders, accents, table headers and corner styling.
+                </p>
+              </div>
+              <span className="text-[11px] font-medium text-slate-500">
+                <strong className="text-emerald-600">3 Free Colors</strong> &middot; 13 Subscription Colors
+              </span>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3 pt-1">
               {COLOR_THEMES.map((theme) => {
                 const isSelected = form.colorTheme === theme.id || form.themeColor === theme.primary;
+                const isLocked = !theme.isFree && !hasSubscription;
+
                 return (
                   <div
                     key={theme.id}
-                    onClick={() => {
-                      handleChange("colorTheme", theme.id);
-                      handleChange("themeColor", theme.primary);
-                    }}
-                    className={`cursor-pointer rounded-xl p-1.5 border-2 transition flex flex-col gap-1.5 bg-white ${
+                    onClick={() => handleSelectColor(theme)}
+                    className={`cursor-pointer rounded-xl p-1.5 border-2 transition flex flex-col gap-1.5 bg-white relative ${
                       isSelected
                         ? "border-blue-500 ring-2 ring-blue-500/15 shadow-xs"
                         : "border-slate-200 hover:border-slate-300"
                     }`}
+                    title={isLocked ? "👑 Subscription required" : theme.label}
                   >
                     <div
                       className="h-10 w-full rounded-lg overflow-hidden relative shadow-2xs border border-black/5"
@@ -349,14 +431,33 @@ export default function Settings() {
                         className="absolute top-0 right-0 w-3.5 h-3.5 rounded-bl-md"
                         style={{ backgroundColor: theme.dark }}
                       />
+                      {isLocked && (
+                        <div className="absolute inset-0 bg-slate-900/10 flex items-center justify-center">
+                          <div className="w-4 h-4 rounded-full bg-white/95 shadow-xs flex items-center justify-center text-amber-600">
+                            <Lock size={8} />
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <span
-                      className={`text-[10px] font-semibold truncate ${
-                        isSelected ? "text-blue-600 font-bold" : "text-slate-700"
-                      }`}
-                    >
-                      {theme.label}
-                    </span>
+
+                    <div className="flex items-center justify-between gap-1">
+                      <span
+                        className={`text-[10px] font-semibold truncate ${
+                          isSelected ? "text-blue-600 font-bold" : "text-slate-700"
+                        }`}
+                      >
+                        {theme.label}
+                      </span>
+                      {theme.isFree ? (
+                        <span className="text-[7px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1 rounded shrink-0">
+                          FREE
+                        </span>
+                      ) : (
+                        <span className="text-[7px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-1 rounded shrink-0">
+                          PRO
+                        </span>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -705,6 +806,81 @@ export default function Settings() {
           isModal={true}
           onClose={() => setShowFullPreview(false)}
         />
+      )}
+
+      {/* ══════════════════════════════════════════════════
+          MODAL: UPGRADE SUBSCRIPTION
+      ══════════════════════════════════════════════════ */}
+      {upgradeModal.open && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl overflow-hidden border border-slate-200 p-6 space-y-5 animate-scaleIn">
+            <div className="flex items-start justify-between">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-400 to-amber-500 text-white flex items-center justify-center shadow-md shadow-amber-500/20">
+                <Crown size={24} />
+              </div>
+              <button
+                type="button"
+                onClick={() => setUpgradeModal({ open: false, item: "", type: "" })}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-50 text-amber-800 border border-amber-200 mb-2">
+                👑 Subscription Feature
+              </div>
+              <h3 className="text-lg font-black text-slate-900 tracking-tight">
+                Unlock {upgradeModal.item}
+              </h3>
+              <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                You are currently on the <strong className="text-slate-900">Free Starter Plan</strong>, which includes 3 free invoice layouts and 3 complimentary color palettes. Upgrade to <strong className="text-blue-600">Pro Suite</strong> to access all 11 designer templates, all 16 brand color schemes, and thermal printing.
+              </p>
+            </div>
+
+            <div className="p-4 bg-slate-50 border border-slate-200/90 rounded-2xl space-y-2 text-xs">
+              <p className="font-bold text-slate-800 text-[11px] uppercase tracking-wider">
+                Included with Pro Suite (₹999/mo):
+              </p>
+              <ul className="space-y-1.5 text-slate-600 text-[11px]">
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
+                  <span>All 11 modern, corporate, retail, hotel &amp; minimal layouts</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
+                  <span>All 16 tailored dual-tone diagonal color themes</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
+                  <span>80mm and 58mm POS thermal receipt printing</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
+                  <span>Unlimited invoice creation with live UPI QR payment links</span>
+                </li>
+              </ul>
+            </div>
+
+            <div className="flex items-center gap-3 pt-1">
+              <button
+                type="button"
+                onClick={() => navigate("/subscription")}
+                className="flex-1 py-2.5 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:brightness-110 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/20 transition flex items-center justify-center gap-1.5"
+              >
+                <span>Upgrade to Pro Suite →</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setUpgradeModal({ open: false, item: "", type: "" })}
+                className="py-2.5 px-4 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl text-xs font-semibold transition"
+              >
+                Keep Free
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
