@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 import { suppliersApi } from "../api";
 import Modal from "../components/common/Modal";
+import SearchBar from "../components/common/SearchBar";
+import Button from "../components/common/Button";
 
 export default function Suppliers() {
   const [suppliers, setSuppliers] = useState([]);
@@ -27,6 +29,7 @@ export default function Suppliers() {
 
   const [form, setForm] = useState({
     name: "",
+    companyName: "",
     phone: "",
     email: "",
     gstin: "",
@@ -72,6 +75,7 @@ export default function Suppliers() {
     try {
       await suppliersApi.create({
         name: form.name.trim(),
+        companyName: form.companyName.trim() || undefined,
         phone: form.phone.trim(),
         email: form.email.trim() || undefined,
         gstin: form.gstin.trim() || undefined,
@@ -83,6 +87,7 @@ export default function Suppliers() {
       setOpenModal(false);
       setForm({
         name: "",
+        companyName: "",
         phone: "",
         email: "",
         gstin: "",
@@ -105,6 +110,7 @@ export default function Suppliers() {
     const term = search.toLowerCase();
     return (
       s.name?.toLowerCase().includes(term) ||
+      s.companyName?.toLowerCase().includes(term) ||
       s.phone?.includes(term) ||
       s.email?.toLowerCase().includes(term) ||
       s.gstin?.toLowerCase().includes(term) ||
@@ -124,32 +130,32 @@ export default function Suppliers() {
       ══════════════════════════════════════════════════ */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/90 shadow-xs">
         <div className="flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-xl border border-indigo-100 grid place-items-center text-indigo-600 bg-indigo-50/70 shadow-2xs shrink-0">
+          <div className="w-11 h-11 rounded-xl border border-blue-100 grid place-items-center text-blue-600 bg-blue-50/70 shadow-2xs shrink-0">
             <Truck size={22} />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+              <h1 className="page-title">
                 Suppliers &amp; Vendors
               </h1>
-              <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+              <span className="badge badge-info uppercase tracking-wider">
                 Procurement
               </span>
             </div>
-            <p className="text-xs text-slate-500 font-normal mt-0.5">
-              Manage vendors, purchase ledgers, and outstanding payable balances
+            <p className="page-desc">
+              Manage vendors, purchase records, and outstanding payable balances
             </p>
           </div>
         </div>
 
-        <button
-          type="button"
+        <Button
+          variant="primary"
+          size="sm"
+          icon={Plus}
           onClick={() => setOpenModal(true)}
-          className="btn-primary text-xs py-2.5 px-4 inline-flex items-center gap-2 self-start sm:self-center shadow-xs"
         >
-          <Plus size={15} strokeWidth={2.5} />
-          <span>Add Supplier</span>
-        </button>
+          Add Supplier
+        </Button>
       </div>
 
       {/* Notifications */}
@@ -214,27 +220,21 @@ export default function Suppliers() {
       ══════════════════════════════════════════════════ */}
       <div className="card overflow-hidden">
         <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white">
-          <div className="relative max-w-sm w-full">
-            <Search
-              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
-              size={15}
-            />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by vendor name, phone, GSTIN..."
-              className="w-full pl-9 pr-3.5 py-2 text-xs border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 font-medium bg-slate-50/40"
-            />
-          </div>
+          <SearchBar
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onClear={() => setSearch("")}
+            placeholder="Search by vendor name, phone, GSTIN..."
+            className="max-w-md"
+          />
 
           <button
             type="button"
             onClick={loadSuppliers}
-            className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-500 hover:text-slate-800 transition text-xs flex items-center gap-1.5 self-start sm:self-auto"
+            className="btn-secondary self-start sm:self-auto"
             title="Refresh Suppliers"
           >
-            <RefreshCw size={13} className={loading ? "animate-spin text-indigo-600" : ""} />
+            <RefreshCw size={14} className={loading ? "animate-spin text-blue-600" : ""} />
             <span>Refresh</span>
           </button>
         </div>
@@ -243,7 +243,7 @@ export default function Suppliers() {
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="bg-slate-50/75 border-b border-slate-200/80 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
-                <th className="py-3 px-4">Supplier Name</th>
+                <th className="py-3 px-4">Supplier & Company</th>
                 <th className="py-3 px-4">Contact Phone</th>
                 <th className="py-3 px-4">Email</th>
                 <th className="py-3 px-4">GSTIN</th>
@@ -274,11 +274,21 @@ export default function Suppliers() {
                 filteredSuppliers.map((s) => (
                   <tr key={s.id || s._id} className="hover:bg-slate-50/60 transition">
                     <td className="py-3 px-4 font-semibold text-slate-800">
-                      <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 font-bold flex items-center justify-center text-[11px]">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 text-white font-bold flex items-center justify-center text-xs shadow-2xs shrink-0">
                           {s.name?.[0]?.toUpperCase() || "S"}
                         </div>
-                        <span>{s.name}</span>
+                        <div>
+                          <p className="font-semibold text-slate-900 leading-tight">{s.name}</p>
+                          {s.companyName ? (
+                            <p className="text-[11px] text-indigo-600 font-medium flex items-center gap-1 mt-0.5">
+                              <Building2 size={11} className="shrink-0 text-indigo-500" />
+                              <span>{s.companyName}</span>
+                            </p>
+                          ) : (
+                            <span className="text-[10px] text-slate-400">Individual Supplier</span>
+                          )}
+                        </div>
                       </div>
                     </td>
                     <td className="py-3 px-4 font-mono text-slate-600">
@@ -316,28 +326,30 @@ export default function Suppliers() {
         isOpen={openModal}
         onClose={() => setOpenModal(false)}
         title="Add New Supplier"
-        subtitle="Record vendor details, GSTIN, and credit balance ledger"
+        subtitle="Record vendor details, company name, GSTIN, and opening balances"
         icon={Truck}
         iconColor="text-indigo-600 bg-indigo-50 border-indigo-100"
         maxWidth="max-w-lg"
         footer={
           <>
-            <button
-              type="button"
+            <Button
+              variant="neutral"
+              size="sm"
+              icon={X}
               onClick={() => setOpenModal(false)}
-              className="px-4 py-2.5 rounded-xl border border-slate-200 font-medium text-slate-600 hover:bg-slate-100 transition text-xs"
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
               form="supplier-form"
-              disabled={submitting}
-              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-sm transition text-xs flex items-center gap-2"
+              variant="primary"
+              size="sm"
+              icon={CheckCircle2}
+              loading={submitting}
             >
-              {submitting && <RefreshCw size={13} className="animate-spin" />}
-              <span>Save Supplier</span>
-            </button>
+              Save Supplier
+            </Button>
           </>
         }
       >
@@ -346,18 +358,33 @@ export default function Suppliers() {
           onSubmit={handleCreateSupplier}
           className="space-y-3.5 text-xs pt-1"
         >
-          <div>
-            <label className="block font-semibold text-slate-700 mb-1">
-              Supplier / Company Name <span className="text-rose-500">*</span>
-            </label>
-            <input
-              type="text"
-              required
-              placeholder="e.g. Apex FMCG Distributors"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 font-medium text-slate-800"
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">
+                Supplier Name (Contact Person) <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. Raj Kumar"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 font-medium text-slate-800"
+              />
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">
+                Company Name (Business Entity)
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. ABC Furniture Pvt Ltd"
+                value={form.companyName}
+                onChange={(e) => setForm({ ...form, companyName: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 font-medium text-slate-800"
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

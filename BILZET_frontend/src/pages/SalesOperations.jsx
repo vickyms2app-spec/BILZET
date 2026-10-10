@@ -19,6 +19,8 @@ import {
 import { salesApi, customersApi, productsApi } from "../api";
 import { useLocation } from "react-router-dom";
 import Modal from "../components/common/Modal";
+import SearchBar from "../components/common/SearchBar";
+import Button, { CompactIconButton } from "../components/common/Button";
 
 export default function SalesOperations({ defaultTab = "challans" }) {
   const location = useLocation();
@@ -32,6 +34,7 @@ export default function SalesOperations({ defaultTab = "challans" }) {
   const [sales, setSales] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [products, setProducts] = useState([]);
+  const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
@@ -74,18 +77,20 @@ export default function SalesOperations({ defaultTab = "challans" }) {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [chRes, retRes, salesRes, custRes, prodRes] = await Promise.all([
+      const [chRes, retRes, salesRes, custRes, prodRes, payRes] = await Promise.all([
         salesApi.challans(),
         salesApi.returns(),
         salesApi.list({ limit: 100 }),
         customersApi.list({ limit: 100 }),
         productsApi.list({ limit: 100 }),
+        salesApi.paymentsInList().catch(() => ({ payments: [] })),
       ]);
       setChallans(Array.isArray(chRes) ? chRes : chRes?.challans || []);
       setReturns(retRes?.returns || (Array.isArray(retRes) ? retRes : []));
       setSales(salesRes?.sales || salesRes?.data?.sales || []);
       setCustomers(custRes?.data?.customers || custRes?.customers || custRes || []);
       setProducts(prodRes?.data?.products || prodRes?.products || []);
+      setPayments(payRes?.payments || (Array.isArray(payRes) ? payRes : []));
     } catch (err) {
       console.error(err);
     } finally {
@@ -195,12 +200,12 @@ export default function SalesOperations({ defaultTab = "challans" }) {
     },
     payments: {
       icon: DollarSign,
-      title: "Payment-In Ledger",
-      subtitle: "Record customer inward collections, UPI settlements and cash receipts.",
+      title: "Payments-In",
+      subtitle: "Inward customer collections, dues settlement, and real-time payment audit records.",
       actionLabel: "Record Payment-In",
       onAction: () => setShowPaymentModal(true),
-      searchPlaceholder: "Search payments by customer or ref #...",
-      count: customers.length,
+      searchPlaceholder: "Search payments by customer, ref # or method...",
+      count: payments.length,
     },
   }[activeTab] || {
     icon: Truck,
@@ -232,43 +237,40 @@ export default function SalesOperations({ defaultTab = "challans" }) {
           </div>
         </div>
 
-        <button
+        <Button
+          variant="primary"
+          size="sm"
+          icon={Plus}
           onClick={pageMeta.onAction}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 transition shadow-2xs self-start sm:self-center"
+          className="self-start sm:self-center"
         >
-          <Plus size={15} strokeWidth={2.5} />
-          <span>{pageMeta.actionLabel}</span>
-        </button>
+          {pageMeta.actionLabel}
+        </Button>
       </div>
 
       {/* Notifications */}
       {message.text && (
         <div
-          className={`p-3.5 rounded-xl text-xs font-medium flex items-center gap-2 ${
-            message.type === "success"
-              ? "bg-emerald-50 border border-emerald-200 text-emerald-800"
-              : "bg-rose-50 border border-rose-200 text-rose-800"
+          className={`alert-box ${
+            message.type === "success" ? "alert-success" : "alert-danger"
           }`}
         >
           {message.type === "success" ? (
-            <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+            <CheckCircle2 size={16} className="text-emerald-600 shrink-0 mt-0.5" />
           ) : (
-            <AlertTriangle size={16} className="text-rose-600 shrink-0" />
+            <AlertTriangle size={16} className="text-rose-600 shrink-0 mt-0.5" />
           )}
           <span>{message.text}</span>
         </div>
       )}
 
       {/* ── Search Bar ── */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-xs">
-        <div className="relative w-full sm:w-80">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
+      <div className="card p-3.5 flex flex-col sm:flex-row items-center justify-between gap-3 bg-white">
+        <div className="w-full sm:w-80">
+          <SearchBar
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={pageMeta.searchPlaceholder}
-            className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
           />
         </div>
 
@@ -276,14 +278,12 @@ export default function SalesOperations({ defaultTab = "challans" }) {
           <span className="text-xs text-slate-500 font-medium">
             Total Records: <strong className="text-slate-800">{pageMeta.count}</strong>
           </span>
-          <button
+          <CompactIconButton
+            icon={RefreshCw}
+            title="Refresh records"
             onClick={loadData}
             disabled={loading}
-            className="p-2 border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-600 transition"
-            title="Refresh records"
-          >
-            <RefreshCw size={13} className={loading ? "animate-spin text-blue-600" : ""} />
-          </button>
+          />
         </div>
       </div>
 
@@ -403,14 +403,135 @@ export default function SalesOperations({ defaultTab = "challans" }) {
           </div>
         </div>
       ) : (
-        /* Payments In View */
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-8 text-center space-y-3">
-          <DollarSign size={32} className="mx-auto text-emerald-400" />
-          <h3 className="font-bold text-slate-700 text-sm">Customer Payment Collection Ledger</h3>
-          <p className="text-xs text-slate-400 max-w-md mx-auto">
-            Record customer advance payments and settlement collections using the "Record Payment-In"
-            button above to reduce outstanding client balance.
-          </p>
+        /* Payments In View (Req 1 & 2) */
+        <div className="space-y-5">
+          {/* Summary KPIs */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+            <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
+              <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Total Received</p>
+              <p className="text-lg sm:text-xl font-bold text-emerald-600 mt-1">
+                ₹{payments.reduce((acc, p) => acc + Number(p.amount || 0), 0).toLocaleString("en-IN")}
+              </p>
+              <p className="text-[10px] text-slate-400 mt-0.5">{payments.length} transactions</p>
+            </div>
+
+            <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
+              <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Cash Collections</p>
+              <p className="text-lg sm:text-xl font-bold text-slate-800 mt-1">
+                ₹{payments.filter(p => (p.method || "").toUpperCase() === "CASH").reduce((acc, p) => acc + Number(p.amount || 0), 0).toLocaleString("en-IN")}
+              </p>
+              <p className="text-[10px] text-slate-400 mt-0.5">Physical counter cash</p>
+            </div>
+
+            <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
+              <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">UPI &amp; Digital</p>
+              <p className="text-lg sm:text-xl font-bold text-blue-600 mt-1">
+                ₹{payments.filter(p => (p.method || "").toUpperCase() !== "CASH").reduce((acc, p) => acc + Number(p.amount || 0), 0).toLocaleString("en-IN")}
+              </p>
+              <p className="text-[10px] text-slate-400 mt-0.5">UPI, NEFT &amp; Cards</p>
+            </div>
+
+            <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
+              <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Outstanding Dues</p>
+              <p className="text-lg sm:text-xl font-bold text-rose-600 mt-1">
+                ₹{customers.reduce((acc, c) => acc + Number(c.balance || 0), 0).toLocaleString("en-IN")}
+              </p>
+              <p className="text-[10px] text-slate-400 mt-0.5">Across {customers.filter(c => c.balance > 0).length} customers</p>
+            </div>
+          </div>
+
+          {/* Payments In Records Table */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-xs">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-slate-50/75 border-b border-slate-200/80 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                    <th className="py-3 px-4">Receipt / Ref #</th>
+                    <th className="py-3 px-4">Date &amp; Time</th>
+                    <th className="py-3 px-4">Customer</th>
+                    <th className="py-3 px-4">Linked Invoice</th>
+                    <th className="py-3 px-4">Tender Mode</th>
+                    <th className="py-3 px-4 text-right">Amount Received</th>
+                    <th className="py-3 px-4">Notes / Remarks</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {payments
+                    .filter((p) => {
+                      if (!search.trim()) return true;
+                      const q = search.toLowerCase();
+                      const cName = (p.customer?.name || "").toLowerCase();
+                      const cPhone = (p.customer?.phone || "").toLowerCase();
+                      const ref = (p.transactionId || p.id || "").toLowerCase();
+                      const inv = (p.sale?.invoiceNumber || "").toLowerCase();
+                      const m = (p.method || "").toLowerCase();
+                      return cName.includes(q) || cPhone.includes(q) || ref.includes(q) || inv.includes(q) || m.includes(q);
+                    })
+                    .length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-12 text-center text-slate-400">
+                        No inward payment records found. Click "Record Payment-In" to receive customer payments.
+                      </td>
+                    </tr>
+                  ) : (
+                    payments
+                      .filter((p) => {
+                        if (!search.trim()) return true;
+                        const q = search.toLowerCase();
+                        const cName = (p.customer?.name || "").toLowerCase();
+                        const cPhone = (p.customer?.phone || "").toLowerCase();
+                        const ref = (p.transactionId || p.id || "").toLowerCase();
+                        const inv = (p.sale?.invoiceNumber || "").toLowerCase();
+                        const m = (p.method || "").toLowerCase();
+                        return cName.includes(q) || cPhone.includes(q) || ref.includes(q) || inv.includes(q) || m.includes(q);
+                      })
+                      .map((p) => (
+                        <tr key={p.id} className="hover:bg-slate-50/60 transition">
+                          <td className="py-3 px-4 font-mono font-bold text-slate-800">
+                            {p.transactionId || p.id.slice(-8).toUpperCase()}
+                          </td>
+                          <td className="py-3 px-4 text-slate-500 whitespace-nowrap">
+                            {new Date(p.createdAt).toLocaleDateString("en-IN", {
+                              day: "2-digit",
+                              month: "short",
+                              year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </td>
+                          <td className="py-3 px-4 font-semibold text-slate-800">
+                            <p>{p.customer?.name || "Direct Customer"}</p>
+                            {p.customer?.phone && (
+                              <p className="text-[10px] text-slate-400 font-normal">{p.customer.phone}</p>
+                            )}
+                          </td>
+                          <td className="py-3 px-4">
+                            {p.sale?.invoiceNumber ? (
+                              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                                {p.sale.invoiceNumber}
+                              </span>
+                            ) : (
+                              <span className="text-slate-400 italic text-[11px]">On Account</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                              {p.method || "CASH"}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-right font-mono font-bold text-emerald-600 text-sm">
+                            ₹{Number(p.amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                          </td>
+                          <td className="py-3 px-4 text-slate-500 truncate max-w-[180px]">
+                            {p.note || "—"}
+                          </td>
+                        </tr>
+                      ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       )}
 

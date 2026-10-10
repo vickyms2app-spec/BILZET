@@ -2,8 +2,10 @@ import prisma from '../config/prisma.mjs';
 
 const round2 = (num) => Math.round((Number(num) + Number.EPSILON) * 100) / 100;
 
-export const getSalesReport = async (query = {}) => {
+export const getSalesReport = async (query = {}, businessId = null) => {
   const where = {};
+  const effectiveBusinessId = query.businessId || businessId;
+  if (effectiveBusinessId) where.businessId = effectiveBusinessId;
   if (query.customerId) where.customerId = query.customerId;
   if (query.warehouseId) where.warehouseId = query.warehouseId;
   if (query.from || query.startDate) {
@@ -57,8 +59,10 @@ export const getSalesReport = async (query = {}) => {
   };
 };
 
-export const getDailyReport = async (query = {}) => {
+export const getDailyReport = async (query = {}, businessId = null) => {
   const where = {};
+  const effectiveBusinessId = query.businessId || businessId;
+  if (effectiveBusinessId) where.businessId = effectiveBusinessId;
   if (query.from || query.startDate) {
     where.createdAt = {
       gte: new Date(query.from || query.startDate),
@@ -96,17 +100,19 @@ export const getDailyReport = async (query = {}) => {
   return Array.from(map.values()).sort((a, b) => b.date.localeCompare(a.date));
 };
 
-export const getMonthlyReport = async (year = new Date().getFullYear()) => {
+export const getMonthlyReport = async (year = new Date().getFullYear(), businessId = null) => {
   const startOfYear = new Date(`${year}-01-01T00:00:00.000Z`);
   const endOfYear = new Date(`${year}-12-31T23:59:59.999Z`);
+  const where = {
+    createdAt: {
+      gte: startOfYear,
+      lte: endOfYear,
+    },
+  };
+  if (businessId) where.businessId = businessId;
 
   const sales = await prisma.sale.findMany({
-    where: {
-      createdAt: {
-        gte: startOfYear,
-        lte: endOfYear,
-      },
-    },
+    where,
   });
 
   const months = [
@@ -132,8 +138,12 @@ export const getMonthlyReport = async (year = new Date().getFullYear()) => {
   return breakdown;
 };
 
-export const getYearlyReport = async () => {
+export const getYearlyReport = async (businessId = null) => {
+  const where = {};
+  if (businessId) where.businessId = businessId;
+
   const sales = await prisma.sale.findMany({
+    where,
     orderBy: { createdAt: 'desc' },
   });
 
@@ -157,8 +167,10 @@ export const getYearlyReport = async () => {
   return Array.from(map.values()).sort((a, b) => b.year.localeCompare(a.year));
 };
 
-export const getProfitReport = async (query = {}) => {
+export const getProfitReport = async (query = {}, businessId = null) => {
   const where = {};
+  const effectiveBusinessId = query.businessId || businessId;
+  if (effectiveBusinessId) where.businessId = effectiveBusinessId;
   if (query.from || query.startDate) {
     where.createdAt = {
       gte: new Date(query.from || query.startDate),
@@ -218,8 +230,21 @@ export const getInventoryReport = async () => {
   };
 };
 
-export const getGstReport = async (query = {}) => {
+export const getGstReport = async (query = {}, businessId = null) => {
+  const where = {};
+  const effectiveBusinessId = query.businessId || businessId;
+  if (effectiveBusinessId) {
+    where.businessId = effectiveBusinessId;
+  }
+  if (query.from || query.startDate) {
+    where.createdAt = {
+      gte: new Date(query.from || query.startDate),
+      ...(query.to || query.endDate ? { lte: new Date(query.to || query.endDate) } : {}),
+    };
+  }
+
   const sales = await prisma.sale.findMany({
+    where,
     orderBy: { createdAt: 'desc' },
     include: { customer: true, items: true },
   });

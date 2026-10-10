@@ -1,20 +1,18 @@
 import { Router } from 'express';
 import inventoryController from '../controllers/inventory.controller.mjs';
 import { authMiddleware } from '../middleware/auth.middleware.mjs';
-import { authorizeRoles } from '../middleware/role.middleware.mjs';
+import { requirePermission } from '../middleware/permission.middleware.mjs';
 import { validate } from '../middleware/validate.middleware.mjs';
 import { stockAdjustmentSchema } from '../validators/inventory.validator.mjs';
-import { ROLES } from '../utils/constants.mjs';
 
 const router = Router();
 
 router.use(authMiddleware);
-router.use(authorizeRoles(ROLES.ADMIN, ROLES.MANAGER));
 
-router.get('/', inventoryController.getInventoryOverview);
-router.get('/low-stock', inventoryController.getLowStockProducts);
-router.get('/history', inventoryController.getStockHistory);
-router.get('/:productId/history', inventoryController.getProductStockHistory);
-router.post('/adjust', validate(stockAdjustmentSchema), inventoryController.adjustStock);
+router.get('/', requirePermission('inventory.view'), inventoryController.getInventoryOverview);
+router.get('/low-stock', requirePermission('inventory.view'), inventoryController.getLowStockProducts);
+router.get('/history', requirePermission('inventory.view'), inventoryController.getStockHistory);
+router.get('/:productId/history', requirePermission('inventory.view'), inventoryController.getProductStockHistory);
+router.post('/adjust', requirePermission('inventory.adjust'), validate(stockAdjustmentSchema), inventoryController.adjustStock);
 
 export default router;

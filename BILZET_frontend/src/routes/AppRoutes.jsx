@@ -1,6 +1,8 @@
+import { useState, useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "../store/auth";
 import Layout from "../components/layout/Layout";
+import NotFound from "../pages/NotFound";
 import Login from "../pages/Login";
 import Dashboard from "../pages/Dashboard";
 import Billing from "../pages/Billing";
@@ -16,12 +18,14 @@ import Admin from "../pages/Admin";
 import Invoices from "../pages/Invoices";
 import Gst from "../pages/Gst";
 import CaConnect from "../pages/CaConnect";
+import CaPortal from "../pages/CaPortal";
 import Referral from "../pages/Referral";
 import Plans from "../pages/Plans";
 import Support from "../pages/Support";
 import { ClerkSsoCallback } from "../components/auth/ClerkAuth";
-import { isAdminEmail, isAdminUser } from "../utils/security";
-export { isAdminEmail, isAdminUser };
+import { isAdminEmail, isAdminUser, isSuperAdminUser } from "../utils/security";
+import { usePermissions } from "../hooks/usePermissions";
+export { isAdminEmail, isAdminUser, isSuperAdminUser };
 
 // New ERP Modules
 import Warehouses from "../pages/Warehouses";
@@ -31,6 +35,7 @@ import OnlineOrders from "../pages/OnlineOrders";
 import SmsMarketing from "../pages/SmsMarketing";
 import AuditLogs from "../pages/AuditLogs";
 import SalesOperations from "../pages/SalesOperations";
+import StaffDashboard from "../pages/StaffDashboard";
 
 import SuperAdminRoute from "../pages/superAdmin/SuperAdminRoute";
 import SuperAdminLogin from "../pages/superAdmin/SuperAdminLogin";
@@ -45,23 +50,51 @@ import { useAuth as useClerkAuth } from "@clerk/clerk-react";
 
 import { hasClerk } from "../config/clerk";
 
-function ClerkProtectedWrapper({ children, roles }) {
+function AuthLoadingScreen() {
+  const [showRetry, setShowRetry] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setShowRetry(true), 4000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  return (
+    <div className="grid min-h-screen place-items-center bg-slate-50 px-4">
+      <div className="flex flex-col items-center gap-3 text-center max-w-xs animate-in fade-in">
+        <div
+          className="w-10 h-10 rounded-full animate-spin"
+          style={{ border: "3px solid #dbeafe", borderTopColor: "#1a5cff" }}
+        />
+        <p className="text-sm font-semibold text-slate-800">Loading BILZET…</p>
+        <p className="text-xs text-slate-400">Synchronizing session state</p>
+        {showRetry && (
+          <div className="mt-2 flex flex-col gap-2 w-full animate-in fade-in">
+            <button
+              onClick={() => window.location.reload()}
+              className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl transition shadow-xs"
+            >
+              Retry Connection
+            </button>
+            <a
+              href="/sign-in"
+              className="text-[11px] text-slate-500 hover:text-slate-800 underline"
+            >
+              Return to Sign In
+            </a>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ClerkProtectedWrapper({ children, roles, permission }) {
   const { user, loading: authLoading } = useAuth();
   const { isLoaded: isClerkLoaded, isSignedIn } = useClerkAuth();
+  const { hasPermission } = usePermissions();
 
   // Do NOT redirect while Clerk is loading, or while user is signed in to Clerk and syncing with DB
   if (!isClerkLoaded || (isSignedIn && !user) || authLoading) {
-    return (
-      <div className="grid min-h-screen place-items-center bg-slate-50">
-        <div className="flex flex-col items-center gap-3">
-          <div
-            className="w-10 h-10 rounded-full animate-spin"
-            style={{ border: "3px solid #dbeafe", borderTopColor: "#1a5cff" }}
-          />
-          <p className="text-sm font-medium" style={{ color: "#64748b" }}>Loading BILZET…</p>
-        </div>
-      </div>
-    );
+    return <AuthLoadingScreen />;
   }
 
   // Only redirect if Clerk has finished loading AND user is not signed in
@@ -73,35 +106,36 @@ function ClerkProtectedWrapper({ children, roles }) {
     return <Navigate to="/dashboard" replace />;
   }
 
+  if (permission && !hasPermission(permission)) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   return <Layout>{children}</Layout>;
 }
 
-function StandardProtectedWrapper({ children, roles }) {
+function StandardProtectedWrapper({ children, roles, permission }) {
   const { user, loading } = useAuth();
+  const { hasPermission } = usePermissions();
+
   if (loading) {
-    return (
-      <div className="grid min-h-screen place-items-center bg-slate-50">
-        <div className="flex flex-col items-center gap-3">
-          <div
-            className="w-10 h-10 rounded-full animate-spin"
-            style={{ border: "3px solid #dbeafe", borderTopColor: "#1a5cff" }}
-          />
-          <p className="text-sm font-medium" style={{ color: "#64748b" }}>Loading BILZET…</p>
-        </div>
-      </div>
-    );
+    return <AuthLoadingScreen />;
   }
 
   if (!user) return <Navigate to="/login" replace />;
   if (roles && !roles.includes(user.role) && !isAdminUser(user) && !isAdminEmail(user?.email) && user.role !== "GUEST") {
     return <Navigate to="/dashboard" replace />;
   }
+
+  if (permission && !hasPermission(permission)) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   return <Layout>{children}</Layout>;
 }
 
 function AdminEmailGuard({ children }) {
   const { user } = useAuth();
-  const allowed = isAdminUser(user) || isAdminEmail(user?.email);
+  const allowed = isSuperAdminUser(user) || isAdminEmail(user?.email);
 
   if (!allowed) {
     return <Navigate to="/dashboard" replace />;
@@ -185,6 +219,14 @@ export default function AppRoutes() {
         element={
           <Protected>
             <CaConnect />
+          </Protected>
+        }
+      />
+      <Route
+        path="/ca-portal"
+        element={
+          <Protected roles={["CA", "SUPER_ADMIN"]}>
+            <CaPortal />
           </Protected>
         }
       />
@@ -284,6 +326,22 @@ export default function AppRoutes() {
           </Protected>
         }
       />
+      <Route
+        path="/team"
+        element={
+          <Protected>
+            <Settings defaultTab="team" />
+          </Protected>
+        }
+      />
+      <Route
+        path="/roles"
+        element={
+          <Protected>
+            <Settings defaultTab="roles" />
+          </Protected>
+        }
+      />
 
       {/* ── Inventory, Godowns & Stock Transfers ── */}
       <Route
@@ -327,10 +385,42 @@ export default function AppRoutes() {
         }
       />
       <Route
+        path="/staff-dashboard"
+        element={
+          <Protected>
+            <StaffDashboard />
+          </Protected>
+        }
+      />
+      <Route
+        path="/workspace"
+        element={
+          <Protected>
+            <StaffDashboard />
+          </Protected>
+        }
+      />
+      <Route
         path="/staff"
         element={
           <Protected>
             <StaffManagement />
+          </Protected>
+        }
+      />
+      <Route
+        path="/staff/attendance"
+        element={
+          <Protected>
+            <StaffManagement defaultTab="attendance" />
+          </Protected>
+        }
+      />
+      <Route
+        path="/attendance"
+        element={
+          <Protected>
+            <StaffManagement defaultTab="attendance" />
           </Protected>
         }
       />
@@ -390,6 +480,11 @@ export default function AppRoutes() {
           </Protected>
         }
       />
+      <Route path="/sales/payments" element={<Navigate to="/sales/payments-in" replace />} />
+      <Route path="/sales/ledger" element={<Navigate to="/sales/payments-in" replace />} />
+      <Route path="/ledger" element={<Navigate to="/sales/payments-in" replace />} />
+      <Route path="/customer-crm" element={<Navigate to="/customers" replace />} />
+      <Route path="/crm" element={<Navigate to="/customers" replace />} />
 
       <Route
         path="/stock-transfers"
@@ -419,7 +514,7 @@ export default function AppRoutes() {
       <Route path="/app-admin/settings" element={<Navigate to="/admin?tab=vault" replace />} />
       <Route path="/app-admin/*" element={<Navigate to="/admin" replace />} />
 
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 }

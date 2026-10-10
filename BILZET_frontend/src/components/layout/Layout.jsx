@@ -47,16 +47,18 @@ import {
   AlertTriangle,
   ArrowUpRight,
   Lock,
-  Unlock,
+  CalendarCheck2,
+  ShieldCheck,
 } from "lucide-react";
 import { useAuth } from "../../store/auth";
 import { useConnectionStatus } from "../../hooks/useConnectionStatus";
 import Logo from "../common/Logo";
-import { useClerk } from "@clerk/clerk-react";
 import { hasClerk } from "../../config/clerk";
-import { customersApi, productsApi, salesApi } from "../../api";
+import { customersApi, productsApi, salesApi, settingsApi, staffApi } from "../../api";
 import { isAdminEmail, isAdminUser } from "../../utils/security";
 import { useSecurityStore } from "../../store/securityStore";
+import { usePermissions } from "../../hooks/usePermissions";
+import StoreSwitcher from "../common/StoreSwitcher";
 
 const navSections = [
   {
@@ -64,6 +66,7 @@ const navSections = [
     key: "dash",
     items: [
       { label: "Dashboard", path: "/dashboard", icon: LayoutGrid },
+      { label: "Staff Workspace", path: "/staff-dashboard", icon: UserCheck },
       { label: "Reports & Analytics", path: "/reports", icon: BarChart3 },
     ],
   },
@@ -75,8 +78,8 @@ const navSections = [
       { label: "Sales Invoices", path: "/invoices", icon: FileText },
       { label: "Delivery Challans", path: "/sales/challans", icon: FileCheck },
       { label: "Sales Returns", path: "/sales/returns", icon: RotateCcw },
-      { label: "Payment-In Ledger", path: "/sales/payments-in", icon: DollarSign },
-      { label: "Customer CRM", path: "/customers", icon: Users },
+      { label: "Payments-In", path: "/sales/payments-in", icon: DollarSign },
+      { label: "Customer Details", path: "/customers", icon: Users },
     ],
   },
   {
@@ -100,23 +103,34 @@ const navSections = [
     ],
   },
   {
+    title: "Staff & Payroll",
+    key: "staff_payroll",
+    items: [
+      { label: "Staff", path: "/staff", icon: UserCheck },
+      { label: "Attendance", path: "/staff/attendance", icon: CalendarCheck2 },
+      { label: "Payroll", path: "/staff/payroll", icon: DollarSign },
+    ],
+  },
+  {
     title: "Operations & HR",
     key: "tools",
     items: [
-      { label: "Staff & Payroll", path: "/staff", icon: UserCheck },
+      { label: "Team & Sub-Users", path: "/team", icon: Users },
       { label: "Online Store Orders", path: "/online-orders", icon: OnlineIcon },
-      { label: "Expenses Ledger", path: "/expenses", icon: Wallet },
+      { label: "Expenses", path: "/expenses", icon: Wallet },
       { label: "SMS Campaigns", path: "/sms-marketing", icon: MessageSquare },
     ],
   },
   {
-    title: "System & Audit",
+    title: "System & Settings",
     key: "system",
     items: [
       { label: "Business Settings", path: "/settings", icon: Settings },
       { label: "Subscription Plan", path: "/subscription", icon: CreditCard },
-      { label: "Security Audit Trail", path: "/audit-logs", icon: History },
       { label: "GST & Tax Filing", path: "/gst", icon: Percent },
+      { label: "CA Connect", path: "/ca-connect", icon: Briefcase },
+      { label: "Refer & Earn", path: "/referral", icon: Star },
+      { label: "Security Audit Trail", path: "/audit-logs", icon: History },
       { label: "Support & Help", path: "/support", icon: LifeBuoy },
     ],
   },
@@ -129,6 +143,7 @@ export default function Layout({ children }) {
   const [userDropdown, setUserDropdown] = useState(false);
   const { user, logout } = useAuth();
   const { adminRevealed, toggleAdminReveal } = useSecurityStore();
+  const { hasPermission, isOwner, isSuperAdmin } = usePermissions();
   const isAuthorizedAdmin = isAdminUser(user) || isAdminEmail(user?.email);
   const { status: connStatus, checkConnection } = useConnectionStatus();
   const nav = useNavigate();
@@ -182,33 +197,109 @@ export default function Layout({ children }) {
 
   // Notifications State & Popover
   const [showNotifications, setShowNotifications] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(3);
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      title: "Low Stock Alert",
-      desc: "3 products reached reorder threshold (Wireless Barcode Scanner, etc.)",
-      time: "10 mins ago",
-      type: "warning",
-      link: "/inventory",
-    },
-    {
-      id: 2,
-      title: "Payment Received",
-      desc: "₹4,947 recorded via UPI Scan & Pay for INV-2026-1042",
-      time: "25 mins ago",
-      type: "success",
-      link: "/invoices",
-    },
-    {
-      id: 3,
-      title: "Daily Attendance Ready",
-      desc: "Staff roster is ready for today's daily attendance check-in",
-      time: "1 hour ago",
-      type: "info",
-      link: "/staff",
-    },
-  ]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notifications, setNotifications] = useState([]);
+  const [shopInfo, setShopInfo] = useState({
+    shopName: "BILZET Store",
+    address: "Main Branch",
+  });
+
+  // Header quick punch attendance state
+  const [headerAttendance, setHeaderAttendance] = useState(null);
+  const [headerPunching, setHeaderPunching] = useState(false);
+  const [headerPunchToast, setHeaderPunchToast] = useState("");
+
+  const refreshHeaderAttendance = async () => {
+    try {
+      const res = await staffApi.getMyAttendanceToday();
+      setHeaderAttendance(res?.attendance || res || null);
+    } catch {}
+  };
+
+  const handleHeaderQuickPunch = async () => {
+    if (headerPunching) return;
+    setHeaderPunching(true);
+    try {
+      if (headerAttendance?.checkIn && !headerAttendance?.checkOut) {
+        const res = await staffApi.checkOutSelf();
+        setHeaderAttendance(res?.attendance || res);
+        setHeaderPunchToast("Checked out! Shift ended.");
+      } else if (!headerAttendance?.checkIn) {
+        const res = await staffApi.checkInSelf();
+        setHeaderAttendance(res?.attendance || res);
+        setHeaderPunchToast("Checked in! Shift started.");
+      }
+      setTimeout(() => setHeaderPunchToast(""), 3500);
+    } catch (err) {
+      setHeaderPunchToast(err?.response?.data?.message || "Action failed");
+      setTimeout(() => setHeaderPunchToast(""), 3500);
+    } finally {
+      setHeaderPunching(false);
+    }
+  };
+
+  const [storeRevision, setStoreRevision] = useState(0);
+
+  const loadLayoutData = async () => {
+    refreshHeaderAttendance();
+    try {
+      const settings = await settingsApi.get();
+      if (settings?.shopName) {
+        setShopInfo({
+          shopName: settings.shopName || "BILZET Store",
+          address: settings.address || settings.state || "Main Branch",
+        });
+      }
+    } catch {}
+
+    try {
+      const [lowStockRes, salesRes] = await Promise.allSettled([
+        productsApi.low ? productsApi.low() : Promise.resolve(null),
+        salesApi.list({ page: 1, limit: 1 }),
+      ]);
+
+      const realNotes = [];
+      const lowProducts =
+        lowStockRes.status === "fulfilled" && (lowStockRes.value?.products || lowStockRes.value?.data?.products || []);
+      if (lowProducts && lowProducts.length > 0) {
+        realNotes.push({
+          id: "low-stock-alert",
+          title: "Low Stock Alert",
+          desc: `${lowProducts.length} product(s) reached minimum reorder threshold`,
+          time: "Real-time",
+          type: "warning",
+          link: "/inventory",
+        });
+      }
+
+      const recentSale =
+        salesRes.status === "fulfilled" &&
+        (salesRes.value?.sales?.[0] || salesRes.value?.data?.sales?.[0] || salesRes.value?.[0]);
+      if (recentSale) {
+        realNotes.push({
+          id: `sale-${recentSale.id || recentSale.invoiceNumber}`,
+          title: "Recent Sale",
+          desc: `₹${Number(recentSale.grandTotal || 0).toLocaleString("en-IN")} via ${recentSale.invoiceNumber || "Invoice"}`,
+          time: "Latest",
+          type: "success",
+          link: "/invoices",
+        });
+      }
+
+      setNotifications(realNotes);
+      setUnreadCount(realNotes.length);
+    } catch {}
+  };
+
+  useEffect(() => {
+    loadLayoutData();
+    const handleStoreChange = () => {
+      setStoreRevision((prev) => prev + 1);
+      loadLayoutData();
+    };
+    window.addEventListener("bilzet:store-changed", handleStoreChange);
+    return () => window.removeEventListener("bilzet:store-changed", handleStoreChange);
+  }, []);
 
   // Global Search State & Autocomplete
   const [searchQuery, setSearchQuery] = useState("");
@@ -259,25 +350,86 @@ export default function Layout({ children }) {
   }, [searchQuery]);
 
   const displayedNavSections = useMemo(() => {
-    return navSections.map((sec) => {
-      if (sec.key === "system" && isAuthorizedAdmin) {
-        if (!sec.items.some((i) => i.path === "/admin")) {
-          return {
-            ...sec,
-            items: [
-              ...sec.items,
+    const permMap = {
+      "/reports": ["reports.view", "reports.sales"],
+      "/billing": ["billing.create", "billing.view"],
+      "/invoices": ["billing.view"],
+      "/sales/challans": ["sales_ops.challan"],
+      "/sales/returns": ["sales_ops.return"],
+      "/sales/payments-in": ["sales_ops.payment"],
+      "/customers": ["customers.view"],
+      "/purchases": ["purchases.view"],
+      "/purchases/orders": ["purchases.view"],
+      "/purchases/debit-notes": ["purchases.debit", "purchases.view"],
+      "/suppliers": ["purchases.view"],
+      "/inventory": ["inventory.view"],
+      "/products": ["inventory.view"],
+      "/warehouses": ["inventory.view"],
+      "/stock-transfers": ["inventory.transfer", "inventory.adjust", "inventory.view"],
+      "/staff-dashboard": ["attendance.view_self", "attendance.check_in", "attendance.check_out"],
+      "/staff": ["staff.view"],
+      "/staff/attendance": ["attendance.view_all", "attendance.manage", "staff.attendance", "staff.view"],
+      "/staff/payroll": ["staff.payroll", "staff.view"],
+      "/team": ["users.view", "users.create", "settings.view", "settings.manage"],
+      "/online-orders": ["online_orders.view"],
+      "/expenses": ["expenses.view", "reports.profit_loss"],
+      "/sms-marketing": ["sms.view"],
+      "/settings": ["settings.view"],
+      "/subscription": ["subscription.manage"],
+      "/gst": ["gst.view"],
+      "/ca-connect": ["gst.view"],
+      "/audit-logs": ["audit_logs.view"],
+    };
+
+    const isCA = user?.role === "CA";
+    if (isCA) {
+      return [
+        {
+          title: "Chartered Accountant Portal",
+          key: "ca_portal",
+          items: [
+            { label: "CA Portal", path: "/ca-portal", icon: ShieldCheck, highlight: true },
+            { label: "GST & Tax Filing", path: "/gst", icon: Percent },
+            { label: "Financial Reports", path: "/reports", icon: BarChart3 },
+            { label: "Support & Help", path: "/support", icon: LifeBuoy },
+          ],
+        },
+      ];
+    }
+
+    return navSections
+      .map((sec) => {
+        let items = sec.items.filter((item) => {
+          if (isSuperAdmin || isOwner) return true;
+          const requiredPerms = permMap[item.path];
+          if (!requiredPerms) return true;
+          return requiredPerms.some((p) => hasPermission(p));
+        });
+
+        if (sec.key === "system" && isSuperAdmin) {
+          if (!items.some((i) => i.path === "/ca-portal")) {
+            items = [
+              ...items,
+              { label: "CA Portal (Auditor View)", path: "/ca-portal", icon: ShieldCheck },
+            ];
+          }
+          if (!items.some((i) => i.path === "/admin")) {
+            items = [
+              ...items,
               { label: "Admin Console & Vault", path: "/admin", icon: Shield, highlight: true },
-            ],
-          };
+            ];
+          }
         }
-      }
-      return sec;
-    });
-  }, [isAuthorizedAdmin]);
+
+        return { ...sec, items };
+      })
+      .filter((sec) => sec.items.length > 0);
+  }, [user, isAuthorizedAdmin, isOwner, isSuperAdmin, hasPermission]);
 
   // Dynamic breadcrumb matching
   const currentBreadcrumb = useMemo(() => {
     const path = location.pathname;
+    if (path === "/ca-portal") return { category: "CA Audit & Taxation", page: "Chartered Accountant Portal", icon: ShieldCheck };
     for (const sec of displayedNavSections) {
       const match = sec.items.find((i) => i.path === path);
       if (match) {
@@ -289,12 +441,10 @@ export default function Layout({ children }) {
     return { category: "Overview", page: "BILZET Business ERP", icon: LayoutGrid };
   }, [location.pathname, displayedNavSections]);
 
-  const clerk = hasClerk ? useClerk() : null;
-
   const handleLogout = async () => {
     try {
-      if (clerk) {
-        await clerk.signOut();
+      if (typeof window !== "undefined" && window.Clerk?.signOut) {
+        await window.Clerk.signOut();
       }
     } catch (e) {
       console.warn("Clerk sign-out warning:", e);
@@ -403,7 +553,10 @@ export default function Layout({ children }) {
                       const Icon = item.icon;
                       const isActive =
                         location.pathname === item.path ||
-                        (item.path !== "/" && location.pathname.startsWith(`${item.path}/`));
+                        (item.path === "/staff/attendance" && location.pathname === "/attendance") ||
+                        (item.path !== "/" &&
+                          !["/staff", "/staff/attendance", "/staff/payroll"].includes(item.path) &&
+                          location.pathname.startsWith(`${item.path}/`));
 
                       return (
                         <NavLink
@@ -441,26 +594,8 @@ export default function Layout({ children }) {
         <div className="p-3 border-t border-white/[0.08] bg-black/25 shrink-0 space-y-2">
           {sidebarOpen ? (
             <>
-              {/* Store Switcher Card from Reference Image */}
-              <div className="bg-white/[0.06] border border-white/[0.08] rounded-xl p-2.5 flex items-center justify-between gap-2 text-left">
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-7 h-7 rounded-lg bg-blue-600/30 text-blue-400 border border-blue-500/30 flex items-center justify-center shrink-0">
-                    <Store size={14} />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[11px] font-bold text-white truncate leading-tight">BILZET Store</p>
-                    <p className="text-[9px] text-slate-400 truncate">Perambalur, Tamil Nadu</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => nav("/settings")}
-                  className="text-[10px] text-blue-400 hover:text-blue-300 font-semibold shrink-0 flex items-center gap-0.5 hover:underline"
-                  title="Switch Store"
-                >
-                  <span>Switch</span>
-                  <ArrowRightLeft size={10} />
-                </button>
-              </div>
+              {/* Store Switcher Component */}
+              <StoreSwitcher variant="sidebar" />
 
               <div className="bg-white/[0.04] border border-white/[0.08] hover:border-white/[0.12] rounded-xl p-2.5 transition duration-150">
                 <div className="flex items-center gap-2.5 mb-2">
@@ -558,7 +693,9 @@ export default function Layout({ children }) {
                   </div>
                   {section.items.map((item) => {
                     const Icon = item.icon;
-                    const isActive = location.pathname === item.path;
+                    const isActive =
+                      location.pathname === item.path ||
+                      (item.path === "/staff/attendance" && location.pathname === "/attendance");
 
                     return (
                       <NavLink
@@ -677,7 +814,7 @@ export default function Layout({ children }) {
                     {searchLoading ? (
                       <div className="py-6 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
                         <RefreshCw size={14} className="animate-spin text-blue-600" />
-                        <span>Searching BILZET database…</span>
+                        <span>Searching records…</span>
                       </div>
                     ) : (
                       <div className="space-y-3">
@@ -798,16 +935,68 @@ export default function Layout({ children }) {
             </div>
           </div>
 
-          {/* Right: Theme Toggle, Notifications, Store, Connection, User Profile */}
+          {/* Right: Quick Punch, Theme Toggle, Notifications, Store, Connection, User Profile */}
           <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+            {/* Header Attendance Quick Punch Clock Button */}
+            {user && (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={handleHeaderQuickPunch}
+                  disabled={headerPunching || Boolean(headerAttendance?.checkIn && headerAttendance?.checkOut)}
+                  className={`h-[36px] px-3 rounded-full border text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs ${
+                    headerAttendance?.checkIn && !headerAttendance?.checkOut
+                      ? "bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100"
+                      : headerAttendance?.checkIn && headerAttendance?.checkOut
+                      ? "bg-slate-100 text-slate-600 border-slate-200 cursor-default"
+                      : "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
+                  }`}
+                  title={
+                    headerAttendance?.checkIn && !headerAttendance?.checkOut
+                      ? "Click to Punch Out (End Shift)"
+                      : headerAttendance?.checkIn && headerAttendance?.checkOut
+                      ? "Today's shift completed"
+                      : "Click to Punch In (Start Shift)"
+                  }
+                >
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      headerAttendance?.checkIn && !headerAttendance?.checkOut
+                        ? "bg-emerald-500 animate-pulse"
+                        : headerAttendance?.checkIn && headerAttendance?.checkOut
+                        ? "bg-slate-400"
+                        : "bg-blue-500"
+                    }`}
+                  />
+                  <span className="hidden sm:inline">
+                    {headerPunching
+                      ? "Updating…"
+                      : headerAttendance?.checkIn && !headerAttendance?.checkOut
+                      ? "On Duty"
+                      : headerAttendance?.checkIn && headerAttendance?.checkOut
+                      ? "Shift Done"
+                      : "Punch In"}
+                  </span>
+                </button>
+
+                {headerPunchToast && (
+                  <div className="absolute right-0 top-11 bg-slate-900 text-white text-[11px] font-semibold px-2.5 py-1 rounded-lg shadow-lg whitespace-nowrap z-50 animate-in fade-in">
+                    {headerPunchToast}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Real Interactive Theme Toggle Button */}
             <button
               type="button"
               onClick={toggleTheme}
-              className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-500 hover:text-slate-800 transition shadow-2xs active:scale-95"
+              className="w-[38px] h-[38px] rounded-full border border-slate-200/90 bg-white hover:bg-slate-50 text-slate-600 hover:text-slate-900 transition flex items-center justify-center shadow-[0_1px_2px_rgba(15,23,42,0.04)] active:scale-95 group"
               title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
             >
-              {isDark ? <Sun size={15} className="text-amber-500" /> : <Moon size={15} className="text-slate-600" />}
+              <span className="w-[28px] h-[28px] rounded-full bg-slate-100 group-hover:bg-slate-200 flex items-center justify-center transition-colors">
+                {isDark ? <Sun size={14} className="text-amber-500" /> : <Moon size={14} className="text-slate-600" />}
+              </span>
             </button>
 
             {/* Real Interactive Notification Bell with Dropdown */}
@@ -815,10 +1004,12 @@ export default function Layout({ children }) {
               <button
                 type="button"
                 onClick={() => setShowNotifications(!showNotifications)}
-                className="relative p-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-500 hover:text-slate-800 transition shadow-2xs active:scale-95"
+                className="relative w-[38px] h-[38px] rounded-full border border-slate-200/90 bg-white hover:bg-slate-50 text-slate-600 hover:text-slate-900 transition flex items-center justify-center shadow-[0_1px_2px_rgba(15,23,42,0.04)] active:scale-95 group"
                 title="Notifications & System Activity"
               >
-                <Bell size={15} />
+                <span className="w-[28px] h-[28px] rounded-full bg-slate-100 group-hover:bg-slate-200 flex items-center justify-center transition-colors">
+                  <Bell size={14} />
+                </span>
                 {unreadCount > 0 && (
                   <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white" />
                 )}
@@ -853,32 +1044,40 @@ export default function Layout({ children }) {
                     </div>
 
                     <div className="divide-y divide-slate-100 max-h-72 overflow-y-auto my-2">
-                      {notifications.map((n) => (
-                        <div
-                          key={n.id}
-                          onClick={() => {
-                            setShowNotifications(false);
-                            if (n.link) nav(n.link);
-                          }}
-                          className="py-2.5 px-2 rounded-xl hover:bg-slate-50 cursor-pointer transition flex items-start gap-2.5"
-                        >
-                          <div className="mt-0.5">
-                            {n.type === "warning" ? (
-                              <AlertTriangle size={15} className="text-amber-500" />
-                            ) : n.type === "success" ? (
-                              <CheckCircle2 size={15} className="text-emerald-500" />
-                            ) : (
-                              <Sparkles size={15} className="text-blue-500" />
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-semibold text-slate-800">{n.title}</p>
-                            <p className="text-[11px] text-slate-500 leading-snug">{n.desc}</p>
-                            <span className="text-[10px] text-slate-400 mt-1 block">{n.time}</span>
-                          </div>
-                          <ArrowUpRight size={13} className="text-slate-400 shrink-0 mt-1" />
+                      {notifications.length === 0 ? (
+                        <div className="py-8 text-center text-xs text-slate-400">
+                          <CheckCircle2 size={24} className="mx-auto text-emerald-500 mb-1.5 opacity-80" />
+                          <p className="font-semibold text-slate-700">All systems normal</p>
+                          <p className="text-[11px] text-slate-400 mt-0.5">No pending stock alerts or warnings</p>
                         </div>
-                      ))}
+                      ) : (
+                        notifications.map((n) => (
+                          <div
+                            key={n.id}
+                            onClick={() => {
+                              setShowNotifications(false);
+                              if (n.link) nav(n.link);
+                            }}
+                            className="py-2.5 px-2 rounded-xl hover:bg-slate-50 cursor-pointer transition flex items-start gap-2.5"
+                          >
+                            <div className="mt-0.5">
+                              {n.type === "warning" ? (
+                                <AlertTriangle size={15} className="text-amber-500" />
+                              ) : n.type === "success" ? (
+                                <CheckCircle2 size={15} className="text-emerald-500" />
+                              ) : (
+                                <Sparkles size={15} className="text-blue-500" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-semibold text-slate-800">{n.title}</p>
+                              <p className="text-[11px] text-slate-500 leading-snug">{n.desc}</p>
+                              <span className="text-[10px] text-slate-400 mt-1 block">{n.time}</span>
+                            </div>
+                            <ArrowUpRight size={13} className="text-slate-400 shrink-0 mt-1" />
+                          </div>
+                        ))
+                      )}
                     </div>
 
                     <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
@@ -893,24 +1092,25 @@ export default function Layout({ children }) {
               )}
             </div>
 
-            {/* Store Badge */}
-            <div className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700">
-              <Store size={14} className="text-blue-600" />
-              <span>BILZET Store</span>
-            </div>
+            {/* Store Switcher Header */}
+            <StoreSwitcher variant="header" />
 
             {/* Connection Badge */}
             {connStatus === "online" ? (
-              <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 shadow-2xs">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="hidden sm:inline-flex items-center gap-1.5 pl-2 pr-3 h-[38px] rounded-full text-xs font-semibold text-[#111827] bg-white border border-slate-200/90 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+                <span className="w-[24px] h-[24px] rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center shrink-0">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                </span>
                 <span>Online</span>
               </span>
             ) : (
               <button
                 onClick={checkConnection}
-                className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold text-rose-700 bg-rose-50 border border-rose-200 animate-bounce"
+                className="hidden sm:inline-flex items-center gap-1.5 pl-2 pr-3 h-[38px] rounded-full text-xs font-semibold text-[#111827] bg-white border border-rose-200 shadow-[0_1px_2px_rgba(15,23,42,0.04)] animate-bounce"
               >
-                <span className="w-2 h-2 rounded-full bg-rose-500" />
+                <span className="w-[24px] h-[24px] rounded-full bg-rose-50 text-rose-600 border border-rose-200 flex items-center justify-center shrink-0">
+                  <span className="w-2 h-2 rounded-full bg-rose-500" />
+                </span>
                 <span>Offline · Retry</span>
               </button>
             )}
@@ -918,9 +1118,11 @@ export default function Layout({ children }) {
             {/* Quick POS Button */}
             <NavLink
               to="/billing"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-blue-700 bg-blue-50/80 hover:bg-blue-100/80 border border-blue-200 transition shadow-2xs"
+              className="inline-flex items-center gap-2 pl-2 pr-4 h-[38px] rounded-full text-xs font-semibold text-[#111827] bg-white hover:bg-blue-50/20 border border-slate-200/90 hover:border-blue-300 transition shadow-[0_1px_2px_rgba(15,23,42,0.04)] group"
             >
-              <FilePlus size={14} />
+              <span className="w-[26px] h-[26px] rounded-full bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center shrink-0 shadow-2xs group-hover:bg-blue-600 group-hover:text-white transition-all">
+                <FilePlus size={13} />
+              </span>
               <span>New Bill</span>
             </NavLink>
 
@@ -929,14 +1131,16 @@ export default function Layout({ children }) {
               <button
                 type="button"
                 onClick={toggleAdminReveal}
-                className={`hidden lg:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition shadow-2xs border ${
-                  adminRevealed
-                    ? "bg-amber-500/10 text-amber-700 border-amber-300 hover:bg-amber-500/20"
-                    : "bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100"
-                }`}
+                className="hidden lg:inline-flex items-center gap-2 pl-2 pr-3.5 h-[38px] rounded-full text-xs font-semibold text-[#111827] bg-white hover:bg-slate-50 border border-slate-200/90 hover:border-slate-300 transition shadow-[0_1px_2px_rgba(15,23,42,0.04)] group"
                 title="Admin Master Toggle: Reveal or mask sensitive credentials across entire website"
               >
-                {adminRevealed ? <Unlock size={13} className="text-amber-600" /> : <Lock size={13} className="text-purple-600" />}
+                <span className={`w-[26px] h-[26px] rounded-full border flex items-center justify-center shrink-0 shadow-2xs transition-all ${
+                  adminRevealed
+                    ? "bg-amber-50 text-amber-600 border-amber-200 group-hover:bg-amber-600 group-hover:text-white"
+                    : "bg-purple-50 text-purple-600 border-purple-200 group-hover:bg-purple-600 group-hover:text-white"
+                }`}>
+                  {adminRevealed ? <Unlock size={12} /> : <Lock size={12} />}
+                </span>
                 <span>{adminRevealed ? "Vault Unmasked" : "Secure Masked"}</span>
               </button>
             )}
@@ -945,21 +1149,19 @@ export default function Layout({ children }) {
             <div className="relative">
               <button
                 onClick={() => setUserDropdown(!userDropdown)}
-                className="flex items-center gap-2 p-1 pl-1.5 pr-2.5 rounded-xl border border-slate-200 hover:border-slate-300 hover:bg-slate-50/80 transition"
+                className="flex items-center gap-2 p-1 pl-1.5 pr-3 h-[38px] rounded-full border border-slate-200/90 hover:border-slate-300 bg-white hover:bg-slate-50 transition shadow-[0_1px_2px_rgba(15,23,42,0.04)] group"
               >
-                <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-[11px] shadow-2xs">
+                <div className="w-[28px] h-[28px] rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-[11px] shadow-2xs">
                   {userInitials}
                 </div>
                 <div className="text-left hidden sm:block">
-                  <p className="text-xs font-bold text-slate-800 leading-none truncate max-w-[120px]">
+                  <p className="text-xs font-semibold text-[#111827] leading-none truncate max-w-[120px]">
                     {displayName}
                   </p>
-                  <p className="text-[10px] text-slate-400 font-medium leading-tight mt-0.5">
-                    {displayRole}
-                  </p>
                 </div>
-                <ChevronDown size={13} className="text-slate-400" />
+                <ChevronDown size={13} className="text-slate-400 group-hover:text-slate-600" />
               </button>
+
 
               {userDropdown && (
                 <>
@@ -1035,7 +1237,7 @@ export default function Layout({ children }) {
         </header>
 
         {/* ── Main Content Canvas with Independent Vertical Scroll ── */}
-        <main className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8 bg-[#F7FAFF]">
+        <main key={storeRevision} className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8 bg-[#F7FAFF]">
           <div className="max-w-[1600px] w-full mx-auto pb-8">
             {children}
           </div>
@@ -1051,7 +1253,7 @@ export default function Layout({ children }) {
 
           <div className="flex items-center gap-4 text-[11px]">
             <span className="text-slate-400 hidden md:inline">
-              Cloud Database: <strong className="text-slate-600 font-semibold">PostgreSQL (Neon)</strong>
+              Cloud Sync: <strong className="text-slate-600 font-semibold">Active &amp; Secure</strong>
             </span>
             <span className="inline-flex items-center gap-1.5 text-slate-400">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />

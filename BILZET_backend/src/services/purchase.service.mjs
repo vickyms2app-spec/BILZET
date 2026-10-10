@@ -18,9 +18,62 @@ export const createPurchase = async (purchaseData, user = {}, context = {}) => {
     poNumber,
   } = purchaseData;
 
-  const targetSupplierId = supplierId || altSupplierId;
+  let targetSupplierId = supplierId || altSupplierId;
+
+  // If no supplier ID provided, check for newSupplier data or auto-create/match
+  if (!targetSupplierId && (purchaseData.newSupplier || purchaseData.supplierName)) {
+    const sName = (purchaseData.newSupplier?.name || purchaseData.supplierName || '').trim();
+    const sCompany = (purchaseData.newSupplier?.companyName || purchaseData.companyName || '').trim();
+    const sPhone = (purchaseData.newSupplier?.phone || purchaseData.supplierPhone || '').trim();
+    const sEmail = (purchaseData.newSupplier?.email || purchaseData.supplierEmail || '').trim();
+    const sAddress = (purchaseData.newSupplier?.address || purchaseData.supplierAddress || '').trim();
+    const sGstin = (purchaseData.newSupplier?.gstin || purchaseData.supplierGstin || '').trim();
+
+    if (sName) {
+      let existing = null;
+      if (sPhone) {
+        existing = await prisma.supplier.findFirst({ where: { phone: sPhone } });
+      }
+      if (!existing && sCompany) {
+        existing = await prisma.supplier.findFirst({
+          where: { companyName: { equals: sCompany, mode: 'insensitive' } },
+        });
+      }
+      if (!existing) {
+        existing = await prisma.supplier.findFirst({
+          where: { name: { equals: sName, mode: 'insensitive' } },
+        });
+      }
+
+      if (existing) {
+        targetSupplierId = existing.id;
+        const toUpdate = {};
+        if (sCompany && !existing.companyName) toUpdate.companyName = sCompany;
+        if (sAddress && !existing.address) toUpdate.address = sAddress;
+        if (sGstin && !existing.gstin) toUpdate.gstin = sGstin;
+        if (Object.keys(toUpdate).length > 0) {
+          await prisma.supplier.update({ where: { id: existing.id }, data: toUpdate });
+        }
+      } else {
+        const created = await prisma.supplier.create({
+          data: {
+            name: sName,
+            companyName: sCompany || null,
+            phone: sPhone || null,
+            email: sEmail || null,
+            address: sAddress || null,
+            gstin: sGstin || null,
+            balance: 0,
+            isActive: true,
+          },
+        });
+        targetSupplierId = created.id;
+      }
+    }
+  }
+
   if (!targetSupplierId) {
-    throw ApiError.badRequest('Supplier ID is required');
+    throw ApiError.badRequest('Supplier ID or valid Supplier details are required');
   }
 
   if (!items || !items.length) {
@@ -38,28 +91,55 @@ export const createPurchase = async (purchaseData, user = {}, context = {}) => {
     throw ApiError.badRequest('Supplier is currently inactive');
   }
 
-  // 2. Fetch all products
-  const productIds = items.map((i) => i.productId || i.id);
-  const products = await prisma.product.findMany({
-    where: { id: { in: productIds } },
-  });
-  const productMap = new Map();
-  products.forEach((p) => productMap.set(p.id, p));
-
+  // 2. Fetch and resolve all products (link existing or auto-create if new)
   let subtotal = 0;
   let taxTotal = 0;
   const processedItems = [];
 
   for (const item of items) {
+    let product = null;
     const prodId = item.productId || item.id;
-    const product = productMap.get(prodId);
+
+    if (prodId) {
+      product = await prisma.product.findUnique({ where: { id: prodId } });
+    }
+
     if (!product) {
-      throw ApiError.notFound(`Product with ID '${prodId}' not found`);
+      if (item.barcode) {
+        product = await prisma.product.findFirst({ where: { barcode: String(item.barcode).trim() } });
+      }
+      if (!product && item.sku) {
+        product = await prisma.product.findFirst({ where: { sku: String(item.sku).trim() } });
+      }
+      if (!product && item.name) {
+        product = await prisma.product.findFirst({
+          where: { name: { equals: item.name.trim(), mode: 'insensitive' } },
+        });
+      }
+    }
+
+    const price = Number(item.purchasePrice || item.rate || product?.purchasePrice || 0);
+    const gstRate = Number(item.gstRate ?? item.taxRate ?? item.gst ?? product?.gstRate ?? 18);
+
+    if (!product) {
+      const pName = item.name?.trim() || `Product-${Date.now().toString().slice(-4)}`;
+      const pSku = item.sku?.trim() || `SKU-${Date.now().toString().slice(-6)}`;
+      product = await prisma.product.create({
+        data: {
+          name: pName,
+          sku: pSku,
+          barcode: item.barcode?.trim() || null,
+          purchasePrice: price,
+          sellingPrice: round2(price * 1.3) || 10,
+          stock: 0,
+          minimumStock: 5,
+          gstRate,
+          isActive: true,
+        },
+      });
     }
 
     const qty = Number(item.quantity || item.qty || 1);
-    const price = Number(item.purchasePrice || item.rate || product.purchasePrice || 0);
-    const gstRate = Number(item.gstRate ?? item.taxRate ?? item.gst ?? product.gstRate ?? 0);
     const itemSubtotal = round2(qty * price);
     const itemTax = round2((itemSubtotal * gstRate) / 100);
     const itemTotal = round2(itemSubtotal + itemTax);
@@ -68,7 +148,7 @@ export const createPurchase = async (purchaseData, user = {}, context = {}) => {
     taxTotal = round2(taxTotal + itemTax);
 
     processedItems.push({
-      productId: prodId,
+      productId: product.id,
       quantity: qty,
       purchasePrice: price,
       gstRate,
@@ -126,8 +206,9 @@ export const createPurchase = async (purchaseData, user = {}, context = {}) => {
 
     // B. Update stock & cost price for each product
     for (const item of processedItems) {
-      const current = productMap.get(item.productId);
-      const newStock = (current.stock || 0) + item.quantity;
+      const current = await tx.product.findUnique({ where: { id: item.productId } });
+      const currentStock = current ? Number(current.stock || 0) : 0;
+      const newStock = currentStock + item.quantity;
 
       await tx.product.update({
         where: { id: item.productId },
@@ -163,7 +244,7 @@ export const createPurchase = async (purchaseData, user = {}, context = {}) => {
           productId: item.productId,
           type: 'IN',
           quantity: item.quantity,
-          previousStock: current.stock || 0,
+          previousStock: currentStock,
           newStock,
           reason: `Purchased via bill ${invoiceNumber}`,
         },
@@ -207,8 +288,8 @@ export const getPurchases = async (query = {}) => {
       take: limit,
       orderBy: { createdAt: 'desc' },
       include: {
-        supplier: { select: { id: true, name: true, phone: true } },
-        items: { include: { product: { select: { id: true, name: true, sku: true } } } },
+        supplier: { select: { id: true, name: true, companyName: true, phone: true } },
+        items: { include: { product: { select: { id: true, name: true, sku: true, barcode: true } } } },
       },
     }),
     prisma.purchase.count({ where }),
@@ -241,29 +322,125 @@ export const getPurchaseById = async (id) => {
 export const createPurchaseOrder = async (poData) => {
   const { supplierId, warehouseId, expectedDelivery, notes, items = [] } = poData;
 
-  const poNumber = `PO-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`;
+  let targetSupplierId = supplierId;
+  if (!targetSupplierId && (poData.newSupplier || poData.supplierName)) {
+    const sName = (poData.newSupplier?.name || poData.supplierName || '').trim();
+    const sCompany = (poData.newSupplier?.companyName || poData.companyName || '').trim();
+    const sPhone = (poData.newSupplier?.phone || poData.supplierPhone || '').trim();
+    const sEmail = (poData.newSupplier?.email || poData.supplierEmail || '').trim();
+    const sAddress = (poData.newSupplier?.address || poData.supplierAddress || '').trim();
+    const sGstin = (poData.newSupplier?.gstin || poData.supplierGstin || '').trim();
+
+    if (sName) {
+      let existing = null;
+      if (sPhone) {
+        existing = await prisma.supplier.findFirst({ where: { phone: sPhone } });
+      }
+      if (!existing && sCompany) {
+        existing = await prisma.supplier.findFirst({
+          where: { companyName: { equals: sCompany, mode: 'insensitive' } },
+        });
+      }
+      if (!existing) {
+        existing = await prisma.supplier.findFirst({
+          where: { name: { equals: sName, mode: 'insensitive' } },
+        });
+      }
+
+      if (existing) {
+        targetSupplierId = existing.id;
+        const toUpdate = {};
+        if (sCompany && !existing.companyName) toUpdate.companyName = sCompany;
+        if (sAddress && !existing.address) toUpdate.address = sAddress;
+        if (sGstin && !existing.gstin) toUpdate.gstin = sGstin;
+        if (Object.keys(toUpdate).length > 0) {
+          await prisma.supplier.update({ where: { id: existing.id }, data: toUpdate });
+        }
+      } else {
+        const created = await prisma.supplier.create({
+          data: {
+            name: sName,
+            companyName: sCompany || null,
+            phone: sPhone || null,
+            email: sEmail || null,
+            address: sAddress || null,
+            gstin: sGstin || null,
+            balance: 0,
+            isActive: true,
+          },
+        });
+        targetSupplierId = created.id;
+      }
+    }
+  }
+
+  if (!targetSupplierId) {
+    throw ApiError.badRequest('Supplier ID or valid Supplier details are required');
+  }
+
+  const poNumber = poData.poNumber || `PO-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`;
   let subtotal = 0;
   let taxTotal = 0;
 
-  items.forEach((item) => {
-    const qty = Number(item.quantity || 1);
-    const rate = Number(item.expectedPrice || item.unitPrice || item.rate || 0);
-    const gst = Number(item.gstRate || item.taxRate || 0);
-    const lineSub = round2(qty * rate);
-    subtotal = round2(subtotal + lineSub);
-    taxTotal = round2(taxTotal + (lineSub * gst) / 100);
-  });
+  const processedItems = await Promise.all(
+    items.map(async (item) => {
+      let product = null;
+      if (item.productId) {
+        product = await prisma.product.findUnique({ where: { id: item.productId } });
+      }
+      if (!product && item.barcode) {
+        product = await prisma.product.findFirst({ where: { barcode: String(item.barcode).trim() } });
+      }
+      if (!product && item.sku) {
+        product = await prisma.product.findFirst({ where: { sku: String(item.sku).trim() } });
+      }
+      if (!product && item.name) {
+        product = await prisma.product.findFirst({
+          where: { name: { equals: item.name.trim(), mode: 'insensitive' } },
+        });
+      }
+
+      const name = item.name?.trim() || product?.name || 'Custom Product';
+      const sku = item.sku?.trim() || product?.sku || null;
+      const barcode = item.barcode?.trim() || product?.barcode || null;
+      const qty = Number(item.quantity || 1);
+      const rate = Number(
+        item.expectedPrice || item.unitPrice || item.purchasePrice || item.rate || product?.purchasePrice || 0
+      );
+      const gst = Number(item.gstRate ?? item.taxRate ?? product?.gstRate ?? 18);
+      const lineSub = round2(qty * rate);
+      const lineTax = round2((lineSub * gst) / 100);
+      subtotal = round2(subtotal + lineSub);
+      taxTotal = round2(taxTotal + lineTax);
+
+      return {
+        productId: product ? product.id : (item.productId || null),
+        name,
+        sku,
+        barcode,
+        quantity: qty,
+        unitPrice: rate,
+        rate,
+        purchasePrice: rate,
+        gstRate: gst,
+        taxRate: gst,
+        taxAmount: lineTax,
+        total: round2(lineSub + lineTax),
+      };
+    })
+  );
 
   return await prisma.purchaseOrder.create({
     data: {
       poNumber,
-      supplierId,
+      supplierId: targetSupplierId,
       warehouseId: warehouseId || null,
       expectedDelivery: expectedDelivery ? new Date(expectedDelivery) : null,
       notes: notes || null,
       subtotal,
       taxTotal,
       grandTotal: round2(subtotal + taxTotal),
+      items: processedItems,
       status: 'PENDING',
     },
     include: { supplier: true },

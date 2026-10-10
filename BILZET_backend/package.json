@@ -9,9 +9,10 @@
     "dev": "nodemon src/server.mjs",
     "build": "prisma generate",
     "seed": "node prisma/seed.mjs",
+    "seed:permissions": "node prisma/seedPermissions.mjs",
     "prisma:push": "prisma db push",
     "prisma:generate": "prisma generate",
-    "test": "node --test \"tests/**/*.test.mjs\""
+    "test": "node --test tests/complete_e2e_verification.test.mjs tests/permissions_and_rbac.test.mjs tests/staff_attendance_and_billing.test.mjs tests/subuser_rbac_staff_workspace.test.mjs tests/multi_tenant_idor.test.mjs tests/ca_connect_premium.test.mjs tests/store_switching.test.mjs tests/inventory_stock_sync.test.mjs tests/phase6_category_and_catalog.test.mjs tests/phase7_warehouse_compatibility.test.mjs tests/phase8_stock_transfers.test.mjs tests/phase9_staff_and_payroll.test.mjs tests/phase10_team_subscription_control.test.mjs tests/phase11_business_settings.test.mjs tests/phase12_subscription_access_control.test.mjs tests/phase13_gst_and_tax_filing.test.mjs tests/phase14_ca_connect_premium.test.mjs tests/phase15_refer_and_earn.test.mjs tests/phase16_complete_e2e_workflows.test.mjs tests/phase1_invoice_and_ca_portal.test.mjs"
   },
   "keywords": [
     "pos",

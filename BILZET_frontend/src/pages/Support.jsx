@@ -28,6 +28,7 @@ import {
   Lock,
 } from "lucide-react";
 import Logo from "../components/common/Logo";
+import Button, { CompactIconButton } from "../components/common/Button";
 
 export default function Support() {
   const [activeTab, setActiveTab] = useState("tickets"); // "tickets" | "new_ticket" | "faq" | "contact"
@@ -350,13 +351,13 @@ export default function Support() {
               <span>WhatsApp Care</span>
             </a>
 
-            <button
+            <Button
+              variant="primary"
+              icon={Plus}
               onClick={() => setActiveTab("new_ticket")}
-              className="btn-primary text-xs"
             >
-              <Plus size={14} />
-              <span>New Ticket</span>
-            </button>
+              New Ticket
+            </Button>
           </div>
         </div>
       </div>
@@ -653,16 +654,17 @@ export default function Support() {
                             })}
                           </td>
                           <td className="py-3 px-4 text-center">
-                            <button
-                              type="button"
+                            <Button
+                              size="xs"
+                              variant="neutral"
+                              icon={FileText}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setSelectedTicket(ticket);
                               }}
-                              className="btn-secondary text-[11px] py-1 px-2.5 hover:text-blue-600 hover:border-blue-400"
                             >
                               View Ticket
-                            </button>
+                            </Button>
                           </td>
                         </tr>
                       );
@@ -776,17 +778,21 @@ export default function Support() {
             </div>
 
             <div className="pt-2 flex justify-end gap-2">
-              <button
+              <Button
                 type="button"
+                variant="neutral"
+                icon={X}
                 onClick={() => setActiveTab("tickets")}
-                className="btn-secondary text-xs"
               >
                 Cancel
-              </button>
-              <button type="submit" className="btn-primary text-xs flex items-center gap-1.5">
-                <Send size={13} />
-                <span>Submit Ticket</span>
-              </button>
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                icon={Send}
+              >
+                Submit Ticket
+              </Button>
             </div>
           </form>
         </div>
@@ -901,13 +907,12 @@ export default function Support() {
                   {selectedTicket.subject}
                 </h3>
               </div>
-              <button
-                type="button"
+              <CompactIconButton
+                icon={X}
+                variant="neutral"
                 onClick={() => setSelectedTicket(null)}
-                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded-lg transition"
-              >
-                <X size={18} />
-              </button>
+                title="Close"
+              />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 divide-y lg:divide-y-0 lg:divide-x divide-slate-100 text-xs">
@@ -965,10 +970,13 @@ export default function Support() {
                     className="w-full p-3 border border-slate-200 rounded-xl outline-none focus:border-blue-500 font-sans"
                   />
                   <div className="flex justify-end">
-                    <button type="submit" className="btn-primary text-xs flex items-center gap-1.5">
-                      <Send size={13} />
-                      <span>Send Reply</span>
-                    </button>
+                    <Button
+                      type="submit"
+                      variant="primary"
+                      icon={Send}
+                    >
+                      Send Reply
+                    </Button>
                   </div>
                 </form>
               </div>
@@ -1054,22 +1062,30 @@ export default function Support() {
                           onChange={(e) => setInternalNote(e.target.value)}
                           className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-xl outline-none"
                         />
-                        <button type="submit" className="btn-secondary text-[10px] py-1 px-2.5 w-full">
-                          + Add Note
-                        </button>
+                        <Button
+                          type="submit"
+                          size="xs"
+                          variant="neutral"
+                          icon={Plus}
+                          className="w-full"
+                        >
+                          Add Note
+                        </Button>
                       </form>
                     </div>
                   </div>
                 </div>
 
                 <div className="pt-2">
-                  <button
+                  <Button
                     type="button"
+                    variant="danger"
+                    icon={XCircle}
                     onClick={() => handleUpdateStatus("CLOSED")}
-                    className="w-full py-2 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 font-bold hover:bg-rose-100 transition"
+                    className="w-full"
                   >
                     Close This Ticket
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>

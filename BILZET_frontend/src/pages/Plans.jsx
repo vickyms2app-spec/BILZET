@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   Check,
   ShieldCheck,
@@ -12,10 +13,22 @@ import {
   QrCode,
   AlertCircle,
   FileText,
+  Plus,
+  Lock,
+  Crown,
+  Building2,
+  Users,
+  Receipt,
+  HelpCircle,
 } from "lucide-react";
+import Button, { CompactIconButton } from "../components/common/Button";
+import { subscriptionApi } from "../api";
 
 export default function Plans() {
-  // Subscription state (persisted in localStorage)
+  const [searchParams] = useSearchParams();
+  const targetTier = (searchParams.get("tier") || "").toUpperCase();
+
+  // Subscription state (persisted in localStorage and synchronized with backend API)
   const [subData, setSubData] = useState(() => {
     const saved = localStorage.getItem("bilzet_subscription");
     if (saved) {
@@ -43,65 +56,120 @@ export default function Plans() {
   const [paymentProcessing, setPaymentProcessing] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
 
+  // Sync active subscription status with backend on load
+  useEffect(() => {
+    let mounted = true;
+    subscriptionApi
+      .getStatus()
+      .then((res) => {
+        if (!mounted || !res) return;
+        if (res.planTier) {
+          const tierCapitalized =
+            res.planTier.charAt(0).toUpperCase() + res.planTier.slice(1).toLowerCase();
+          setSubData((prev) => {
+            const updated = {
+              ...prev,
+              currentPlan: tierCapitalized,
+              status: res.status || "Active",
+              validUntil: res.expiresAt
+                ? new Date(res.expiresAt).toLocaleDateString("en-GB", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })
+                : prev.validUntil,
+              totalBills: res.planTier === "FREE" ? prev.totalBills : "Unlimited",
+            };
+            localStorage.setItem("bilzet_subscription", JSON.stringify(updated));
+            localStorage.setItem(
+              "bilzet_subscription_data",
+              JSON.stringify({ currentPlan: tierCapitalized, status: updated.status })
+            );
+            return updated;
+          });
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const saveSubData = (updated) => {
     setSubData(updated);
     localStorage.setItem("bilzet_subscription", JSON.stringify(updated));
+    localStorage.setItem(
+      "bilzet_subscription_data",
+      JSON.stringify({ currentPlan: updated.currentPlan, status: updated.status || "Active" })
+    );
   };
 
   const plans = [
     {
       name: "Free",
+      tier: "FREE",
       price: "₹0",
       period: "/ year",
       sub: "100 included bills + optional 500-bill packs · 365 days",
+      badge: "Starter",
       features: [
         "First 100 bills included for 1 year",
+        "Single-user owner account (0 sub-users)",
         "Buy extra 500-bill packs without changing plan",
-        "Inventory & paid/unpaid tracking",
-        "A4 / A5 print",
-        "3 invoice templates",
-        "3 color themes",
+        "Inventory tracking & paid/unpaid register",
+        "A4 / A5 standard print layouts",
+        "3 invoice templates & color themes",
+        "Daily and monthly sales reports",
         "GST summary preview",
-        "Fixed BILZET watermark",
+        "Fixed BILZET watermark on bills",
       ],
       buttonLabel: "Renew Free for 1 Year",
       amount: 0,
     },
     {
       name: "Pro",
+      tier: "PRO",
       price: "₹1,499.00",
       period: "/year",
       sub: "Unlimited bills · 365 days",
+      badge: "Popular Business",
       features: [
         "Unlimited bills for 1 year",
-        "Everything in Free",
-        "8 invoice templates",
-        "10 color themes",
-        "Thermal 80mm",
-        "BILZET watermark removed",
-        "UPI payment QR + bank details",
-        "WhatsApp PDF share flow",
-        "GSTR-1 draft pack + GSTR-3B summary",
-        "CA Connect",
+        "Everything in Free plan",
+        "Up to 5 Team & Cashier Sub-Users",
+        "Standard Role Assignments (Manager, Cashier, Staff)",
+        "Thermal 80mm POS receipt roll printer",
+        "Remove BILZET watermark from bills",
+        "Direct Bank details & scan-to-pay UPI QR on invoices",
+        "Profit & Loss reports & Excel (.xlsx) data export",
+        "GSTR-1 draft pack + GSTR-3B tax summary",
+        "WhatsApp invoice PDF sharing & SMS dispatch alerts",
+        "Online store orders management",
       ],
       buttonLabel: "Choose Pro",
       amount: 1499,
     },
     {
       name: "Premium",
+      tier: "PREMIUM",
       price: "₹2,999.00",
       period: "/year",
       sub: "Unlimited bills · 365 days",
+      badge: "Full Enterprise",
       features: [
         "Unlimited bills for 1 year",
-        "Everything in Pro",
-        "All premium templates & themes",
-        "Thermal 58mm",
-        "Credit / Debit Notes & Returns",
-        "Advanced GST classifications",
-        "Composition CMP-08 / GSTR-4 prep",
-        "Premium design styles",
-        "Priority / partner-ready controls",
+        "Everything in Pro plan",
+        "Up to 15 Team Sub-Users",
+        "CA Connect — Chartered Accountant collaboration portal",
+        "Custom Roles & Permissions Studio",
+        "Granular Permission Overrides per user",
+        "Thermal 58mm ultra-compact mobile handheld roll",
+        "Custom Brand HEX Color picker for invoice branding",
+        "Multi-document terms customization (Invoices, Quotes, Challans)",
+        "Advanced GST classifications & CMP-08 filing prep",
+        "Credit & Debit notes / Sales returns",
+        "Priority partner-level enterprise support",
       ],
       buttonLabel: "Choose Premium",
       amount: 2999,
@@ -109,7 +177,7 @@ export default function Plans() {
   ];
 
   const handlePlanClick = (p) => {
-    if (p.name === subData.currentPlan && p.name === "Free") {
+    if (p.name.toUpperCase() === (subData.currentPlan || "FREE").toUpperCase() && p.name === "Free") {
       // Renew Free for 1 Year
       const updated = {
         ...subData,
@@ -126,7 +194,7 @@ export default function Plans() {
         ],
       };
       saveSubData(updated);
-      alert("Free Plan renewed for 365 days until 14 Sept 2028!");
+      alert("Free Plan renewed for 365 days!");
       return;
     }
 
@@ -145,9 +213,25 @@ export default function Plans() {
     });
   };
 
-  const confirmPayment = () => {
+  const confirmPayment = async () => {
     setPaymentProcessing(true);
-    setTimeout(() => {
+    try {
+      const paymentRef = `PAY-${Date.now().toString().slice(-6)}`;
+      const targetPlanName = checkoutModal.plan.name;
+      const targetPlanTier = checkoutModal.extraBills
+        ? (subData.currentPlan || "FREE").toUpperCase()
+        : targetPlanName.toUpperCase();
+
+      if (!checkoutModal.extraBills) {
+        // Persist upgrade to backend DB
+        await subscriptionApi.upgrade({
+          planTier: targetPlanTier,
+          amount: checkoutModal.plan.amount,
+          billingCycle: "ANNUAL",
+          paymentReference: paymentRef,
+        });
+      }
+
       setPaymentProcessing(false);
       setPaymentSuccess(true);
 
@@ -158,10 +242,14 @@ export default function Plans() {
             extraBills: subData.extraBills + 500,
             payments: [
               {
-                id: `PAY-${Date.now().toString().slice(-6)}`,
+                id: paymentRef,
                 plan: "Extra 500 Bills Pack",
                 amount: "₹499.00",
-                date: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }),
+                date: new Date().toLocaleDateString("en-GB", {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                }),
                 status: "Success",
               },
               ...subData.payments,
@@ -171,14 +259,18 @@ export default function Plans() {
         } else {
           const updated = {
             ...subData,
-            currentPlan: checkoutModal.plan.name,
+            currentPlan: targetPlanName,
             totalBills: "Unlimited",
             payments: [
               {
-                id: `PAY-${Date.now().toString().slice(-6)}`,
-                plan: `${checkoutModal.plan.name} Annual`,
+                id: paymentRef,
+                plan: `${targetPlanName} Annual`,
                 amount: checkoutModal.plan.price,
-                date: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }),
+                date: new Date().toLocaleDateString("en-GB", {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                }),
                 status: "Success",
               },
               ...subData.payments,
@@ -190,21 +282,94 @@ export default function Plans() {
         setPaymentSuccess(false);
         setCheckoutModal({ open: false, plan: null, extraBills: false });
       }, 1000);
-    }, 1200);
+    } catch (err) {
+      setPaymentProcessing(false);
+      alert(err?.message || "Payment confirmation failed. Please try again.");
+    }
   };
 
+  // Detailed comparison matrix rows
+  const comparisonRows = [
+    {
+      category: "Billing & Core Features",
+      items: [
+        { feature: "Validity Period", free: "1 Year (365 Days)", pro: "1 Year (365 Days)", premium: "1 Year (365 Days)" },
+        { feature: "Bills / Invoices Allowance", free: "100 Bills (+ 500 Packs)", pro: "Unlimited Bills", premium: "Unlimited Bills" },
+        { feature: "Product Catalog & Stock Management", free: "Included", pro: "Included", premium: "Included" },
+        { feature: "Multi-Godown / Warehouse Transfers", free: "Included", pro: "Included", premium: "Included" },
+      ],
+    },
+    {
+      category: "Hardware & Print Formats",
+      items: [
+        { feature: "A4 / A5 Standard Paper Layout", free: "Included", pro: "Included", premium: "Included" },
+        { feature: "Thermal 80mm POS Roll Printer", free: "Locked", pro: "Included", premium: "Included", proBadge: true },
+        { feature: "Thermal 58mm Handheld Bluetooth Roll", free: "Locked", pro: "Locked", premium: "Included", premBadge: true },
+        { feature: "BILZET Watermark on Bills", free: "Fixed Branding", pro: "100% Removed", premium: "100% Removed" },
+        { feature: "Custom Brand HEX Color Picker", free: "Locked", pro: "Locked", premium: "Included", premBadge: true },
+      ],
+    },
+    {
+      category: "Banking & Settlement",
+      items: [
+        { feature: "Bank Beneficiary & IFSC on Bill", free: "Locked", pro: "Included", premium: "Included", proBadge: true },
+        { feature: "Scan-to-Pay Dynamic UPI QR", free: "Locked", pro: "Included", premium: "Included", proBadge: true },
+        { feature: "WhatsApp PDF Bill Sharing", free: "Locked", pro: "Included", premium: "Included", proBadge: true },
+      ],
+    },
+    {
+      category: "Team & User Access",
+      items: [
+        { feature: "Team Sub-Users (Staff / Cashier)", free: "Owner Only (0 Sub-users)", pro: "Up to 5 Users", premium: "Up to 15 Users" },
+        { feature: "Standard Role Assignments", free: "Owner Only", pro: "Manager, Cashier, Staff", premium: "All Roles" },
+        { feature: "Custom Roles & Permissions Studio", free: "Locked", pro: "Locked", premium: "Included", premBadge: true },
+        { feature: "Granular User Permission Overrides", free: "Locked", pro: "Locked", premium: "Included", premBadge: true },
+      ],
+    },
+    {
+      category: "Tax, Accounting & Reports",
+      items: [
+        { feature: "Daily & Monthly Sales Reports", free: "Included", pro: "Included", premium: "Included" },
+        { feature: "Gross & Net Profit & Loss Analysis", free: "Locked", pro: "Included", premium: "Included", proBadge: true },
+        { feature: "Excel (.xlsx) Data Export", free: "Locked", pro: "Included", premium: "Included", proBadge: true },
+        { feature: "GSTR-1 Draft & GSTR-3B Summary", free: "Locked", pro: "Included", premium: "Included", proBadge: true },
+        {
+          feature: "CA Connect (Chartered Accountant Portal)",
+          free: "Locked",
+          pro: "Locked",
+          premium: "Included (Full Access)",
+          premBadge: true,
+          highlight: true,
+        },
+      ],
+    },
+  ];
+
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-16 fade-up font-sans">
+    <div className="space-y-8 max-w-7xl mx-auto pb-16 fade-up font-sans">
       {/* ══════════════════════════════════════════════════
           1. TOP CURRENT STATUS CARD
       ══════════════════════════════════════════════════ */}
       <div className="bg-white rounded-2xl border border-slate-200/90 p-5 sm:p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-lg font-bold text-slate-900 tracking-tight">
-            Current: {subData.currentPlan}
-          </h2>
-          <p className="text-xs text-slate-500 font-medium mt-0.5">
-            Valid until {subData.validUntil}
+          <div className="flex items-center gap-2 mb-1">
+            <h2 className="text-lg font-bold text-slate-900 tracking-tight">
+              Active Plan: {subData.currentPlan}
+            </h2>
+            <span
+              className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                subData.currentPlan.toUpperCase() === "PREMIUM"
+                  ? "bg-amber-50 text-amber-800 border-amber-300"
+                  : subData.currentPlan.toUpperCase() === "PRO"
+                  ? "bg-blue-50 text-blue-800 border-blue-300"
+                  : "bg-slate-100 text-slate-700 border-slate-300"
+              }`}
+            >
+              {subData.status.toUpperCase()}
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 font-medium">
+            Entitlements valid until {subData.validUntil}
           </p>
         </div>
 
@@ -216,7 +381,7 @@ export default function Plans() {
             {subData.extraBills} extra bills available
           </span>
           <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-50 border border-slate-200/80 text-slate-700">
-            {subData.status} · {subData.validity}
+            Annual billing cycle
           </span>
         </div>
       </div>
@@ -224,76 +389,103 @@ export default function Plans() {
       {/* ══════════════════════════════════════════════════
           2. THREE PRICING TIERS
       ══════════════════════════════════════════════════ */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-stretch">
-        {plans.map((p) => {
-          const isCurrent = p.name === subData.currentPlan;
+      <div className="space-y-3">
+        <div className="text-center sm:text-left">
+          <h2 className="text-xl font-bold text-slate-900 tracking-tight">
+            Subscription Plans &amp; Feature Access
+          </h2>
+          <p className="text-xs text-slate-500 mt-1">
+            Choose the ideal plan for your retail store. Upgrade anytime to unlock advanced capabilities.
+          </p>
+        </div>
 
-          return (
-            <div
-              key={p.name}
-              className={`rounded-2xl p-6 sm:p-7 flex flex-col justify-between transition-all bg-white relative ${
-                isCurrent
-                  ? "border-2 border-blue-500 shadow-md ring-2 ring-blue-500/10"
-                  : "border border-slate-200/90 hover:border-slate-300 shadow-xs"
-              }`}
-            >
-              <div>
-                {/* Header row with plan title & Current chip */}
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-xl font-bold text-slate-900">{p.name}</h3>
-                  {isCurrent && (
-                    <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100/80 px-2.5 py-0.5 rounded-full">
-                      Current
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-stretch pt-2">
+          {plans.map((p) => {
+            const isCurrent = p.name.toUpperCase() === (subData.currentPlan || "FREE").toUpperCase();
+            const isTarget = Boolean(targetTier) && p.name.toUpperCase() === targetTier && !isCurrent;
+
+            return (
+              <div
+                key={p.name}
+                className={`rounded-2xl p-6 sm:p-7 flex flex-col justify-between transition-all bg-white relative ${
+                  isTarget
+                    ? "border-2 border-indigo-600 shadow-lg ring-4 ring-indigo-500/20"
+                    : isCurrent
+                    ? "border-2 border-blue-500 shadow-md ring-2 ring-blue-500/10"
+                    : "border border-slate-200/90 hover:border-slate-300 shadow-xs"
+                }`}
+              >
+                <div>
+                  {/* Header row with plan title & Current / Target chip */}
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-xl font-bold text-slate-900">{p.name}</h3>
+                      <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                        {p.badge}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      {isTarget && (
+                        <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-2xs">
+                          <Sparkles className="w-3 h-3 text-indigo-500" /> Target Plan
+                        </span>
+                      )}
+                      {isCurrent && (
+                        <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100/80 px-2.5 py-0.5 rounded-full">
+                          Current
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Price Display */}
+                  <div className="mb-2 flex items-baseline gap-1">
+                    <span className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
+                      {p.price}
                     </span>
-                  )}
+                    <span className="text-sm font-semibold text-slate-600">{p.period}</span>
+                  </div>
+
+                  <p className="text-xs text-slate-500 font-medium mb-6 leading-relaxed">
+                    {p.sub}
+                  </p>
+
+                  {/* Bullet Points */}
+                  <ul className="space-y-3 mb-8 text-xs text-slate-700">
+                    {p.features.map((feat, idx) => (
+                      <li key={idx} className="flex items-start gap-2.5">
+                        <CheckCircle2
+                          size={14}
+                          className={`shrink-0 mt-0.5 ${
+                            p.name === "Premium"
+                              ? "text-amber-500"
+                              : p.name === "Pro"
+                              ? "text-blue-500"
+                              : "text-emerald-500"
+                          }`}
+                        />
+                        <span className="leading-snug">{feat}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
 
-                {/* Price Display */}
-                <div className="mb-2 flex items-baseline gap-1">
-                  <span className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
-                    {p.price}
-                  </span>
-                  <span className="text-sm font-semibold text-slate-600">{p.period}</span>
+                {/* Bottom CTA Button */}
+                <div className="pt-2">
+                  <Button
+                    variant={isCurrent ? "neutral" : "primary"}
+                    icon={isCurrent ? Check : Zap}
+                    onClick={() => handlePlanClick(p)}
+                    className="w-full"
+                  >
+                    {isCurrent ? "Active Plan" : p.buttonLabel}
+                  </Button>
                 </div>
-
-                <p className="text-xs text-slate-500 font-medium mb-6 leading-relaxed">
-                  {p.sub}
-                </p>
-
-                {/* Bullet Points */}
-                <ul className="space-y-3 mb-8 text-xs text-slate-700">
-                  {p.features.map((feat, idx) => (
-                    <li key={idx} className="flex items-start gap-2.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-slate-400 mt-1.5 shrink-0" />
-                      <span className="leading-snug">{feat}</span>
-                    </li>
-                  ))}
-                </ul>
               </div>
-
-              {/* Bottom CTA Button */}
-              <div className="pt-2">
-                {isCurrent ? (
-                  <button
-                    type="button"
-                    onClick={() => handlePlanClick(p)}
-                    className="w-full py-3 px-4 rounded-xl text-xs font-bold border border-slate-300 hover:bg-slate-50 text-slate-800 transition active:scale-[0.99] shadow-2xs"
-                  >
-                    {p.buttonLabel}
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => handlePlanClick(p)}
-                    className="w-full py-3 px-4 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white transition active:scale-[0.99] shadow-xs"
-                  >
-                    {p.buttonLabel}
-                  </button>
-                )}
-              </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
 
       {/* ══════════════════════════════════════════════════
@@ -305,70 +497,114 @@ export default function Plans() {
             Need only more bills?
           </h3>
           <p className="text-xs text-slate-500 font-medium mt-0.5">
-            Stay on Free. Add 500 bill credits without changing to Pro.
+            Stay on Free. Add 500 bill credits without changing your subscription plan.
           </p>
         </div>
 
-        <button
-          type="button"
+        <Button
+          variant="primary"
+          icon={Plus}
           onClick={handleExtraBillsClick}
-          className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white transition active:scale-[0.99] shadow-xs shrink-0 self-start sm:self-center"
+          className="shrink-0 self-start sm:self-center"
         >
           Get Extra 500 Bills
-        </button>
+        </Button>
       </div>
 
       {/* ══════════════════════════════════════════════════
-          4. PLAN RULES COMPARISON TABLE
+          4. FULL FEATURE COMPARISON MATRIX TABLE
       ══════════════════════════════════════════════════ */}
-      <div className="bg-white rounded-2xl border border-slate-200/90 overflow-hidden shadow-xs">
-        <div className="p-5 border-b border-slate-100">
-          <h3 className="text-sm font-bold text-slate-900 tracking-tight">
-            Plan Rules
-          </h3>
+      <div className="bg-white rounded-2xl border border-slate-200/90 overflow-hidden shadow-xs space-y-0">
+        <div className="p-5 sm:p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h3 className="text-base font-bold text-slate-900 tracking-tight">
+              Detailed Plan Comparison Table
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Side-by-side feature access across Free, Pro, and Premium tiers.
+            </p>
+          </div>
+          <span className="text-[11px] font-semibold text-slate-500 bg-slate-50 px-3 py-1 rounded-full border border-slate-200">
+            Updated for 2026 Release
+          </span>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+          <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="bg-slate-50/75 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                <th className="py-3 px-5 w-1/4">FEATURE</th>
-                <th className="py-3 px-5 w-1/4">FREE</th>
-                <th className="py-3 px-5 w-1/4">PRO</th>
-                <th className="py-3 px-5 w-1/4">PREMIUM</th>
+              <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                <th className="py-3.5 px-5 w-2/5">Feature / Capability</th>
+                <th className="py-3.5 px-5 w-1/5 text-center">Free Plan</th>
+                <th className="py-3.5 px-5 w-1/5 text-center bg-blue-50/40 text-blue-900">Pro Plan</th>
+                <th className="py-3.5 px-5 w-1/5 text-center bg-amber-50/40 text-amber-900">Premium Plan</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-700">
-              <tr>
-                <td className="py-3.5 px-5 font-medium text-slate-800">Validity</td>
-                <td className="py-3.5 px-5 text-slate-600">1 year</td>
-                <td className="py-3.5 px-5 text-slate-600">1 year</td>
-                <td className="py-3.5 px-5 text-slate-600">1 year</td>
-              </tr>
-              <tr>
-                <td className="py-3.5 px-5 font-medium text-slate-800">Bills</td>
-                <td className="py-3.5 px-5 text-slate-600">100 + 500 packs</td>
-                <td className="py-3.5 px-5 text-slate-600">Unlimited</td>
-                <td className="py-3.5 px-5 text-slate-600">Unlimited</td>
-              </tr>
-              <tr>
-                <td className="py-3.5 px-5 font-medium text-slate-800">Templates</td>
-                <td className="py-3.5 px-5 text-slate-600">3</td>
-                <td className="py-3.5 px-5 text-slate-600">8</td>
-                <td className="py-3.5 px-5 text-slate-600">All 11</td>
-              </tr>
-              <tr>
-                <td className="py-3.5 px-5 font-medium text-slate-800">Watermark</td>
-                <td className="py-3.5 px-5 text-slate-600">Fixed BILZET</td>
-                <td className="py-3.5 px-5 text-slate-600">Removed</td>
-                <td className="py-3.5 px-5 text-slate-600">Removed</td>
-              </tr>
-              <tr>
-                <td className="py-3.5 px-5 font-medium text-slate-800">GST export</td>
-                <td className="py-3.5 px-5 text-slate-600">Preview</td>
-                <td className="py-3.5 px-5 text-slate-600">GSTR-1 / 3B draft</td>
-                <td className="py-3.5 px-5 text-slate-600">Advanced</td>
-              </tr>
+            <tbody>
+              {comparisonRows.map((cat, cIdx) => (
+                <div key={cIdx} style={{ display: "contents" }}>
+                  <tr className="bg-slate-100/60 border-y border-slate-200/70">
+                    <td
+                      colSpan={4}
+                      className="py-2.5 px-5 font-bold text-[11px] uppercase tracking-wider text-slate-700"
+                    >
+                      {cat.category}
+                    </td>
+                  </tr>
+                  {cat.items.map((row, rIdx) => (
+                    <tr
+                      key={rIdx}
+                      className={`border-b border-slate-100 transition-colors ${
+                        row.highlight ? "bg-amber-50/20" : "hover:bg-slate-50/60"
+                      }`}
+                    >
+                      <td className="py-3 px-5 font-semibold text-slate-800">
+                        {row.feature}
+                      </td>
+
+                      {/* Free Column */}
+                      <td className="py-3 px-5 text-center text-slate-600">
+                        {row.free === "Included" ? (
+                          <span className="inline-flex items-center gap-1 font-bold text-emerald-700">
+                            <Check size={13} className="text-emerald-600" /> Included
+                          </span>
+                        ) : row.free === "Locked" ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-400">
+                            <Lock size={11} /> Locked
+                          </span>
+                        ) : (
+                          row.free
+                        )}
+                      </td>
+
+                      {/* Pro Column */}
+                      <td className="py-3 px-5 text-center text-slate-800 bg-blue-50/20">
+                        {row.pro === "Included" ? (
+                          <span className="inline-flex items-center gap-1 font-bold text-blue-700">
+                            <Check size={13} className="text-blue-600" /> Included
+                          </span>
+                        ) : row.pro === "Locked" ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-400">
+                            <Lock size={11} /> Locked
+                          </span>
+                        ) : (
+                          <span className="font-semibold text-blue-900">{row.pro}</span>
+                        )}
+                      </td>
+
+                      {/* Premium Column */}
+                      <td className="py-3 px-5 text-center text-slate-900 bg-amber-50/20">
+                        {row.premium.includes("Included") ? (
+                          <span className="inline-flex items-center gap-1 font-bold text-amber-800">
+                            <Check size={13} className="text-amber-600" /> {row.premium}
+                          </span>
+                        ) : (
+                          <span className="font-semibold text-amber-950">{row.premium}</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </div>
+              ))}
             </tbody>
           </table>
         </div>
@@ -384,7 +620,7 @@ export default function Plans() {
 
         {subData.payments.length === 0 ? (
           <div className="py-8 text-center text-xs text-slate-400 font-medium">
-            No payments yet
+            No payments recorded yet
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -426,7 +662,7 @@ export default function Plans() {
           Production billing note
         </h4>
         <p className="text-xs text-slate-600 leading-relaxed font-normal">
-          When Supabase backend mode is enabled, subscription activation and extra bill packs are controlled server-side by the BILZET admin portal. Add a verified payment gateway before collecting money.
+          Subscription activation and extra bill packs are controlled server-side by the BILZET backend engine. All feature access entitlements are synchronized across your devices instantly.
         </p>
       </div>
 
@@ -455,13 +691,12 @@ export default function Plans() {
                   {checkoutModal.extraBills ? "Add Bill Credits" : `Upgrade to ${checkoutModal.plan.name}`}
                 </h3>
               </div>
-              <button
-                type="button"
+              <CompactIconButton
+                icon={X}
+                variant="neutral"
                 onClick={() => setCheckoutModal({ open: false, plan: null, extraBills: false })}
-                className="text-slate-400 hover:text-slate-600 p-1"
-              >
-                <X size={16} />
-              </button>
+                title="Close"
+              />
             </div>
 
             <div className="py-4 space-y-4 text-xs">
@@ -495,29 +730,27 @@ export default function Plans() {
             </div>
 
             <div className="pt-2 flex items-center gap-2">
-              <button
+              <Button
                 type="button"
+                variant="neutral"
+                icon={X}
                 disabled={paymentProcessing}
                 onClick={() => setCheckoutModal({ open: false, plan: null, extraBills: false })}
-                className="flex-1 py-2.5 rounded-xl text-xs font-semibold border border-slate-200 hover:bg-slate-50 text-slate-600 transition"
+                className="flex-1"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="primary"
+                icon={ArrowRight}
                 disabled={paymentProcessing}
+                loading={paymentProcessing}
                 onClick={confirmPayment}
-                className="flex-1 py-2.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white transition shadow-xs flex items-center justify-center gap-1.5"
+                className="flex-1"
               >
-                {paymentProcessing ? (
-                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <>
-                    <span>Pay {checkoutModal.plan.price}</span>
-                    <ArrowRight size={13} />
-                  </>
-                )}
-              </button>
+                Pay {checkoutModal.plan.price}
+              </Button>
             </div>
           </div>
         </div>

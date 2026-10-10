@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import {
   ShoppingBag,
   Plus,
-  Search,
   CheckCircle2,
   Clock,
   Truck,
@@ -18,6 +17,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { onlineOrdersApi, productsApi } from "../api";
+import SearchBar from "../components/common/SearchBar";
 
 export default function OnlineOrders() {
   const nav = useNavigate();
@@ -122,24 +122,24 @@ export default function OnlineOrders() {
   return (
     <div className="space-y-6 max-w-7xl mx-auto fade-up">
       {/* ── Page Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-cyan-50 text-cyan-600 border border-cyan-100 flex items-center justify-center shrink-0">
-            <ShoppingBag size={24} />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/90 shadow-xs">
+        <div className="flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-xl bg-cyan-50 text-cyan-600 border border-cyan-100 flex items-center justify-center shrink-0 shadow-2xs">
+            <ShoppingBag size={22} />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-800 tracking-tight">
-              Online Store & E-Commerce Orders
+            <h1 className="page-title">
+              Online Store &amp; E-Commerce Orders
             </h1>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Live customer orders pipeline, fulfillment stages and instant invoice conversion
+            <p className="page-desc">
+              Live customer orders pipeline, fulfillment stages and instant invoice conversion.
             </p>
           </div>
         </div>
 
         <button
           onClick={() => setShowCreateModal(true)}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-cyan-600 text-white hover:bg-cyan-700 transition shadow-2xs"
+          className="btn-primary self-start sm:self-center"
         >
           <Plus size={15} />
           <span>New Online Order</span>
@@ -165,7 +165,7 @@ export default function OnlineOrders() {
       )}
 
       {/* ── Filter Pills & Search ── */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-b border-slate-200/80 pb-3">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs">
         <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto p-1 bg-slate-100/80 rounded-xl border border-slate-200/60">
           {[
             { id: "ALL", label: "All Orders" },
@@ -181,7 +181,7 @@ export default function OnlineOrders() {
               onClick={() => setStatusFilter(st.id)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition ${
                 statusFilter === st.id
-                  ? "bg-white text-slate-800 shadow-2xs"
+                  ? "bg-white text-slate-800 shadow-2xs font-bold"
                   : "text-slate-500 hover:text-slate-800"
               }`}
             >
@@ -190,14 +190,11 @@ export default function OnlineOrders() {
           ))}
         </div>
 
-        <div className="relative w-full sm:w-64">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
+        <div className="w-full sm:w-72">
+          <SearchBar
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={setSearch}
             placeholder="Search order #, customer, phone..."
-            className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 transition"
           />
         </div>
       </div>

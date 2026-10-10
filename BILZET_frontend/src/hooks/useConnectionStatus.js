@@ -31,8 +31,8 @@ export function useConnectionStatus() {
   useEffect(() => {
     checkConnection();
 
-    // Check periodically every 15 seconds
-    const interval = setInterval(checkConnection, 15000);
+    // Check periodically every 60 seconds (browser online/offline events handle immediate state shifts)
+    const interval = setInterval(checkConnection, 60000);
 
     // Listen to browser network changes
     const handleOnline = () => {

@@ -7,6 +7,7 @@ import { generateBarcodeBuffer, generateBarcodeString } from '../utils/generateB
 
 const mapProduct = (p) => {
   if (!p) return null;
+  const hsn = p.hsnCode || p.hsn || null;
   return {
     ...p,
     _id: p.id,
@@ -15,12 +16,19 @@ const mapProduct = (p) => {
     sellingPrice: Number(p.sellingPrice),
     purchasePrice: Number(p.purchasePrice),
     gstRate: Number(p.gstRate),
+    hsnCode: hsn,
+    hsn,
   };
 };
 
 export const getProducts = asyncHandler(async (req, res) => {
   const { page, limit, skip } = getPaginationParams(req.query);
   const where = {};
+
+  const activeBusinessId = req.query.businessId || req.headers['x-business-id'] || req.user?.businessId;
+  if (activeBusinessId) {
+    where.businessId = activeBusinessId;
+  }
 
   if (req.query.categoryId) where.categoryId = req.query.categoryId;
   if (req.query.isActive !== undefined) where.isActive = req.query.isActive === 'true';
@@ -113,7 +121,14 @@ export const createProduct = asyncHandler(async (req, res) => {
     gstRate = 0,
     stock = 0,
     minimumStock = 5,
+    businessId,
   } = req.body;
+
+  const activeBusinessId =
+    businessId ||
+    req.headers['x-business-id'] ||
+    req.user?.businessId ||
+    'busi-01';
 
   const resolvedCategoryId = categoryId || category || undefined;
 
@@ -135,8 +150,10 @@ export const createProduct = asyncHandler(async (req, res) => {
       purchasePrice,
       sellingPrice,
       gstRate,
+      hsnCode: req.body.hsnCode || req.body.hsn || null,
       stock: Number(stock),
       minimumStock: Number(minimumStock),
+      businessId: activeBusinessId,
     },
     include: { category: true },
   });
@@ -200,6 +217,9 @@ export const updateProduct = asyncHandler(async (req, res) => {
       ...(purchasePrice !== undefined && { purchasePrice: Number(purchasePrice) }),
       ...(sellingPrice !== undefined && { sellingPrice: Number(sellingPrice) }),
       ...(gstRate !== undefined && { gstRate: Number(gstRate) }),
+      ...((req.body.hsnCode !== undefined || req.body.hsn !== undefined) && {
+        hsnCode: req.body.hsnCode || req.body.hsn || null,
+      }),
       ...(stock !== undefined && { stock: Number(stock) }),
       ...(minimumStock !== undefined && { minimumStock: Number(minimumStock) }),
       ...(isActive !== undefined && { isActive }),

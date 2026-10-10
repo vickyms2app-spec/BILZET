@@ -13,9 +13,12 @@ export const createProductSchema = z.object({
   purchasePrice: z.number().nonnegative('Purchase price cannot be negative'),
   sellingPrice: z.number().nonnegative('Selling price cannot be negative'),
   gstRate: z.number().min(0).max(100).optional().default(0),
+  hsnCode: z.string().trim().optional().nullable(),
+  hsn: z.string().trim().optional().nullable(),
   stock: z.number().int().min(0, 'Initial stock cannot be negative').optional().default(0),
   minimumStock: z.number().int().min(0).optional().default(5),
-  isActive: z.boolean().optional().default(true)
+  isActive: z.boolean().optional().default(true),
+  businessId: z.string().optional(),
 });
 
 export const updateProductSchema = createProductSchema.partial();

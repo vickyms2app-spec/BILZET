@@ -11,12 +11,17 @@ export const createSale = asyncHandler(async (req, res) => {
 
 export const getSales = asyncHandler(async (req, res) => {
   const query = { ...req.query };
-  const { sales, meta } = await billingService.getSales(query);
+  const { sales, meta } = await billingService.getSales(query, req.user);
   return sendResponse(res, 200, { sales }, 'Sales fetched successfully', meta);
 });
 
+export const getMySales = asyncHandler(async (req, res) => {
+  const { sales, meta } = await billingService.getMySales(req.user.id, req.query, req.user);
+  return sendResponse(res, 200, { sales }, 'Personal sales fetched successfully', meta);
+});
+
 export const getSaleById = asyncHandler(async (req, res) => {
-  const sale = await billingService.getSaleById(req.params.id);
+  const sale = await billingService.getSaleById(req.params.id, req.user);
   return sendResponse(res, 200, { sale }, 'Sale fetched successfully');
 });
 
@@ -132,13 +137,74 @@ export const createPaymentIn = asyncHandler(async (req, res) => {
   return sendResponse(res, 201, { payment }, 'Payment recorded successfully');
 });
 
+export const getPaymentsIn = asyncHandler(async (req, res) => {
+  const where = {};
+  if (req.query.customerId) where.customerId = req.query.customerId;
+  if (req.query.method) where.method = req.query.method.toUpperCase();
+
+  const payments = await prisma.payment.findMany({
+    where,
+    orderBy: { createdAt: 'desc' },
+    include: {
+      customer: { select: { id: true, name: true, phone: true, email: true, balance: true } },
+      sale: { select: { id: true, invoiceNumber: true, grandTotal: true, paymentStatus: true } },
+    },
+  });
+
+  return sendResponse(res, 200, { payments }, 'Payments-In fetched successfully');
+});
+
+export const recordPayment = asyncHandler(async (req, res) => {
+  const sale = await billingService.recordPayment(req.params.id, req.body, req.user);
+  return sendResponse(res, 200, { sale }, 'Payment recorded successfully');
+});
+
+export const getSaleAuditTrail = asyncHandler(async (req, res) => {
+  const auditData = await billingService.getSaleAuditTrail(req.params.id, req.user);
+  return sendResponse(res, 200, auditData, 'Invoice audit trail fetched successfully');
+});
+
+export const getSaleCreditNotes = asyncHandler(async (req, res) => {
+  const sale = await billingService.getSaleById(req.params.id, req.user);
+  return sendResponse(
+    res,
+    200,
+    {
+      invoiceNumber: sale.invoiceNumber,
+      creditNotes: sale.returns || sale.creditNotes || [],
+      returns: sale.returns || [],
+    },
+    'Credit notes fetched successfully'
+  );
+});
+
+export const preventInvoiceEdit = asyncHandler(async (req, res) => {
+  throw ApiError.forbidden(
+    'Finalized invoices cannot be modified directly. Use returns/credit-notes for item adjustments or payment recording.'
+  );
+});
+
+export const preventInvoiceDelete = asyncHandler(async (req, res) => {
+  throw ApiError.forbidden(
+    'Finalized invoices cannot be deleted. Original invoice records and transaction history are permanently preserved.'
+  );
+});
+
 export default {
   createSale,
   getSales,
+  getMySales,
   getSaleById,
+  getSaleAuditTrail,
+  recordPayment,
   returnSale,
+  getSaleCreditNotes,
+  preventInvoiceEdit,
+  preventInvoiceDelete,
   createDeliveryChallan,
   getDeliveryChallans,
   getSalesReturns,
   createPaymentIn,
+  getPaymentsIn,
 };
+

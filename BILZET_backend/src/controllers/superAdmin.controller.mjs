@@ -224,7 +224,7 @@ export const getSubscriptions = async (req, res, next) => {
 export const updateSubscription = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { planName, planTier, status, billingCycle, amount, expiresAt } = req.body;
+    const { planName, planTier, status, billingCycle, amount, maxSubUsers, expiresAt } = req.body;
 
     const data = {};
     if (planName !== undefined) data.planName = planName;
@@ -232,6 +232,7 @@ export const updateSubscription = async (req, res, next) => {
     if (status !== undefined) data.status = status;
     if (billingCycle !== undefined) data.billingCycle = billingCycle;
     if (amount !== undefined) data.amount = amount;
+    if (maxSubUsers !== undefined) data.maxSubUsers = parseInt(maxSubUsers, 10) || 0;
     if (expiresAt !== undefined) data.expiresAt = expiresAt ? new Date(expiresAt) : null;
 
     const updated = await prisma.subscription.update({

@@ -78,10 +78,10 @@ export default function Modal({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition duration-150 shrink-0 ml-2"
+            className="w-8 h-8 rounded-full border border-slate-200/80 bg-white hover:bg-slate-100 text-slate-400 hover:text-slate-700 flex items-center justify-center transition duration-150 shrink-0 ml-2 shadow-2xs"
             aria-label="Close dialog"
           >
-            <X size={18} />
+            <X size={15} />
           </button>
         </div>
 

@@ -7,12 +7,17 @@ const mapProduct = (p) => {
   return {
     ...p,
     _id: p.id,
-    currentStock: p.stock,
+    currentStock: Number(p.stock ?? p.stockQuantity ?? 0),
+    stock: Number(p.stock ?? p.stockQuantity ?? 0),
+    sellingPrice: Number(p.sellingPrice ?? 0),
+    purchasePrice: Number(p.purchasePrice ?? 0),
+    gstRate: Number(p.gstRate ?? 0),
+    minimumStock: Number(p.minimumStock ?? 5),
   };
 };
 
 export const getInventoryOverview = async (query = {}) => {
-  const { page, limit, skip } = getPaginationParams(query);
+  const { page, limit, skip } = getPaginationParams(query, 500, 1000);
   const where = { isActive: true };
 
   if (query.categoryId) where.categoryId = query.categoryId;
@@ -42,7 +47,7 @@ export const getInventoryOverview = async (query = {}) => {
 };
 
 export const getLowStockProducts = async (query = {}) => {
-  const { page, limit, skip } = getPaginationParams(query);
+  const { page, limit, skip } = getPaginationParams(query, 100, 500);
   
   const allActive = await prisma.product.findMany({
     where: { isActive: true },
@@ -50,7 +55,7 @@ export const getLowStockProducts = async (query = {}) => {
     orderBy: { stock: 'asc' },
   });
 
-  const lowStock = allActive.filter((p) => p.stock <= p.minimumStock);
+  const lowStock = allActive.filter((p) => Number(p.stock || 0) <= Number(p.minimumStock || 5));
   const total = lowStock.length;
   const paginated = lowStock.slice(skip, skip + limit);
 
@@ -61,7 +66,7 @@ export const getLowStockProducts = async (query = {}) => {
 };
 
 export const getStockHistory = async (query = {}) => {
-  const { page, limit, skip } = getPaginationParams(query);
+  const { page, limit, skip } = getPaginationParams(query, 50, 200);
   const where = {};
 
   if (query.type) where.type = query.type;
@@ -85,7 +90,7 @@ export const getStockHistory = async (query = {}) => {
 };
 
 export const getProductStockHistory = async (productId, query = {}) => {
-  const { page, limit, skip } = getPaginationParams(query);
+  const { page, limit, skip } = getPaginationParams(query, 50, 200);
   const where = { productId };
 
   const [transactions, total] = await Promise.all([
@@ -106,27 +111,44 @@ export const getProductStockHistory = async (productId, query = {}) => {
 };
 
 export const adjustStock = async (adjustmentData, user, context = {}) => {
-  const { productId, warehouseId, type = 'ADJUST', quantity, reason } = adjustmentData;
+  const { productId, warehouseId, type = 'ADD', quantity, reason } = adjustmentData;
 
   try {
     return await prisma.$transaction(async (tx) => {
       const product = await tx.product.findUnique({ where: { id: productId } });
       if (!product) {
-        throw ApiError.notFound('Product not found');
+        throw ApiError.notFound('Product not found in inventory catalog');
       }
 
-      const prevStock = product.stock;
-      const newStock = prevStock + Number(quantity);
+      const prevStock = Number(product.stock ?? product.stockQuantity ?? 0);
+      const absQty = Math.abs(Number(quantity));
+
+      if (isNaN(absQty) || absQty === 0) {
+        throw ApiError.badRequest('Adjustment quantity must be greater than zero');
+      }
+
+      // Check whether this is an addition or removal
+      const isRemoval =
+        type === 'REMOVE' ||
+        type === 'REDUCE' ||
+        type === 'DAMAGE' ||
+        type === 'OUT' ||
+        type === 'DEDUCT' ||
+        Number(quantity) < 0;
+
+      const delta = isRemoval ? -absQty : absQty;
+      const newStock = prevStock + delta;
 
       if (newStock < 0) {
         throw ApiError.badRequest(
-          `Adjustment would result in negative stock. Current: ${prevStock}, Adjustment: ${quantity}`
+          `Cannot reduce stock by ${absQty}. Current stock is ${prevStock}.`
         );
       }
 
       const updated = await tx.product.update({
         where: { id: productId },
         data: { stock: newStock },
+        include: { category: { select: { id: true, name: true } } },
       });
 
       if (warehouseId) {
@@ -136,10 +158,10 @@ export const adjustStock = async (adjustmentData, user, context = {}) => {
           },
         });
         const whCurrent = existingWhStock ? existingWhStock.quantity : 0;
-        const whNew = whCurrent + Number(quantity);
+        const whNew = whCurrent + delta;
         if (whNew < 0) {
           throw ApiError.badRequest(
-            `Adjustment would result in negative warehouse stock. Current: ${whCurrent}, Adjustment: ${quantity}`
+            `Adjustment would result in negative warehouse stock. Current: ${whCurrent}, Adjustment: ${delta}`
           );
         }
         await tx.warehouseStock.upsert({
@@ -160,17 +182,18 @@ export const adjustStock = async (adjustmentData, user, context = {}) => {
       const stockTx = await tx.stockTransaction.create({
         data: {
           productId,
-          type: type || 'ADJUST',
-          quantity: Number(quantity),
+          type: isRemoval ? 'REMOVE' : 'ADD',
+          quantity: delta,
           previousStock: prevStock,
           newStock,
-          reason: `${reason || 'Stock Adjustment'}${warehouseId ? ` [Warehouse: ${warehouseId}]` : ''}${user?.name ? ` by ${user.name}` : ''}`,
+          reason: `${reason || (isRemoval ? 'Stock Deduction' : 'Stock Addition')}${warehouseId ? ` [Warehouse: ${warehouseId}]` : ''}${user?.name ? ` by ${user.name}` : ''}`,
         },
       });
 
       return {
         product: mapProduct(updated),
         transaction: { ...stockTx, _id: stockTx.id },
+        newStock,
       };
     });
   } catch (err) {

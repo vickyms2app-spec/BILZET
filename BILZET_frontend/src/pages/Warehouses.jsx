@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import {
   Warehouse,
   Plus,
-  Search,
   Building2,
   MapPin,
   Phone,
@@ -14,11 +13,24 @@ import {
   X,
 } from "lucide-react";
 import { warehousesApi } from "../api";
+import { apiError } from "../api/http";
+import SearchBar from "../components/common/SearchBar";
+import Button from "../components/common/Button";
 
 export default function Warehouses() {
   const [warehouses, setWarehouses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+
+  // Active Store Display
+  const [activeStoreName, setActiveStoreName] = useState(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem("bilzet_active_store") || "null");
+      return stored?.name || stored?.shopName || "Default Store";
+    } catch (_) {
+      return "Default Store";
+    }
+  });
 
   // Add Godown Modal
   const [showAddModal, setShowAddModal] = useState(false);
@@ -49,6 +61,21 @@ export default function Warehouses() {
 
   useEffect(() => {
     fetchData();
+
+    const handleStoreChange = () => {
+      fetchData();
+      try {
+        const stored = JSON.parse(localStorage.getItem("bilzet_active_store") || "null");
+        if (stored?.name || stored?.shopName) {
+          setActiveStoreName(stored.name || stored.shopName);
+        }
+      } catch (_) {}
+    };
+
+    window.addEventListener("bilzet:store-changed", handleStoreChange);
+    return () => {
+      window.removeEventListener("bilzet:store-changed", handleStoreChange);
+    };
   }, []);
 
   const handleCreateWarehouse = async (e) => {
@@ -63,16 +90,16 @@ export default function Warehouses() {
       fetchData();
       setTimeout(() => setSuccessMsg(""), 4000);
     } catch (err) {
-      setErrorMsg(err.response?.data?.error || err.message || "Failed to create warehouse");
+      setErrorMsg(apiError(err));
     } finally {
       setSubmitting(false);
     }
   };
 
   const filteredWarehouses = warehouses.filter((w) => {
-    const q = search.toLowerCase();
+    const q = (search || "").toLowerCase();
     return (
-      w.name.toLowerCase().includes(q) ||
+      w.name?.toLowerCase().includes(q) ||
       (w.code && w.code.toLowerCase().includes(q)) ||
       (w.manager && w.manager.toLowerCase().includes(q))
     );
@@ -81,31 +108,38 @@ export default function Warehouses() {
   return (
     <div className="space-y-6 max-w-7xl mx-auto fade-up">
       {/* ── Page Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shrink-0">
-            <Warehouse size={24} />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/90 shadow-xs">
+        <div className="flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shrink-0 shadow-2xs">
+            <Warehouse size={22} />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-800 tracking-tight">
-              Godown &amp; Warehouse Management
-            </h1>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Manage your business locations and warehouse stock.
+            <div className="flex items-center gap-2">
+              <h1 className="page-title">
+                Godown &amp; Warehouse Management
+              </h1>
+              <span className="badge badge-info uppercase tracking-wider flex items-center gap-1">
+                <Building2 size={11} />
+                <span>{activeStoreName}</span>
+              </span>
+            </div>
+            <p className="page-desc">
+              Manage your business storage locations, capacity and godown stock.
             </p>
           </div>
         </div>
 
-        <button
+        <Button
+          variant="primary"
+          size="sm"
+          icon={Plus}
           onClick={() => {
             setErrorMsg("");
             setShowAddModal(true);
           }}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 transition shadow-2xs self-start sm:self-center"
         >
-          <Plus size={15} strokeWidth={2.5} />
-          <span> Add Godown</span>
-        </button>
+          Add Godown
+        </Button>
       </div>
 
       {/* ── Notifications ── */}
@@ -123,30 +157,29 @@ export default function Warehouses() {
       )}
 
       {/* ── Filter / Search Bar ── */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-xs">
-        <div className="relative w-full sm:w-80">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs">
+        <div className="w-full sm:w-80">
+          <SearchBar
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={setSearch}
             placeholder="Search godown or code..."
-            className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
           />
         </div>
 
-        <div className="flex items-center gap-2 self-end sm:self-center">
+        <div className="flex items-center gap-3 self-end sm:self-center">
           <span className="text-xs text-slate-500 font-medium">
-            Total Godowns: <strong className="text-slate-800">{filteredWarehouses.length}</strong>
+            Total Godowns: <strong className="text-slate-800 font-bold">{filteredWarehouses.length}</strong>
           </span>
-          <button
+          <Button
+            variant="neutral"
+            size="sm"
+            icon={RefreshCw}
+            loading={loading}
             onClick={fetchData}
-            disabled={loading}
-            className="p-2 border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-600 transition"
             title="Refresh godown list"
           >
-            <RefreshCw size={13} className={loading ? "animate-spin text-blue-600" : ""} />
-          </button>
+            Refresh
+          </Button>
         </div>
       </div>
 
@@ -246,89 +279,92 @@ export default function Warehouses() {
 
             <form onSubmit={handleCreateWarehouse} className="space-y-4 pt-4 text-xs">
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Godown Name *</label>
+                <label className="form-label">Godown Name *</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. Central Distribution Hub"
                   value={newWarehouse.name}
                   onChange={(e) => setNewWarehouse({ ...newWarehouse, name: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                  className="form-input"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Code / Identifier</label>
+                  <label className="form-label">Code / Identifier</label>
                   <input
                     type="text"
                     placeholder="e.g. WH-NORTH-01"
                     value={newWarehouse.code}
                     onChange={(e) => setNewWarehouse({ ...newWarehouse, code: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono"
+                    className="form-input font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Capacity (Units)</label>
+                  <label className="form-label">Capacity (Units)</label>
                   <input
                     type="number"
                     placeholder="e.g. 50000"
                     value={newWarehouse.capacity}
                     onChange={(e) => setNewWarehouse({ ...newWarehouse, capacity: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                    className="form-input"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Physical Address</label>
+                <label className="form-label">Physical Address</label>
                 <input
                   type="text"
                   placeholder="Plot #, Industrial Estate, City"
                   value={newWarehouse.address}
                   onChange={(e) => setNewWarehouse({ ...newWarehouse, address: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                  className="form-input"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">In-Charge Manager</label>
+                  <label className="form-label">In-Charge Manager</label>
                   <input
                     type="text"
                     placeholder="Manager Name"
                     value={newWarehouse.manager}
                     onChange={(e) => setNewWarehouse({ ...newWarehouse, manager: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                    className="form-input"
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Contact Phone</label>
+                  <label className="form-label">Contact Phone</label>
                   <input
                     type="text"
                     placeholder="+91 98765 43210"
                     value={newWarehouse.phone}
                     onChange={(e) => setNewWarehouse({ ...newWarehouse, phone: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                    className="form-input"
                   />
                 </div>
               </div>
 
               <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-100">
-                <button
-                  type="button"
+                <Button
+                  variant="neutral"
+                  size="sm"
+                  icon={X}
                   onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 font-semibold text-slate-600 hover:bg-slate-50 transition"
                 >
                   Cancel
-                </button>
-                <button
+                </Button>
+                <Button
                   type="submit"
-                  disabled={submitting}
-                  className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold transition disabled:opacity-50"
+                  variant="primary"
+                  size="sm"
+                  icon={CheckCircle2}
+                  loading={submitting}
                 >
-                  {submitting ? "Saving..." : "Save Godown"}
-                </button>
+                  Save Godown
+                </Button>
               </div>
             </form>
           </div>

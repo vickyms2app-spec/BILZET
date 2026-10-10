@@ -22,6 +22,8 @@ import {
   Sliders,
 } from "lucide-react";
 import { smsApi, customersApi } from "../api";
+import SearchBar from "../components/common/SearchBar";
+import Button, { CompactIconButton } from "../components/common/Button";
 
 export default function SmsMarketing() {
   const [activeTab, setActiveTab] = useState("overview"); // "overview" | "create" | "segments" | "history"
@@ -171,33 +173,33 @@ export default function SmsMarketing() {
       {/* ══════════════════════════════════════════════════
           TOP HEADER
       ══════════════════════════════════════════════════ */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
-        <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-xl bg-violet-50 text-violet-600 border border-violet-100 flex items-center justify-center shrink-0">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/90 shadow-xs">
+        <div className="flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-xl bg-violet-50 text-violet-600 border border-violet-100 flex items-center justify-center shrink-0 shadow-2xs">
             <MessageSquare size={22} />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-900 tracking-tight">
+            <h1 className="page-title">
               SMS Marketing &amp; Outreach
             </h1>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Targeted customer promotions, festival announcements, and automated transactional SMS
+            <p className="page-desc">
+              Targeted customer promotions, festival announcements, and automated transactional SMS.
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-3 self-start sm:self-center">
-          <div className="px-3.5 py-1.5 rounded-xl bg-violet-50/70 border border-violet-100 text-xs flex items-center gap-2">
+          <div className="px-3.5 py-2 rounded-xl bg-violet-50/70 border border-violet-100 text-xs flex items-center gap-2">
             <span className="text-slate-500 font-medium">SMS Credits:</span>
             <strong className="text-violet-700 font-extrabold font-mono">2,450 Available</strong>
           </div>
-          <button
+          <Button
+            variant="primary"
+            icon={Plus}
             onClick={() => setActiveTab("create")}
-            className="btn-primary text-xs"
           >
-            <Plus size={14} strokeWidth={2.5} />
-            <span>Create Campaign</span>
-          </button>
+            Create Campaign
+          </Button>
         </div>
       </div>
 
@@ -317,22 +319,21 @@ export default function SmsMarketing() {
       ══════════════════════════════════════════════════ */}
       {activeTab === "overview" && (
         <div className="space-y-4">
-          <div className="card px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="search-field flex-1 max-w-sm">
-              <Search size={14} className="text-slate-400 shrink-0" />
-              <input
+          <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="w-full sm:w-80">
+              <SearchBar
                 placeholder="Search campaigns by name or text..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={setSearch}
               />
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 self-end sm:self-center">
               <span className="text-xs text-slate-500 font-semibold">Filter:</span>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-3 py-1.5 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 bg-white outline-none"
+                className="form-select text-xs py-2 px-3 font-semibold"
               >
                 <option value="ALL">All Statuses</option>
                 <option value="SENT">Sent</option>
@@ -408,18 +409,16 @@ export default function SmsMarketing() {
                             })}
                           </td>
                           <td className="py-3.5 px-4 text-center">
-                            <button
+                            <CompactIconButton
+                              icon={Copy}
+                              variant="neutral"
+                              title="Duplicate Template"
                               onClick={() => {
                                 setMessageTemplate(c.message);
                                 setCampaignName(`Copy of ${c.title || c.name}`);
                                 setActiveTab("create");
                               }}
-                              className="btn-secondary text-[11px] py-1 px-2.5 inline-flex items-center gap-1 hover:text-violet-600"
-                              title="Duplicate Template"
-                            >
-                              <Copy size={11} />
-                              <span>Reuse</span>
-                            </button>
+                            />
                           </td>
                         </tr>
                       );
@@ -540,26 +539,24 @@ export default function SmsMarketing() {
               </div>
 
               <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-                <button
+                <Button
                   type="button"
+                  variant="neutral"
+                  icon={XCircle}
                   onClick={() => setActiveTab("overview")}
-                  className="btn-secondary text-xs"
                 >
                   Cancel
-                </button>
+                </Button>
 
-                <button
+                <Button
                   type="submit"
+                  variant="primary"
+                  icon={Send}
+                  loading={submitting}
                   disabled={submitting}
-                  className="btn-primary text-xs flex items-center gap-2"
                 >
-                  {submitting ? (
-                    <RefreshCw size={14} className="animate-spin" />
-                  ) : (
-                    <Send size={14} />
-                  )}
-                  <span>{scheduledDate ? "Schedule Campaign" : "Send Campaign Now"}</span>
-                </button>
+                  {scheduledDate ? "Schedule Campaign" : "Send Campaign Now"}
+                </Button>
               </div>
             </form>
           </div>
@@ -644,16 +641,17 @@ export default function SmsMarketing() {
 
                 <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
                   <span className="text-[10px] font-semibold text-slate-400">Target Group</span>
-                  <button
+                  <Button
+                    size="xs"
+                    variant="primary"
+                    icon={ArrowUpRight}
                     onClick={() => {
                       setTargetAudience(seg.id);
                       setActiveTab("create");
                     }}
-                    className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1 hover:border-violet-400 hover:text-violet-700"
                   >
-                    <span>Launch Campaign</span>
-                    <ArrowUpRight size={13} />
-                  </button>
+                    Launch Campaign
+                  </Button>
                 </div>
               </div>
             ))}
@@ -673,10 +671,16 @@ export default function SmsMarketing() {
                 Carrier transmission reports and delivery acknowledgement rates
               </p>
             </div>
-            <button onClick={loadData} className="btn-secondary text-xs">
-              <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
-              <span>Refresh Log</span>
-            </button>
+            <Button
+              size="sm"
+              variant="neutral"
+              icon={RefreshCw}
+              onClick={loadData}
+              disabled={loading}
+              loading={loading}
+            >
+              Refresh Log
+            </Button>
           </div>
 
           <div className="overflow-x-auto">

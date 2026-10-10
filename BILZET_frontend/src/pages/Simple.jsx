@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { Plus, Search, X, ShoppingBag, Truck, Receipt, FolderPlus, CheckCircle2 } from "lucide-react";
+import { Plus, X, ShoppingBag, Truck, Receipt, FolderPlus, CheckCircle2, Search } from "lucide-react";
 import { apiError } from "../api/http";
+import SearchBar from "../components/common/SearchBar";
 
 export default function Simple({ title, api, fields, readOnly = false, note }) {
   const [d, setD] = useState(null);
@@ -43,7 +44,14 @@ export default function Simple({ title, api, fields, readOnly = false, note }) {
     }
   }
 
-  const rows = d?.data?.suppliers || d?.data?.expenses || d?.data?.purchases || [];
+  const rows =
+    d?.data?.suppliers ||
+    d?.data?.expenses ||
+    d?.data?.purchases ||
+    d?.suppliers ||
+    d?.expenses ||
+    d?.purchases ||
+    (Array.isArray(d?.data) ? d.data : Array.isArray(d) ? d : []);
 
   // Filter rows based on search
   const filteredRows = rows.filter((r) => {
@@ -72,26 +80,26 @@ export default function Simple({ title, api, fields, readOnly = false, note }) {
   const TitleIcon = getIcon();
 
   return (
-    <div className="space-y-5 pb-12 fade-up">
+    <div className="space-y-6 pb-12 fade-up">
       {/* ══════════════════════════════════════════════════
           PAGE HEADER
       ══════════════════════════════════════════════════ */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/90 shadow-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/90 shadow-xs">
         <div className="flex items-center gap-3.5">
           <div className="w-11 h-11 rounded-xl border border-blue-100 grid place-items-center text-blue-600 bg-blue-50/70 shadow-2xs shrink-0">
             <TitleIcon size={22} />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+              <h1 className="page-title">
                 {title}
               </h1>
               <span className="text-[11px] font-bold text-blue-700 bg-blue-50 border border-blue-200/80 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                 Operations
               </span>
             </div>
-            <p className="text-xs text-slate-500 font-normal mt-0.5">
-              Live record management and backend synchronization for {title.toLowerCase()}
+            <p className="page-desc">
+              Track, manage, and record {title.toLowerCase()} for your business.
             </p>
           </div>
         </div>
@@ -99,7 +107,7 @@ export default function Simple({ title, api, fields, readOnly = false, note }) {
         {!readOnly && (
           <button
             onClick={() => setOpen(true)}
-            className="btn-primary text-xs py-2 px-4 inline-flex items-center gap-1.5 self-start sm:self-center shadow-xs"
+            className="btn-primary self-start sm:self-center"
           >
             <Plus size={15} strokeWidth={2.5} />
             <span>Add {title.replace(/s$/, "")}</span>
@@ -161,20 +169,15 @@ export default function Simple({ title, api, fields, readOnly = false, note }) {
       ══════════════════════════════════════════════════ */}
       <div className="card overflow-hidden">
         <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white">
-          <div className="relative max-w-sm w-full">
-            <Search
-              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
-              size={15}
-            />
-            <input
+          <div className="max-w-sm w-full">
+            <SearchBar
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={setSearch}
               placeholder={`Search ${title.toLowerCase()}…`}
-              className="w-full pl-9 pr-3.5 py-2 text-xs border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 font-medium bg-slate-50/40"
             />
           </div>
-          <span className="text-xs text-slate-400 font-medium">
-            Showing {filteredRows.length} of {rows.length} records
+          <span className="text-xs text-slate-500 font-medium">
+            Showing <strong className="text-slate-800 font-bold">{filteredRows.length}</strong> of {rows.length} records
           </span>
         </div>
 
@@ -263,7 +266,7 @@ export default function Simple({ title, api, fields, readOnly = false, note }) {
             <form onSubmit={save} className="space-y-3.5 text-xs">
               {fields.map(([k, l]) => (
                 <div key={k}>
-                  <label className="block font-semibold text-slate-700 mb-1">
+                  <label className="form-label">
                     {l} {["name", "title", "phone", "amount"].includes(k) && "*"}
                   </label>
                   <input
@@ -272,7 +275,7 @@ export default function Simple({ title, api, fields, readOnly = false, note }) {
                     step={["amount", "openingBalance"].includes(k) ? "0.01" : undefined}
                     required={["name", "title", "phone", "amount"].includes(k)}
                     placeholder={`Enter ${l.toLowerCase()}`}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 font-medium"
+                    className="form-input"
                   />
                 </div>
               ))}
@@ -281,13 +284,13 @@ export default function Simple({ title, api, fields, readOnly = false, note }) {
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
-                  className="btn-secondary text-xs py-2 px-4"
+                  className="btn-secondary"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="btn-primary text-xs py-2 px-5 font-semibold"
+                  className="btn-primary"
                 >
                   Create {title.replace(/s$/, "")}
                 </button>

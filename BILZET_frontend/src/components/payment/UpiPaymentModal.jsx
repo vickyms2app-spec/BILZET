@@ -11,6 +11,7 @@ import {
   ShieldCheck,
   Smartphone,
 } from "lucide-react";
+import Button, { CompactIconButton } from "../common/Button";
 
 export default function UpiPaymentModal({
   amount = 0,
@@ -90,13 +91,12 @@ export default function UpiPaymentModal({
               <p className="text-[11px] text-slate-400">Scan &amp; Pay via GPay, PhonePe, Paytm</p>
             </div>
           </div>
-          <button
-            type="button"
+          <CompactIconButton
+            icon={X}
+            variant="neutral"
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition"
-          >
-            <X size={16} />
-          </button>
+            title="Close"
+          />
         </div>
 
         {status === "SUCCESS" ? (
@@ -114,13 +114,15 @@ export default function UpiPaymentModal({
             <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80 text-xs font-mono text-slate-600">
               Reference: <strong className="text-slate-900">{utrNumber || "UPI-VERIFIED-TXN"}</strong>
             </div>
-            <button
+            <Button
               type="button"
+              variant="success"
+              icon={CheckCircle2}
               onClick={onClose}
-              className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-xs transition"
+              className="w-full"
             >
               Continue to Print Invoice
-            </button>
+            </Button>
           </div>
         ) : (
           /* Active Payment Flow */
@@ -155,14 +157,14 @@ export default function UpiPaymentModal({
                 </span>
                 <span className="font-mono font-bold text-slate-800">{upiId}</span>
               </div>
-              <button
-                type="button"
+              <Button
+                size="xs"
+                variant="neutral"
+                icon={copied ? CheckCircle2 : Copy}
                 onClick={handleCopyLink}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 text-[11px] font-semibold transition"
               >
-                {copied ? <CheckCircle2 size={12} className="text-emerald-600" /> : <Copy size={12} />}
-                <span>{copied ? "Copied!" : "Copy"}</span>
-              </button>
+                {copied ? "Copied!" : "Copy"}
+              </Button>
             </div>
 
             {/* Manual UTR Reference Input */}
@@ -191,19 +193,17 @@ export default function UpiPaymentModal({
                 <span>Open UPI App</span>
               </a>
 
-              <button
+              <Button
                 type="button"
+                variant="success"
+                icon={CheckCircle2}
                 disabled={status === "VERIFYING"}
+                loading={status === "VERIFYING"}
                 onClick={handleConfirmPayment}
-                className="flex-1 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-xs flex items-center justify-center gap-2 transition"
+                className="flex-1"
               >
-                {status === "VERIFYING" ? (
-                  <RefreshCw size={14} className="animate-spin" />
-                ) : (
-                  <CheckCircle2 size={14} />
-                )}
-                <span>Confirm Payment Received</span>
-              </button>
+                Confirm Payment Received
+              </Button>
             </div>
           </div>
         )}

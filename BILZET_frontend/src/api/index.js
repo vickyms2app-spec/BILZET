@@ -5,6 +5,10 @@ import {
   mockCustomers,
   mockCategories,
   mockInventory,
+  mockTeamMembers,
+  mockRoles,
+  mockPermissionsCatalog,
+  mockSubscriptionUsage,
 } from "./mockData";
 
 const unwrap = (r) => r.data.data;
@@ -42,9 +46,9 @@ export const productsApi = {
 };
 
 export const categoriesApi = {
-  list: () =>
+  list: (params) =>
     withFallback(
-      http.get("/categories").then(unwrap),
+      http.get("/categories", { params }).then(unwrap),
       { categories: mockCategories }
     ),
   create: (p) => http.post("/categories", p).then(unwrap),
@@ -63,16 +67,23 @@ export const customersApi = {
   update: (id, p) => http.patch(`/customers/${id}`, p).then(unwrap),
   purchases: (id, p) =>
     http.get(`/customers/${id}/purchases`, { params: p }).then((r) => r.data),
+  payments: (id, p) =>
+    http.get(`/customers/${id}/payments`, { params: p }).then((r) => r.data),
 };
 
 export const salesApi = {
   list: (p) => http.get("/sales", { params: p }).then((r) => r.data),
+  mySales: (p) => http.get("/sales/my", { params: p }).then((r) => r.data),
   get: (id) => http.get(`/sales/${id}`).then(unwrap),
   create: (p) => http.post("/sales", p).then(unwrap),
   return: (id, p) => http.post(`/sales/${id}/return`, p).then(unwrap),
+  recordPayment: (id, p) => http.post(`/sales/${id}/payment`, p).then(unwrap),
+  auditTrail: (id) => http.get(`/sales/${id}/audit-trail`).then(unwrap),
   returns: () => withFallback(http.get("/sales/returns").then(unwrap), []),
   challans: () => withFallback(http.get("/sales/challans").then(unwrap), []),
   createChallan: (p) => http.post("/sales/challans", p).then(unwrap),
+  paymentsInList: (p) =>
+    withFallback(http.get("/sales/payments-in", { params: p }).then(unwrap), { payments: [] }),
   paymentIn: (p) => http.post("/sales/payments-in", p).then(unwrap),
 };
 
@@ -84,12 +95,12 @@ export const inventoryApi = {
   list: (p) =>
     withFallback(
       http.get("/inventory", { params: p }).then((r) => r.data),
-      { data: { inventory: mockInventory }, total: mockInventory.length }
+      { data: { inventory: mockProducts }, total: mockProducts.length }
     ),
   low: (p) =>
     withFallback(
       http.get("/inventory/low-stock", { params: p }).then((r) => r.data),
-      { data: { inventory: mockInventory.filter((i) => i.stock <= i.minimumStock) } }
+      { data: { inventory: mockProducts.filter((i) => (i.stock || 0) <= (i.minimumStock || 5)) } }
     ),
   history: (p) =>
     withFallback(
@@ -120,7 +131,7 @@ export const suppliersApi = {
 };
 
 export const purchasesApi = {
-  list: (p) => withFallback(http.get("/purchases", { params: p }).then((r) => r.data), { purchases: [] }),
+  list: (p) => withFallback(http.get("/purchases", { params: p }).then(unwrap), { purchases: [] }),
   get: (id) => http.get(`/purchases/${id}`).then(unwrap),
   create: (p) => http.post("/purchases", p).then(unwrap),
   orders: (p) => withFallback(http.get("/purchases/orders", { params: p }).then(unwrap), { purchaseOrders: [] }),
@@ -132,13 +143,19 @@ export const purchasesApi = {
 };
 
 export const staffApi = {
-  list: () => withFallback(http.get("/staff").then(unwrap), { staff: [] }),
+  list: (p) => withFallback(http.get("/staff", { params: p }).then(unwrap), { staff: [] }),
   create: (p) => http.post("/staff", p).then(unwrap),
   update: (id, p) => http.patch(`/staff/${id}`, p).then(unwrap),
   remove: (id) => http.delete(`/staff/${id}`).then(unwrap),
-  attendance: () => withFallback(http.get("/staff/attendance").then(unwrap), { attendances: [] }),
+  attendance: (params) => withFallback(http.get("/staff/attendance", { params }).then(unwrap), { attendances: [] }),
   markAttendance: (p) => http.post("/staff/attendance", p).then(unwrap),
-  payroll: () => withFallback(http.get("/staff/payroll").then(unwrap), { payrolls: [] }),
+  updateAttendance: (id, p) => http.patch(`/staff/attendance/${id}`, p).then(unwrap),
+  deleteAttendance: (id) => http.delete(`/staff/attendance/${id}`).then(unwrap),
+  checkInSelf: () => http.post("/staff/attendance/check-in").then(unwrap),
+  checkOutSelf: () => http.post("/staff/attendance/check-out").then(unwrap),
+  getMyAttendanceToday: () => withFallback(http.get("/staff/attendance/me").then(unwrap), null),
+  getMyAttendanceHistory: (params) => withFallback(http.get("/staff/attendance/history", { params }).then(unwrap), { attendances: [] }),
+  payroll: (params) => withFallback(http.get("/staff/payroll", { params }).then(unwrap), { payrolls: [] }),
   generatePayroll: (p) => http.post("/staff/payroll", p).then(unwrap),
 };
 
@@ -198,9 +215,92 @@ export const settingsApi = {
 };
 
 export const usersApi = {
-  list: () => http.get("/users").then(unwrap),
+  list: (p) =>
+    withFallback(
+      http.get("/users", { params: p }).then(unwrap),
+      { users: mockTeamMembers, usage: mockSubscriptionUsage }
+    ),
+  get: (id) => http.get(`/users/${id}`).then(unwrap),
+  create: (p) => http.post("/users", p).then(unwrap),
   update: (id, p) => http.patch(`/users/${id}`, p).then(unwrap),
+  toggleStatus: (id, isActive) => http.patch(`/users/${id}/status`, { isActive }).then(unwrap),
   remove: (id) => http.delete(`/users/${id}`).then(unwrap),
+  getPermissions: (id) =>
+    withFallback(
+      http.get(`/users/${id}/permissions`).then(unwrap),
+      { permissions: mockPermissionsCatalog.permissions }
+    ),
+  updatePermissions: (id, overrides) => http.patch(`/users/${id}/permissions`, { overrides }).then(unwrap),
+};
+
+export const teamApi = usersApi;
+
+export const subscriptionApi = {
+  getStatus: () =>
+    withFallback(http.get("/subscription/status").then(unwrap), {
+      planTier: "FREE",
+      actualPlanTier: "FREE",
+      planName: "Free Starter",
+      status: "ACTIVE",
+      isActive: true,
+      isExpired: false,
+      currentPlan: "FREE",
+    }),
+  getPlans: () => http.get("/subscription/plans").then(unwrap),
+  getUsage: () =>
+    withFallback(http.get("/subscription/usage").then(unwrap), {
+      planTier: "FREE",
+      planName: "Free Starter",
+      usedSeats: 0,
+      maxSeats: 1,
+      remainingSeats: 0,
+      canAddUser: false,
+    }),
+  upgrade: (p) => http.post("/subscription/upgrade", p).then(unwrap),
+  cancel: () => http.post("/subscription/cancel").then(unwrap),
+};
+
+export const rolesApi = {
+  list: () =>
+    withFallback(
+      http.get("/roles").then(unwrap),
+      { roles: mockRoles }
+    ),
+  permissionsCatalog: () =>
+    withFallback(
+      http.get("/roles/permissions").then(unwrap),
+      mockPermissionsCatalog
+    ),
+  create: (p) => http.post("/roles", p).then(unwrap),
+  update: (id, p) => http.patch(`/roles/${id}`, p).then(unwrap),
+  remove: (id) => http.delete(`/roles/${id}`).then(unwrap),
+};
+
+export const subscriptionUsageApi = {
+  get: () =>
+    withFallback(
+      http.get("/subscription/usage").then(unwrap),
+      mockSubscriptionUsage
+    ),
+};
+
+export const caConnectApi = {
+  getStatus: () => http.get("/ca-connect/status").then(unwrap),
+  list: () => http.get("/ca-connect/accountants").then(unwrap),
+  invite: (p) => http.post("/ca-connect/invite", p).then(unwrap),
+  remove: (id) => http.delete(`/ca-connect/invite/${id}`).then(unwrap),
+};
+
+export const referralApi = {
+  getInfo: () => http.get("/referral/info").then(unwrap),
+  validate: (code) => http.get("/referral/validate", { params: { code } }).then(unwrap),
+  apply: (code) => http.post("/referral/apply", { code }).then(unwrap),
+};
+
+export const storesApi = {
+  list: () => http.get("/stores").then(unwrap),
+  switch: (storeId) => http.post("/stores/switch", { storeId }).then(unwrap),
+  create: (p) => http.post("/stores", p).then(unwrap),
 };
 
 export const superAdminApi = {
@@ -214,3 +314,14 @@ export const superAdminApi = {
   getConfig: () => http.get("/super-admin/config").then(unwrap),
   updateConfig: (data) => http.patch("/super-admin/config", data).then(unwrap),
 };
+
+export const caPortalApi = {
+  getStores: () => http.get("/ca-portal/stores").then(unwrap),
+  getInvoices: (params) => http.get("/ca-portal/invoices", { params }).then(unwrap),
+  getInvoice: (id) => http.get(`/ca-portal/invoices/${id}`).then(unwrap),
+  getAuditTrail: (id) => http.get(`/ca-portal/invoices/${id}/audit-trail`).then(unwrap),
+  getFinancialSummary: (params) => http.get("/ca-portal/financial-summary", { params }).then(unwrap),
+  getCreditNotes: (params) => http.get("/ca-portal/credit-notes", { params }).then(unwrap),
+  getInvoiceCreditNotes: (id) => http.get(`/ca-portal/invoices/${id}/credit-notes`).then(unwrap),
+};
+

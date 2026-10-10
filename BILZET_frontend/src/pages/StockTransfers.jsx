@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import {
   ArrowRightLeft,
   Plus,
-  Search,
   CheckCircle2,
   AlertTriangle,
   History,
@@ -14,6 +13,9 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { warehousesApi, productsApi } from "../api";
+import { apiError } from "../api/http";
+import SearchBar from "../components/common/SearchBar";
+import Button, { CompactIconButton } from "../components/common/Button";
 
 export default function StockTransfers() {
   const [transfers, setTransfers] = useState([]);
@@ -22,6 +24,16 @@ export default function StockTransfers() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+
+  // Active Store Display
+  const [activeStoreName, setActiveStoreName] = useState(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem("bilzet_active_store") || "null");
+      return stored?.name || stored?.shopName || "Default Store";
+    } catch (_) {
+      return "Default Store";
+    }
+  });
 
   // Transfer Modal
   const [showModal, setShowModal] = useState(false);
@@ -58,6 +70,25 @@ export default function StockTransfers() {
 
   useEffect(() => {
     loadData();
+
+    const handleSync = () => {
+      loadData();
+      try {
+        const stored = JSON.parse(localStorage.getItem("bilzet_active_store") || "null");
+        if (stored?.name || stored?.shopName) {
+          setActiveStoreName(stored.name || stored.shopName);
+        }
+      } catch (_) {}
+    };
+
+    window.addEventListener("bilzet:store-changed", handleSync);
+    window.addEventListener("bilzet:inventory-changed", handleSync);
+    window.addEventListener("bilzet:products-changed", handleSync);
+    return () => {
+      window.removeEventListener("bilzet:store-changed", handleSync);
+      window.removeEventListener("bilzet:inventory-changed", handleSync);
+      window.removeEventListener("bilzet:products-changed", handleSync);
+    };
   }, []);
 
   const handleCreateTransfer = async (e) => {
@@ -101,10 +132,11 @@ export default function StockTransfers() {
         quantity: 1,
         notes: "",
       });
+      window.dispatchEvent(new CustomEvent("bilzet:inventory-changed"));
       loadData();
       setTimeout(() => setSuccessMsg(""), 4000);
     } catch (err) {
-      setErrorMsg(err.response?.data?.error || err.message || "Failed to transfer stock");
+      setErrorMsg(apiError(err));
     } finally {
       setSubmitting(false);
     }
@@ -130,31 +162,38 @@ export default function StockTransfers() {
   return (
     <div className="space-y-6 max-w-7xl mx-auto fade-up">
       {/* ── Page Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shrink-0">
-            <ArrowRightLeft size={24} />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/90 shadow-xs">
+        <div className="flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shrink-0 shadow-2xs">
+            <ArrowRightLeft size={22} />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-800 tracking-tight">
-              Stock Transfers
-            </h1>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <div className="flex items-center gap-2.5">
+              <h1 className="page-title">
+                Stock Transfers
+              </h1>
+              <span className="badge badge-info uppercase tracking-wider flex items-center gap-1">
+                <Building2 size={11} />
+                <span>{activeStoreName}</span>
+              </span>
+            </div>
+            <p className="page-desc">
               Transfer stock between your godowns and track transfer history.
             </p>
           </div>
         </div>
 
-        <button
+        <Button
+          variant="primary"
+          icon={Plus}
           onClick={() => {
             setErrorMsg("");
             setShowModal(true);
           }}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 transition shadow-2xs self-start sm:self-center"
+          className="self-start sm:self-center"
         >
-          <Plus size={15} strokeWidth={2.5} />
-          <span>New Stock Transfer</span>
-        </button>
+          New Stock Transfer
+        </Button>
       </div>
 
       {/* ── Notifications ── */}
@@ -172,30 +211,27 @@ export default function StockTransfers() {
       )}
 
       {/* ── Search Bar & Filter ── */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-xs">
-        <div className="relative w-full sm:w-80">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs">
+        <div className="w-full sm:w-80">
+          <SearchBar
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search transfer records, products or godowns..."
-            className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
+            onChange={setSearch}
+            placeholder="Search transfers, products or godowns..."
           />
         </div>
 
-        <div className="flex items-center gap-2 self-end sm:self-center">
+        <div className="flex items-center gap-3 self-end sm:self-center">
           <span className="text-xs text-slate-500 font-medium">
-            Total Transfers: <strong className="text-slate-800">{filteredTransfers.length}</strong>
+            Total Transfers: <strong className="text-slate-800 font-bold">{filteredTransfers.length}</strong>
           </span>
-          <button
+          <CompactIconButton
+            icon={RefreshCw}
+            variant="neutral"
+            title="Refresh transfer history"
             onClick={loadData}
             disabled={loading}
-            className="p-2 border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-600 transition"
-            title="Refresh transfer history"
-          >
-            <RefreshCw size={13} className={loading ? "animate-spin text-blue-600" : ""} />
-          </button>
+            className={loading ? "animate-spin text-blue-600" : ""}
+          />
         </div>
       </div>
 
@@ -214,13 +250,15 @@ export default function StockTransfers() {
           <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
             Easily move inventory items between different godown locations with atomic balance validation.
           </p>
-          <button
-            onClick={() => setShowModal(true)}
-            className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 transition"
-          >
-            <Plus size={14} />
-            <span>Create First Transfer</span>
-          </button>
+          <div className="mt-4 flex justify-center">
+            <Button
+              variant="primary"
+              icon={Plus}
+              onClick={() => setShowModal(true)}
+            >
+              Create First Transfer
+            </Button>
+          </div>
         </div>
       ) : (
         <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
@@ -298,25 +336,23 @@ export default function StockTransfers() {
                   <p className="text-[11px] text-slate-500">Atomically move stock between godowns</p>
                 </div>
               </div>
-              <button
+              <CompactIconButton
+                icon={X}
+                variant="neutral"
                 onClick={() => setShowModal(false)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100"
-              >
-                <X size={16} />
-              </button>
+                title="Close"
+              />
             </div>
 
-            <form onSubmit={handleCreateTransfer} className="p-5 space-y-4">
+            <form onSubmit={handleCreateTransfer} className="p-5 space-y-4 text-xs">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">
-                    Source Godown *
-                  </label>
+                  <label className="form-label">Source Godown *</label>
                   <select
                     required
                     value={form.sourceWarehouseId}
                     onChange={(e) => setForm({ ...form, sourceWarehouseId: e.target.value })}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium"
+                    className="form-select font-medium"
                   >
                     <option value="">Select Origin...</option>
                     {warehouses.map((w) => (
@@ -328,14 +364,12 @@ export default function StockTransfers() {
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">
-                    Destination Godown *
-                  </label>
+                  <label className="form-label">Destination Godown *</label>
                   <select
                     required
                     value={form.destinationWarehouseId}
                     onChange={(e) => setForm({ ...form, destinationWarehouseId: e.target.value })}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium"
+                    className="form-select font-medium"
                   >
                     <option value="">Select Destination...</option>
                     {warehouses
@@ -350,14 +384,12 @@ export default function StockTransfers() {
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">
-                  Product Item *
-                </label>
+                <label className="form-label">Product Item *</label>
                 <select
                   required
                   value={form.productId}
                   onChange={(e) => setForm({ ...form, productId: e.target.value })}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium"
+                  className="form-select font-medium"
                 >
                   <option value="">Select Product...</option>
                   {products.map((p) => (
@@ -369,47 +401,46 @@ export default function StockTransfers() {
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">
-                  Quantity to Transfer *
-                </label>
+                <label className="form-label">Quantity to Transfer *</label>
                 <input
                   type="number"
                   min="1"
                   required
                   value={form.quantity}
                   onChange={(e) => setForm({ ...form, quantity: Math.max(1, parseInt(e.target.value) || 1) })}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono font-bold"
+                  className="form-input font-mono font-bold"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">
-                  Transfer Reference / Notes
-                </label>
+                <label className="form-label">Transfer Reference / Notes</label>
                 <input
                   type="text"
                   value={form.notes}
                   onChange={(e) => setForm({ ...form, notes: e.target.value })}
                   placeholder="e.g. Inter-branch replenishment, shelf restock"
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                  className="form-input"
                 />
               </div>
 
-              <div className="pt-2 flex items-center justify-end gap-2">
-                <button
+              <div className="pt-2 flex items-center justify-end gap-2.5">
+                <Button
                   type="button"
+                  variant="neutral"
+                  icon={X}
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition"
                 >
                   Cancel
-                </button>
-                <button
+                </Button>
+                <Button
                   type="submit"
+                  variant="primary"
+                  icon={ArrowRightLeft}
+                  loading={submitting}
                   disabled={submitting}
-                  className="px-4 py-2 text-xs font-semibold bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition shadow-xs disabled:opacity-50"
                 >
-                  {submitting ? "Processing Transfer..." : "Confirm & Transfer"}
-                </button>
+                  Confirm & Transfer
+                </Button>
               </div>
             </form>
           </div>

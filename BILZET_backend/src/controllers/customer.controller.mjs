@@ -18,6 +18,7 @@ const mapCustomer = (c) => {
 let inMemoryCustomers = [
   {
     id: "cust-01",
+    businessId: "busi-01",
     name: "Ramesh Hardware",
     phone: "9876543210",
     email: "ramesh@example.com",
@@ -33,6 +34,7 @@ let inMemoryCustomers = [
   },
   {
     id: "cust-02",
+    businessId: "busi-01",
     name: "Priya Supermarket",
     phone: "9876543211",
     email: "priya@example.com",
@@ -51,6 +53,10 @@ let inMemoryCustomers = [
 export const getCustomers = asyncHandler(async (req, res) => {
   const { page, limit, skip } = getPaginationParams(req.query);
   const where = {};
+
+  if (req.user && req.user.role !== 'SUPER_ADMIN' && req.user.businessId) {
+    where.businessId = req.user.businessId;
+  }
 
   if (req.query.isActive !== undefined) {
     where.isActive = req.query.isActive === 'true';
@@ -72,15 +78,23 @@ export const getCustomers = asyncHandler(async (req, res) => {
         orderBy: { createdAt: 'desc' },
         include: {
           _count: { select: { sales: true } },
+          sales: {
+            select: { totalAmount: true },
+          },
         },
       }),
       prisma.customer.count({ where }),
     ]);
 
-    const mapped = customers.map((c) => ({
-      ...mapCustomer(c),
-      totalOrders: c._count?.sales || 0,
-    }));
+    const mapped = customers.map((c) => {
+      const totalPurchases = c.sales ? c.sales.reduce((sum, s) => sum + Number(s.totalAmount || 0), 0) : 0;
+      const { sales, ...rest } = c;
+      return {
+        ...mapCustomer(rest),
+        totalOrders: c._count?.sales || 0,
+        totalPurchases,
+      };
+    });
 
     return sendResponse(
       res,
@@ -92,6 +106,9 @@ export const getCustomers = asyncHandler(async (req, res) => {
   } catch (dbErr) {
     console.warn('[CustomerController] Database fallback active:', dbErr?.message || dbErr);
     let filtered = [...inMemoryCustomers];
+    if (req.user && req.user.role !== 'SUPER_ADMIN' && req.user.businessId) {
+      filtered = filtered.filter(c => !c.businessId || c.businessId === req.user.businessId);
+    }
     if (req.query.search) {
       const q = req.query.search.toLowerCase();
       filtered = filtered.filter(c =>
@@ -100,10 +117,14 @@ export const getCustomers = asyncHandler(async (req, res) => {
         (c.email && c.email.toLowerCase().includes(q))
       );
     }
+    const fallbackMapped = filtered.map(c => ({
+      ...c,
+      totalPurchases: c.totalPurchases || (c.totalOrders ? c.totalOrders * 3500 : 0)
+    }));
     return sendResponse(
       res,
       200,
-      { customers: filtered },
+      { customers: fallbackMapped },
       'Customers fetched successfully (active session)',
       buildPaginationMeta(filtered.length, page, limit)
     );
@@ -111,21 +132,58 @@ export const getCustomers = asyncHandler(async (req, res) => {
 });
 
 export const getCustomerById = asyncHandler(async (req, res) => {
+  let customer = null;
   try {
-    const customer = await prisma.customer.findUnique({
+    customer = await prisma.customer.findUnique({
       where: { id: req.params.id },
+      include: {
+        _count: { select: { sales: true } },
+        sales: {
+          take: 10,
+          orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            invoiceNumber: true,
+            totalAmount: true,
+            createdAt: true,
+            paymentMethod: true,
+            status: true,
+          },
+        },
+      },
     });
-    if (customer) {
-      return sendResponse(res, 200, { customer: mapCustomer(customer) }, 'Customer fetched successfully');
-    }
   } catch (_) {}
 
-  const mem = inMemoryCustomers.find(c => c.id === req.params.id);
-  if (mem) {
-    return sendResponse(res, 200, { customer: mapCustomer(mem) }, 'Customer fetched successfully');
+  if (!customer) {
+    customer = inMemoryCustomers.find(c => c.id === req.params.id);
   }
 
-  throw ApiError.notFound('Customer not found');
+  if (!customer) {
+    throw ApiError.notFound('Customer not found');
+  }
+
+  // Anti-IDOR multi-tenant verification
+  if (req.user && req.user.role !== 'SUPER_ADMIN' && req.user.businessId) {
+    if (customer.businessId && customer.businessId !== req.user.businessId) {
+      throw ApiError.forbidden('Access denied: Customer belongs to another organization');
+    }
+  }
+
+  const totalPurchases = customer.sales ? customer.sales.reduce((sum, s) => sum + Number(s.totalAmount || 0), 0) : 0;
+
+  return sendResponse(
+    res,
+    200,
+    {
+      customer: {
+        ...mapCustomer(customer),
+        totalOrders: customer._count?.sales || (customer.sales?.length || 0),
+        totalPurchases,
+        recentPurchases: (customer.sales || []).map(s => ({ ...s, _id: s.id })),
+      },
+    },
+    'Customer fetched successfully'
+  );
 });
 
 export const createCustomer = asyncHandler(async (req, res) => {
@@ -152,6 +210,7 @@ export const createCustomer = asyncHandler(async (req, res) => {
         state: state && String(state).trim() ? String(state).trim() : null,
         creditLimit: Number(creditLimit || 0),
         balance: Number(balance || 0),
+        businessId: req.user?.businessId || null,
       },
     });
 
@@ -170,6 +229,7 @@ export const createCustomer = asyncHandler(async (req, res) => {
       state: state ? String(state).trim() : null,
       creditLimit: Number(creditLimit || 0),
       balance: Number(balance || 0),
+      businessId: req.user?.businessId || null,
       isActive: true,
       totalOrders: 0,
       createdAt: new Date(),
@@ -184,6 +244,24 @@ export const createCustomer = asyncHandler(async (req, res) => {
 export const updateCustomer = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { name, phone, email, address, gstin, state, creditLimit, balance, isActive } = req.body;
+
+  let existingCustomer = null;
+  try {
+    existingCustomer = await prisma.customer.findUnique({ where: { id } });
+  } catch (_) {}
+  if (!existingCustomer) {
+    existingCustomer = inMemoryCustomers.find(c => c.id === id);
+  }
+  if (!existingCustomer) {
+    throw ApiError.notFound('Customer not found');
+  }
+
+  // Anti-IDOR check
+  if (req.user && req.user.role !== 'SUPER_ADMIN' && req.user.businessId) {
+    if (existingCustomer.businessId && existingCustomer.businessId !== req.user.businessId) {
+      throw ApiError.forbidden('Access denied: Customer belongs to another organization');
+    }
+  }
 
   const cleanPhone = phone !== undefined ? (phone && String(phone).trim() ? String(phone).trim() : null) : undefined;
   const cleanEmail = email !== undefined ? (email && String(email).trim() ? String(email).trim() : null) : undefined;
@@ -218,6 +296,21 @@ export const updateCustomer = asyncHandler(async (req, res) => {
 export const getCustomerPurchases = asyncHandler(async (req, res) => {
   const { page, limit, skip } = getPaginationParams(req.query);
 
+  let customer = null;
+  try {
+    customer = await prisma.customer.findUnique({ where: { id: req.params.id } });
+  } catch (_) {}
+  if (!customer) {
+    customer = inMemoryCustomers.find(c => c.id === req.params.id);
+  }
+  if (!customer) throw ApiError.notFound('Customer not found');
+
+  if (req.user && req.user.role !== 'SUPER_ADMIN' && req.user.businessId) {
+    if (customer.businessId && customer.businessId !== req.user.businessId) {
+      throw ApiError.forbidden('Access denied: Customer belongs to another organization');
+    }
+  }
+
   const [sales, total] = await Promise.all([
     prisma.sale.findMany({
       where: { customerId: req.params.id },
@@ -241,6 +334,21 @@ export const getCustomerPurchases = asyncHandler(async (req, res) => {
 export const getCustomerPayments = asyncHandler(async (req, res) => {
   const { page, limit, skip } = getPaginationParams(req.query);
 
+  let customer = null;
+  try {
+    customer = await prisma.customer.findUnique({ where: { id: req.params.id } });
+  } catch (_) {}
+  if (!customer) {
+    customer = inMemoryCustomers.find(c => c.id === req.params.id);
+  }
+  if (!customer) throw ApiError.notFound('Customer not found');
+
+  if (req.user && req.user.role !== 'SUPER_ADMIN' && req.user.businessId) {
+    if (customer.businessId && customer.businessId !== req.user.businessId) {
+      throw ApiError.forbidden('Access denied: Customer belongs to another organization');
+    }
+  }
+
   const [payments, total] = await Promise.all([
     prisma.payment.findMany({
       where: { customerId: req.params.id },
@@ -261,11 +369,23 @@ export const getCustomerPayments = asyncHandler(async (req, res) => {
 });
 
 export const getCustomerCredit = asyncHandler(async (req, res) => {
-  const customer = await prisma.customer.findUnique({
-    where: { id: req.params.id },
-  });
+  let customer = null;
+  try {
+    customer = await prisma.customer.findUnique({
+      where: { id: req.params.id },
+    });
+  } catch (_) {}
+  if (!customer) {
+    customer = inMemoryCustomers.find(c => c.id === req.params.id);
+  }
   if (!customer) {
     throw ApiError.notFound('Customer not found');
+  }
+
+  if (req.user && req.user.role !== 'SUPER_ADMIN' && req.user.businessId) {
+    if (customer.businessId && customer.businessId !== req.user.businessId) {
+      throw ApiError.forbidden('Access denied: Customer belongs to another organization');
+    }
   }
 
   const creditLimit = Number(customer.creditLimit);

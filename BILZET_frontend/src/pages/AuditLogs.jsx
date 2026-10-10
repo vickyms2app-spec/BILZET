@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import {
   History,
-  Search,
   Filter,
   RefreshCw,
   Shield,
@@ -12,6 +11,8 @@ import {
   Lock,
 } from "lucide-react";
 import { auditLogsApi } from "../api";
+import SearchBar from "../components/common/SearchBar";
+import Button from "../components/common/Button";
 
 export default function AuditLogs() {
   const [logs, setLogs] = useState([]);
@@ -47,32 +48,34 @@ export default function AuditLogs() {
   return (
     <div className="space-y-6 max-w-7xl mx-auto fade-up">
       {/* ── Page Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center shrink-0">
-            <History size={24} />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/90 shadow-xs">
+        <div className="flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-xl bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center shrink-0 shadow-2xs">
+            <History size={22} />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-800 tracking-tight">
-              Audit Trail & Security Log
+            <h1 className="page-title">
+              Audit Trail &amp; Security Log
             </h1>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Immutable activity records tracking financial actions, stock updates and user sessions
+            <p className="page-desc">
+              Immutable activity records tracking financial actions, stock updates and user sessions.
             </p>
           </div>
         </div>
 
-        <button
+        <Button
+          variant="neutral"
+          size="sm"
+          icon={RefreshCw}
+          loading={loading}
           onClick={loadData}
-          className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition shadow-2xs self-start sm:self-auto"
         >
-          <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
-          <span>Refresh Feed</span>
-        </button>
+          Refresh Feed
+        </Button>
       </div>
 
       {/* ── Filter & Search Bar ── */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-b border-slate-200/80 pb-3">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs">
         <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto p-1 bg-slate-100/80 rounded-xl border border-slate-200/60">
           {[
             { id: "ALL", label: "All Modules" },
@@ -87,7 +90,7 @@ export default function AuditLogs() {
               onClick={() => setFilterModule(m.id)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition ${
                 filterModule === m.id
-                  ? "bg-white text-slate-800 shadow-2xs"
+                  ? "bg-white text-slate-800 shadow-2xs font-bold"
                   : "text-slate-500 hover:text-slate-800"
               }`}
             >
@@ -96,14 +99,11 @@ export default function AuditLogs() {
           ))}
         </div>
 
-        <div className="relative w-full sm:w-64">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
+        <div className="w-full sm:w-72">
+          <SearchBar
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search action or user..."
-            className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition"
+            onChange={setSearch}
+            placeholder="Search action, user, details..."
           />
         </div>
       </div>

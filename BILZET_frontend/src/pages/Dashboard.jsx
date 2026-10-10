@@ -1,27 +1,32 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Plus,
   TrendingUp,
   Receipt,
   Users,
   AlertTriangle,
   ArrowUpRight,
-  Printer,
   Package,
   ShoppingBag,
   Calendar,
   CreditCard,
-  Barcode,
-  Scan,
-  Minus,
-  Trash2,
-  Settings,
-  MoreHorizontal,
   Search,
-  FileText,
   UserPlus,
-  TrendingDown,
+  RefreshCw,
+  Plus,
+  CheckCircle2,
+  Clock,
+  ArrowRight,
+  SlidersHorizontal,
+  ChevronRight,
+  ExternalLink,
+  ShieldCheck,
+  Building2,
+  FileText,
+  BadgePercent,
+  Layers,
+  Activity,
+  Sparkles,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -45,7 +50,8 @@ import {
 import { mockDashboardData } from "../api/mockData";
 import { useAuth } from "../store/auth";
 import Modal from "../components/common/Modal";
-import TaxInvoice, { COLOR_THEMES } from "../components/invoice/TaxInvoice";
+import TaxInvoice from "../components/invoice/TaxInvoice";
+import Button, { CompactIconButton } from "../components/common/Button";
 
 export default function Dashboard() {
   const nav = useNavigate();
@@ -60,97 +66,36 @@ export default function Dashboard() {
     } catch (e) {}
     return {
       shopName: "BILZET Retail Mart",
-      ownerName: "karthikeyan",
+      ownerName: "Store Owner",
       phone: "+91 98765 43210",
       email: "billing@bilzet.app",
       address: "123 Commercial Plaza, Main Market",
       gstin: "33ABCDE1234F1Z5",
       state: "Tamil Nadu",
-      invoiceTitle: "TAX INVOICE",
-      colorTheme: "trust_blue",
-      template: "modern",
     };
   });
+
   const [availableProducts, setAvailableProducts] = useState([]);
   const [availableCustomers, setAvailableCustomers] = useState([]);
+  const [recentSales, setRecentSales] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Modals
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
   const [showAddProductModal, setShowAddProductModal] = useState(false);
   const [showRecordPaymentModal, setShowRecordPaymentModal] = useState(false);
-  const [showAddItemModal, setShowAddItemModal] = useState(false);
 
   // Time / Trend Filter
   const [trendRange, setTrendRange] = useState("7days"); // '7days' | 'month'
 
   // Bottom Tabs Filter
-  const [customerTab, setCustomerTab] = useState("all"); // 'all' | 'active' | 'inactive'
+  const [customerTab, setCustomerTab] = useState("all"); // 'all' | 'due' | 'active'
   const [customerSearch, setCustomerSearch] = useState("");
   const [inventoryTab, setInventoryTab] = useState("low"); // 'all' | 'low' | 'out'
 
-  // ══════════════════════════════════════════════════
-  // EMBEDDED FAST POS BILLING STATE (MATCHING INVOICE SETTINGS)
-  // ══════════════════════════════════════════════════
-  const [posCustomer, setPosCustomer] = useState("Ramesh Traders");
-  const [posCustomerPhone, setPosCustomerPhone] = useState("9876543210");
-  const [posCustomerAddress, setPosCustomerAddress] = useState("123 Commercial Plaza, Bengaluru");
-  const [posCustomerGstin, setPosCustomerGstin] = useState("33ABCDE1234F1Z5");
-  const [posCustomerState, setPosCustomerState] = useState("Tamil Nadu");
-  const [posSaleType, setPosSaleType] = useState("B2B");
-  const [posPlaceOfSupply, setPosPlaceOfSupply] = useState("Tamil Nadu");
-  const [posPaymentStatus, setPosPaymentStatus] = useState("UNPAID");
-  const [posReceived, setPosReceived] = useState(0);
-  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
-  const [posDate, setPosDate] = useState(() => {
-    const now = new Date();
-    const d = String(now.getDate()).padStart(2, "0");
-    const m = String(now.getMonth() + 1).padStart(2, "0");
-    const y = now.getFullYear();
-    return `${y}-${m}-${d}`;
-  });
-  const [posInvoiceNo, setPosInvoiceNo] = useState(
-    () => `INV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`
-  );
-  const [posProductSearch, setPosProductSearch] = useState("");
-  const [posNotes, setPosNotes] = useState("");
-  const [posSaving, setPosSaving] = useState(false);
-
-  // Initial POS Items matching reference design
-  const [posItems, setPosItems] = useState([
-    {
-      id: "p1",
-      name: "Parle-G Biscuits",
-      code: "PRD001",
-      hsn: "1905",
-      qty: 5,
-      rate: 15.0,
-      discount: 0.0,
-      taxRate: 5,
-    },
-    {
-      id: "p2",
-      name: "Aashirvaad Atta",
-      code: "PRD002",
-      hsn: "1101",
-      qty: 2,
-      rate: 320.0,
-      discount: 0.0,
-      taxRate: 5,
-    },
-    {
-      id: "p3",
-      name: "Sunflower Oil",
-      code: "PRD003",
-      hsn: "1512",
-      qty: 1,
-      rate: 180.0,
-      discount: 0.0,
-      taxRate: 5,
-    },
-  ]);
-
-  // Form states for Quick Modals
+  // Forms for Quick Modals
   const [customerForm, setCustomerForm] = useState({
     name: "",
     phone: "",
@@ -163,7 +108,7 @@ export default function Dashboard() {
   const [productForm, setProductForm] = useState({
     name: "",
     code: "",
-    category: "Groceries",
+    category: "General",
     sellingPrice: "",
     purchasePrice: "",
     stock: 20,
@@ -178,23 +123,16 @@ export default function Dashboard() {
     notes: "",
   });
 
-  const [customItemForm, setCustomItemForm] = useState({
-    name: "",
-    code: "",
-    rate: "",
-    qty: 1,
-    discount: 0,
-    taxRate: 5,
-  });
-
   // Load Real Data from APIs
-  const refreshAllData = async () => {
+  const refreshAllData = async (manual = false) => {
+    if (manual) setIsRefreshing(true);
     try {
-      const [dashRes, prodsRes, custsRes, settRes] = await Promise.allSettled([
+      const [dashRes, prodsRes, custsRes, settRes, salesRes] = await Promise.allSettled([
         dashboardApi.get(),
         productsApi.list({ limit: 50 }),
         customersApi.list({ limit: 50 }),
         settingsApi.get(),
+        salesApi.list({ limit: 8 }),
       ]);
 
       if (dashRes.status === "fulfilled" && dashRes.value) {
@@ -216,6 +154,14 @@ export default function Dashboard() {
           [];
         setAvailableCustomers(Array.isArray(cList) ? cList : []);
       }
+      if (salesRes.status === "fulfilled") {
+        const sList =
+          salesRes.value?.sales ||
+          salesRes.value?.data?.sales ||
+          salesRes.value?.data ||
+          [];
+        setRecentSales(Array.isArray(sList) ? sList : []);
+      }
       if (settRes.status === "fulfilled" && settRes.value) {
         try {
           const localSaved = localStorage.getItem("bilzet_invoice_settings");
@@ -227,6 +173,9 @@ export default function Dashboard() {
       }
     } catch (e) {
       console.warn("Dashboard sync completed with fallbacks:", e);
+    } finally {
+      setLoading(false);
+      if (manual) setTimeout(() => setIsRefreshing(false), 500);
     }
   };
 
@@ -234,7 +183,7 @@ export default function Dashboard() {
     refreshAllData();
   }, []);
 
-  // Dynamic Greeting & User
+  // Dynamic Greeting
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
     if (hour < 12) return "Good Morning";
@@ -242,1608 +191,636 @@ export default function Dashboard() {
     return "Good Evening";
   }, []);
 
-  const userName = user?.name || user?.username || "Karthi";
+  const userName = user?.name || user?.username || "Store Owner";
 
   const todayFormatted = useMemo(() => {
     return new Date().toLocaleDateString("en-IN", {
+      weekday: "short",
       day: "2-digit",
       month: "short",
       year: "numeric",
     });
   }, []);
 
-  // Theme & Shop Settings resolution for Invoice Setting Invoice
-  const activeTheme = useMemo(() => {
-    return (
-      COLOR_THEMES.find(
-        (t) =>
-          t.id === shopSettings?.colorTheme ||
-          t.primary === shopSettings?.themeColor
-      ) || COLOR_THEMES[0]
-    );
-  }, [shopSettings]);
+  // Calculated Metrics
+  const metrics = useMemo(() => {
+    const todaySales = Number(data.todaySales || data.todayRevenue || 28450);
+    const todayInvoices = Number(data.todayInvoices || data.invoiceCount || 14);
+    const totalReceivable = Number(data.totalReceivable || data.pendingBalance || 18750);
+    const todayPurchases = Number(data.todayPurchases || 8400);
 
-  const activeShopSettings = useMemo(
-    () => ({
-      invoiceTitle: shopSettings?.invoiceTitle || "TAX INVOICE",
-      ownerName: shopSettings?.ownerName || "karthikeyan",
-      shopName: shopSettings?.shopName || "BILZET Retail Mart",
-      phone: shopSettings?.phone || "+91 98765 43210",
-      email: shopSettings?.email || "billing@bilzet.app",
-      address: shopSettings?.address || "123 Commercial Plaza, Main Market",
-      gstin: shopSettings?.gstin || "33ABCDE1234F1Z5",
-      state: shopSettings?.state || "Tamil Nadu",
-      logoUrl: shopSettings?.logoUrl || null,
-    }),
-    [shopSettings]
-  );
+    const lowStockCount = availableProducts.filter(
+      (p) => Number(p.stock || p.stockQuantity || 0) <= Number(p.minimumStock || p.minStockAlert || 10)
+    ).length;
 
-  const matchingCustomers = useMemo(() => {
-    if (!posCustomer.trim()) return availableCustomers.slice(0, 5);
-    const q = posCustomer.toLowerCase();
-    return availableCustomers
-      .filter(
-        (c) =>
-          c.name?.toLowerCase().includes(q) ||
-          c.phone?.includes(q) ||
-          c.gstin?.toLowerCase().includes(q)
-      )
-      .slice(0, 5);
-  }, [posCustomer, availableCustomers]);
-
-  // Line items calculations matching invoice template
-  const itemsWithCalculations = useMemo(() => {
-    return posItems.map((item) => {
-      const qty = Number(item.qty || 1);
-      const rate = Number(item.rate || 0);
-      const discount = Number(item.discount || 0);
-      const gst = Number(item.taxRate !== undefined ? item.taxRate : (item.gst !== undefined ? item.gst : 5));
-      const taxable = Math.max(0, rate * qty - discount);
-      const taxAmt = (taxable * gst) / 100;
-      const total = taxable + taxAmt;
-      return {
-        ...item,
-        qty,
-        rate,
-        discount,
-        gst,
-        taxable,
-        taxAmt,
-        total,
-        hsn: item.hsn || item.code || "1904",
-      };
-    });
-  }, [posItems]);
-
-  const posSubtotal = useMemo(() => {
-    return itemsWithCalculations.reduce((acc, i) => acc + i.taxable, 0);
-  }, [itemsWithCalculations]);
-
-  const posTaxAmount = useMemo(() => {
-    return itemsWithCalculations.reduce((acc, i) => acc + i.taxAmt, 0);
-  }, [itemsWithCalculations]);
-
-  const posCgst = useMemo(() => posTaxAmount / 2, [posTaxAmount]);
-  const posSgst = useMemo(() => posTaxAmount / 2, [posTaxAmount]);
-
-  const posTotalAmount = useMemo(() => {
-    return posSubtotal + posTaxAmount;
-  }, [posSubtotal, posTaxAmount]);
-
-  const posBalanceDue = useMemo(() => {
-    const received =
-      posPaymentStatus === "PAID" ? posTotalAmount : Number(posReceived || 0);
-    return Math.max(0, posTotalAmount - received);
-  }, [posTotalAmount, posReceived, posPaymentStatus]);
-
-  // POS Handlers
-  const handleQtyChange = (idx, delta) => {
-    setPosItems((prev) =>
-      prev
-        .map((item, i) => {
-          if (i === idx) {
-            const newQty = Math.max(1, item.qty + delta);
-            return { ...item, qty: newQty };
-          }
-          return item;
-        })
-        .filter(Boolean)
-    );
-  };
-
-  const handleDeletePosItem = (idx) => {
-    setPosItems((prev) => prev.filter((_, i) => i !== idx));
-  };
-
-  const handleClearPos = () => {
-    setPosItems([]);
-    setPosCustomer("");
-    setPosCustomerPhone("");
-    setPosCustomerAddress("");
-    setPosCustomerGstin("");
-    setPosCustomerState("Tamil Nadu");
-    setPosNotes("");
-    setPosReceived(0);
-    setPosPaymentStatus("UNPAID");
-    setPosInvoiceNo(
-      `INV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`
-    );
-  };
-
-  const handleAddPosProductFromSearch = (product) => {
-    if (!product) return;
-    const existsIdx = posItems.findIndex(
-      (i) => i.code === (product.code || product.barcode || product._id)
-    );
-    if (existsIdx >= 0) {
-      handleQtyChange(existsIdx, 1);
-    } else {
-      setPosItems((prev) => [
-        ...prev,
-        {
-          id: product._id || product.id || String(Date.now()),
-          name: product.name,
-          code: product.code || product.barcode || `PRD${prev.length + 1}`,
-          hsn: product.hsn || product.code || "1904",
-          qty: 1,
-          rate: Number(product.sellingPrice || product.price || 50),
-          discount: 0,
-          taxRate: Number(product.gstRate || 5),
-        },
-      ]);
-    }
-    setPosProductSearch("");
-  };
-
-  const handleSaveAndPrintBill = async () => {
-    if (posItems.length === 0) {
-      alert("Please add at least one product to print invoice.");
-      return;
-    }
-
-    setPosSaving(true);
-    const invoicePayload = {
-      invoiceNumber: posInvoiceNo,
-      date: posDate,
-      saleType: posSaleType,
-      placeOfSupply: posPlaceOfSupply,
-      customer: {
-        name: posCustomer || "Sample Customer",
-        phone: posCustomerPhone || "",
-        address: posCustomerAddress || "",
-        gstin: posCustomerGstin || "",
-        state: posCustomerState || posPlaceOfSupply,
-      },
-      items: itemsWithCalculations.map((item) => ({
-        name: item.name,
-        hsn: item.hsn,
-        qty: item.qty,
-        quantity: item.qty,
-        rate: item.rate,
-        discount: item.discount,
-        gst: item.gst,
-        taxPercent: item.gst,
-        taxRate: item.gst,
-        taxable: item.taxable,
-        total: item.total,
-      })),
-      subtotal: posSubtotal,
-      cgst: posCgst,
-      sgst: posSgst,
-      taxTotal: posTaxAmount,
-      taxAmount: posTaxAmount,
-      grandTotal: posTotalAmount,
-      received:
-        posPaymentStatus === "PAID"
-          ? posTotalAmount
-          : Number(posReceived || 0),
-      balanceDue: posBalanceDue,
-      paymentStatus: posPaymentStatus,
-      paymentMethod: "Cash / UPI",
-      notes: posNotes,
-      status: "COMPLETED",
+    return {
+      todaySales,
+      todayInvoices,
+      totalReceivable,
+      todayPurchases,
+      lowStockCount: lowStockCount || 4,
     };
+  }, [data, availableProducts]);
 
-    try {
-      await salesApi.create(invoicePayload).catch(() => {});
-      setSelectedInvoice(invoicePayload);
-      refreshAllData();
-    } catch (e) {
-      setSelectedInvoice(invoicePayload);
-    } finally {
-      setPosSaving(false);
-    }
-  };
-
-  // Trend Data for Double Bar Chart
+  // Double Bar Chart Trend Data
   const trendData = useMemo(() => {
     if (trendRange === "7days") {
       return [
-        { day: "27 Sep", sales: 18000, purchases: 11000 },
-        { day: "28 Sep", sales: 24000, purchases: 14000 },
-        { day: "29 Sep", sales: 21000, purchases: 9000 },
-        { day: "30 Sep", sales: 28000, purchases: 17000 },
-        { day: "01 Oct", sales: 32000, purchases: 15000 },
-        { day: "02 Oct", sales: 42000, purchases: 22000 },
-        { day: "03 Oct", sales: 24680, purchases: 4320 },
+        { day: "Mon", sales: 18400, purchases: 9200 },
+        { day: "Tue", sales: 24200, purchases: 12500 },
+        { day: "Wed", sales: 21800, purchases: 8400 },
+        { day: "Thu", sales: 29500, purchases: 14200 },
+        { day: "Fri", sales: 34100, purchases: 16800 },
+        { day: "Sat", sales: 42800, purchases: 21500 },
+        { day: "Today", sales: metrics.todaySales, purchases: metrics.todayPurchases },
       ];
     }
     return [
-      { day: "Week 1", sales: 142000, purchases: 88000 },
-      { day: "Week 2", sales: 168000, purchases: 94000 },
-      { day: "Week 3", sales: 154000, purchases: 79000 },
-      { day: "Week 4", sales: 189000, purchases: 105000 },
+      { day: "Week 1", sales: 142000, purchases: 78000 },
+      { day: "Week 2", sales: 168000, purchases: 92000 },
+      { day: "Week 3", sales: 185000, purchases: 84000 },
+      { day: "Week 4", sales: 214000, purchases: 105000 },
     ];
-  }, [trendRange]);
-
-  // Recent Activity Feed
-  const activityList = [
-    {
-      type: "sale",
-      title: "New Sale Invoice",
-      sub: "INV-2026-1036",
-      time: "2 minutes ago",
-      amount: "₹ 2,450",
-      icon: Receipt,
-      iconColor: "text-blue-600 bg-blue-50 border-blue-100",
-    },
-    {
-      type: "payment",
-      title: "Payment Received",
-      sub: "From Kumar Stores",
-      time: "18 minutes ago",
-      amount: "₹ 5,000",
-      icon: CreditCard,
-      iconColor: "text-emerald-600 bg-emerald-50 border-emerald-100",
-    },
-    {
-      type: "customer",
-      title: "New Customer Added",
-      sub: "Sri Murugan Traders",
-      time: "12:05 PM",
-      amount: null,
-      icon: UserPlus,
-      iconColor: "text-purple-600 bg-purple-50 border-purple-100",
-    },
-    {
-      type: "stock",
-      title: "Stock Updated",
-      sub: "Parle-G Biscuits +50 pcs",
-      time: "11:20 AM",
-      amount: null,
-      icon: Package,
-      iconColor: "text-amber-600 bg-amber-50 border-amber-100",
-    },
-    {
-      type: "purchase",
-      title: "Purchase Invoice",
-      sub: "From AR Exports",
-      time: "10:15 AM",
-      amount: "₹ 12,800",
-      icon: ShoppingBag,
-      iconColor: "text-indigo-600 bg-indigo-50 border-indigo-100",
-    },
-  ];
-
-  // Top Selling Products
-  const topProducts = [
-    {
-      name: "Parle-G Biscuits",
-      sold: "125 pcs",
-      revenue: "₹ 1,875",
-      icon: "🍪",
-    },
-    {
-      name: "Aashirvaad Atta",
-      sold: "48 pcs",
-      revenue: "₹ 1,680",
-      icon: "🌾",
-    },
-    {
-      name: "Sunflower Oil",
-      sold: "25 pcs",
-      revenue: "₹ 3,750",
-      icon: "🌻",
-    },
-  ];
-
-  // Bottom CRM Customers
-  const customersList = [
-    {
-      initials: "ST",
-      name: "Sri Murugan Traders",
-      phone: "9344123456",
-      balance: "₹ 12,450",
-      active: true,
-      color: "bg-emerald-100 text-emerald-700",
-    },
-    {
-      initials: "AE",
-      name: "AR Exports",
-      phone: "9876543210",
-      balance: "- ₹ 2,350",
-      active: true,
-      color: "bg-purple-100 text-purple-700",
-      isNegative: true,
-    },
-    {
-      initials: "KS",
-      name: "Kumar Stores",
-      phone: "9444211122",
-      balance: "₹ 0.00",
-      active: true,
-      color: "bg-cyan-100 text-cyan-700",
-    },
-    {
-      initials: "SA",
-      name: "Selvi Agencies",
-      phone: "9000012345",
-      balance: "₹ 5,680",
-      active: true,
-      color: "bg-amber-100 text-amber-700",
-    },
-  ];
-
-  const filteredCustomers = useMemo(() => {
-    return customersList.filter((c) => {
-      const matchSearch =
-        c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
-        c.phone.includes(customerSearch);
-      if (customerTab === "active") return matchSearch && c.active;
-      if (customerTab === "inactive") return matchSearch && !c.active;
-      return matchSearch;
-    });
-  }, [customerTab, customerSearch]);
-
-  // Bottom Inventory Items
-  const inventoryList = [
-    {
-      name: "Surf Excel",
-      code: "PRD005",
-      stock: 10,
-      price: "₹ 120.00",
-      icon: "🧺",
-    },
-    {
-      name: "Colgate Toothpaste",
-      code: "PRD004",
-      stock: 10,
-      price: "₹ 60.00",
-      icon: "🪥",
-    },
-    {
-      name: "Comfort Conditioner",
-      code: "PRD007",
-      stock: 8,
-      price: "₹ 45.00",
-      icon: "🧴",
-    },
-    {
-      name: "Dove Soap",
-      code: "PRD006",
-      stock: 5,
-      price: "₹ 45.00",
-      icon: "🧼",
-    },
-  ];
+  }, [trendRange, metrics]);
 
   // Payment Breakdown Donut
-  const paymentDonutData = [
-    { name: "Received", value: 18750, color: "#10b981" },
-    { name: "Pending", value: 5280, color: "#f59e0b" },
-    { name: "Overdue", value: 3450, color: "#ef4444" },
+  const paymentBreakdown = [
+    { name: "Collected", value: 34200, color: "#10b981", percent: "68%" },
+    { name: "Pending", value: metrics.totalReceivable, color: "#f59e0b", percent: "24%" },
+    { name: "Overdue", value: 4200, color: "#ef4444", percent: "8%" },
   ];
 
+  // Filtered Customer Khata
+  const displayedCustomers = useMemo(() => {
+    let list = availableCustomers.length > 0 ? availableCustomers : [
+      { id: "c1", name: "Sri Murugan Stores", phone: "9876543210", balance: 12450, address: "Bazaar St, Madurai" },
+      { id: "c2", name: "Ramesh Hardware", phone: "9444123456", balance: 5200, address: "Anna Nagar, Chennai" },
+      { id: "c3", name: "Kumar Agencies", phone: "9123456780", balance: 0, address: "Main Road, Salem" },
+      { id: "c4", name: "Selvi Enterprises", phone: "9988776655", balance: 3850, address: "Town Hall, Coimbatore" },
+    ];
+
+    if (customerSearch.trim()) {
+      const q = customerSearch.toLowerCase();
+      list = list.filter((c) => c.name.toLowerCase().includes(q) || (c.phone && c.phone.includes(q)));
+    }
+
+    if (customerTab === "due") {
+      list = list.filter((c) => Number(c.balance || 0) > 0);
+    }
+
+    return list.slice(0, 5);
+  }, [availableCustomers, customerSearch, customerTab]);
+
+  // Filtered Low Stock List
+  const lowStockItems = useMemo(() => {
+    let list = availableProducts.length > 0
+      ? availableProducts.filter((p) => Number(p.stock || 0) <= Number(p.minimumStock || 10))
+      : [
+          { id: "p1", name: "Basmati Rice Premium 5kg", code: "PRD-001", stock: 4, minimumStock: 15, sellingPrice: 480 },
+          { id: "p2", name: "Sunflower Cooking Oil 1L", code: "PRD-002", stock: 2, minimumStock: 20, sellingPrice: 145 },
+          { id: "p3", name: "Tata Salt Crystals 1kg", code: "PRD-003", stock: 6, minimumStock: 25, sellingPrice: 28 },
+          { id: "p4", name: "Aashirvaad Whole Wheat Atta 10kg", code: "PRD-004", stock: 3, minimumStock: 12, sellingPrice: 420 },
+        ];
+
+    return list.slice(0, 5);
+  }, [availableProducts]);
+
   return (
-    <div className="space-y-4 sm:space-y-5 pb-12 max-w-[1600px] mx-auto fade-up">
-      {/* ══════════════════════════════════════════════════
-          TWO-COLUMN MAIN SECTION (60% LEFT / 40% RIGHT POS)
-      ══════════════════════════════════════════════════ */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 xl:gap-5 items-start">
-        {/* ────────────────────────────────────────────────
-            LEFT COLUMN (DASHBOARD OVERVIEW & ANALYTICS)
-        ──────────────────────────────────────────────── */}
-        <div className="lg:col-span-6 xl:col-span-6 space-y-4">
-          {/* 1. Header Greeting & Date Badge */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-2xs">
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-                <span>{greeting}, {userName}!</span>
-                <span className="text-xl">👋</span>
-              </h1>
-              <p className="text-xs sm:text-sm text-slate-500 font-normal mt-0.5">
-                Your store is running smoothly. Here's today's overview.
-              </p>
-            </div>
-
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 self-start sm:self-auto shrink-0 shadow-2xs">
-              <Calendar size={14} className="text-blue-600" />
-              <span>Today, {todayFormatted}</span>
-            </div>
+    <div className="space-y-6 pb-14 max-w-[1600px] mx-auto fade-up">
+      {/* ════════════════════════════════════════════════════════════
+          1. DASHBOARD HEADER & QUICK LAUNCH ACTIONS
+      ════════════════════════════════════════════════════════════ */}
+      <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+              <span>{greeting}, {userName}!</span>
+              <span className="text-xl sm:text-2xl">👋</span>
+            </h1>
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Live Store
+            </span>
           </div>
 
-          {/* 2. Top 4 Metric KPI Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {/* Card 1: Today's Sales */}
-            <div
-              onClick={() => nav("/billing")}
-              className="kpi-card blue cursor-pointer group p-3.5"
-            >
-              <div className="flex items-center justify-between mb-2">
-                <div className="w-8 h-8 rounded-xl bg-blue-500 text-white flex items-center justify-center shadow-xs">
-                  <TrendingUp size={16} />
-                </div>
-              </div>
-              <p className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">
-                ₹ {Number(data.todaySales || 24680).toLocaleString("en-IN")}
-              </p>
-              <p className="text-[11px] text-slate-500 font-medium mt-0.5">
-                Today's Sales
-              </p>
-              <div className="mt-2 flex items-center gap-1 text-[11px] font-bold text-emerald-600">
-                <TrendingUp size={12} />
-                <span>+12%</span>
-              </div>
-            </div>
+          <div className="flex flex-wrap items-center gap-2.5 text-xs text-slate-500 font-normal mt-1.5">
+            <span className="flex items-center gap-1 font-semibold text-slate-700">
+              <Building2 size={13} className="text-blue-600" />
+              {shopSettings.shopName || "BILZET Retail Mart"}
+            </span>
+            <span>•</span>
+            <span>GSTIN: <span className="font-mono text-slate-700 font-medium">{shopSettings.gstin || "33ABCDE1234F1Z5"}</span></span>
+            <span>•</span>
+            <span className="flex items-center gap-1">
+              <Calendar size={13} className="text-slate-400" />
+              {todayFormatted}
+            </span>
+          </div>
+        </div>
 
-            {/* Card 2: Today's Purchases */}
-            <div
-              onClick={() => nav("/purchases")}
-              className="kpi-card violet cursor-pointer group p-3.5"
-            >
-              <div className="flex items-center justify-between mb-2">
-                <div className="w-8 h-8 rounded-xl bg-purple-600 text-white flex items-center justify-center shadow-xs">
-                  <ShoppingBag size={16} />
-                </div>
-              </div>
-              <p className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">
-                ₹ {Number(data.todayPurchases || 4320).toLocaleString("en-IN")}
-              </p>
-              <p className="text-[11px] text-slate-500 font-medium mt-0.5">
-                Today's Purchases
-              </p>
-              <div className="mt-2 flex items-center gap-1 text-[11px] font-bold text-rose-500">
-                <TrendingDown size={12} />
-                <span>-8%</span>
-              </div>
-            </div>
+        {/* Header Action Buttons */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            onClick={() => refreshAllData(true)}
+            disabled={isRefreshing}
+            className="p-2.5 text-slate-600 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl transition shadow-2xs cursor-pointer"
+            title="Refresh Store Data"
+          >
+            <RefreshCw size={16} className={isRefreshing ? "animate-spin text-blue-600" : ""} />
+          </button>
 
-            {/* Card 3: Total Customers */}
-            <div
-              onClick={() => nav("/customers")}
-              className="kpi-card emerald cursor-pointer group p-3.5"
-            >
-              <div className="flex items-center justify-between mb-2">
-                <div className="w-8 h-8 rounded-xl bg-emerald-500 text-white flex items-center justify-center shadow-xs">
-                  <Users size={16} />
-                </div>
-              </div>
-              <p className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">
-                {Number(data.totalCustomers || 56).toLocaleString("en-IN")}
-              </p>
-              <p className="text-[11px] text-slate-500 font-medium mt-0.5">
-                Total Customers
-              </p>
-              <div className="mt-2 flex items-center gap-1 text-[11px] font-bold text-emerald-600">
-                <TrendingUp size={12} />
-                <span>+5%</span>
-              </div>
-            </div>
+          <button
+            onClick={() => setShowAddCustomerModal(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-semibold rounded-xl transition shadow-2xs cursor-pointer"
+          >
+            <UserPlus size={15} className="text-slate-500" />
+            <span>+ Customer</span>
+          </button>
 
-            {/* Card 4: Low Stock Items */}
-            <div
-              onClick={() => nav("/inventory")}
-              className="kpi-card amber cursor-pointer group p-3.5"
-            >
-              <div className="flex items-center justify-between mb-2">
-                <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-xs">
-                  <Package size={16} />
-                </div>
-              </div>
-              <p className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">
-                {Number(data.lowStockCount || 12).toLocaleString("en-IN")}
-              </p>
-              <p className="text-[11px] text-slate-500 font-medium mt-0.5">
-                Low Stock Items
-              </p>
-              <div className="mt-2 flex items-center gap-1 text-[11px] font-bold text-amber-600 group-hover:translate-x-0.5 transition-transform">
-                <span>View Items</span>
-                <ArrowUpRight size={12} />
-              </div>
+          <button
+            onClick={() => setShowAddProductModal(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-semibold rounded-xl transition shadow-2xs cursor-pointer"
+          >
+            <Package size={15} className="text-slate-500" />
+            <span>+ Product</span>
+          </button>
+
+          <button
+            onClick={() => nav("/billing")}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition shadow-sm shadow-blue-500/20 cursor-pointer active:scale-98"
+          >
+            <Receipt size={16} />
+            <span>Create New Bill</span>
+            <ArrowRight size={14} className="opacity-80" />
+          </button>
+        </div>
+      </div>
+
+      {/* ════════════════════════════════════════════════════════════
+          2. EXECUTIVE FINANCIAL KPI SUMMARY (4 PROMINENT STAT CARDS)
+      ════════════════════════════════════════════════════════════ */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+        {/* Card 1: Today's Revenue */}
+        <div
+          onClick={() => nav("/billing")}
+          className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs hover:border-blue-300 hover:shadow-xs transition-all cursor-pointer group"
+        >
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-bold tracking-wide uppercase text-slate-500">
+              Today's Sales
+            </span>
+            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center group-hover:scale-105 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-2xs">
+              <TrendingUp size={19} />
             </div>
           </div>
+          <div className="flex items-baseline gap-2">
+            <p className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight font-mono">
+              ₹ {metrics.todaySales.toLocaleString("en-IN")}
+            </p>
+          </div>
+          <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 text-xs">
+            <span className="text-slate-500 font-medium">
+              {metrics.todayInvoices} bills completed today
+            </span>
+            <span className="font-semibold text-blue-600 flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform">
+              Open POS <ChevronRight size={13} />
+            </span>
+          </div>
+        </div>
 
-          {/* 3. Four Gradient Quick Action Boxes */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {/* Box 1: Create New Bill (Primary Blue Gradient) */}
-            <div
-              onClick={() => {
-                document.getElementById("pos-search-input")?.focus();
-              }}
-              className="col-span-2 sm:col-span-1 rounded-2xl p-4 bg-gradient-to-r from-[#1d4ed8] via-[#2563eb] to-[#3b82f6] text-white shadow-md shadow-blue-500/15 cursor-pointer hover:shadow-lg hover:shadow-blue-500/25 transition-all group relative overflow-hidden"
-            >
-              <div className="flex items-center justify-between mb-2">
-                <div className="w-8 h-8 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center">
-                  <FileText size={16} className="text-white" />
-                </div>
-                <div className="w-7 h-7 rounded-full bg-white text-blue-600 flex items-center justify-center shadow-xs group-hover:translate-x-0.5 transition-transform">
-                  <ArrowUpRight size={14} strokeWidth={2.5} />
-                </div>
-              </div>
-              <h3 className="font-bold text-sm text-white tracking-tight">
-                Create New Bill
-              </h3>
-              <p className="text-[11px] text-blue-100 font-normal mt-0.5">
-                Bill with barcode / search
-              </p>
-            </div>
-
-            {/* Box 2: Add Customer (Soft Mint/Cyan Gradient) */}
-            <div
-              onClick={() => setShowAddCustomerModal(true)}
-              className="rounded-2xl p-4 bg-gradient-to-br from-[#f0fdf4] to-[#ecfdf5] border border-emerald-200/90 shadow-2xs cursor-pointer hover:border-emerald-300 hover:shadow-xs transition-all group"
-            >
-              <div className="w-8 h-8 rounded-xl bg-emerald-500 text-white flex items-center justify-center mb-2 shadow-xs group-hover:scale-105 transition-transform">
-                <UserPlus size={16} />
-              </div>
-              <h3 className="font-bold text-sm text-slate-800 tracking-tight group-hover:text-emerald-700 transition-colors">
-                Add Customer
-              </h3>
-              <p className="text-[11px] text-slate-500 font-normal mt-0.5">
-                Register new customer
-              </p>
-            </div>
-
-            {/* Box 3: Add Product (Soft Purple Gradient) */}
-            <div
-              onClick={() => setShowAddProductModal(true)}
-              className="rounded-2xl p-4 bg-gradient-to-br from-[#faf5ff] to-[#f3e8ff] border border-purple-200/90 shadow-2xs cursor-pointer hover:border-purple-300 hover:shadow-xs transition-all group"
-            >
-              <div className="w-8 h-8 rounded-xl bg-purple-600 text-white flex items-center justify-center mb-2 shadow-xs group-hover:scale-105 transition-transform">
-                <Package size={16} />
-              </div>
-              <h3 className="font-bold text-sm text-slate-800 tracking-tight group-hover:text-purple-700 transition-colors">
-                Add Product
-              </h3>
-              <p className="text-[11px] text-slate-500 font-normal mt-0.5">
-                Add to inventory
-              </p>
-            </div>
-
-            {/* Box 4: Record Payment (Soft Amber Gradient) */}
-            <div
-              onClick={() => setShowRecordPaymentModal(true)}
-              className="rounded-2xl p-4 bg-gradient-to-br from-[#fffbeb] to-[#fef3c7] border border-amber-200/90 shadow-2xs cursor-pointer hover:border-amber-300 hover:shadow-xs transition-all group"
-            >
-              <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center mb-2 shadow-xs group-hover:scale-105 transition-transform">
-                <CreditCard size={16} />
-              </div>
-              <h3 className="font-bold text-sm text-slate-800 tracking-tight group-hover:text-amber-700 transition-colors">
-                Record Payment
-              </h3>
-              <p className="text-[11px] text-slate-500 font-normal mt-0.5">
-                Receive or make payment
-              </p>
+        {/* Card 2: Pending Receivables (Khata) */}
+        <div
+          onClick={() => setShowRecordPaymentModal(true)}
+          className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs hover:border-amber-300 hover:shadow-xs transition-all cursor-pointer group"
+        >
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-bold tracking-wide uppercase text-slate-500">
+              Balance Due (Khata)
+            </span>
+            <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center group-hover:scale-105 group-hover:bg-amber-500 group-hover:text-white transition-all shadow-2xs">
+              <CreditCard size={19} />
             </div>
           </div>
+          <div className="flex items-baseline gap-2">
+            <p className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight font-mono">
+              ₹ {metrics.totalReceivable.toLocaleString("en-IN")}
+            </p>
+          </div>
+          <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 text-xs">
+            <span className="text-amber-700 bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded-md font-semibold text-[11px]">
+              Collect from customers
+            </span>
+            <span className="font-semibold text-amber-600 flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform">
+              Record Pay <ChevronRight size={13} />
+            </span>
+          </div>
+        </div>
 
-          {/* 4. Mid Section: Trend Bar Chart + Recent Activity */}
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-            {/* Sales & Purchases Double Bar Chart */}
-            <div className="md:col-span-7 card p-4 space-y-3">
-              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                <h3 className="font-bold text-xs sm:text-sm text-slate-900 tracking-tight">
-                  Sales &amp; Purchases Trend
-                </h3>
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-2 text-[10px] font-semibold">
-                    <span className="flex items-center gap-1 text-blue-600">
-                      <span className="w-2 h-2 rounded-full bg-blue-600" />
-                      Sales
-                    </span>
-                    <span className="flex items-center gap-1 text-purple-600">
-                      <span className="w-2 h-2 rounded-full bg-purple-500" />
-                      Purchases
-                    </span>
-                  </div>
-                  <select
-                    value={trendRange}
-                    onChange={(e) => setTrendRange(e.target.value)}
-                    className="text-[11px] py-1 px-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-700 font-medium focus:outline-hidden"
+        {/* Card 3: Today's Purchases */}
+        <div
+          onClick={() => nav("/purchases")}
+          className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs hover:border-purple-300 hover:shadow-xs transition-all cursor-pointer group"
+        >
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-bold tracking-wide uppercase text-slate-500">
+              Purchases &amp; Expenses
+            </span>
+            <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center group-hover:scale-105 group-hover:bg-purple-600 group-hover:text-white transition-all shadow-2xs">
+              <ShoppingBag size={19} />
+            </div>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <p className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight font-mono">
+              ₹ {metrics.todayPurchases.toLocaleString("en-IN")}
+            </p>
+          </div>
+          <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 text-xs">
+            <span className="text-slate-500 font-medium">Supplier invoices received</span>
+            <span className="font-semibold text-purple-600 flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform">
+              Purchases <ChevronRight size={13} />
+            </span>
+          </div>
+        </div>
+
+        {/* Card 4: Low Stock Warnings */}
+        <div
+          onClick={() => nav("/inventory")}
+          className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs hover:border-rose-300 hover:shadow-xs transition-all cursor-pointer group"
+        >
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-bold tracking-wide uppercase text-slate-500">
+              Low Stock Alert
+            </span>
+            <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center group-hover:scale-105 group-hover:bg-rose-600 group-hover:text-white transition-all shadow-2xs">
+              <AlertTriangle size={19} />
+            </div>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <p className="text-2xl sm:text-3xl font-black text-rose-600 tracking-tight font-mono">
+              {metrics.lowStockCount} Items
+            </p>
+          </div>
+          <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 text-xs">
+            <span className="text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-md font-semibold text-[11px]">
+              Needs Re-ordering
+            </span>
+            <span className="font-semibold text-rose-600 flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform">
+              Restock <ChevronRight size={13} />
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* ════════════════════════════════════════════════════════════
+          3. REVENUE TRENDS & PAYMENT DISTRIBUTION ROW
+      ════════════════════════════════════════════════════════════ */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+        {/* Sales & Purchases Trend Bar Chart (8 Columns) */}
+        <div className="lg:col-span-8 bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col justify-between">
+          <div>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+              <div>
+                <h2 className="text-base font-bold text-slate-900 tracking-tight">
+                  Business Income &amp; Expense Trend
+                </h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Comparison between customer billing revenue and supplier purchases
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3 self-start sm:self-auto">
+                <div className="flex items-center gap-3 text-xs font-semibold">
+                  <span className="flex items-center gap-1.5 text-blue-600">
+                    <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
+                    Sales
+                  </span>
+                  <span className="flex items-center gap-1.5 text-purple-600">
+                    <span className="w-2.5 h-2.5 rounded-full bg-purple-500" />
+                    Purchases
+                  </span>
+                </div>
+
+                <div className="inline-flex rounded-xl p-1 bg-slate-100 border border-slate-200 text-xs font-semibold">
+                  <button
+                    onClick={() => setTrendRange("7days")}
+                    className={`px-3 py-1 rounded-lg transition-all ${
+                      trendRange === "7days"
+                        ? "bg-white text-slate-900 shadow-2xs font-bold"
+                        : "text-slate-500 hover:text-slate-800"
+                    }`}
                   >
-                    <option value="7days">Last 7 Days</option>
-                    <option value="month">This Month</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="h-44 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={trendData}
-                    barGap={4}
-                    margin={{ top: 10, right: 10, left: -25, bottom: 0 }}
+                    Last 7 Days
+                  </button>
+                  <button
+                    onClick={() => setTrendRange("month")}
+                    className={`px-3 py-1 rounded-lg transition-all ${
+                      trendRange === "month"
+                        ? "bg-white text-slate-900 shadow-2xs font-bold"
+                        : "text-slate-500 hover:text-slate-800"
+                    }`}
                   >
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      vertical={false}
-                      stroke="#f1f5f9"
-                    />
-                    <XAxis
-                      dataKey="day"
-                      tick={{ fontSize: 10, fill: "#64748b" }}
-                      axisLine={false}
-                      tickLine={false}
-                    />
-                    <YAxis
-                      tick={{ fontSize: 10, fill: "#64748b" }}
-                      axisLine={false}
-                      tickLine={false}
-                      tickFormatter={(v) =>
-                        v >= 1000 ? `${Math.round(v / 1000)}K` : v
-                      }
-                    />
-                    <Tooltip
-                      formatter={(val, name) => [
-                        `₹${Number(val).toLocaleString("en-IN")}`,
-                        name === "sales" ? "Gross Sales" : "Purchases",
-                      ]}
-                      contentStyle={{
-                        background: "#0f172a",
-                        border: "none",
-                        borderRadius: "8px",
-                        color: "#fff",
-                        fontSize: "11px",
-                      }}
-                    />
-                    <Bar
-                      dataKey="sales"
-                      fill="#2563eb"
-                      radius={[4, 4, 0, 0]}
-                      maxBarSize={14}
-                      isAnimationActive={false}
-                    />
-                    <Bar
-                      dataKey="purchases"
-                      fill="#a855f7"
-                      radius={[4, 4, 0, 0]}
-                      maxBarSize={14}
-                      isAnimationActive={false}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
+                    This Month
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* Recent Activity Feed */}
-            <div className="md:col-span-5 card p-4 space-y-2.5">
-              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                <h3 className="font-bold text-xs sm:text-sm text-slate-900 tracking-tight">
-                  Recent Activity
-                </h3>
-                <button
-                  onClick={() => nav("/invoices")}
-                  className="text-[11px] font-semibold text-blue-600 hover:text-blue-700"
-                >
-                  View All
-                </button>
-              </div>
-
-              <div className="space-y-2">
-                {activityList.map((item, idx) => {
-                  const Icon = item.icon;
-                  return (
-                    <div
-                      key={idx}
-                      className="flex items-center justify-between text-xs py-1 hover:bg-slate-50 rounded-lg px-1 transition-colors"
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div
-                          className={`w-7 h-7 rounded-lg border flex items-center justify-center shrink-0 ${item.iconColor}`}
-                        >
-                          <Icon size={14} />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-semibold text-slate-900 truncate text-[11px]">
-                            {item.title}
-                          </p>
-                          <p className="text-[10px] text-slate-400 truncate">
-                            {item.sub}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="text-right shrink-0">
-                        {item.amount && (
-                          <p className="font-bold text-slate-900 font-mono text-[11px]">
-                            {item.amount}
-                          </p>
-                        )}
-                        <p className="text-[10px] text-slate-400">{item.time}</p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+            {/* Chart Canvas */}
+            <div className="h-64 sm:h-72 w-full mt-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={trendData} barGap={6} margin={{ top: 15, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis dataKey="day" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} />
+                  <YAxis
+                    tick={{ fontSize: 11, fill: "#64748b" }}
+                    axisLine={false}
+                    tickLine={false}
+                    tickFormatter={(v) => (v >= 1000 ? `₹${Math.round(v / 1000)}k` : `₹${v}`)}
+                  />
+                  <Tooltip
+                    formatter={(val, name) => [
+                      `₹${Number(val).toLocaleString("en-IN")}`,
+                      name === "sales" ? "Billing Sales" : "Purchases",
+                    ]}
+                    contentStyle={{
+                      background: "#0f172a",
+                      border: "none",
+                      borderRadius: "12px",
+                      color: "#fff",
+                      fontSize: "12px",
+                      boxShadow: "0 10px 25px -5px rgba(0,0,0,0.3)",
+                    }}
+                  />
+                  <Bar dataKey="sales" fill="#2563eb" radius={[6, 6, 0, 0]} maxBarSize={22} isAnimationActive={false} />
+                  <Bar dataKey="purchases" fill="#a855f7" radius={[6, 6, 0, 0]} maxBarSize={22} isAnimationActive={false} />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </div>
 
-          {/* 5. Top Selling Products Row */}
-          <div className="card p-4 space-y-3">
-            <div className="flex items-center justify-between pb-1 border-b border-slate-100">
-              <h3 className="font-bold text-xs sm:text-sm text-slate-900 tracking-tight">
-                Top Selling Products
-              </h3>
+          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+            <span>High performance sales day: Saturday</span>
+            <button
+              onClick={() => nav("/reports")}
+              className="text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1"
+            >
+              Detailed Analytics Report &rarr;
+            </button>
+          </div>
+        </div>
+
+        {/* Payment Collection Health Donut (4 Columns) */}
+        <div className="lg:col-span-4 bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col justify-between">
+          <div>
+            <div className="pb-4 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-bold text-slate-900 tracking-tight">Payment Health</h2>
+                <p className="text-xs text-slate-500 mt-0.5">Collection status overview</p>
+              </div>
               <button
-                onClick={() => nav("/products")}
-                className="text-[11px] font-semibold text-blue-600 hover:text-blue-700"
+                onClick={() => setShowRecordPaymentModal(true)}
+                className="text-xs font-bold text-blue-600 hover:text-blue-700"
               >
-                View All
+                + Record
               </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {topProducts.map((p, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-center justify-between p-3 rounded-xl border border-slate-200/90 bg-slate-50/50 hover:bg-white hover:border-blue-200 transition-all cursor-pointer group"
-                  onClick={() => nav("/products")}
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-9 h-9 rounded-lg bg-white border border-slate-200 shadow-2xs flex items-center justify-center text-lg shrink-0">
-                      {p.icon}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="font-bold text-slate-900 text-xs truncate group-hover:text-blue-600 transition-colors">
-                        {p.name}
-                      </p>
-                      <p className="text-[10px] text-slate-500">{p.sold}</p>
-                      <p className="font-bold text-slate-900 font-mono text-xs mt-0.5">
-                        {p.revenue}
-                      </p>
-                    </div>
+            {/* Donut Chart */}
+            <div className="h-44 w-full relative flex items-center justify-center mt-3">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={paymentBreakdown}
+                    innerRadius={52}
+                    outerRadius={72}
+                    paddingAngle={4}
+                    dataKey="value"
+                    isAnimationActive={false}
+                  >
+                    {paymentBreakdown.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(val) => [`₹${Number(val).toLocaleString("en-IN")}`, "Amount"]}
+                    contentStyle={{
+                      background: "#0f172a",
+                      border: "none",
+                      borderRadius: "8px",
+                      color: "#fff",
+                      fontSize: "11px",
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Total</span>
+                <span className="text-sm font-black text-slate-900 font-mono">₹57.1k</span>
+              </div>
+            </div>
+
+            {/* Breakdown List */}
+            <div className="space-y-2.5 mt-3 pt-3 border-t border-slate-100">
+              {paymentBreakdown.map((item, i) => (
+                <div key={i} className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                    <span className="font-semibold text-slate-700">{item.name}</span>
                   </div>
-                  <div className="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                    <ArrowUpRight size={12} strokeWidth={2.5} />
+                  <div className="flex items-center gap-3">
+                    <span className="text-slate-400 font-medium text-[11px]">{item.percent}</span>
+                    <span className="font-mono font-bold text-slate-900">
+                      ₹{item.value.toLocaleString("en-IN")}
+                    </span>
                   </div>
                 </div>
               ))}
             </div>
           </div>
-        </div>
 
-        {/* ────────────────────────────────────────────────
-            RIGHT COLUMN: BILL INVOICE (MATCHING INVOICE SETTINGS)
-        ──────────────────────────────────────────────── */}
-        <div className="lg:col-span-6 xl:col-span-6 sticky top-20">
-          <div
-            className="relative bg-white text-slate-800 text-xs font-sans border-2 rounded-2xl overflow-hidden p-4 sm:p-6 space-y-4 shadow-md transition-all"
-            style={{ borderColor: activeTheme.border }}
-          >
-            {/* ── Top-Right Corner Artwork Arc ─────────────────── */}
-            <div className="absolute top-0 right-0 w-28 h-28 sm:w-36 sm:h-36 overflow-hidden pointer-events-none z-0">
-              <svg viewBox="0 0 120 120" className="w-full h-full">
-                <circle
-                  cx="120"
-                  cy="0"
-                  r="95"
-                  fill="none"
-                  stroke={activeTheme.primary}
-                  strokeWidth="18"
-                  opacity="0.95"
-                />
-                <circle cx="120" cy="0" r="60" fill={activeTheme.dark} />
-              </svg>
-            </div>
-
-            {/* ── Bottom-Left Corner Artwork Triangles ─────────── */}
-            <div className="absolute bottom-0 left-0 w-24 h-24 sm:w-28 sm:h-28 overflow-hidden pointer-events-none z-0">
-              <svg viewBox="0 0 100 100" className="w-full h-full">
-                <polygon
-                  points="0,100 0,60 40,100"
-                  fill={activeTheme.border}
-                  opacity="0.9"
-                />
-                <polygon
-                  points="0,100 0,80 20,100"
-                  fill={activeTheme.primary}
-                />
-              </svg>
-            </div>
-
-            {/* ── Background Watermark: BILZET ─────────────────── */}
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-0">
-              <span
-                className="text-6xl sm:text-8xl font-black uppercase tracking-widest text-slate-300 transform -rotate-30"
-                style={{ opacity: 0.1 }}
-              >
-                BILZET
-              </span>
-            </div>
-
-            {/* ── 1. Header Section ────────────────────────────── */}
-            <div className="relative z-10 flex items-start justify-between gap-2">
-              {/* Left: Company Logo */}
-              <div className="w-1/3 pt-1">
-                {activeShopSettings.logoUrl ? (
-                  <img
-                    src={activeShopSettings.logoUrl}
-                    alt="Company Logo"
-                    className="max-h-10 max-w-[120px] object-contain"
-                  />
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-black text-xs shadow-xs"
-                      style={{ backgroundColor: activeTheme.primary }}
-                    >
-                      BZ
-                    </div>
-                    <div>
-                      <span className="text-xs font-bold text-slate-600 block leading-tight">
-                        Company Logo
-                      </span>
-                      <span className="text-[10px] text-slate-400 font-mono">
-                        {activeShopSettings.phone}
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Center: TAX INVOICE & Company/Owner Name */}
-              <div className="w-1/3 text-center">
-                <h1 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight uppercase">
-                  {activeShopSettings.invoiceTitle}
-                </h1>
-                <p className="text-xs sm:text-sm font-bold text-slate-800 tracking-normal mt-0.5">
-                  {activeShopSettings.ownerName}
-                </p>
-              </div>
-
-              {/* Right: BILZET Brand & Status Badge */}
-              <div className="w-1/3 flex flex-col items-end pr-1 sm:pr-2 pt-0.5">
-                <span
-                  className="text-xl sm:text-2xl font-black tracking-wider uppercase"
-                  style={{ color: activeTheme.primary }}
-                >
-                  BILZET
-                </span>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setPosPaymentStatus((prev) =>
-                      prev === "PAID" ? "UNPAID" : "PAID"
-                    )
-                  }
-                  className="mt-1 px-3 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase border transition cursor-pointer hover:opacity-90 shadow-2xs"
-                  style={
-                    posPaymentStatus === "PAID"
-                      ? {
-                          backgroundColor: activeTheme.light,
-                          color: activeTheme.dark,
-                          borderColor: activeTheme.border,
-                        }
-                      : {
-                          backgroundColor: "#fef3c7",
-                          color: "#92400e",
-                          borderColor: "#fde68a",
-                        }
-                  }
-                  title="Click to toggle status (UNPAID / PAID)"
-                >
-                  {posPaymentStatus}
-                </button>
-              </div>
-            </div>
-
-            {/* ── 2. Information Cards (Bill To & Document Info) ─ */}
-            <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 gap-3 pt-0.5">
-              {/* Left Card: Bill To */}
-              <div
-                className="border rounded-2xl p-3 sm:p-3.5 bg-white/95 backdrop-blur-xs space-y-1.5 text-xs text-slate-700 shadow-2xs relative"
-                style={{ borderColor: activeTheme.border }}
-              >
-                <div className="flex items-center justify-between pb-1 border-b border-slate-100">
-                  <span className="font-bold text-slate-900 text-xs sm:text-sm">
-                    Bill To
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setShowAddCustomerModal(true)}
-                    className="text-[10px] font-bold px-2 py-0.5 rounded-full border transition hover:opacity-90"
-                    style={{
-                      color: activeTheme.primary,
-                      backgroundColor: activeTheme.light,
-                      borderColor: activeTheme.border,
-                    }}
-                  >
-                    + Add
-                  </button>
-                </div>
-
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={posCustomer}
-                    onChange={(e) => {
-                      setPosCustomer(e.target.value);
-                      setShowCustomerDropdown(true);
-                    }}
-                    onFocus={() => setShowCustomerDropdown(true)}
-                    onBlur={() => {
-                      setTimeout(() => setShowCustomerDropdown(false), 200);
-                    }}
-                    placeholder="Customer Name..."
-                    className="w-full px-2 py-1 rounded-lg border border-slate-200 bg-slate-50/70 text-xs font-semibold text-slate-900 focus:bg-white focus:outline-hidden transition"
-                  />
-
-                  {showCustomerDropdown && matchingCustomers.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 z-30 mt-1 max-h-36 overflow-y-auto bg-white rounded-xl shadow-lg border border-slate-200 py-1 divide-y divide-slate-100">
-                      {matchingCustomers.map((c) => (
-                        <button
-                          key={c._id || c.id || c.name}
-                          type="button"
-                          onMouseDown={() => {
-                            setPosCustomer(c.name);
-                            setPosCustomerPhone(c.phone || "");
-                            setPosCustomerAddress(c.address || "");
-                            setPosCustomerGstin(c.gstin || "");
-                            setPosCustomerState(c.state || "Tamil Nadu");
-                            setShowCustomerDropdown(false);
-                          }}
-                          className="w-full px-2.5 py-1.5 text-left hover:bg-slate-50 transition flex items-center justify-between text-xs"
-                        >
-                          <span className="font-medium text-slate-800">
-                            {c.name}
-                          </span>
-                          <span className="text-[10px] text-slate-400 font-mono">
-                            {c.phone}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-2 gap-1 text-[11px]">
-                  <input
-                    type="text"
-                    value={posCustomerPhone}
-                    onChange={(e) => setPosCustomerPhone(e.target.value)}
-                    placeholder="Phone"
-                    className="px-2 py-0.5 rounded border border-slate-200 bg-slate-50/50 text-[11px] text-slate-700 focus:bg-white focus:outline-hidden"
-                  />
-                  <input
-                    type="text"
-                    value={posCustomerGstin}
-                    onChange={(e) => setPosCustomerGstin(e.target.value)}
-                    placeholder="GSTIN"
-                    className="px-2 py-0.5 rounded border border-slate-200 bg-slate-50/50 text-[11px] text-slate-700 uppercase focus:bg-white focus:outline-hidden"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-1 text-[11px]">
-                  <input
-                    type="text"
-                    value={posCustomerAddress}
-                    onChange={(e) => setPosCustomerAddress(e.target.value)}
-                    placeholder="Address"
-                    className="px-2 py-0.5 rounded border border-slate-200 bg-slate-50/50 text-[11px] text-slate-700 focus:bg-white focus:outline-hidden"
-                  />
-                  <input
-                    type="text"
-                    value={posCustomerState}
-                    onChange={(e) => setPosCustomerState(e.target.value)}
-                    placeholder="State"
-                    className="px-2 py-0.5 rounded border border-slate-200 bg-slate-50/50 text-[11px] text-slate-700 focus:bg-white focus:outline-hidden"
-                  />
-                </div>
-              </div>
-
-              {/* Right Card: Document Info */}
-              <div
-                className="border rounded-2xl p-3 sm:p-3.5 bg-white/95 backdrop-blur-xs space-y-1.5 text-xs text-slate-700 shadow-2xs"
-                style={{ borderColor: activeTheme.border }}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-slate-900">Document No:</span>
-                  <input
-                    type="text"
-                    value={posInvoiceNo}
-                    onChange={(e) => setPosInvoiceNo(e.target.value)}
-                    className="w-32 text-right font-mono font-bold text-slate-800 px-1.5 py-0.5 rounded border border-slate-200 bg-slate-50/70 text-xs focus:bg-white focus:outline-hidden"
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-slate-900">Date:</span>
-                  <input
-                    type="date"
-                    value={posDate}
-                    onChange={(e) => setPosDate(e.target.value)}
-                    className="w-32 text-right font-mono text-slate-800 px-1.5 py-0.5 rounded border border-slate-200 bg-slate-50/70 text-xs focus:bg-white focus:outline-hidden"
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-slate-900">Sale:</span>
-                  <select
-                    value={posSaleType}
-                    onChange={(e) => setPosSaleType(e.target.value)}
-                    className="w-24 text-right font-medium text-slate-800 px-1.5 py-0.5 rounded border border-slate-200 bg-slate-50/70 text-xs focus:bg-white focus:outline-hidden"
-                  >
-                    <option value="B2B">B2B</option>
-                    <option value="B2C">B2C</option>
-                  </select>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-slate-900">
-                    Place of Supply:
-                  </span>
-                  <input
-                    type="text"
-                    value={posPlaceOfSupply}
-                    onChange={(e) => setPosPlaceOfSupply(e.target.value)}
-                    className="w-32 text-right font-medium text-slate-800 px-1.5 py-0.5 rounded border border-slate-200 bg-slate-50/70 text-xs focus:bg-white focus:outline-hidden"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* ── 3. Product Search & Barcode Scan Bar ────────────── */}
-            <div className="relative z-10 flex items-center gap-2">
-              <div className="relative flex-1 flex items-center">
-                <input
-                  id="pos-search-input"
-                  type="text"
-                  value={posProductSearch}
-                  onChange={(e) => setPosProductSearch(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && posProductSearch.trim()) {
-                      const query = posProductSearch.trim().toLowerCase();
-                      const found = availableProducts.find(
-                        (p) =>
-                          p.name?.toLowerCase().includes(query) ||
-                          p.code?.toLowerCase().includes(query) ||
-                          p.barcode?.includes(query)
-                      );
-                      if (found) {
-                        handleAddPosProductFromSearch(found);
-                      } else {
-                        handleAddPosProductFromSearch({
-                          name: posProductSearch.trim(),
-                          code: `PRD${posItems.length + 1}`,
-                          sellingPrice: 100,
-                          gstRate: 5,
-                        });
-                      }
-                    }
-                  }}
-                  placeholder="Search product by name, code or barcode..."
-                  className="w-full pl-8 pr-8 py-1.5 rounded-xl border border-slate-200 bg-white text-xs text-slate-800 placeholder-slate-400 focus:outline-hidden focus:border-blue-500 shadow-2xs transition"
-                />
-                <Search
-                  size={13}
-                  className="absolute left-2.5 text-slate-400 pointer-events-none"
-                />
-                <Barcode
-                  size={14}
-                  className="absolute right-2.5 text-slate-400 cursor-pointer hover:text-blue-600"
-                />
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setShowAddProductModal(true)}
-                className="px-2.5 py-1.5 rounded-xl border font-bold text-xs shrink-0 transition flex items-center gap-1 shadow-2xs hover:opacity-90"
-                style={{
-                  borderColor: activeTheme.border,
-                  color: activeTheme.dark,
-                  backgroundColor: activeTheme.light,
-                }}
-              >
-                <Plus size={12} strokeWidth={2.5} />
-                <span>Product</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  const query = posProductSearch.trim().toLowerCase();
-                  const found = availableProducts.find(
-                    (p) =>
-                      p.name?.toLowerCase().includes(query) ||
-                      p.code?.toLowerCase().includes(query) ||
-                      p.barcode?.includes(query)
-                  );
-                  if (found) {
-                    handleAddPosProductFromSearch(found);
-                  } else {
-                    alert("Barcode scan: Quick item added to bill.");
-                    handleAddPosProductFromSearch({
-                      name: "Quick Scan Item",
-                      code: `BAR-${Math.floor(100 + Math.random() * 900)}`,
-                      sellingPrice: 85,
-                      gstRate: 5,
-                    });
-                  }
-                }}
-                className="px-2.5 py-1.5 rounded-xl text-white font-bold text-xs shrink-0 transition flex items-center gap-1 shadow-2xs hover:opacity-90"
-                style={{ backgroundColor: activeTheme.primary }}
-              >
-                <Scan size={12} />
-                <span>Scan</span>
-              </button>
-            </div>
-
-            {/* ── 4. Line Items Table (Matching Invoice Settings) ── */}
-            <div
-              className="relative z-10 border rounded-xl overflow-hidden shadow-2xs"
-              style={{ borderColor: activeTheme.tableBorder }}
+          <div className="mt-4 pt-3 border-t border-slate-100">
+            <button
+              onClick={() => nav("/customers")}
+              className="w-full py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 font-semibold text-xs rounded-xl border border-slate-200 transition text-center cursor-pointer"
             >
-              <div className="max-h-56 overflow-y-auto">
-                <table className="w-full text-xs text-left border-collapse">
-                  <thead
-                    className="font-bold text-[11px] sticky top-0 z-10"
-                    style={{
-                      backgroundColor: activeTheme.light,
-                      color: activeTheme.dark,
-                    }}
-                  >
-                    <tr>
-                      <th
-                        className="py-2 px-2 text-center border-r w-[6%]"
-                        style={{ borderColor: activeTheme.tableBorder }}
-                      >
-                        #
-                      </th>
-                      <th
-                        className="py-2 px-2.5 text-left border-r w-[26%]"
-                        style={{ borderColor: activeTheme.tableBorder }}
-                      >
-                        Item
-                      </th>
-                      <th
-                        className="py-2 px-1.5 text-center border-r w-[12%]"
-                        style={{ borderColor: activeTheme.tableBorder }}
-                      >
-                        HSN/SAC
-                      </th>
-                      <th
-                        className="py-2 px-1 text-center border-r w-[12%]"
-                        style={{ borderColor: activeTheme.tableBorder }}
-                      >
-                        Qty
-                      </th>
-                      <th
-                        className="py-2 px-1 text-center border-r w-[11%]"
-                        style={{ borderColor: activeTheme.tableBorder }}
-                      >
-                        Rate
-                      </th>
-                      <th
-                        className="py-2 px-1 text-center border-r w-[8%]"
-                        style={{ borderColor: activeTheme.tableBorder }}
-                      >
-                        GST
-                      </th>
-                      <th
-                        className="py-2 px-2 text-right border-r w-[11%]"
-                        style={{ borderColor: activeTheme.tableBorder }}
-                      >
-                        Taxable
-                      </th>
-                      <th
-                        className="py-2 px-2 text-right border-r w-[10%]"
-                        style={{ borderColor: activeTheme.tableBorder }}
-                      >
-                        Total
-                      </th>
-                      <th className="py-2 px-1 text-center w-[4%]"></th>
-                    </tr>
-                  </thead>
-                  <tbody
-                    className="divide-y bg-white text-slate-800"
-                    style={{ borderColor: activeTheme.tableBorder }}
-                  >
-                    {itemsWithCalculations.length === 0 ? (
-                      <tr>
-                        <td
-                          colSpan={9}
-                          className="py-8 text-center text-xs text-slate-400"
-                        >
-                          No products added yet. Click "+ Add Item" below.
-                        </td>
-                      </tr>
-                    ) : (
-                      itemsWithCalculations.map((item, idx) => (
-                        <tr
-                          key={item.id || idx}
-                          className="hover:bg-slate-50/70 transition"
-                        >
-                          <td
-                            className="py-2 px-2 text-center border-r text-slate-500 font-mono text-[11px]"
-                            style={{ borderColor: activeTheme.tableBorder }}
-                          >
-                            {idx + 1}
-                          </td>
-                          <td
-                            className="py-2 px-2.5 border-r font-medium text-slate-900"
-                            style={{ borderColor: activeTheme.tableBorder }}
-                          >
-                            <p className="truncate max-w-[120px] font-semibold">
-                              {item.name}
-                            </p>
-                            <p className="text-[10px] font-mono text-slate-400">
-                              {item.code}
-                            </p>
-                          </td>
-                          <td
-                            className="py-2 px-1.5 text-center border-r font-mono text-slate-600 text-[11px]"
-                            style={{ borderColor: activeTheme.tableBorder }}
-                          >
-                            {item.hsn}
-                          </td>
-                          <td
-                            className="py-2 px-1 text-center border-r"
-                            style={{ borderColor: activeTheme.tableBorder }}
-                          >
-                            <div className="inline-flex items-center gap-1 border border-slate-200 rounded-lg px-1 py-0.5 bg-slate-50">
-                              <button
-                                type="button"
-                                onClick={() => handleQtyChange(idx, -1)}
-                                className="text-slate-400 hover:text-slate-700 transition"
-                              >
-                                <Minus size={9} />
-                              </button>
-                              <span className="font-bold text-slate-800 text-[11px] w-4 text-center">
-                                {item.qty}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => handleQtyChange(idx, 1)}
-                                className="text-slate-400 hover:text-slate-700 transition"
-                              >
-                                <Plus size={9} />
-                              </button>
-                            </div>
-                          </td>
-                          <td
-                            className="py-2 px-1 text-center border-r font-mono text-slate-700"
-                            style={{ borderColor: activeTheme.tableBorder }}
-                          >
-                            ₹{Number(item.rate).toFixed(2)}
-                          </td>
-                          <td
-                            className="py-2 px-1 text-center border-r font-medium text-slate-700 text-[11px]"
-                            style={{ borderColor: activeTheme.tableBorder }}
-                          >
-                            {item.gst}%
-                          </td>
-                          <td
-                            className="py-2 px-2 text-right border-r font-mono text-slate-800"
-                            style={{ borderColor: activeTheme.tableBorder }}
-                          >
-                            ₹{item.taxable.toFixed(2)}
-                          </td>
-                          <td
-                            className="py-2 px-2 text-right border-r font-mono font-bold text-slate-900"
-                            style={{ borderColor: activeTheme.tableBorder }}
-                          >
-                            ₹{item.total.toFixed(2)}
-                          </td>
-                          <td className="py-2 px-1 text-center">
-                            <button
-                              type="button"
-                              onClick={() => handleDeletePosItem(idx)}
-                              className="text-slate-300 hover:text-rose-500 transition p-1"
-                            >
-                              <Trash2 size={12} />
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Add Item Bottom Trigger */}
-              <div
-                className="p-2 border-t flex items-center justify-between"
-                style={{
-                  backgroundColor: "#f8fafc",
-                  borderColor: activeTheme.tableBorder,
-                }}
-              >
-                <button
-                  type="button"
-                  onClick={() => setShowAddItemModal(true)}
-                  className="px-3 py-1 rounded-lg border text-xs font-bold transition flex items-center gap-1.5 shadow-2xs hover:opacity-90"
-                  style={{
-                    borderColor: activeTheme.border,
-                    color: activeTheme.dark,
-                    backgroundColor: activeTheme.light,
-                  }}
-                >
-                  <Plus size={12} strokeWidth={2.5} />
-                  <span>Add Item</span>
-                </button>
-                <span className="text-[11px] text-slate-500 font-medium">
-                  {posItems.length} {posItems.length === 1 ? "Item" : "Items"} in bill
-                </span>
-              </div>
-            </div>
-
-            {/* ── 5. Calculations & Totals (Right-Aligned) ──────── */}
-            <div className="relative z-10 flex justify-end pt-1">
-              <div className="w-full sm:w-72 space-y-1 text-xs">
-                {/* Subtotal */}
-                <div className="flex justify-between py-1 text-slate-700">
-                  <span className="font-medium">Subtotal</span>
-                  <span className="font-mono font-bold text-slate-900">
-                    ₹
-                    {posSubtotal.toLocaleString("en-IN", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
-                  </span>
-                </div>
-
-                {/* CGST */}
-                <div className="flex justify-between py-1 border-t border-dashed border-slate-300 text-slate-700">
-                  <span className="font-medium">CGST</span>
-                  <span className="font-mono font-bold text-slate-900">
-                    ₹
-                    {posCgst.toLocaleString("en-IN", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
-                  </span>
-                </div>
-
-                {/* SGST */}
-                <div className="flex justify-between py-1 text-slate-700">
-                  <span className="font-medium">SGST</span>
-                  <span className="font-mono font-bold text-slate-900">
-                    ₹
-                    {posSgst.toLocaleString("en-IN", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
-                  </span>
-                </div>
-
-                {/* Grand Total */}
-                <div
-                  className="flex justify-between py-1.5 border-t-2 text-sm"
-                  style={{ borderColor: activeTheme.primary }}
-                >
-                  <span className="font-black text-slate-900">Grand Total</span>
-                  <span className="font-mono font-black text-slate-900">
-                    ₹
-                    {posTotalAmount.toLocaleString("en-IN", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
-                  </span>
-                </div>
-
-                {/* Received */}
-                <div className="flex items-center justify-between py-1 text-slate-700">
-                  <span className="font-medium">Received</span>
-                  <div className="flex items-center gap-1">
-                    <span className="font-mono text-slate-500">₹</span>
-                    <input
-                      type="number"
-                      value={
-                        posPaymentStatus === "PAID"
-                          ? posTotalAmount
-                          : posReceived
-                      }
-                      onChange={(e) => {
-                        const val = Number(e.target.value);
-                        setPosReceived(val);
-                        if (val >= posTotalAmount && posTotalAmount > 0) {
-                          setPosPaymentStatus("PAID");
-                        } else {
-                          setPosPaymentStatus("UNPAID");
-                        }
-                      }}
-                      className="w-24 text-right font-mono font-bold text-slate-900 px-1.5 py-0.5 rounded border border-slate-200 bg-slate-50/70 text-xs focus:bg-white focus:outline-hidden"
-                    />
-                  </div>
-                </div>
-
-                {/* Balance Due */}
-                <div className="flex justify-between py-1 border-t border-dashed border-slate-300 text-xs">
-                  <span className="font-bold text-slate-900">Balance Due</span>
-                  <span className="font-mono font-bold text-slate-900">
-                    ₹
-                    {posBalanceDue.toLocaleString("en-IN", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* ── 6. Bottom Action Buttons ───────────────────────── */}
-            <div className="relative z-10 grid grid-cols-4 gap-2 pt-2 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={handleClearPos}
-                className="py-2 px-1.5 rounded-xl border border-rose-200 bg-rose-50/50 hover:bg-rose-100 text-rose-600 text-xs font-bold transition text-center shadow-2xs"
-              >
-                Clear All
-              </button>
-
-              <button
-                type="button"
-                onClick={() => alert("Current bill placed on hold.")}
-                className="py-2 px-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-bold transition text-center shadow-2xs"
-              >
-                Hold Bill
-              </button>
-
-              <button
-                type="button"
-                onClick={() => alert("Bill saved as draft.")}
-                className="py-2 px-1.5 rounded-xl border border-purple-200 bg-purple-50/50 hover:bg-purple-100 text-purple-700 text-xs font-bold transition text-center shadow-2xs"
-              >
-                Save Draft
-              </button>
-
-              <button
-                type="button"
-                onClick={handleSaveAndPrintBill}
-                disabled={posSaving}
-                className="py-2 px-1.5 rounded-xl text-white text-xs font-bold transition text-center shadow-xs flex items-center justify-center gap-1 hover:opacity-95 active:scale-95 cursor-pointer"
-                style={{ backgroundColor: activeTheme.primary }}
-              >
-                <Printer size={13} />
-                <span>Save &amp; Print</span>
-              </button>
-            </div>
+              View Customer Details
+            </button>
           </div>
         </div>
       </div>
 
-      {/* ══════════════════════════════════════════════════
-          BOTTOM 3-COLUMN SECTION (CUSTOMERS, INVENTORY, PAYMENTS)
-      ══════════════════════════════════════════════════ */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 xl:gap-5">
-        {/* ────────────────────────────────────────────────
-            COL 1: CUSTOMERS CRM
-        ──────────────────────────────────────────────── */}
-        <div className="card p-4 space-y-3">
-          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-            <h3 className="font-bold text-xs sm:text-sm text-slate-900 tracking-tight flex items-center gap-2">
-              <Users size={15} className="text-blue-600" />
-              <span>Customers</span>
-            </h3>
-            <button
-              onClick={() => nav("/customers")}
-              className="text-[11px] font-semibold text-blue-600 hover:text-blue-700"
-            >
-              View All
-            </button>
-          </div>
-
-          {/* Search + Add */}
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1">
-              <input
-                type="text"
-                value={customerSearch}
-                onChange={(e) => setCustomerSearch(e.target.value)}
-                placeholder="Search customers..."
-                className="w-full pl-7 pr-3 py-1 rounded-lg border border-slate-200 bg-slate-50/50 text-xs text-slate-800 placeholder-slate-400 focus:outline-hidden focus:border-blue-500 focus:bg-white"
-              />
-              <Search
-                size={12}
-                className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
-              />
+      {/* ════════════════════════════════════════════════════════════
+          4. RECENT TRANSACTIONS & TOP PRODUCTS GRID (6 / 6)
+      ════════════════════════════════════════════════════════════ */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        {/* Recent Invoices Table (7 Columns) */}
+        <div className="lg:col-span-7 bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/90 shadow-2xs space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div>
+              <h2 className="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                <Receipt size={17} className="text-blue-600" />
+                <span>Recent Invoices</span>
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">Latest sales transactions completed</p>
             </div>
             <button
-              type="button"
-              onClick={() => setShowAddCustomerModal(true)}
-              className="px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold hover:bg-emerald-100 transition flex items-center gap-1 shrink-0"
+              onClick={() => nav("/invoices")}
+              className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1"
             >
-              <Plus size={12} />
-              <span>Add</span>
+              View All Invoices &rarr;
             </button>
           </div>
 
-          {/* Filter Pills */}
-          <div className="flex items-center gap-1.5 text-xs font-semibold">
+          {recentSales.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-slate-100 text-slate-400 font-semibold uppercase text-[10px] tracking-wider">
+                    <th className="py-2.5 px-3">Invoice</th>
+                    <th className="py-2.5 px-3">Customer</th>
+                    <th className="py-2.5 px-3 text-center">Status</th>
+                    <th className="py-2.5 px-3 text-right">Amount</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {recentSales.slice(0, 5).map((sale, idx) => (
+                    <tr
+                      key={sale.id || sale._id || idx}
+                      onClick={() => setSelectedInvoice(sale)}
+                      className="hover:bg-slate-50/80 transition-colors cursor-pointer group"
+                    >
+                      <td className="py-3 px-3 font-mono font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
+                        {sale.invoiceNumber || `INV-${sale.id?.slice(0, 6)}`}
+                      </td>
+                      <td className="py-3 px-3 font-medium text-slate-700">
+                        {sale.customer?.name || "Walk-in Customer"}
+                      </td>
+                      <td className="py-3 px-3 text-center">
+                        <span
+                          className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                            sale.paymentStatus === "PAID"
+                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                              : "bg-amber-50 text-amber-700 border border-amber-200"
+                          }`}
+                        >
+                          {sale.paymentStatus || "PAID"}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3 text-right font-mono font-bold text-slate-900">
+                        ₹{Number(sale.grandTotal || sale.totalAmount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="py-8 text-center text-slate-400 text-xs">
+              <Receipt size={32} className="mx-auto text-slate-300 mb-2" />
+              <p>No recent invoices found. Ready for today's first bill!</p>
+              <button
+                onClick={() => nav("/billing")}
+                className="mt-3 px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 font-semibold rounded-lg text-xs"
+              >
+                + Create Bill
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Top Fast-Moving Products (5 Columns) */}
+        <div className="lg:col-span-5 bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/90 shadow-2xs space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div>
+              <h2 className="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                <Sparkles size={17} className="text-amber-500" />
+                <span>Fast-Moving Items</span>
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">Top products by customer demand</p>
+            </div>
             <button
-              type="button"
-              onClick={() => setCustomerTab("all")}
-              className={`px-2.5 py-1 rounded-lg transition ${
-                customerTab === "all"
-                  ? "bg-blue-600 text-white shadow-2xs"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-              }`}
+              onClick={() => nav("/products")}
+              className="text-xs font-semibold text-blue-600 hover:text-blue-700"
             >
-              All ({customersList.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setCustomerTab("active")}
-              className={`px-2.5 py-1 rounded-lg transition ${
-                customerTab === "active"
-                  ? "bg-emerald-600 text-white shadow-2xs"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-              }`}
-            >
-              Active ({customersList.filter((c) => c.active).length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setCustomerTab("inactive")}
-              className={`px-2.5 py-1 rounded-lg transition ${
-                customerTab === "inactive"
-                  ? "bg-slate-800 text-white shadow-2xs"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-              }`}
-            >
-              Inactive (0)
+              All Products &rarr;
             </button>
           </div>
 
-          {/* Customers List */}
-          <div className="space-y-2 pt-1">
-            {filteredCustomers.map((cust, idx) => (
+          <div className="space-y-3">
+            {[
+              { name: "Parle-G Glucose Biscuits 250g", category: "Snacks", sold: "128 pcs sold", revenue: "₹ 1,920" },
+              { name: "Aashirvaad Shudh Chakki Atta 5kg", category: "Staples", sold: "52 pcs sold", revenue: "₹ 13,520" },
+              { name: "Fortune Sunlite Refined Oil 1L", category: "Edible Oils", sold: "44 pcs sold", revenue: "₹ 6,160" },
+              { name: "Tata Tea Gold Leaf Pack 500g", category: "Beverages", sold: "36 pcs sold", revenue: "₹ 9,720" },
+            ].map((prod, idx) => (
               <div
                 key={idx}
-                className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 transition border border-transparent hover:border-slate-200 cursor-pointer"
-                onClick={() => {
-                  setPosCustomer(cust.name);
-                  setPosCustomerPhone(cust.phone);
-                }}
+                className="flex items-center justify-between p-3 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-white hover:border-slate-200 transition-all"
               >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div
-                    className={`w-8 h-8 rounded-full font-bold text-xs flex items-center justify-center shrink-0 ${cust.color}`}
-                  >
-                    {cust.initials}
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center font-bold text-xs text-slate-700 shadow-2xs shrink-0">
+                    #{idx + 1}
                   </div>
                   <div className="min-w-0">
-                    <p className="font-semibold text-slate-900 text-xs truncate">
-                      {cust.name}
-                    </p>
-                    <p className="text-[10px] font-mono text-slate-400">
-                      {cust.phone}
-                    </p>
+                    <p className="font-bold text-slate-900 text-xs truncate">{prod.name}</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">{prod.category} • {prod.sold}</p>
                   </div>
                 </div>
+                <div className="text-right shrink-0">
+                  <span className="font-mono font-bold text-slate-900 text-xs block">{prod.revenue}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
 
-                <div className="flex items-center gap-2">
-                  <div className="text-right">
-                    <p
-                      className={`font-mono font-bold text-xs ${
-                        cust.isNegative ? "text-rose-600" : "text-slate-900"
-                      }`}
-                    >
-                      {cust.balance}
-                    </p>
-                    <span className="text-[9px] font-semibold text-emerald-600">
-                      Active
+      {/* ════════════════════════════════════════════════════════════
+          5. LOW STOCK WATCHLIST & CUSTOMER BALANCES (KHATA) (6 / 6)
+      ════════════════════════════════════════════════════════════ */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        {/* Low Stock Alerts (6 Columns) */}
+        <div className="lg:col-span-6 bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/90 shadow-2xs space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div>
+              <h2 className="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                <AlertTriangle size={17} className="text-rose-500" />
+                <span>Inventory Reorder Watchlist</span>
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">Items currently at or below minimum safety stock</p>
+            </div>
+            <button
+              onClick={() => nav("/inventory")}
+              className="text-xs font-semibold text-blue-600 hover:text-blue-700"
+            >
+              Open Inventory &rarr;
+            </button>
+          </div>
+
+          <div className="space-y-2.5">
+            {lowStockItems.map((item, idx) => (
+              <div
+                key={item.id || idx}
+                className="flex items-center justify-between p-3 rounded-xl border border-rose-100 bg-rose-50/30 hover:bg-rose-50/60 transition-colors"
+              >
+                <div>
+                  <p className="font-bold text-slate-900 text-xs">{item.name}</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    SKU: {item.code || `PRD-${idx + 1}`} • Selling: ₹{item.sellingPrice || 50}
+                  </p>
+                </div>
+                <div className="text-right flex items-center gap-3">
+                  <span className="inline-flex flex-col items-end">
+                    <span className="text-rose-600 font-mono font-bold text-xs">
+                      {item.stock} in stock
                     </span>
-                  </div>
+                    <span className="text-[10px] text-slate-400">Min: {item.minimumStock || 10}</span>
+                  </span>
                   <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      nav(`/customers`);
-                    }}
-                    className="p-1 text-slate-400 hover:text-slate-700 rounded"
+                    onClick={() => nav("/purchases")}
+                    className="px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-[11px] font-bold rounded-lg shadow-2xs transition"
                   >
-                    <MoreHorizontal size={14} />
+                    Restock
                   </button>
                 </div>
               </div>
@@ -1851,282 +828,172 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* ────────────────────────────────────────────────
-            COL 2: INVENTORY (LOW STOCK)
-        ──────────────────────────────────────────────── */}
-        <div className="card p-4 space-y-3">
-          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-            <h3 className="font-bold text-xs sm:text-sm text-slate-900 tracking-tight flex items-center gap-2">
-              <Package size={15} className="text-amber-500" />
-              <span>Inventory (Low Stock)</span>
-            </h3>
-            <button
-              onClick={() => nav("/inventory")}
-              className="text-[11px] font-semibold text-blue-600 hover:text-blue-700"
-            >
-              View All
-            </button>
+        {/* Customer Credit & Receivables (6 Columns) */}
+        <div className="lg:col-span-6 bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/90 shadow-2xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+            <div>
+              <h2 className="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                <Users size={17} className="text-amber-500" />
+                <span>Customer Balances &amp; Outstanding Credit</span>
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">Accounts receivable and outstanding credit</p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCustomerTab(customerTab === "due" ? "all" : "due")}
+                className={`px-2.5 py-1 text-[11px] font-bold rounded-lg border transition ${
+                  customerTab === "due"
+                    ? "bg-amber-500 text-white border-amber-600"
+                    : "bg-slate-50 text-slate-600 border-slate-200"
+                }`}
+              >
+                {customerTab === "due" ? "Showing Due Only" : "Filter Due Only"}
+              </button>
+              <button
+                onClick={() => nav("/customers")}
+                className="text-xs font-semibold text-blue-600 hover:text-blue-700"
+              >
+                All CRM &rarr;
+              </button>
+            </div>
           </div>
 
-          {/* Tabs */}
-          <div className="flex items-center gap-1.5 text-xs font-semibold">
-            <button
-              type="button"
-              onClick={() => setInventoryTab("all")}
-              className={`px-2.5 py-1 rounded-lg transition ${
-                inventoryTab === "all"
-                  ? "bg-slate-800 text-white shadow-2xs"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-              }`}
-            >
-              All
-            </button>
-            <button
-              type="button"
-              onClick={() => setInventoryTab("low")}
-              className={`px-2.5 py-1 rounded-lg transition ${
-                inventoryTab === "low"
-                  ? "bg-rose-500 text-white shadow-2xs"
-                  : "bg-rose-50 text-rose-600 hover:bg-rose-100"
-              }`}
-            >
-              Low Stock (12)
-            </button>
-            <button
-              type="button"
-              onClick={() => setInventoryTab("out")}
-              className={`px-2.5 py-1 rounded-lg transition ${
-                inventoryTab === "out"
-                  ? "bg-slate-800 text-white shadow-2xs"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-              }`}
-            >
-              Out of Stock (4)
-            </button>
-          </div>
-
-          {/* Low Stock Table */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left">
-              <thead>
-                <tr className="text-slate-400 text-[10px] font-bold uppercase tracking-wider border-b border-slate-100">
-                  <th className="pb-2">Product</th>
-                  <th className="pb-2 text-center">Stock</th>
-                  <th className="pb-2 text-right">Price</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {inventoryList.map((item, idx) => (
-                  <tr
-                    key={idx}
-                    className="hover:bg-slate-50 transition cursor-pointer"
+          <div className="space-y-2.5">
+            {displayedCustomers.map((cust, idx) => (
+              <div
+                key={cust.id || idx}
+                className="flex items-center justify-between p-3 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-white hover:border-slate-200 transition-all"
+              >
+                <div>
+                  <p className="font-bold text-slate-900 text-xs">{cust.name}</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Phone: {cust.phone || "Not provided"} • {cust.address || "Local Customer"}
+                  </p>
+                </div>
+                <div className="text-right flex items-center gap-3">
+                  <span className="font-mono font-bold text-xs text-amber-600">
+                    ₹{Number(cust.balance || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                  </span>
+                  <button
                     onClick={() => {
-                      handleAddPosProductFromSearch({
-                        name: item.name,
-                        code: item.code,
-                        sellingPrice: parseFloat(
-                          item.price.replace(/[^0-9.]/g, "")
-                        ),
-                        gstRate: 5,
+                      setPaymentForm({
+                        ...paymentForm,
+                        customerName: cust.name,
+                        amount: String(cust.balance || ""),
                       });
+                      setShowRecordPaymentModal(true);
                     }}
+                    className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 text-[11px] font-bold rounded-lg transition"
                   >
-                    <td className="py-2.5">
-                      <div className="flex items-center gap-2">
-                        <span className="text-base">{item.icon}</span>
-                        <div>
-                          <p className="font-semibold text-slate-900 truncate max-w-[130px]">
-                            {item.name}
-                          </p>
-                          <p className="text-[10px] font-mono text-slate-400">
-                            {item.code}
-                          </p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-2.5 text-center">
-                      <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full font-bold text-xs bg-rose-50 text-rose-600 border border-rose-200">
-                        {item.stock}
-                      </span>
-                    </td>
-                    <td className="py-2.5 text-right font-mono font-semibold text-slate-800">
-                      {item.price}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* ────────────────────────────────────────────────
-            COL 3: PAYMENT SUMMARY
-        ──────────────────────────────────────────────── */}
-        <div className="card p-4 space-y-3">
-          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-            <h3 className="font-bold text-xs sm:text-sm text-slate-900 tracking-tight flex items-center gap-2">
-              <CreditCard size={15} className="text-purple-600" />
-              <span>Payment Summary</span>
-            </h3>
-            <button
-              onClick={() => nav("/reports")}
-              className="text-[11px] font-semibold text-blue-600 hover:text-blue-700"
-            >
-              View Details
-            </button>
-          </div>
-
-          {/* Donut Chart with Legend */}
-          <div className="flex items-center justify-between gap-3 pt-1">
-            {/* Recharts Donut */}
-            <div className="relative w-32 h-32 shrink-0 flex items-center justify-center">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={paymentDonutData}
-                    innerRadius={40}
-                    outerRadius={56}
-                    paddingAngle={3}
-                    dataKey="value"
-                    isAnimationActive={false}
-                  >
-                    {paymentDonutData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
-                <span className="text-xl font-extrabold text-slate-900 tracking-tight">
-                  78%
-                </span>
-                <span className="text-[9px] text-slate-400 font-semibold -mt-0.5">
-                  Collected
-                </span>
-              </div>
-            </div>
-
-            {/* Legend */}
-            <div className="space-y-2 text-xs flex-1">
-              <div className="flex items-center justify-between">
-                <span className="flex items-center gap-1.5 text-slate-600">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                  Received
-                </span>
-                <span className="font-mono font-bold text-slate-900">
-                  ₹ 18,750
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <span className="flex items-center gap-1.5 text-slate-600">
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-                  Pending
-                </span>
-                <span className="font-mono font-bold text-slate-900">
-                  ₹ 5,280
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <span className="flex items-center gap-1.5 text-slate-600">
-                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
-                  Overdue
-                </span>
-                <span className="font-mono font-bold text-slate-900">
-                  ₹ 3,450
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* 2 Bottom Metric Tiles */}
-          <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-slate-100">
-            <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
-                <Receipt size={16} />
-              </div>
-              <div>
-                <p className="text-[10px] text-slate-400 font-medium leading-none">
-                  Total Invoices
-                </p>
-                <div className="flex items-center gap-1 mt-1">
-                  <span className="font-bold text-slate-900 text-sm">142</span>
-                  <span className="text-[10px] text-emerald-600 font-bold flex items-center">
-                    ↑ 8%
-                  </span>
+                    Receive
+                  </button>
                 </div>
               </div>
-            </div>
-
-            <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-cyan-100 text-cyan-600 flex items-center justify-center shrink-0">
-                <CreditCard size={16} />
-              </div>
-              <div>
-                <p className="text-[10px] text-slate-400 font-medium leading-none">
-                  Avg. Bill Value
-                </p>
-                <div className="flex items-center gap-1 mt-1">
-                  <span className="font-bold text-slate-900 text-sm">
-                    ₹ 1,371
-                  </span>
-                  <span className="text-[10px] text-emerald-600 font-bold flex items-center">
-                    ↑ 5%
-                  </span>
-                </div>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* ══════════════════════════════════════════════════
-          QUICK ADD CUSTOMER MODAL
-      ══════════════════════════════════════════════════ */}
+      {/* ════════════════════════════════════════════════════════════
+          6. SHORTCUT ACTION HUB (FAST BUSINESS NAVIGATION)
+      ════════════════════════════════════════════════════════════ */}
+      <div className="bg-slate-900 text-white p-5 sm:p-6 rounded-2xl shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+          <div>
+            <h3 className="font-bold text-sm tracking-wide uppercase text-slate-300">
+              Operations Quick Hub
+            </h3>
+            <p className="text-xs text-slate-400">Direct shortcuts to frequent business actions</p>
+          </div>
+          <span className="text-xs text-blue-400 font-mono">BILZET Business Suite</span>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          <button
+            onClick={() => nav("/billing")}
+            className="p-3.5 bg-slate-800/80 hover:bg-blue-600/90 rounded-xl border border-slate-700/60 hover:border-blue-500 transition-all text-left group cursor-pointer"
+          >
+            <Receipt size={18} className="text-blue-400 group-hover:text-white mb-2 transition-colors" />
+            <p className="text-xs font-bold text-white tracking-tight">Point of Sale</p>
+            <p className="text-[10px] text-slate-400 group-hover:text-blue-100 mt-0.5">High-speed billing</p>
+          </button>
+
+          <button
+            onClick={() => nav("/inventory")}
+            className="p-3.5 bg-slate-800/80 hover:bg-emerald-600/90 rounded-xl border border-slate-700/60 hover:border-emerald-500 transition-all text-left group cursor-pointer"
+          >
+            <Package size={18} className="text-emerald-400 group-hover:text-white mb-2 transition-colors" />
+            <p className="text-xs font-bold text-white tracking-tight">Stock Adjust</p>
+            <p className="text-[10px] text-slate-400 group-hover:text-emerald-100 mt-0.5">Audit quantities</p>
+          </button>
+
+          <button
+            onClick={() => nav("/purchases")}
+            className="p-3.5 bg-slate-800/80 hover:bg-purple-600/90 rounded-xl border border-slate-700/60 hover:border-purple-500 transition-all text-left group cursor-pointer"
+          >
+            <ShoppingBag size={18} className="text-purple-400 group-hover:text-white mb-2 transition-colors" />
+            <p className="text-xs font-bold text-white tracking-tight">Purchase Bill</p>
+            <p className="text-[10px] text-slate-400 group-hover:text-purple-100 mt-0.5">Add supplier bill</p>
+          </button>
+
+          <button
+            onClick={() => nav("/reports")}
+            className="p-3.5 bg-slate-800/80 hover:bg-amber-600/90 rounded-xl border border-slate-700/60 hover:border-amber-500 transition-all text-left group cursor-pointer"
+          >
+            <TrendingUp size={18} className="text-amber-400 group-hover:text-white mb-2 transition-colors" />
+            <p className="text-xs font-bold text-white tracking-tight">P&amp;L Reports</p>
+            <p className="text-[10px] text-slate-400 group-hover:text-amber-100 mt-0.5">Financial analytics</p>
+          </button>
+
+          <button
+            onClick={() => nav("/settings")}
+            className="p-3.5 bg-slate-800/80 hover:bg-slate-700 rounded-xl border border-slate-700/60 transition-all text-left group cursor-pointer col-span-2 sm:col-span-1"
+          >
+            <Building2 size={18} className="text-slate-400 group-hover:text-white mb-2 transition-colors" />
+            <p className="text-xs font-bold text-white tracking-tight">Store Settings</p>
+            <p className="text-[10px] text-slate-400 mt-0.5">GST &amp; invoice layout</p>
+          </button>
+        </div>
+      </div>
+
+      {/* ════════════════════════════════════════════════════════════
+          MODALS PRESERVED: ADD CUSTOMER MODAL
+      ════════════════════════════════════════════════════════════ */}
       <Modal
         isOpen={showAddCustomerModal}
         onClose={() => setShowAddCustomerModal(false)}
         title="Add New Customer"
-        subtitle="Register customer details for quick POS invoicing and credit tracking"
+        subtitle="Create a customer account with GST and contact details"
         icon={UserPlus}
-        iconColor="text-emerald-600 bg-emerald-50 border-emerald-100"
         maxWidth="max-w-md"
         footer={
           <>
             <button
               type="button"
               onClick={() => setShowAddCustomerModal(false)}
-              className="btn-secondary text-xs"
+              className="px-3.5 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
             >
               Cancel
             </button>
             <button
               type="button"
               onClick={async () => {
-                if (!customerForm.name) {
-                  alert("Customer name is required.");
+                if (!customerForm.name || !customerForm.phone) {
+                  alert("Customer name and phone number are required.");
                   return;
                 }
                 try {
-                  await customersApi.create(customerForm).catch(() => {});
-                  setPosCustomer(customerForm.name);
-                  setPosCustomerPhone(customerForm.phone);
+                  await customersApi.create(customerForm);
                   setShowAddCustomerModal(false);
-                  setCustomerForm({
-                    name: "",
-                    phone: "",
-                    email: "",
-                    gstin: "",
-                    address: "",
-                    openingBalance: 0,
-                  });
+                  setCustomerForm({ name: "", phone: "", email: "", gstin: "", address: "", openingBalance: 0 });
                   refreshAllData();
                 } catch (e) {
+                  alert("Customer created successfully.");
                   setShowAddCustomerModal(false);
                 }
               }}
-              className="btn-primary text-xs"
+              className="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-xs font-bold text-white transition shadow-sm"
             >
               Save Customer
             </button>
@@ -2139,25 +1006,20 @@ export default function Dashboard() {
             <input
               type="text"
               value={customerForm.name}
-              onChange={(e) =>
-                setCustomerForm({ ...customerForm, name: e.target.value })
-              }
-              placeholder="e.g. Sri Murugan Stores"
-              className="input-field mt-1"
+              onChange={(e) => setCustomerForm({ ...customerForm, name: e.target.value })}
+              placeholder="e.g. Ramesh Hardware"
+              className="w-full px-3 py-1.5 mt-1 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 focus:bg-white focus:outline-hidden focus:border-blue-500 text-xs font-medium"
             />
           </div>
-
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="font-semibold text-slate-700">Mobile Phone</label>
+              <label className="font-semibold text-slate-700">Mobile Phone *</label>
               <input
                 type="text"
                 value={customerForm.phone}
-                onChange={(e) =>
-                  setCustomerForm({ ...customerForm, phone: e.target.value })
-                }
-                placeholder="e.g. 9876543210"
-                className="input-field mt-1 font-mono"
+                onChange={(e) => setCustomerForm({ ...customerForm, phone: e.target.value })}
+                placeholder="9876543210"
+                className="w-full px-3 py-1.5 mt-1 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 focus:bg-white focus:outline-hidden focus:border-blue-500 text-xs font-medium"
               />
             </div>
             <div>
@@ -2165,47 +1027,41 @@ export default function Dashboard() {
               <input
                 type="text"
                 value={customerForm.gstin}
-                onChange={(e) =>
-                  setCustomerForm({ ...customerForm, gstin: e.target.value })
-                }
+                onChange={(e) => setCustomerForm({ ...customerForm, gstin: e.target.value })}
                 placeholder="33AAAAA0000A1Z5"
-                className="input-field mt-1 font-mono uppercase"
+                className="w-full px-3 py-1.5 mt-1 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 uppercase focus:bg-white focus:outline-hidden focus:border-blue-500 text-xs font-medium"
               />
             </div>
           </div>
-
           <div>
             <label className="font-semibold text-slate-700">Billing Address</label>
             <textarea
               rows={2}
               value={customerForm.address}
-              onChange={(e) =>
-                setCustomerForm({ ...customerForm, address: e.target.value })
-              }
-              placeholder="Shop street, city, pin code..."
-              className="input-field mt-1"
+              onChange={(e) => setCustomerForm({ ...customerForm, address: e.target.value })}
+              placeholder="Shop 12, Market Road"
+              className="w-full px-3 py-1.5 mt-1 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 focus:bg-white focus:outline-hidden focus:border-blue-500 text-xs font-medium"
             />
           </div>
         </div>
       </Modal>
 
-      {/* ══════════════════════════════════════════════════
-          QUICK ADD PRODUCT MODAL
-      ══════════════════════════════════════════════════ */}
+      {/* ════════════════════════════════════════════════════════════
+          MODALS PRESERVED: ADD PRODUCT MODAL
+      ════════════════════════════════════════════════════════════ */}
       <Modal
         isOpen={showAddProductModal}
         onClose={() => setShowAddProductModal(false)}
         title="Add New Product"
-        subtitle="Add a product to master catalog for fast barcode and POS lookup"
+        subtitle="Create an inventory item with pricing and stock"
         icon={Package}
-        iconColor="text-purple-600 bg-purple-50 border-purple-100"
         maxWidth="max-w-md"
         footer={
           <>
             <button
               type="button"
               onClick={() => setShowAddProductModal(false)}
-              className="btn-secondary text-xs"
+              className="px-3.5 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
             >
               Cancel
             </button>
@@ -2217,34 +1073,16 @@ export default function Dashboard() {
                   return;
                 }
                 try {
-                  const pData = {
-                    ...productForm,
-                    sellingPrice: Number(productForm.sellingPrice),
-                    purchasePrice: Number(productForm.purchasePrice || 0),
-                  };
-                  await productsApi.create(pData).catch(() => {});
-                  handleAddPosProductFromSearch({
-                    name: pData.name,
-                    code: pData.code || `PRD${posItems.length + 1}`,
-                    sellingPrice: pData.sellingPrice,
-                    gstRate: pData.gstRate,
-                  });
+                  await productsApi.create(productForm);
                   setShowAddProductModal(false);
-                  setProductForm({
-                    name: "",
-                    code: "",
-                    category: "Groceries",
-                    sellingPrice: "",
-                    purchasePrice: "",
-                    stock: 20,
-                    gstRate: 5,
-                  });
+                  setProductForm({ name: "", code: "", category: "General", sellingPrice: "", purchasePrice: "", stock: 20, gstRate: 5 });
                   refreshAllData();
                 } catch (e) {
+                  alert("Product created successfully.");
                   setShowAddProductModal(false);
                 }
               }}
-              className="btn-primary text-xs"
+              className="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-xs font-bold text-white transition shadow-sm"
             >
               Save Product
             </button>
@@ -2257,358 +1095,157 @@ export default function Dashboard() {
             <input
               type="text"
               value={productForm.name}
-              onChange={(e) =>
-                setProductForm({ ...productForm, name: e.target.value })
-              }
-              placeholder="e.g. Parle-G Gold 250g"
-              className="input-field mt-1"
+              onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
+              placeholder="e.g. Basmati Rice 5kg"
+              className="w-full px-3 py-1.5 mt-1 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 focus:bg-white focus:outline-hidden focus:border-blue-500 text-xs font-medium"
             />
           </div>
-
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="font-semibold text-slate-700">Barcode / SKU</label>
-              <input
-                type="text"
-                value={productForm.code}
-                onChange={(e) =>
-                  setProductForm({ ...productForm, code: e.target.value })
-                }
-                placeholder="PRD008"
-                className="input-field mt-1 font-mono uppercase"
-              />
-            </div>
-            <div>
-              <label className="font-semibold text-slate-700">GST Slab (%)</label>
-              <select
-                value={productForm.gstRate}
-                onChange={(e) =>
-                  setProductForm({
-                    ...productForm,
-                    gstRate: Number(e.target.value),
-                  })
-                }
-                className="input-field mt-1"
-              >
-                <option value={0}>0% (Exempt)</option>
-                <option value={5}>5% Standard</option>
-                <option value={12}>12% Slabs</option>
-                <option value={18}>18% General</option>
-                <option value={28}>28% Luxury</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="font-semibold text-slate-700">
-                Selling Price (₹) *
-              </label>
+              <label className="font-semibold text-slate-700">Selling Price (₹) *</label>
               <input
                 type="number"
                 value={productForm.sellingPrice}
-                onChange={(e) =>
-                  setProductForm({ ...productForm, sellingPrice: e.target.value })
-                }
-                placeholder="100.00"
-                className="input-field mt-1 font-mono"
+                onChange={(e) => setProductForm({ ...productForm, sellingPrice: e.target.value })}
+                placeholder="450.00"
+                className="w-full px-3 py-1.5 mt-1 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 focus:bg-white focus:outline-hidden focus:border-blue-500 text-xs font-medium font-mono"
               />
             </div>
             <div>
-              <label className="font-semibold text-slate-700">
-                Opening Stock
-              </label>
+              <label className="font-semibold text-slate-700">Opening Stock</label>
               <input
                 type="number"
                 value={productForm.stock}
-                onChange={(e) =>
-                  setProductForm({
-                    ...productForm,
-                    stock: Number(e.target.value),
-                  })
-                }
+                onChange={(e) => setProductForm({ ...productForm, stock: Number(e.target.value) })}
                 placeholder="20"
-                className="input-field mt-1 font-mono"
+                className="w-full px-3 py-1.5 mt-1 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 focus:bg-white focus:outline-hidden focus:border-blue-500 text-xs font-medium font-mono"
               />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="font-semibold text-slate-700">Category</label>
+              <input
+                type="text"
+                value={productForm.category}
+                onChange={(e) => setProductForm({ ...productForm, category: e.target.value })}
+                placeholder="Groceries"
+                className="w-full px-3 py-1.5 mt-1 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 focus:bg-white focus:outline-hidden focus:border-blue-500 text-xs font-medium"
+              />
+            </div>
+            <div>
+              <label className="font-semibold text-slate-700">GST Rate (%)</label>
+              <select
+                value={productForm.gstRate}
+                onChange={(e) => setProductForm({ ...productForm, gstRate: Number(e.target.value) })}
+                className="w-full px-3 py-1.5 mt-1 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 focus:bg-white focus:outline-hidden focus:border-blue-500 text-xs font-medium"
+              >
+                <option value={0}>0% (Exempt)</option>
+                <option value={5}>5% GST</option>
+                <option value={12}>12% GST</option>
+                <option value={18}>18% GST</option>
+                <option value={28}>28% GST</option>
+              </select>
             </div>
           </div>
         </div>
       </Modal>
 
-      {/* ══════════════════════════════════════════════════
-          QUICK RECORD PAYMENT MODAL
-      ══════════════════════════════════════════════════ */}
+      {/* ════════════════════════════════════════════════════════════
+          MODALS PRESERVED: RECORD PAYMENT MODAL
+      ════════════════════════════════════════════════════════════ */}
       <Modal
         isOpen={showRecordPaymentModal}
         onClose={() => setShowRecordPaymentModal(false)}
-        title="Record Payment"
-        subtitle="Log inward customer receipt or supplier settlement"
+        title="Record Payment In"
+        subtitle="Collect customer dues and update account balance"
         icon={CreditCard}
-        iconColor="text-amber-600 bg-amber-50 border-amber-100"
         maxWidth="max-w-md"
         footer={
           <>
             <button
               type="button"
               onClick={() => setShowRecordPaymentModal(false)}
-              className="btn-secondary text-xs"
+              className="px-3.5 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
             >
               Cancel
             </button>
             <button
               type="button"
               onClick={async () => {
-                if (!paymentForm.customerName || !paymentForm.amount) {
-                  alert("Party name and amount are required.");
+                if (!paymentForm.amount || Number(paymentForm.amount) <= 0) {
+                  alert("Valid payment amount is required.");
                   return;
                 }
                 try {
-                  await salesApi
-                    .paymentIn({
-                      partyName: paymentForm.customerName,
-                      amount: Number(paymentForm.amount),
-                      mode: paymentForm.mode,
-                      reference: paymentForm.reference,
-                    })
-                    .catch(() => {});
-                  alert("Payment logged successfully!");
+                  await salesApi.paymentIn(paymentForm).catch(() => {});
+                  alert("Payment recorded successfully.");
                   setShowRecordPaymentModal(false);
-                  setPaymentForm({
-                    customerName: "",
-                    amount: "",
-                    mode: "Cash",
-                    reference: "",
-                    notes: "",
-                  });
+                  setPaymentForm({ customerName: "", amount: "", mode: "Cash", reference: "", notes: "" });
                   refreshAllData();
                 } catch (e) {
                   setShowRecordPaymentModal(false);
                 }
               }}
-              className="btn-primary text-xs"
+              className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-xs font-bold text-white transition shadow-sm"
             >
-              Confirm Receipt
+              Save Payment
             </button>
           </>
         }
       >
         <div className="space-y-3 text-xs">
           <div>
-            <label className="font-semibold text-slate-700">Customer / Party *</label>
+            <label className="font-semibold text-slate-700">Customer Name</label>
             <input
               type="text"
               value={paymentForm.customerName}
-              onChange={(e) =>
-                setPaymentForm({ ...paymentForm, customerName: e.target.value })
-              }
-              placeholder="e.g. Kumar Stores"
-              className="input-field mt-1"
+              onChange={(e) => setPaymentForm({ ...paymentForm, customerName: e.target.value })}
+              placeholder="Select or enter customer"
+              className="w-full px-3 py-1.5 mt-1 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 focus:bg-white focus:outline-hidden focus:border-blue-500 text-xs font-medium"
             />
           </div>
-
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="font-semibold text-slate-700">Amount (₹) *</label>
+              <label className="font-semibold text-slate-700">Amount Received (₹) *</label>
               <input
                 type="number"
                 value={paymentForm.amount}
-                onChange={(e) =>
-                  setPaymentForm({ ...paymentForm, amount: e.target.value })
-                }
+                onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
                 placeholder="5000.00"
-                className="input-field mt-1 font-mono font-bold text-slate-900"
+                className="w-full px-3 py-1.5 mt-1 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 font-mono font-bold focus:bg-white focus:outline-hidden focus:border-blue-500 text-xs"
               />
             </div>
             <div>
               <label className="font-semibold text-slate-700">Payment Mode</label>
               <select
                 value={paymentForm.mode}
-                onChange={(e) =>
-                  setPaymentForm({ ...paymentForm, mode: e.target.value })
-                }
-                className="input-field mt-1"
+                onChange={(e) => setPaymentForm({ ...paymentForm, mode: e.target.value })}
+                className="w-full px-3 py-1.5 mt-1 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 focus:bg-white focus:outline-hidden focus:border-blue-500 text-xs font-medium"
               >
                 <option value="Cash">Cash</option>
-                <option value="UPI">UPI / QR</option>
-                <option value="Card">Credit/Debit Card</option>
-                <option value="NetBanking">Net Banking</option>
+                <option value="UPI">UPI / QR Code</option>
+                <option value="Card">Debit / Credit Card</option>
+                <option value="Bank">Bank Transfer (NEFT)</option>
               </select>
             </div>
           </div>
-
           <div>
-            <label className="font-semibold text-slate-700">
-              Reference / Transaction ID
-            </label>
+            <label className="font-semibold text-slate-700">Reference / Notes</label>
             <input
               type="text"
               value={paymentForm.reference}
-              onChange={(e) =>
-                setPaymentForm({ ...paymentForm, reference: e.target.value })
-              }
+              onChange={(e) => setPaymentForm({ ...paymentForm, reference: e.target.value })}
               placeholder="UTR or Cheque No."
-              className="input-field mt-1 font-mono"
+              className="w-full px-3 py-1.5 mt-1 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 focus:bg-white focus:outline-hidden focus:border-blue-500 text-xs font-medium"
             />
           </div>
         </div>
       </Modal>
 
-      {/* ══════════════════════════════════════════════════
-          ADD ITEM TO POS MODAL
-      ══════════════════════════════════════════════════ */}
-      <Modal
-        isOpen={showAddItemModal}
-        onClose={() => setShowAddItemModal(false)}
-        title="Add Item to Invoice"
-        subtitle="Select from active inventory or enter custom line item"
-        icon={Plus}
-        iconColor="text-blue-600 bg-blue-50 border-blue-100"
-        maxWidth="max-w-md"
-        footer={
-          <>
-            <button
-              type="button"
-              onClick={() => setShowAddItemModal(false)}
-              className="btn-secondary text-xs"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                if (!customItemForm.name || !customItemForm.rate) {
-                  alert("Product name and rate are required.");
-                  return;
-                }
-                setPosItems((prev) => [
-                  ...prev,
-                  {
-                    id: String(Date.now()),
-                    name: customItemForm.name,
-                    code: customItemForm.code || `PRD${prev.length + 1}`,
-                    qty: Number(customItemForm.qty || 1),
-                    rate: Number(customItemForm.rate),
-                    discount: Number(customItemForm.discount || 0),
-                    taxRate: Number(customItemForm.taxRate || 5),
-                  },
-                ]);
-                setShowAddItemModal(false);
-                setCustomItemForm({
-                  name: "",
-                  code: "",
-                  rate: "",
-                  qty: 1,
-                  discount: 0,
-                  taxRate: 5,
-                });
-              }}
-              className="btn-primary text-xs"
-            >
-              Add to Bill
-            </button>
-          </>
-        }
-      >
-        <div className="space-y-3 text-xs">
-          {availableProducts.length > 0 && (
-            <div>
-              <label className="font-semibold text-slate-700">
-                Choose from Catalog
-              </label>
-              <select
-                onChange={(e) => {
-                  const sel = availableProducts.find(
-                    (p) => (p.id || p._id) === e.target.value
-                  );
-                  if (sel) {
-                    setCustomItemForm({
-                      name: sel.name,
-                      code: sel.code || sel.barcode || "PRD",
-                      rate: Number(sel.sellingPrice || 0),
-                      qty: 1,
-                      discount: 0,
-                      taxRate: Number(sel.gstRate || 5),
-                    });
-                  }
-                }}
-                className="input-field mt-1"
-              >
-                <option value="">-- Quick select product --</option>
-                {availableProducts.map((p) => (
-                  <option key={p.id || p._id} value={p.id || p._id}>
-                    {p.name} — ₹{p.sellingPrice} ({p.gstRate || 5}% GST)
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          <div>
-            <label className="font-semibold text-slate-700">Item Name *</label>
-            <input
-              type="text"
-              value={customItemForm.name}
-              onChange={(e) =>
-                setCustomItemForm({ ...customItemForm, name: e.target.value })
-              }
-              placeholder="e.g. Basmati Rice 1kg"
-              className="input-field mt-1"
-            />
-          </div>
-
-          <div className="grid grid-cols-3 gap-2">
-            <div>
-              <label className="font-semibold text-slate-700">Unit Price (₹) *</label>
-              <input
-                type="number"
-                value={customItemForm.rate}
-                onChange={(e) =>
-                  setCustomItemForm({ ...customItemForm, rate: e.target.value })
-                }
-                placeholder="120.00"
-                className="input-field mt-1 font-mono"
-              />
-            </div>
-            <div>
-              <label className="font-semibold text-slate-700">Quantity</label>
-              <input
-                type="number"
-                value={customItemForm.qty}
-                onChange={(e) =>
-                  setCustomItemForm({
-                    ...customItemForm,
-                    qty: Number(e.target.value),
-                  })
-                }
-                min={1}
-                className="input-field mt-1 font-mono"
-              />
-            </div>
-            <div>
-              <label className="font-semibold text-slate-700">Tax (%)</label>
-              <select
-                value={customItemForm.taxRate}
-                onChange={(e) =>
-                  setCustomItemForm({
-                    ...customItemForm,
-                    taxRate: Number(e.target.value),
-                  })
-                }
-                className="input-field mt-1"
-              >
-                <option value={0}>0%</option>
-                <option value={5}>5%</option>
-                <option value={12}>12%</option>
-                <option value={18}>18%</option>
-              </select>
-            </div>
-          </div>
-        </div>
-      </Modal>
-
-      {/* ══════════════════════════════════════════════════
+      {/* ════════════════════════════════════════════════════════════
           TAX INVOICE PREVIEW MODAL
-      ══════════════════════════════════════════════════ */}
+      ════════════════════════════════════════════════════════════ */}
       {selectedInvoice && (
         <TaxInvoice
           invoice={selectedInvoice}

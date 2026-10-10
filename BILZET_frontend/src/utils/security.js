@@ -19,21 +19,27 @@ export function isAdminEmail(email) {
   return (
     ADMIN_EMAILS.includes(em) ||
     envAdmins.includes(em) ||
-    em.startsWith("admin@") ||
     em.endsWith("@bilzet.app") ||
-    em.endsWith("@bilzet.com") ||
-    em === "vickyms2app@gmail.com" ||
-    em.includes("admin")
+    em.endsWith("@bilzet.com")
+  );
+}
+
+export function isSuperAdminUser(user) {
+  if (!user) return false;
+  const email = user.email || user.primaryEmailAddress?.emailAddress || "";
+  return (
+    user.role === "SUPER_ADMIN" ||
+    user.role === "SUPERADMIN" ||
+    isAdminEmail(email)
   );
 }
 
 export function isAdminUser(user) {
   if (!user) return false;
-  const email = user.email || user.primaryEmailAddress?.emailAddress || "";
   return (
-    user.role === "SUPERADMIN" ||
-    isAdminEmail(email) ||
-    (user.role === "ADMIN" && isAdminEmail(email))
+    user.isOwner === true ||
+    user.role === "ADMIN" ||
+    isSuperAdminUser(user)
   );
 }
 

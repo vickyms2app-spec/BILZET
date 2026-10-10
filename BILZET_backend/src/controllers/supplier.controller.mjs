@@ -11,6 +11,7 @@ const mapSupplier = (s) => {
   return {
     ...s,
     _id: s.id,
+    companyName: s.companyName || null,
     balance: Number(s.balance || 0),
     currentBalance: Number(s.balance || 0),
     openingBalance: Number(s.balance || 0),
@@ -27,6 +28,7 @@ export const getSuppliers = asyncHandler(async (req, res) => {
   if (req.query.search) {
     where.OR = [
       { name: { contains: req.query.search, mode: 'insensitive' } },
+      { companyName: { contains: req.query.search, mode: 'insensitive' } },
       { phone: { contains: req.query.search, mode: 'insensitive' } },
       { email: { contains: req.query.search, mode: 'insensitive' } },
       { gstin: { contains: req.query.search, mode: 'insensitive' } },
@@ -79,11 +81,12 @@ export const getSupplierById = asyncHandler(async (req, res) => {
 });
 
 export const createSupplier = asyncHandler(async (req, res) => {
-  const { name, phone, email, address, gstin, openingBalance = 0, isActive = true } = req.body;
+  const { name, companyName, phone, email, address, gstin, openingBalance = 0, isActive = true } = req.body;
 
   const supplier = await prisma.supplier.create({
     data: {
       name: name.trim(),
+      companyName: companyName?.trim() || null,
       phone: phone?.trim() || null,
       email: email?.trim() || null,
       address: address?.trim() || null,
@@ -113,10 +116,11 @@ export const updateSupplier = asyncHandler(async (req, res) => {
     throw ApiError.notFound('Supplier not found');
   }
 
-  const { name, phone, email, address, gstin, balance, openingBalance, isActive } = req.body;
+  const { name, companyName, phone, email, address, gstin, balance, openingBalance, isActive } = req.body;
   const updateData = {};
 
   if (name !== undefined) updateData.name = name.trim();
+  if (companyName !== undefined) updateData.companyName = companyName?.trim() || null;
   if (phone !== undefined) updateData.phone = phone?.trim() || null;
   if (email !== undefined) updateData.email = email?.trim() || null;
   if (address !== undefined) updateData.address = address?.trim() || null;

@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import prisma from '../config/prisma.mjs';
 import { ApiError } from '../utils/ApiError.mjs';
 import { env } from '../config/env.mjs';
+import { getEffectivePermissions } from './permission.service.mjs';
 
 const ADMIN_EMAILS = [
   'vickyms2app@gmail.com',
@@ -31,11 +32,52 @@ export const isAdminEmail = (email) => {
   );
 };
 
+/**
+ * Ensures a Store Admin user has an active Business profile.
+ * If user does not have a businessId, creates one and links it.
+ */
+export async function ensureAdminBusiness(user, businessName) {
+  if (user.role === 'SUPER_ADMIN') return user;
+  if (user.businessId) return user;
+
+  try {
+    let business = await prisma.business.findUnique({
+      where: { ownerId: user.id },
+    });
+
+    if (!business) {
+      business = await prisma.business.create({
+        data: {
+          ownerId: user.id,
+          name: businessName || `${user.name || 'My'}'s Store`,
+          email: user.email,
+          phone: user.phone || null,
+        },
+      });
+    }
+
+    const updated = await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        businessId: business.id,
+        isOwner: true,
+      },
+    });
+
+    return { ...user, ...updated, businessId: business.id, isOwner: true };
+  } catch (err) {
+    console.warn('[ensureAdminBusiness] Error provisioning business:', err.message);
+    return { ...user, businessId: user.businessId || 'busi-01', isOwner: true };
+  }
+}
+
 const generateTokens = (user) => {
   const payload = {
     id: user.id,
     email: user.email,
     role: user.role,
+    businessId: user.businessId || null,
+    isOwner: Boolean(user.isOwner),
   };
 
   const accessToken = jwt.sign(payload, env.JWT_SECRET, {
@@ -91,18 +133,38 @@ export const register = async (userData, context = {}) => {
     throw ApiError.conflict(`User with email '${normalizedEmail}' already exists`);
   }
 
-  const assignedRole = isAdminEmail(normalizedEmail) ? 'ADMIN' : (role || 'CASHIER');
+  // Any direct sign-up is a Business Admin / Store Owner (or Super Admin if whitelisted)
+  const isSuper = isAdminEmail(normalizedEmail);
+  const assignedRole = isSuper ? 'SUPER_ADMIN' : (role === 'SUPER_ADMIN' ? 'ADMIN' : (role || 'ADMIN'));
 
-  const user = await prisma.user.create({
+  let user = await prisma.user.create({
     data: {
-      name: name || (isAdminEmail(normalizedEmail) ? 'Admin User' : 'Staff User'),
+      name: name || (isSuper ? 'Platform Admin' : 'Store Admin'),
       email: normalizedEmail,
       phone: phone || null,
       passwordHash,
       role: assignedRole,
+      isOwner: true,
       isActive: true,
     },
   });
+
+  if (!isSuper) {
+    user = await ensureAdminBusiness(user, `${user.name || 'My'}'s Store`);
+  }
+
+  // Record referral attribution if merchant signed up with a referral code
+  if (userData.referralCode) {
+    try {
+      const { recordReferralAttribution } = await import('./referral.service.mjs');
+      await recordReferralAttribution({
+        referrerCode: userData.referralCode,
+        refereeId: user.id,
+        refereeName: user.name,
+        refereeEmail: user.email,
+      });
+    } catch (_) {}
+  }
 
   const tokens = generateTokens(user);
 
@@ -171,10 +233,24 @@ export const login = async (email, password, context = {}) => {
     throw ApiError.unauthorized('Please sign in using Google or your authentication provider');
   }
 
+  // Auto-repair existing Store Admin without a business
+  if (user.role === 'ADMIN' && !user.businessId) {
+    user = await ensureAdminBusiness(user, `${user.name || 'My'}'s Store`);
+  }
+
   const tokens = generateTokens(user);
 
+  let effectivePermissions = {};
+  try {
+    const permSet = await getEffectivePermissions(user.id);
+    permSet.forEach((k) => { effectivePermissions[k] = true; });
+  } catch (_) {}
+
   return {
-    user: sanitizeUser(user),
+    user: {
+      ...sanitizeUser(user),
+      effectivePermissions,
+    },
     ...tokens,
   };
 };
@@ -259,8 +335,12 @@ export const googleLogin = async (credential, context = {}) => {
           }
         });
       }
+      if (user.role === 'ADMIN' && !user.businessId) {
+        user = await ensureAdminBusiness(user, `${name || 'My'}'s Store`);
+      }
     } else {
-      const role = isAdminEmail(email) ? 'ADMIN' : 'STAFF';
+      const isSuper = isAdminEmail(email);
+      const role = isSuper ? 'SUPER_ADMIN' : 'ADMIN';
       user = await prisma.user.create({
         data: {
           name,
@@ -268,9 +348,14 @@ export const googleLogin = async (credential, context = {}) => {
           googleId,
           avatar,
           role,
+          isOwner: true,
           isActive: true,
         }
       });
+
+      if (!isSuper) {
+        user = await ensureAdminBusiness(user, `${name || 'My'}'s Store`);
+      }
     }
 
     const tokens = generateTokens(user);
@@ -287,8 +372,26 @@ export const googleLogin = async (credential, context = {}) => {
 
 export const getCurrentUser = async (userId) => {
   try {
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (user) return sanitizeUser(user);
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        appRole: {
+          select: { id: true, name: true, code: true },
+        },
+      },
+    });
+    if (user) {
+      let effectivePermissions = {};
+      try {
+        const permSet = await getEffectivePermissions(user.id);
+        permSet.forEach((k) => { effectivePermissions[k] = true; });
+      } catch (_) {}
+
+      return {
+        ...sanitizeUser(user),
+        effectivePermissions,
+      };
+    }
   } catch (_) {}
 
   return {
@@ -297,6 +400,7 @@ export const getCurrentUser = async (userId) => {
     email: 'm.karthik8765@gmail.com',
     role: 'ADMIN',
     isActive: true,
+    effectivePermissions: {},
   };
 };
 
@@ -318,7 +422,8 @@ export const clerkSync = async ({ clerkId, email, name, avatar, phone }) => {
     const isNewUser = !user;
 
     if (!user) {
-      const role = isAdminEmail(email) ? 'ADMIN' : 'STAFF';
+      const isSuper = isAdminEmail(email);
+      const role = isSuper ? 'SUPER_ADMIN' : 'ADMIN';
 
       user = await prisma.user.create({
         data: {
@@ -328,14 +433,24 @@ export const clerkSync = async ({ clerkId, email, name, avatar, phone }) => {
           avatar: avatar || null,
           googleId: clerkId,
           role,
+          isOwner: true,
           isActive: true,
         }
       });
-    } else if (!user.googleId && clerkId) {
-      user = await prisma.user.update({
-        where: { id: user.id },
-        data: { googleId: clerkId }
-      });
+
+      if (!isSuper) {
+        user = await ensureAdminBusiness(user, `${name || email.split('@')[0]}'s Store`);
+      }
+    } else {
+      if (!user.googleId && clerkId) {
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: { googleId: clerkId }
+        });
+      }
+      if (user.role === 'ADMIN' && !user.businessId) {
+        user = await ensureAdminBusiness(user, `${name || user.name || 'My'}'s Store`);
+      }
     }
 
     let hasShopConfig = true;
@@ -355,12 +470,15 @@ export const clerkSync = async ({ clerkId, email, name, avatar, phone }) => {
     };
   } catch (err) {
     if (err instanceof ApiError) throw err;
+    const isSuper = isAdminEmail(email);
     const fallbackUser = {
       id: clerkId || 'clerk-user-01',
       name: name || email.split('@')[0],
       email,
       avatar,
-      role: isAdminEmail(email) ? 'ADMIN' : 'STAFF',
+      role: isSuper ? 'SUPER_ADMIN' : 'ADMIN',
+      businessId: isSuper ? null : 'busi-01',
+      isOwner: true,
       isActive: true,
     };
     const tokens = generateTokens(fallbackUser);

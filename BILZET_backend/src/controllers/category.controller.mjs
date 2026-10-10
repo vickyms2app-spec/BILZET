@@ -5,8 +5,13 @@ import prisma from '../config/prisma.mjs';
 import { getPaginationParams, buildPaginationMeta } from '../utils/pagination.mjs';
 
 export const getCategories = asyncHandler(async (req, res) => {
-  const { page, limit, skip } = getPaginationParams(req.query);
+  const { page, limit, skip } = getPaginationParams(req.query, 100);
   const where = {};
+
+  const activeBusinessId = req.query.businessId || req.headers['x-business-id'] || req.user?.businessId;
+  if (activeBusinessId) {
+    where.businessId = activeBusinessId;
+  }
 
   if (req.query.isActive !== undefined) {
     where.isActive = req.query.isActive === 'true';
@@ -55,19 +60,25 @@ export const getCategoryById = asyncHandler(async (req, res) => {
 
 export const createCategory = asyncHandler(async (req, res) => {
   const { name, description, isActive } = req.body;
+  const trimmedName = name?.trim();
+  const activeBusinessId = req.body.businessId || req.headers['x-business-id'] || req.user?.businessId || 'busi-01';
 
   const existing = await prisma.category.findFirst({
-    where: { name: { equals: name, mode: 'insensitive' } },
+    where: {
+      name: { equals: trimmedName, mode: 'insensitive' },
+      ...(activeBusinessId ? { businessId: activeBusinessId } : {}),
+    },
   });
   if (existing) {
-    throw ApiError.conflict(`Category '${name}' already exists`);
+    throw ApiError.conflict(`Category '${trimmedName}' already exists`);
   }
 
   const category = await prisma.category.create({
     data: {
-      name,
-      description,
+      name: trimmedName,
+      description: description?.trim() || '',
       isActive: isActive !== undefined ? isActive : true,
+      businessId: activeBusinessId,
     },
   });
 
@@ -78,11 +89,29 @@ export const updateCategory = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { name, description, isActive } = req.body;
 
+  const existing = await prisma.category.findUnique({ where: { id } });
+  if (!existing) {
+    throw ApiError.notFound('Category not found');
+  }
+
+  const trimmedName = name !== undefined ? name.trim() : undefined;
+  if (trimmedName && trimmedName.toLowerCase() !== existing.name.toLowerCase()) {
+    const duplicate = await prisma.category.findFirst({
+      where: {
+        name: { equals: trimmedName, mode: 'insensitive' },
+        ...(existing.businessId ? { businessId: existing.businessId } : {}),
+      },
+    });
+    if (duplicate && duplicate.id !== id) {
+      throw ApiError.conflict(`Category '${trimmedName}' already exists`);
+    }
+  }
+
   const category = await prisma.category.update({
     where: { id },
     data: {
-      ...(name && { name }),
-      ...(description !== undefined && { description }),
+      ...(trimmedName && { name: trimmedName }),
+      ...(description !== undefined && { description: description.trim() }),
       ...(isActive !== undefined && { isActive }),
     },
   });
@@ -93,9 +122,10 @@ export const updateCategory = asyncHandler(async (req, res) => {
 export const deleteCategory = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
+  // Safe deletion check: cannot delete category if any active or inactive products are assigned to it
   const productCount = await prisma.product.count({ where: { categoryId: id } });
   if (productCount > 0) {
-    throw ApiError.conflict(`Cannot delete category with ${productCount} active products.`);
+    throw ApiError.badRequest('This category contains products and cannot be deleted. Reassign the products first.');
   }
 
   await prisma.category.delete({ where: { id } });

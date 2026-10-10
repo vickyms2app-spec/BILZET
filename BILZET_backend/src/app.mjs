@@ -26,6 +26,12 @@ import staffRoutes from './routes/staff.routes.mjs';
 import onlineOrderRoutes from './routes/onlineOrder.routes.mjs';
 import smsRoutes from './routes/sms.routes.mjs';
 import auditRoutes from './routes/audit.routes.mjs';
+import roleRoutes from './routes/role.routes.mjs';
+import subscriptionRoutes from './routes/subscription.routes.mjs';
+import caConnectRoutes from './routes/caConnect.routes.mjs';
+import storeRoutes from './routes/store.routes.mjs';
+import referralRoutes from './routes/referral.routes.mjs';
+import caPortalRoutes from './routes/caPortal.routes.mjs';
 
 // Error middlewares
 import { notFoundHandler } from './middleware/notFound.middleware.mjs';
@@ -286,6 +292,13 @@ app.use('/api/v1/invoices', invoiceRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
 app.use('/api/v1/expenses', expenseRoutes);
 app.use('/api/v1/settings', settingsRoutes);
+app.use('/api/v1/stores', storeRoutes);
+app.use('/api/v1/roles', roleRoutes);
+app.use('/api/v1/permissions', roleRoutes);
+app.use(['/api/v1/subscription', '/api/v1/subscriptions'], subscriptionRoutes);
+app.use('/api/v1/ca-connect', caConnectRoutes);
+app.use('/api/v1/ca-portal', caPortalRoutes);
+app.use(['/api/v1/referral', '/api/v1/referrals'], referralRoutes);
 app.use('/api/v1/super-admin', superAdminRoutes);
 
 

@@ -76,16 +76,45 @@ http.interceptors.request.use(async (config) => {
     }
   }
 
+  const activeStoreId = localStorage.getItem("bilzet_active_store_id");
+  if (activeStoreId) {
+    if (config.headers?.set) {
+      config.headers.set("x-business-id", activeStoreId);
+    } else {
+      config.headers = config.headers || {};
+      config.headers["x-business-id"] = activeStoreId;
+    }
+  }
+
   return config;
 });
 
 let refreshing = null;
 
-// Response Interceptor: Seamlessly handles 401s via Clerk or refresh token
+// Response Interceptor: Seamlessly handles 401s via Clerk or refresh token & self-heals 403 store cache
 http.interceptors.response.use(
   (r) => r,
   async (e) => {
     const original = e.config;
+
+    // Self-healing: if an unauthorized store header from localStorage caused 403, purge it and retry
+    if (
+      e.response?.status === 403 &&
+      !original._storeRetry &&
+      (e.response?.data?.message?.includes("not authorized to access this store") ||
+       e.response?.data?.message?.includes("store"))
+    ) {
+      original._storeRetry = true;
+      localStorage.removeItem("bilzet_active_store_id");
+      localStorage.removeItem("bilzet_active_store");
+      if (original.headers?.delete) {
+        original.headers.delete("x-business-id");
+      } else if (original.headers) {
+        delete original.headers["x-business-id"];
+      }
+      return http(original);
+    }
+
     if (e.response?.status === 401 && !original._retry) {
       original._retry = true;
 

@@ -3,9 +3,7 @@ import { ShopSettings } from '../models/ShopSettings.mjs';
 import { ApiError } from '../utils/ApiError.mjs';
 import { createInvoicePdf } from '../templates/invoice.template.mjs';
 
-/**
- * Generates a PDF stream for a specific sale.
- */
+
 export const generateSaleInvoicePdf = async (saleId) => {
   const sale = await Sale.findById(saleId)
     .populate('customer', 'name phone email address gstin')

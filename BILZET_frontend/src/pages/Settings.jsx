@@ -1,1763 +1,1641 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import {
-  Settings as SettingsIcon,
-  Store,
-  Printer,
-  FileText,
-  Save,
-  Check,
-  Palette,
-  Shield,
-  QrCode,
   Building2,
-  Sparkles,
-  Eye,
-  Sliders,
-  CheckCircle2,
+  Store,
+  Receipt,
+  Users,
+  Bell,
+  Save,
+  RotateCcw,
+  Check,
   Lock,
-  Unlock,
+  Eye,
   EyeOff,
-  ChevronDown,
-  X,
+  Printer,
+  ExternalLink,
+  AlertCircle,
+  CheckCircle2,
   Crown,
+  Shield,
+  Maximize2,
+  Clock,
+  Sparkles,
+  Smartphone,
+  X,
+  CreditCard,
+  CheckSquare,
+  Square,
+  Mail,
+  Phone,
+  MapPin,
+  ChevronRight,
+  Star,
+  ArrowRight,
 } from "lucide-react";
-import { settingsApi } from "../api";
-import TaxInvoice, { COLOR_THEMES, INVOICE_TEMPLATES } from "../components/invoice/TaxInvoice";
+import TeamManagement from "../components/team/TeamManagement";
+import RolesManagement from "../components/team/RolesManagement";
+import { settingsApi, subscriptionApi } from "../api";
+import TaxInvoice, {
+  COLOR_THEMES,
+  DEFAULT_INVOICE_SETTINGS,
+} from "../components/invoice/TaxInvoice";
 import { useAuth } from "../store/auth";
+import Button from "../components/common/Button";
 import { useSecurityStore } from "../store/securityStore";
-import { isAdminUser, isAdminEmail, maskAccountNumber, maskIFSC, maskUPI } from "../utils/security";
+import { isAdminUser, isAdminEmail, maskAccountNumber } from "../utils/security";
 
 export const PAPER_SIZES = [
-  { id: "A4", label: "A4", isFree: true, isPro: false },
-  { id: "A5", label: "A5", isFree: true, isPro: false },
-  { id: "Thermal 80mm", label: "Thermal 80mm", badge: "PRO", isFree: false, isPro: true },
-  { id: "Thermal 58mm", label: "Thermal 58mm", badge: "PREMIUM", isFree: false, isPro: true },
+  { id: "A4", label: "A4 Standard (Sheet)", tier: "FREE", desc: "Full-page standard invoice layout" },
+  { id: "A5", label: "A5 Compact (Half Sheet)", tier: "FREE", desc: "Compact paper-saving bill layout" },
+  { id: "Thermal 80mm", label: "Thermal 80mm (Roll)", tier: "PRO", desc: "Standard POS thermal receipt printer" },
+  { id: "Thermal 58mm", label: "Thermal 58mm (Roll)", tier: "PREMIUM", desc: "Ultra-compact mobile handheld POS printer" },
 ];
 
-function InvoiceLayoutWireframe({ templateId, accent = "#2563eb" }) {
-  switch (templateId) {
-    case "classic_border":
-      return (
-        <div className="w-full h-full p-1 border-2 border-double border-slate-700 font-serif flex flex-col justify-between text-[6px]">
-          <div className="flex justify-between items-center border-b border-slate-700 pb-0.5">
-            <span className="font-bold text-[7px]">╔══</span>
-            <span className="font-bold tracking-widest text-[6px]">CLASSIC</span>
-            <span className="font-bold text-[7px]">══╗</span>
-          </div>
-          <div className="border border-slate-300 p-0.5 rounded-none space-y-0.5">
-            <div className="h-0.5 w-3/4 bg-slate-400" />
-            <div className="h-0.5 w-1/2 bg-slate-300" />
-          </div>
-          <div className="space-y-0.5">
-            <div className="h-1 w-full bg-slate-800" />
-            <div className="h-0.5 w-full bg-slate-200" />
-            <div className="h-0.5 w-full bg-slate-200" />
-          </div>
-          <div className="flex justify-between items-center text-[7px] text-slate-500">
-            <span>╚══</span>
-            <span>══╝</span>
-          </div>
-        </div>
-      );
-
-    case "compact":
-      return (
-        <div className="w-full h-full p-1 flex flex-col justify-between text-[6px]">
-          <div className="flex justify-between items-center border-b border-cyan-300 pb-0.5">
-            <span className="font-black text-cyan-700 text-[7px]">COMPACT</span>
-            <span className="text-[6px] text-slate-400">1-PAGE</span>
-          </div>
-          <div className="h-2 w-full bg-cyan-50 border border-cyan-200 rounded flex items-center px-1 gap-1">
-            <div className="h-1 w-1/4 bg-cyan-300 rounded" />
-            <div className="h-1 w-1/4 bg-cyan-200 rounded" />
-            <div className="h-1 w-1/4 bg-cyan-200 rounded" />
-          </div>
-          <div className="space-y-0.5">
-            <div className="h-1 w-full bg-cyan-700 rounded-xs" />
-            <div className="h-0.5 w-full bg-slate-200" />
-            <div className="h-0.5 w-full bg-slate-200" />
-            <div className="h-0.5 w-full bg-slate-200" />
-          </div>
-          <div className="flex justify-end">
-            <div className="h-1 w-1/3 bg-cyan-600 rounded-xs" />
-          </div>
-        </div>
-      );
-
-    case "corporate":
-      return (
-        <div className="w-full h-full flex flex-col justify-between overflow-hidden">
-          <div className="bg-slate-800 text-white px-1 py-0.5 flex justify-between items-center text-[6px]">
-            <span className="font-black text-[7px] tracking-wider">CORPORATE</span>
-            <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
-          </div>
-          <div className="p-1 flex flex-col justify-between flex-1 space-y-1">
-            <div className="grid grid-cols-3 gap-0.5">
-              <div className="h-2 bg-slate-100 border border-slate-200 rounded-xs" />
-              <div className="h-2 bg-slate-100 border border-slate-200 rounded-xs" />
-              <div className="h-2 bg-slate-100 border border-slate-200 rounded-xs" />
-            </div>
-            <div className="space-y-0.5">
-              <div className="h-1 w-full bg-slate-700" />
-              <div className="h-0.5 w-full bg-slate-200" />
-              <div className="h-0.5 w-full bg-slate-200" />
-            </div>
-            <div className="flex justify-end">
-              <div className="h-1 w-2/5 bg-slate-800" />
-            </div>
-          </div>
-        </div>
-      );
-
-    case "retail":
-      return (
-        <div className="w-full h-full p-1 border border-dashed border-orange-400 font-mono flex flex-col justify-between text-[6px]">
-          <div className="flex justify-between items-center border-b border-dashed border-orange-300 pb-0.5">
-            <span className="font-bold text-orange-700 text-[7px]">RETAIL POS</span>
-            <span className="tracking-tighter font-black text-[6px] text-slate-800">|||||||</span>
-          </div>
-          <div className="text-center font-bold text-[6px] text-slate-400 py-0.5 border-b border-dashed border-slate-200">
-            RECEIPT #0042
-          </div>
-          <div className="space-y-0.5">
-            <div className="flex justify-between"><div className="h-0.5 w-1/2 bg-slate-700" /><div className="h-0.5 w-1/4 bg-slate-700" /></div>
-            <div className="flex justify-between"><div className="h-0.5 w-1/3 bg-slate-400" /><div className="h-0.5 w-1/4 bg-slate-400" /></div>
-            <div className="flex justify-between"><div className="h-0.5 w-2/5 bg-slate-400" /><div className="h-0.5 w-1/4 bg-slate-400" /></div>
-          </div>
-          <div className="border-t border-dashed border-orange-400 pt-0.5 flex justify-between items-center">
-            <span className="font-bold text-orange-700 text-[6px]">TOTAL</span>
-            <div className="h-1 w-1/3 bg-orange-600 rounded-xs" />
-          </div>
-        </div>
-      );
-
-    case "hotel_restaurant":
-      return (
-        <div className="w-full h-full p-1 bg-[#fffdf8] border border-amber-300 font-serif flex flex-col justify-between text-[6px]">
-          <div className="flex justify-between items-center border-b border-amber-200 pb-0.5">
-            <span className="font-bold text-amber-900 text-[7px]">GUEST FOLIO</span>
-            <span className="text-amber-800 text-[8px]">⚜</span>
-          </div>
-          <div className="grid grid-cols-2 gap-0.5 p-0.5 bg-amber-50/80 rounded border border-amber-200/80">
-            <span className="text-[5px] text-amber-900 font-semibold">Table 12</span>
-            <span className="text-[5px] text-amber-900 text-right">Server: KT</span>
-          </div>
-          <div className="space-y-0.5">
-            <div className="h-1 w-full bg-amber-800/80" />
-            <div className="h-0.5 w-full bg-amber-100" />
-            <div className="h-0.5 w-full bg-amber-100" />
-          </div>
-          <div className="flex justify-between items-center border-t border-amber-200 pt-0.5">
-            <span className="text-[5px] text-amber-700 italic">Thank you</span>
-            <div className="h-1 w-1/3 bg-amber-800 rounded-xs" />
-          </div>
-        </div>
-      );
-
-    case "clean_minimal":
-      return (
-        <div className="w-full h-full p-1.5 flex flex-col justify-between text-[6px]">
-          <div className="flex items-center gap-1 border-b border-slate-100 pb-0.5">
-            <div className="w-0.5 h-2.5 bg-slate-800 rounded-full" />
-            <span className="font-bold text-slate-800 text-[7px] tracking-widest">MINIMAL</span>
-          </div>
-          <div className="space-y-0.5 pl-1.5 border-l border-slate-300">
-            <div className="h-0.5 w-3/4 bg-slate-600" />
-            <div className="h-0.5 w-1/2 bg-slate-400" />
-          </div>
-          <div className="space-y-1">
-            <div className="h-0.5 w-full bg-slate-800" />
-            <div className="h-0.5 w-full bg-slate-100" />
-            <div className="h-0.5 w-full bg-slate-100" />
-          </div>
-          <div className="flex justify-end">
-            <div className="h-0.5 w-1/3 bg-slate-900" />
-          </div>
-        </div>
-      );
-
-    case "side_ribbon":
-      return (
-        <div className="w-full h-full flex relative overflow-hidden">
-          <div className="w-3 bg-purple-600 h-full flex flex-col items-center justify-between py-1 text-white text-[5px] font-black shrink-0">
-            <span>B</span>
-            <span className="rotate-90 origin-center text-[4px] tracking-widest">RIB</span>
-            <span>✓</span>
-          </div>
-          <div className="p-1 pl-1.5 flex flex-col justify-between flex-1 space-y-1">
-            <div className="flex justify-between items-center border-b border-purple-200 pb-0.5">
-              <span className="font-bold text-purple-800 text-[7px]">RIBBON</span>
-            </div>
-            <div className="space-y-0.5">
-              <div className="h-0.5 w-3/4 bg-slate-300" />
-              <div className="h-0.5 w-1/2 bg-slate-200" />
-            </div>
-            <div className="space-y-0.5">
-              <div className="h-1 w-full bg-purple-600 rounded-xs" />
-              <div className="h-0.5 w-full bg-slate-200" />
-              <div className="h-0.5 w-full bg-slate-200" />
-            </div>
-            <div className="flex justify-end">
-              <div className="h-1 w-1/3 bg-purple-700 rounded-xs" />
-            </div>
-          </div>
-        </div>
-      );
-
-    case "premium":
-      return (
-        <div className="w-full h-full flex flex-col justify-between bg-[#fafaf9] border border-amber-300 overflow-hidden text-[6px]">
-          <div className="h-1.5 w-full bg-gradient-to-r from-amber-400 via-amber-600 to-amber-500" />
-          <div className="p-1 flex flex-col justify-between flex-1 space-y-1 font-serif">
-            <div className="flex justify-between items-center">
-              <span className="font-bold text-amber-950 text-[7px]">PREMIUM</span>
-              <div className="w-2 h-2 rounded-full border border-amber-500 flex items-center justify-center text-[5px] text-amber-700">★</div>
-            </div>
-            <div className="border border-amber-200 bg-amber-50/50 p-0.5 rounded-xs space-y-0.5">
-              <div className="h-0.5 w-3/4 bg-amber-800" />
-              <div className="h-0.5 w-1/2 bg-amber-600" />
-            </div>
-            <div className="space-y-0.5">
-              <div className="h-1 w-full bg-amber-800" />
-              <div className="h-0.5 w-full bg-amber-100" />
-              <div className="h-0.5 w-full bg-amber-100" />
-            </div>
-            <div className="flex justify-end">
-              <div className="h-1 w-2/5 bg-amber-900 rounded-xs" />
-            </div>
-          </div>
-        </div>
-      );
-
-    case "elegant":
-      return (
-        <div className="w-full h-full p-1 rounded-xl border border-pink-300 flex flex-col justify-between text-[6px]">
-          <div className="flex justify-between items-center">
-            <span className="font-bold text-pink-700 text-[7px]">ELEGANT</span>
-            <span className="px-1 py-0.2 rounded-full bg-pink-100 text-pink-700 font-bold text-[5px]">PAID</span>
-          </div>
-          <div className="grid grid-cols-2 gap-0.5">
-            <div className="h-2 rounded-md bg-pink-50/80 border border-pink-200" />
-            <div className="h-2 rounded-md bg-pink-50/80 border border-pink-200" />
-          </div>
-          <div className="space-y-0.5">
-            <div className="h-1 w-full bg-pink-600 rounded-full" />
-            <div className="h-0.5 w-full bg-slate-200 rounded-full" />
-            <div className="h-0.5 w-full bg-slate-200 rounded-full" />
-          </div>
-          <div className="flex justify-end">
-            <div className="h-1 w-1/3 bg-pink-600 rounded-full" />
-          </div>
-        </div>
-      );
-
-    case "geometric":
-      return (
-        <div className="w-full h-full p-1 font-mono border border-blue-500 rounded-none flex flex-col justify-between relative overflow-hidden text-[6px]">
-          <div className="absolute top-0 right-0 w-6 h-3 bg-blue-600" style={{ clipPath: "polygon(40% 0, 100% 0, 100% 100%, 0% 100%)" }} />
-          <div className="flex justify-between items-center z-10 border-b border-blue-400 pb-0.5">
-            <span className="font-bold text-blue-800 text-[7px]">GEOMETRIC</span>
-          </div>
-          <div className="grid grid-cols-2 gap-0.5">
-            <div className="border border-blue-200 p-0.5 space-y-0.5">
-              <div className="h-0.5 w-full bg-blue-400" />
-              <div className="h-0.5 w-2/3 bg-blue-300" />
-            </div>
-            <div className="border border-blue-200 p-0.5 space-y-0.5">
-              <div className="h-0.5 w-full bg-blue-400" />
-              <div className="h-0.5 w-2/3 bg-blue-300" />
-            </div>
-          </div>
-          <div className="space-y-0.5">
-            <div className="h-1 w-full bg-blue-800" />
-            <div className="h-0.5 w-full bg-blue-100" />
-            <div className="h-0.5 w-full bg-blue-100" />
-          </div>
-          <div className="flex justify-end">
-            <div className="h-1 w-1/3 bg-blue-700" />
-          </div>
-        </div>
-      );
-
-    default: // modern
-      return (
-        <div className="w-full h-full p-1.5 flex flex-col justify-between relative overflow-hidden text-[6px]">
-          <div className="absolute top-0 right-0 w-6 h-6 overflow-hidden pointer-events-none">
-            <div className="w-6 h-6 rounded-full border-2 border-blue-500 absolute -top-3 -right-3" />
-          </div>
-          <div className="flex justify-between items-start">
-            <span className="font-black text-blue-600 text-[7px] uppercase tracking-wider">MODERN</span>
-          </div>
-          <div className="grid grid-cols-2 gap-1 my-0.5">
-            <div className="h-2.5 rounded bg-blue-50/80 border border-blue-100 p-0.5 space-y-0.5">
-              <div className="h-0.5 w-3/4 bg-blue-400 rounded-full" />
-              <div className="h-0.5 w-1/2 bg-blue-200 rounded-full" />
-            </div>
-            <div className="h-2.5 rounded bg-blue-50/80 border border-blue-100 p-0.5 space-y-0.5">
-              <div className="h-0.5 w-3/4 bg-blue-400 rounded-full" />
-              <div className="h-0.5 w-1/2 bg-blue-200 rounded-full" />
-            </div>
-          </div>
-          <div className="space-y-0.5">
-            <div className="h-1 w-full bg-blue-600 rounded" />
-            <div className="h-0.5 w-full bg-slate-200 rounded" />
-            <div className="h-0.5 w-full bg-slate-200 rounded" />
-          </div>
-          <div className="flex justify-end">
-            <div className="h-1 w-1/3 bg-blue-700 rounded" />
-          </div>
-        </div>
-      );
-  }
-}
-
-export default function Settings() {
-  const [searchParams] = useSearchParams();
+export default function Settings({ defaultTab: initialTab }) {
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-  const isOnboarding = searchParams.get("onboarding") === "true";
-  const [activeTab, setActiveTab] = useState(isOnboarding ? "store" : "customizer");
+  const { user } = useAuth();
+  const { adminRevealed } = useSecurityStore();
+  const isAuthorizedAdmin = isAdminUser(user) || isAdminEmail(user?.email);
 
+  // Tab navigation mapping (backwards compatibility with old tab param names)
+  const resolveTab = (tab) => {
+    if (!tab) return "business";
+    const lower = tab.toLowerCase();
+    if (["business", "details", "info"].includes(lower)) return "business";
+    if (["store", "shop"].includes(lower)) return "store";
+    if (["tax", "billing", "customizer", "bank", "compliance"].includes(lower)) return "tax";
+    if (["users", "permissions", "team", "roles"].includes(lower)) return "users";
+    if (["preferences", "notifications", "attendance"].includes(lower)) return "preferences";
+    return "business";
+  };
+
+  const [activeTab, setActiveTab] = useState(() => resolveTab(initialTab || searchParams.get("tab")));
+  const [usersSubTab, setUsersSubTab] = useState(() => {
+    const tab = searchParams.get("tab");
+    return tab === "roles" ? "roles" : "staff";
+  });
+
+  useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    if (tabParam) {
+      setActiveTab(resolveTab(tabParam));
+      if (tabParam === "roles") setUsersSubTab("roles");
+      if (tabParam === "team") setUsersSubTab("staff");
+    }
+  }, [searchParams]);
+
+  // Subscription state: verify from backend, fall back to localStorage
+  const [activePlan, setActivePlan] = useState(() => {
+    try {
+      const sub = JSON.parse(localStorage.getItem("bilzet_subscription_data") || "{}");
+      return (sub.currentPlan || "Free").toUpperCase();
+    } catch (_) {
+      return "FREE";
+    }
+  });
+
+  const tierRank = { FREE: 1, PRO: 2, PREMIUM: 3, ENTERPRISE: 4 };
+  const currentRank = tierRank[activePlan] || 1;
+
+  const isFeatureUnlocked = (requiredTier) => {
+    const req = (requiredTier || "FREE").toUpperCase();
+    return currentRank >= (tierRank[req] || 1);
+  };
+
+  // Main settings state
   const [form, setForm] = useState(() => {
     const savedLocal = localStorage.getItem("bilzet_invoice_settings");
     const parsed = savedLocal ? JSON.parse(savedLocal) : {};
     return {
-      // Store details
-      shopName: parsed.shopName || "BILZET Retail Mart",
-      ownerName: parsed.ownerName || "karthikeyan",
-      phone: parsed.phone || "+91 98765 43210",
-      email: parsed.email || "billing@bilzet.app",
-      address: parsed.address || "123 Commercial Plaza, Main Market, Bengaluru",
-      gstin: parsed.gstin || "33ABCDE1234F1Z5",
-      state: parsed.state || "Tamil Nadu",
-      stateCode: parsed.stateCode || "33",
-      pan: parsed.pan || "ABCDE1234F",
-      invoicePrefix: parsed.invoicePrefix || "INV-2026-",
+      ...DEFAULT_INVOICE_SETTINGS,
+      // Store information fields
+      storeName: parsed.storeName || parsed.shopName || "BILZET Retail Mart",
+      storeLocation: parsed.storeLocation || parsed.address || "123 Commercial Plaza, Main Market",
+      storePhone: parsed.storePhone || parsed.phone || "+91 9876543210",
+      storeEmail: parsed.storeEmail || parsed.email || "billing@bilzet.app",
+      // Tax preferences
+      enableGst: parsed.enableGst !== undefined ? parsed.enableGst : true,
+      defaultTaxRate: parsed.defaultTaxRate || "18",
+      taxInclusive: parsed.taxInclusive !== undefined ? parsed.taxInclusive : false,
+      showHsnSummary: parsed.showHsnSummary !== undefined ? parsed.showHsnSummary : true,
+      // Notifications
+      notifyWhatsApp: parsed.notifyWhatsApp !== undefined ? parsed.notifyWhatsApp : true,
+      notifySms: parsed.notifySms !== undefined ? parsed.notifySms : false,
+      notifyEmail: parsed.notifyEmail !== undefined ? parsed.notifyEmail : true,
+      // Paper size & Watermark
       paperSize: parsed.paperSize || "A4",
-      terms:
-        parsed.terms ||
-        "Thank you for your business.\nGoods/services once accepted are subject to applicable business terms.",
-
-      // Customizer specifics
-      template: parsed.template || "modern",
-      colorTheme: parsed.colorTheme || "trust_blue",
-      themeColor: parsed.themeColor || "#2563eb",
-      invoiceTitle: parsed.invoiceTitle || "TAX INVOICE",
-      showHsnSummary: parsed.showHsnSummary === true,
-      showBankDetails: parsed.showBankDetails !== false,
-      showQrCode: parsed.showQrCode !== false,
-      showSignatory: parsed.showSignatory !== false,
-      showTerms: parsed.showTerms !== false,
-      showWatermark: parsed.showWatermark !== false,
-      showLogo: parsed.showLogo !== false,
-      showStatusBadge: parsed.showStatusBadge !== false,
-      showAmountInWords: parsed.showAmountInWords !== false,
-
-      // Bank & UPI details
+      showWatermark: parsed.showWatermark !== undefined ? parsed.showWatermark : true,
+      removeWatermark: parsed.removeWatermark || false,
+      // Bank & UPI
+      showBankDetails: parsed.showBankDetails !== undefined ? parsed.showBankDetails : true,
+      showQrCode: parsed.showQrCode !== undefined ? parsed.showQrCode : true,
       bankName: parsed.bankName || "HDFC Bank Ltd",
+      accountHolder: parsed.accountHolder || "BILZET Retail Mart",
       accountNumber: parsed.accountNumber || "50200012345678",
       ifsc: parsed.ifsc || "HDFC0001234",
-      accountHolder: parsed.accountHolder || "BILZET Retail Mart",
       upiId: parsed.upiId || "bilzet@hdfcbank",
+      // Color & Design
+      colorTheme: parsed.colorTheme || "trust_blue",
+      customColor: parsed.customColor || "",
+      ...parsed,
     };
   });
 
-  const { user } = useAuth();
-  const { adminRevealed } = useSecurityStore();
-  const isAuthorizedAdmin = isAdminUser(user) || isAdminEmail(user?.email);
-  const canViewBankDetails = isAuthorizedAdmin || adminRevealed;
-  const [showFullBankDetails, setShowFullBankDetails] = useState(false);
-
-  // Subscription plan determination
-  const userPlan = (() => {
-    if (isAuthorizedAdmin) return "Pro Enterprise (Admin)";
+  // Business Operational Preferences (Timings & Attendance)
+  const [attSettings, setAttSettings] = useState(() => {
     try {
-      const sub = JSON.parse(localStorage.getItem("bilzet_subscription") || "{}");
-      return sub.currentPlan || "Free";
+      const saved = localStorage.getItem("bilzet_attendance_settings");
+      return saved ? JSON.parse(saved) : {
+        officeStartTime: "09:00",
+        officeClosingTime: "18:00",
+        gracePeriod: 15,
+        lateThreshold: "09:15",
+        halfDayThreshold: 4.0,
+        minWorkingHours: 8.0,
+        weeklyHolidays: ["Sunday"],
+        overtimeRate: 1.5,
+        lateDeductionRule: "3_TO_HALF_DAY",
+      };
     } catch (_) {
-      return "Free";
+      return {
+        officeStartTime: "09:00",
+        officeClosingTime: "18:00",
+        gracePeriod: 15,
+        lateThreshold: "09:15",
+        halfDayThreshold: 4.0,
+        minWorkingHours: 8.0,
+        weeklyHolidays: ["Sunday"],
+        overtimeRate: 1.5,
+        lateDeductionRule: "3_TO_HALF_DAY",
+      };
     }
-  })();
-
-  const hasSubscription = isAuthorizedAdmin || userPlan === "Pro" || userPlan === "Enterprise";
-
-  const [saved, setSaved] = useState(false);
-  const [showFullPreview, setShowFullPreview] = useState(false);
-  const [upgradeModal, setUpgradeModal] = useState({
-    open: false,
-    item: "",
-    type: "",
   });
 
+  // UI States
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [savedSuccess, setSavedSuccess] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [formErrors, setFormErrors] = useState({});
+  const [showFullBankDetails, setShowFullBankDetails] = useState(false);
+  const [showInvoicePreviewModal, setShowInvoicePreviewModal] = useState(false);
+
+  // Fetch shop settings & subscription from backend
   useEffect(() => {
-    settingsApi
-      .get()
-      .then((res) => {
-        if (res) {
-          setForm((prev) => {
-            const merged = { ...prev, ...res };
-            localStorage.setItem("bilzet_invoice_settings", JSON.stringify(merged));
-            return merged;
-          });
-        }
-      })
-      .catch(() => {});
+    let mounted = true;
+    Promise.all([
+      settingsApi.get().catch(() => null),
+      subscriptionApi.getUsage().catch(() => null),
+    ]).then(([settingsRes, usageRes]) => {
+      if (!mounted) return;
+      if (settingsRes) {
+        setForm((prev) => {
+          const merged = { ...prev, ...settingsRes };
+          if (settingsRes.subscriptionTier) {
+            setActivePlan(settingsRes.subscriptionTier.toUpperCase());
+          }
+          localStorage.setItem("bilzet_invoice_settings", JSON.stringify(merged));
+          return merged;
+        });
+      }
+      if (usageRes && usageRes.planTier) {
+        setActivePlan(usageRes.planTier.toUpperCase());
+      }
+      setLoading(false);
+    });
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
-  const [lastChange, setLastChange] = useState({
-    title: "Initial Configuration",
-    field: "template",
-    time: "Ready",
-  });
-  const [highlightSections, setHighlightSections] = useState(true);
-  const [previewViewMode, setPreviewViewMode] = useState("template");
+  const handleTabChange = (newTab) => {
+    setActiveTab(newTab);
+    setSearchParams({ tab: newTab });
+    setErrorMessage("");
+  };
 
-  const formatChangeName = (field, val) => {
-    switch (field) {
-      case "template": {
-        const tmpl = INVOICE_TEMPLATES.find((t) => t.id === val);
-        return `Switched layout to "${tmpl?.name || val}"`;
-      }
-      case "colorTheme": {
-        const col = COLOR_THEMES.find((c) => c.id === val);
-        return `Color palette set to "${col?.label || val}"`;
-      }
-      case "paperSize":
-        return `Paper format set to "${val}"`;
-      case "invoiceTitle":
-        return `Document heading set to "${val}"`;
-      case "invoicePrefix":
-        return `Invoice prefix set to "${val}"`;
-      case "showLogo":
-        return `Company logo ${val ? "visible on bill" : "hidden"}`;
-      case "showWatermark":
-        return `Background watermark ${val ? "enabled on bill" : "hidden"}`;
-      case "showStatusBadge":
-        return `Payment status badge ${val ? "shown on bill" : "hidden"}`;
-      case "showHsnSummary":
-        return `HSN/SAC summary grid ${val ? "enabled on bill" : "hidden"}`;
-      case "showBankDetails":
-        return `Bank settlement details ${val ? "printed on bill" : "hidden"}`;
-      case "showQrCode":
-        return `UPI QR Code ${val ? "printed on bill" : "hidden"}`;
-      case "showTerms":
-        return `Terms & conditions ${val ? "printed on bill" : "hidden"}`;
-      case "showSignatory":
-        return `Authorized signature box ${val ? "visible on bill" : "hidden"}`;
-      default:
-        return `${field} updated`;
+  const handleFieldChange = (field, value) => {
+    setForm((prev) => {
+      const next = { ...prev, [field]: value };
+      localStorage.setItem("bilzet_invoice_settings", JSON.stringify(next));
+      return next;
+    });
+    if (formErrors[field]) {
+      setFormErrors((prev) => ({ ...prev, [field]: null }));
     }
   };
 
-  const handleChange = (field, val) => {
-    setLastChange({
-      title: formatChangeName(field, val),
-      field,
-      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
-    });
-    setForm((prev) => {
-      const next = { ...prev, [field]: val };
-      localStorage.setItem("bilzet_invoice_settings", JSON.stringify(next));
-      return next;
-    });
-  };
-
-  const handleSelectTemplate = (tmpl) => {
-    setPreviewViewMode("template");
-    setForm((prev) => {
-      const nextPaper = prev.paperSize?.startsWith("Thermal") ? "A4" : prev.paperSize;
-      const next = { ...prev, template: tmpl.id, paperSize: nextPaper };
-      localStorage.setItem("bilzet_invoice_settings", JSON.stringify(next));
-      return next;
-    });
-    setLastChange({
-      title: `Switched layout to "${tmpl.name}"`,
-      field: "template",
-      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
-    });
-  };
-
-  const handleSelectColor = (theme) => {
-    setLastChange({
-      title: `Color palette set to "${theme.label}"`,
-      field: "colorTheme",
-      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
-    });
-    setForm((prev) => {
-      const next = { ...prev, colorTheme: theme.id, themeColor: theme.primary };
-      localStorage.setItem("bilzet_invoice_settings", JSON.stringify(next));
-      return next;
-    });
-  };
-
-  const handleSelectPaperSize = (p) => {
-    if (p.id.startsWith("Thermal")) {
-      setPreviewViewMode("thermal");
-    } else {
-      setPreviewViewMode("template");
+  const validateBusinessInfo = () => {
+    const errors = {};
+    if (!form.shopName || !form.shopName.trim()) {
+      errors.shopName = "Business name is required";
     }
-    handleChange("paperSize", p.id);
+    if (!form.ownerName || !form.ownerName.trim()) {
+      errors.ownerName = "Owner name is required";
+    }
+    if (!form.phone || !form.phone.trim()) {
+      errors.phone = "Phone number is required";
+    }
+    if (!form.email || !form.email.trim()) {
+      errors.email = "Email address is required";
+    } else if (!/\S+@\S+\.\S+/.test(form.email)) {
+      errors.email = "Please enter a valid email address";
+    }
+    if (!form.address || !form.address.trim()) {
+      errors.address = "Business address is required";
+    }
+    return errors;
   };
 
-  const handleSubmit = (e) => {
+  const handleSaveAll = async (e) => {
     if (e) e.preventDefault();
-    const activeTemplate = INVOICE_TEMPLATES.find((t) => t.id === form.template);
-    const activeColor = COLOR_THEMES.find((c) => c.id === form.colorTheme);
-    const isProTemplate = activeTemplate && !activeTemplate.isFree;
-    const isProColor = activeColor && !activeColor.isFree;
-    const isProPaper = form.paperSize === "Thermal 80mm" || form.paperSize === "Thermal 58mm";
-
-    if ((isProTemplate || isProColor || isProPaper) && !hasSubscription) {
-      setUpgradeModal({
-        open: true,
-        item: isProTemplate
-          ? `${activeTemplate.name} Layout`
-          : isProColor
-          ? `${activeColor.label} Palette`
-          : form.paperSize,
-        type: isProTemplate ? "template" : isProColor ? "color theme" : "paper size",
-      });
+    setErrorMessage("");
+    const errors = validateBusinessInfo();
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      if (activeTab !== "business") {
+        handleTabChange("business");
+      }
+      setErrorMessage("Please complete all required fields in Business Information.");
       return;
     }
 
-    localStorage.setItem("bilzet_invoice_settings", JSON.stringify(form));
-    settingsApi.update(form).catch(() => {});
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2800);
+    setSaving(true);
+    try {
+      // Save operational preferences
+      localStorage.setItem("bilzet_attendance_settings", JSON.stringify(attSettings));
+      localStorage.setItem("bilzet_invoice_settings", JSON.stringify(form));
+
+      // Persist to backend settings
+      await settingsApi.update(form);
+
+      setSavedSuccess(true);
+      setTimeout(() => setSavedSuccess(false), 3500);
+    } catch (err) {
+      const apiMsg = err?.response?.data?.message || err?.message || "Failed to save settings. Please try again.";
+      setErrorMessage(apiMsg);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleReset = () => {
+    if (window.confirm("Discard unsaved edits and reload saved business settings?")) {
+      setLoading(true);
+      settingsApi
+        .get()
+        .then((res) => {
+          if (res) {
+            setForm((prev) => ({ ...prev, ...res }));
+          }
+          setErrorMessage("");
+          setFormErrors({});
+        })
+        .finally(() => setLoading(false));
+    }
+  };
+
+  // Navigates to existing upgrade flow
+  const handleUpgrade = (targetTier) => {
+    navigate(`/plans?tier=${targetTier}`);
+  };
+
+  // Sample data for master invoice preview
+  const sampleInvoiceData = {
+    invoiceNumber: `${form.invoicePrefix || "INV-2026-"}0001`,
+    createdAt: new Date().toISOString(),
+    date: new Date().toISOString().split("T")[0],
+    saleType: "B2B",
+    placeOfSupply: `${form.stateCode || "33"}-${form.state || "Tamil Nadu"}`,
+    paymentStatus: "PAID",
+    customer: {
+      name: "Ramesh Traders & Co.",
+      phone: "9876543210",
+      address: "Plot 42, Commercial Market, Coimbatore, Tamil Nadu",
+      gstin: "33ABCDE1234F1Z5",
+      state: "Tamil Nadu",
+    },
+    items: [
+      {
+        id: 1,
+        name: "Standard Retail Product A",
+        code: "SKU-001",
+        hsn: "1006",
+        unit: "box",
+        qty: 2,
+        rate: 550.0,
+        discount: 50.0,
+        gst: 5,
+        taxable: 1050.0,
+        taxAmt: 52.5,
+        total: 1102.5,
+      },
+      {
+        id: 2,
+        name: "Commercial Packaged Goods B",
+        code: "SKU-002",
+        hsn: "1101",
+        unit: "pack",
+        qty: 1,
+        rate: 420.0,
+        discount: 20.0,
+        gst: 5,
+        taxable: 400.0,
+        taxAmt: 20.0,
+        total: 420.0,
+      },
+    ],
+    totals: {
+      subtotal: 1450.0,
+      discount: 70.0,
+      taxable: 1450.0,
+      cgst: 36.25,
+      sgst: 36.25,
+      igst: 0.0,
+      totalTax: 72.5,
+      roundOff: 0.0,
+      grandTotal: 1522.5,
+      received: 1522.5,
+      balance: 0.0,
+    },
   };
 
   const inputCls =
-    "w-full px-3.5 py-2.5 text-xs border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 font-medium transition bg-white";
+    "w-full px-3.5 py-2.5 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition placeholder:text-slate-400";
+  const labelCls = "block text-xs font-semibold text-slate-700 mb-1.5";
 
   return (
-    <div className="space-y-6 pb-16 max-w-7xl mx-auto fade-up font-sans">
-      {/* ══════════════════════════════════════════════════
-          TOP HEADER
-      ══════════════════════════════════════════════════ */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/90 shadow-xs">
-        <div className="flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 grid place-items-center shrink-0">
-            <Palette size={22} />
+    <div className="max-w-6xl mx-auto space-y-6 pb-12">
+      {/* ── 1. PAGE HEADER ───────────────────────────────── */}
+      <div className="bg-white p-6 rounded-2xl border border-slate-200/90 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <h1 className="text-xl font-bold text-slate-900">Business Settings</h1>
+            <span
+              className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${
+                activePlan === "PREMIUM"
+                  ? "bg-amber-50 text-amber-800 border-amber-300"
+                  : activePlan === "PRO"
+                  ? "bg-blue-50 text-blue-800 border-blue-300"
+                  : "bg-slate-100 text-slate-700 border-slate-300"
+              }`}
+            >
+              {activePlan} PLAN
+            </span>
           </div>
-          <div>
-            <div className="flex items-center gap-2.5">
-              <h1 className="text-xl font-bold text-slate-900 tracking-tight">
-                Invoice Studio &amp; Settings
-              </h1>
-              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
-                hasSubscription
-                  ? "bg-amber-50 text-amber-800 border-amber-200"
-                  : "bg-blue-50 text-blue-700 border-blue-200/80"
-              }`}>
-                {hasSubscription ? "👑 PRO ACTIVE" : "FREE STARTER TIER"}
-              </span>
-            </div>
-            <p className="text-xs text-slate-500 font-normal mt-0.5">
-              3 Free Templates &amp; 3 Free Color Themes included &middot; Balance templates and palettes unlocked with Pro Suite
-            </p>
-          </div>
+          <p className="text-xs text-slate-500">
+            Manage your business details, store information, billing preferences, user access, and operational settings.
+          </p>
         </div>
 
-        <div className="flex items-center gap-2 self-start sm:self-center">
-          {saved && (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold rounded-xl animate-fadeIn">
-              <Check size={13} />
-              <span>Saved!</span>
-            </span>
-          )}
-          <button
-            type="button"
-            onClick={() => setShowFullPreview(true)}
-            className="px-3.5 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
+        {/* Header Action Buttons */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Plan Simulation Switcher for previewing Free, Pro, Premium */}
+          <div className="hidden sm:flex items-center gap-1 bg-slate-100 p-1 rounded-xl text-[11px] mr-1">
+            <span className="text-slate-500 px-1 font-medium">Plan:</span>
+            {["FREE", "PRO", "PREMIUM"].map((tier) => (
+              <button
+                key={tier}
+                type="button"
+                onClick={() => {
+                  setActivePlan(tier);
+                  localStorage.setItem(
+                    "bilzet_subscription_data",
+                    JSON.stringify({ currentPlan: tier })
+                  );
+                }}
+                className={`px-2.5 py-1 rounded-lg font-bold transition cursor-pointer ${
+                  activePlan === tier
+                    ? "bg-white text-slate-900 shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+                title={`Simulate ${tier} subscription tier`}
+              >
+                {tier}
+              </button>
+            ))}
+          </div>
+
+          <Button
+            variant="neutral"
+            size="sm"
+            icon={Eye}
+            onClick={() => setShowInvoicePreviewModal(true)}
+            title="Preview master invoice layout"
           >
-            <Eye size={13} className="text-slate-500" />
-            <span>Full Preview</span>
-          </button>
-          <button
-            type="button"
-            onClick={handleSubmit}
-            className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:brightness-110 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/20 transition flex items-center gap-1.5"
+            Preview Bill
+          </Button>
+
+          <Button
+            variant="neutral"
+            size="sm"
+            icon={RotateCcw}
+            onClick={handleReset}
+            disabled={loading || saving}
+            title="Reset form to last saved data"
           >
-            <Save size={13} />
-            <span>Save Customization</span>
-          </button>
+            Cancel
+          </Button>
+
+          <Button
+            variant={savedSuccess ? "success" : "primary"}
+            size="sm"
+            icon={savedSuccess ? Check : Save}
+            onClick={handleSaveAll}
+            disabled={loading || saving}
+          >
+            {saving ? "Saving…" : savedSuccess ? "Saved!" : "Save Changes"}
+          </Button>
         </div>
       </div>
 
-      {isOnboarding && (
-        <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fadeIn">
-          <div>
-            <h3 className="font-bold text-sm">Welcome to BILZET ERP! 🎉</h3>
-            <p className="text-xs text-blue-100 mt-0.5">
-              Let&apos;s quickly review and save your Business profile and Shop details before accessing your workspace.
-            </p>
+      {/* ── ALERTS: SUCCESS & ERROR ──────────────────────── */}
+      {savedSuccess && (
+        <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 font-semibold flex items-center justify-between animate-fadeIn">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+            <span>Settings saved successfully. All changes are active for your business.</span>
+          </div>
+          <span className="text-[10px] bg-emerald-200/70 text-emerald-900 px-2 py-0.5 rounded font-bold uppercase">
+            Updated
+          </span>
+        </div>
+      )}
+
+      {errorMessage && (
+        <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 font-semibold flex items-center justify-between animate-fadeIn">
+          <div className="flex items-center gap-2">
+            <AlertCircle size={16} className="text-rose-600 shrink-0" />
+            <span>{errorMessage}</span>
           </div>
           <button
             type="button"
-            onClick={() => navigate("/dashboard")}
-            className="px-4 py-2 rounded-xl bg-white text-blue-700 font-bold text-xs hover:bg-blue-50 transition shrink-0 self-start sm:self-auto shadow-xs"
+            onClick={() => setErrorMessage("")}
+            className="text-rose-600 hover:text-rose-900 text-xs font-bold"
           >
-            Continue to Dashboard →
+            Dismiss
           </button>
         </div>
       )}
 
-      {/* ══════════════════════════════════════════════════
-          NAVIGATION TABS
-      ══════════════════════════════════════════════════ */}
-      <div className="flex border-b border-slate-200 gap-6 text-xs font-bold text-slate-500 overflow-x-auto">
-        {[
-          { id: "customizer", label: "Invoice Studio & Themes", icon: Sparkles },
-          { id: "store", label: "Shop Profile & GST", icon: Store },
-          { id: "bank", label: "Bank Settlement & UPI", icon: Building2 },
-          { id: "compliance", label: "Document Headers & Terms", icon: Sliders },
-        ].map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`pb-3 flex items-center gap-2 border-b-2 transition whitespace-nowrap ${
-                isActive
-                  ? "border-blue-600 text-blue-700"
-                  : "border-transparent hover:text-slate-800"
-              }`}
-            >
-              <Icon size={14} className={isActive ? "text-blue-600" : "text-slate-400"} />
-              <span>{tab.label}</span>
-            </button>
-          );
-        })}
+      {/* ── 2. MAIN NAVIGATION TABS ───────────────────────── */}
+      <div className="bg-white rounded-2xl border border-slate-200/90 p-1.5 shadow-xs overflow-x-auto">
+        <nav className="flex gap-1 min-w-max">
+          {[
+            { id: "business", label: "Business Information", icon: Building2 },
+            { id: "store", label: "Store Information", icon: Store },
+            { id: "tax", label: "Tax & Billing", icon: Receipt },
+            { id: "users", label: "Users & Permissions", icon: Users },
+            { id: "preferences", label: "Notifications & Preferences", icon: Bell },
+          ].map((tab) => {
+            const Icon = tab.icon;
+            const isCurrent = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => handleTabChange(tab.id)}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                  isCurrent
+                    ? "bg-blue-50 text-blue-700 font-bold border border-blue-200/80 shadow-2xs"
+                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                }`}
+              >
+                <Icon size={15} className={isCurrent ? "text-blue-600" : "text-slate-400"} />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </nav>
       </div>
 
-      {/* ══════════════════════════════════════════════════
-          TOP: LIVE BILL CHANGES INSPECTOR (ALL TABS)
-      ══════════════════════════════════════════════════ */}
-      <div className="space-y-6">
-        {/* ── TOP: LIVE BILL CHANGES INSPECTOR ──────────── */}
-          <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-950 text-white p-4 sm:p-5 rounded-2xl border border-blue-800/40 shadow-lg space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5">
-                <div className="relative flex items-center justify-center w-3 h-3">
-                  <span className="w-3 h-3 rounded-full bg-emerald-400 animate-ping opacity-75" />
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 absolute" />
-                </div>
-                <h3 className="font-bold text-xs uppercase tracking-wider text-emerald-400 flex items-center gap-2">
-                  <span>Live Bill Inspector</span>
-                  <span className="text-[10px] lowercase font-normal text-slate-300">
-                    &middot; real-time preview of what you change
-                  </span>
-                </h3>
-              </div>
+      {/* ── 3. TAB CONTENT ────────────────────────────────── */}
 
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setHighlightSections(!highlightSections)}
-                  className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition flex items-center gap-1.5 ${
-                    highlightSections
-                      ? "bg-blue-600 text-white border-blue-500 shadow-sm"
-                      : "bg-white/10 hover:bg-white/20 text-slate-300 border-white/20"
-                  }`}
-                  title="Toggle section callout tags directly on the bill"
-                >
-                  <Eye size={13} />
-                  <span>{highlightSections ? "Visual Callouts ON" : "Visual Callouts OFF"}</span>
-                </button>
-                <span className="text-[11px] text-slate-400">
-                  {lastChange.time}
+      {/* ════════════════════════════════════════════════════
+          SECTION 1: BUSINESS INFORMATION
+      ════════════════════════════════════════════════════ */}
+      {activeTab === "business" && (
+        <div className="bg-white p-6 sm:p-7 rounded-2xl border border-slate-200/90 shadow-xs space-y-6">
+          <div className="border-b border-slate-100 pb-3">
+            <h2 className="text-base font-bold text-slate-900">Business Information</h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Legal name, owner details, contact information, and principal place of business.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div>
+              <label className={labelCls}>
+                Business Name <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={form.shopName || ""}
+                onChange={(e) => handleFieldChange("shopName", e.target.value)}
+                placeholder="e.g. BILZET Retail Mart"
+                className={`${inputCls} ${formErrors.shopName ? "border-rose-400 bg-rose-50/30" : ""}`}
+              />
+              {formErrors.shopName ? (
+                <span className="text-[11px] text-rose-600 font-medium mt-1 block">
+                  {formErrors.shopName}
                 </span>
-              </div>
+              ) : (
+                <span className="text-[11px] text-slate-400 mt-1 block">
+                  The primary registered name of your company or shop.
+                </span>
+              )}
             </div>
 
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5 pt-2.5 border-t border-white/10">
-              <div className="flex items-center gap-2 text-xs">
-                <span className="text-amber-400 font-bold shrink-0">✨ Live Applied:</span>
-                <span className="font-bold text-white bg-white/15 px-2.5 py-0.5 rounded-lg border border-white/15">
-                  {lastChange.title}
+            <div>
+              <label className={labelCls}>
+                Owner Name <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={form.ownerName || ""}
+                onChange={(e) => handleFieldChange("ownerName", e.target.value)}
+                placeholder="e.g. Karthi Kevan"
+                className={`${inputCls} ${formErrors.ownerName ? "border-rose-400 bg-rose-50/30" : ""}`}
+              />
+              {formErrors.ownerName ? (
+                <span className="text-[11px] text-rose-600 font-medium mt-1 block">
+                  {formErrors.ownerName}
                 </span>
-              </div>
+              ) : (
+                <span className="text-[11px] text-slate-400 mt-1 block">
+                  Name of proprietor, partner, or managing director.
+                </span>
+              )}
+            </div>
 
-              {/* Active Bill Customization Chips */}
-              <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
-                <span className="px-2 py-0.5 rounded-md bg-blue-500/20 text-blue-300 border border-blue-400/30 font-semibold">
-                  📐 {form.paperSize}
+            <div>
+              <label className={labelCls}>
+                Phone Number <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="tel"
+                value={form.phone || ""}
+                onChange={(e) => handleFieldChange("phone", e.target.value)}
+                placeholder="e.g. +91 9876543210"
+                className={`${inputCls} ${formErrors.phone ? "border-rose-400 bg-rose-50/30" : ""}`}
+              />
+              {formErrors.phone ? (
+                <span className="text-[11px] text-rose-600 font-medium mt-1 block">
+                  {formErrors.phone}
                 </span>
-                <span className="px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 font-semibold">
-                  🏛️ {form.template}
+              ) : (
+                <span className="text-[11px] text-slate-400 mt-1 block">
+                  Official phone number printed on customer receipts and quotes.
                 </span>
-                <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 font-semibold flex items-center gap-1">
-                  <span
-                    className="w-1.5 h-1.5 rounded-full"
-                    style={{
-                      backgroundColor:
-                        COLOR_THEMES.find((c) => c.id === form.colorTheme)?.primary || "#2563eb",
-                    }}
-                  />
-                  🎨 {COLOR_THEMES.find((c) => c.id === form.colorTheme)?.label || "Blue"}
+              )}
+            </div>
+
+            <div>
+              <label className={labelCls}>
+                Email Address <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="email"
+                value={form.email || ""}
+                onChange={(e) => handleFieldChange("email", e.target.value)}
+                placeholder="e.g. billing@bilzet.app"
+                className={`${inputCls} ${formErrors.email ? "border-rose-400 bg-rose-50/30" : ""}`}
+              />
+              {formErrors.email ? (
+                <span className="text-[11px] text-rose-600 font-medium mt-1 block">
+                  {formErrors.email}
                 </span>
-                <span
-                  className={`px-2 py-0.5 rounded-md font-semibold border ${
-                    form.showWatermark
-                      ? "bg-rose-500/20 text-rose-300 border-rose-400/30"
-                      : "bg-slate-800 text-slate-400 border-slate-700"
-                  }`}
-                >
-                  💧 Watermark: {form.showWatermark ? "ON" : "OFF"}
+              ) : (
+                <span className="text-[11px] text-slate-400 mt-1 block">
+                  Email for billing communications and customer inquiries.
                 </span>
-                <span
-                  className={`px-2 py-0.5 rounded-md font-semibold border ${
-                    form.showStatusBadge
-                      ? "bg-sky-500/20 text-sky-300 border-sky-400/30"
-                      : "bg-slate-800 text-slate-400 border-slate-700"
-                  }`}
-                >
-                  🛡️ Badge: {form.showStatusBadge ? "ON" : "OFF"}
+              )}
+            </div>
+
+            <div className="md:col-span-2">
+              <label className={labelCls}>
+                Business Address <span className="text-rose-500">*</span>
+              </label>
+              <textarea
+                rows={3}
+                value={form.address || ""}
+                onChange={(e) => handleFieldChange("address", e.target.value)}
+                placeholder="e.g. 123 Commercial Plaza, Main Market, Coimbatore, Tamil Nadu - 641001"
+                className={`${inputCls} leading-relaxed ${
+                  formErrors.address ? "border-rose-400 bg-rose-50/30" : ""
+                }`}
+              />
+              {formErrors.address ? (
+                <span className="text-[11px] text-rose-600 font-medium mt-1 block">
+                  {formErrors.address}
                 </span>
-                <span
-                  className={`px-2 py-0.5 rounded-md font-semibold border ${
-                    form.showHsnSummary
-                      ? "bg-cyan-500/20 text-cyan-300 border-cyan-400/30"
-                      : "bg-slate-800 text-slate-400 border-slate-700"
-                  }`}
-                >
-                  📊 HSN: {form.showHsnSummary ? "ON" : "OFF"}
+              ) : (
+                <span className="text-[11px] text-slate-400 mt-1 block">
+                  Complete physical address displayed in the bill header.
                 </span>
-              </div>
+              )}
             </div>
           </div>
 
-      {/* ── RESPONSIVE DUAL-COLUMN LAYOUT (CONTROLS LEFT, STICKY BILL RIGHT) ── */}
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-        {/* LEFT: CONTROLS (7 Cols) */}
-        <div className="xl:col-span-7 space-y-6">
-          {/* TAB 1: INVOICE STUDIO & THEMES */}
-          {activeTab === "customizer" && (
-            <div className="space-y-6">
-              {/* ── CARD 1: PAPER SIZE ───────────────────────── */}
-          <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/90 shadow-xs space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-bold text-slate-900">Paper Size</h2>
-              <span className="text-xs text-slate-400 font-medium">A4 / A5 / Thermal</span>
-            </div>
+          <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
+            <Button variant="neutral" size="sm" onClick={handleReset} disabled={saving}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              icon={Save}
+              onClick={handleSaveAll}
+              disabled={saving}
+            >
+              {saving ? "Saving…" : "Save Business Information"}
+            </Button>
+          </div>
+        </div>
+      )}
 
-            <div className="flex flex-wrap items-center gap-2.5 pt-1">
-              {PAPER_SIZES.map((p) => {
-                const isSelected = form.paperSize === p.id;
-                return (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => handleSelectPaperSize(p)}
-                    className={`px-4 py-2 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 ${
-                      isSelected
-                        ? "border-2 border-blue-600 bg-white text-blue-600 font-bold shadow-xs ring-1 ring-blue-500/20"
-                        : "border border-slate-200 bg-white text-slate-700 hover:border-slate-300"
-                    }`}
-                  >
-                    <span>{p.label}</span>
-                    {p.badge && (
-                      <span className="text-[9px] font-bold text-amber-700 bg-amber-50 border border-amber-200/80 px-1.5 py-0.5 rounded flex items-center gap-0.5">
-                        👑 {p.badge}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+      {/* ════════════════════════════════════════════════════
+          SECTION 2: STORE INFORMATION
+      ════════════════════════════════════════════════════ */}
+      {activeTab === "store" && (
+        <div className="bg-white p-6 sm:p-7 rounded-2xl border border-slate-200/90 shadow-xs space-y-6">
+          <div className="border-b border-slate-100 pb-3">
+            <h2 className="text-base font-bold text-slate-900">Store Information</h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Specific outlet or branch details used for point of sale billing and branch identification.
+            </p>
           </div>
 
-          {/* ── CARD 2: INVOICE LAYOUTS (11 DISTINCT TEMPLATES) ── */}
-          <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/90 shadow-xs space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div>
-                <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  Invoice Layouts (11 Distinct Templates)
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
-                    Layout Switcher
-                  </span>
-                </h2>
-                <p className="text-[11px] text-slate-400 mt-0.5">
-                  Templates define the structural layouts of your invoices (header, customer cards, tables &amp; summary).
-                  <span className="ml-1 text-emerald-600 font-bold">3 Free Layouts</span> &middot; 8 Subscription Layouts
-                </p>
-              </div>
-              <span className="text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-lg uppercase tracking-wider self-start sm:self-auto">
-                Current: {form.template.replace(/_/g, " ")}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div>
+              <label className={labelCls}>Store Name</label>
+              <input
+                type="text"
+                value={form.storeName || form.shopName || ""}
+                onChange={(e) => handleFieldChange("storeName", e.target.value)}
+                placeholder="e.g. Central Outlet - Store #1"
+                className={inputCls}
+              />
+              <span className="text-[11px] text-slate-400 mt-1 block">
+                Branch or franchise name for this physical outlet.
               </span>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-3.5">
-              {INVOICE_TEMPLATES.map((tmpl) => {
-                const isSelected = form.template === tmpl.id;
-                const isLocked = !tmpl.isFree && !hasSubscription;
+            <div>
+              <label className={labelCls}>Store Location / Landmark</label>
+              <input
+                type="text"
+                value={form.storeLocation || form.address || ""}
+                onChange={(e) => handleFieldChange("storeLocation", e.target.value)}
+                placeholder="e.g. Ground Floor, West Wing"
+                className={inputCls}
+              />
+              <span className="text-[11px] text-slate-400 mt-1 block">
+                Local branch address or mall location.
+              </span>
+            </div>
 
-                return (
-                  <div
-                    key={tmpl.id}
-                    onClick={() => handleSelectTemplate(tmpl)}
-                    className="group cursor-pointer flex flex-col transition"
-                    title={isLocked ? "👑 Subscription required" : `${tmpl.name} Layout`}
-                  >
+            <div>
+              <label className={labelCls}>Store Phone Number</label>
+              <input
+                type="tel"
+                value={form.storePhone || form.phone || ""}
+                onChange={(e) => handleFieldChange("storePhone", e.target.value)}
+                placeholder="e.g. +91 9876543210"
+                className={inputCls}
+              />
+              <span className="text-[11px] text-slate-400 mt-1 block">
+                Counter or cash desk contact number.
+              </span>
+            </div>
+
+            <div>
+              <label className={labelCls}>Store Email Address</label>
+              <input
+                type="email"
+                value={form.storeEmail || form.email || ""}
+                onChange={(e) => handleFieldChange("storeEmail", e.target.value)}
+                placeholder="e.g. store1@bilzet.app"
+                className={inputCls}
+              />
+              <span className="text-[11px] text-slate-400 mt-1 block">
+                Direct branch correspondence email.
+              </span>
+            </div>
+          </div>
+
+          <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
+            <Button variant="neutral" size="sm" onClick={handleReset} disabled={saving}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              icon={Save}
+              onClick={handleSaveAll}
+              disabled={saving}
+            >
+              {saving ? "Saving…" : "Save Store Information"}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════════════════
+          SECTION 3: TAX & BILLING
+      ════════════════════════════════════════════════════ */}
+      {activeTab === "tax" && (
+        <div className="space-y-6">
+          {/* Subsection 3.1: GST Details & Preferences */}
+          <div className="bg-white p-6 sm:p-7 rounded-2xl border border-slate-200/90 shadow-xs space-y-5">
+            <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-bold text-slate-900">GST &amp; Tax Preferences</h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Goods and Services Tax identification, place of supply, and default calculation rules.
+                </p>
+              </div>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                FREE INCLUDED
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <label className={labelCls}>GSTIN (Goods and Services Tax Number)</label>
+                <input
+                  type="text"
+                  maxLength={15}
+                  value={form.gstin || ""}
+                  onChange={(e) => handleFieldChange("gstin", e.target.value.toUpperCase())}
+                  placeholder="33AAAAA0000A1Z5"
+                  className={`${inputCls} font-mono uppercase font-bold tracking-wider`}
+                />
+                <span className="text-[11px] text-slate-400 mt-1 block">
+                  15-digit Indian GST identification number.
+                </span>
+              </div>
+
+              <div>
+                <label className={labelCls}>State &amp; State Code</label>
+                <div className="grid grid-cols-3 gap-2">
+                  <input
+                    type="text"
+                    maxLength={2}
+                    value={form.stateCode || ""}
+                    onChange={(e) => handleFieldChange("stateCode", e.target.value)}
+                    placeholder="33"
+                    className={`${inputCls} font-mono text-center`}
+                  />
+                  <input
+                    type="text"
+                    value={form.state || ""}
+                    onChange={(e) => handleFieldChange("state", e.target.value)}
+                    placeholder="Tamil Nadu"
+                    className={`${inputCls} col-span-2`}
+                  />
+                </div>
+                <span className="text-[11px] text-slate-400 mt-1 block">
+                  Determines CGST + SGST vs IGST for inter-state supply.
+                </span>
+              </div>
+
+              <div>
+                <label className={labelCls}>Default Tax Rate (%)</label>
+                <select
+                  value={form.defaultTaxRate || "18"}
+                  onChange={(e) => handleFieldChange("defaultTaxRate", e.target.value)}
+                  className={inputCls}
+                >
+                  <option value="0">0% (Exempt)</option>
+                  <option value="5">5% (Essentials)</option>
+                  <option value="12">12% (Standard Low)</option>
+                  <option value="18">18% (Standard General)</option>
+                  <option value="28">28% (Luxury / Higher)</option>
+                </select>
+                <span className="text-[11px] text-slate-400 mt-1 block">
+                  Pre-selected tax rate for new products and quick billing.
+                </span>
+              </div>
+
+              <div className="space-y-3 pt-2">
+                <label className="flex items-center gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.enableGst}
+                    onChange={(e) => handleFieldChange("enableGst", e.target.checked)}
+                    className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300"
+                  />
+                  <span className="text-xs font-semibold text-slate-700">
+                    Enable GST calculations on sales
+                  </span>
+                </label>
+
+                <label className="flex items-center gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.showHsnSummary}
+                    onChange={(e) => handleFieldChange("showHsnSummary", e.target.checked)}
+                    className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300"
+                  />
+                  <span className="text-xs font-semibold text-slate-700">
+                    Print HSN/SAC summary table on invoices
+                  </span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          {/* Subsection 3.2: Invoice Settings (Numbering, Title, Paper Size) */}
+          <div className="bg-white p-6 sm:p-7 rounded-2xl border border-slate-200/90 shadow-xs space-y-6">
+            <div className="border-b border-slate-100 pb-3">
+              <h2 className="text-base font-bold text-slate-900">Invoice Settings &amp; Printing</h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Document title, serial numbering prefix, paper layout, and watermark rules.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <label className={labelCls}>Document Title</label>
+                <input
+                  type="text"
+                  value={form.invoiceTitle || "TAX INVOICE"}
+                  onChange={(e) => handleFieldChange("invoiceTitle", e.target.value)}
+                  placeholder="TAX INVOICE"
+                  className={inputCls}
+                />
+                <span className="text-[11px] text-slate-400 mt-1 block">
+                  Header printed at the top of the bill (e.g. TAX INVOICE, RETAIL BILL, CASH MEMO).
+                </span>
+              </div>
+
+              <div>
+                <label className={labelCls}>Invoice Prefix</label>
+                <input
+                  type="text"
+                  value={form.invoicePrefix || "INV-2026-"}
+                  onChange={(e) => handleFieldChange("invoicePrefix", e.target.value)}
+                  placeholder="INV-2026-"
+                  className={`${inputCls} font-mono`}
+                />
+                <span className="text-[11px] text-slate-400 mt-1 block">
+                  Prefix placed before sequential invoice numbers (e.g. INV-2026-0001).
+                </span>
+              </div>
+            </div>
+
+            {/* Paper Size Gating */}
+            <div className="space-y-3 pt-2">
+              <label className={labelCls}>Paper Size &amp; Printer Layout</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {PAPER_SIZES.map((paper) => {
+                  const isLocked = !isFeatureUnlocked(paper.tier);
+                  const isSelected = form.paperSize === paper.id;
+                  return (
                     <div
-                      className={`h-24 rounded-xl border-2 transition relative p-1.5 flex flex-col justify-between overflow-hidden bg-white ${
+                      key={paper.id}
+                      onClick={() => {
+                        if (!isLocked) {
+                          handleFieldChange("paperSize", paper.id);
+                        }
+                      }}
+                      className={`p-3.5 rounded-xl border transition relative flex items-start justify-between cursor-pointer ${
                         isSelected
-                          ? "border-blue-600 shadow-md ring-2 ring-blue-500/25 bg-blue-50/10"
-                          : "border-slate-200 hover:border-slate-300"
+                          ? "border-blue-600 bg-blue-50/50 shadow-xs"
+                          : isLocked
+                          ? "border-slate-200 bg-slate-50/60 opacity-90 cursor-default"
+                          : "border-slate-200 hover:border-slate-300 bg-white"
                       }`}
                     >
-                      {/* Miniature Layout Wireframe */}
-                      <InvoiceLayoutWireframe templateId={tmpl.id} accent={tmpl.accent} />
+                      <div className="space-y-1 pr-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-slate-900">{paper.label}</span>
+                          <span
+                            className={`text-[9px] font-bold px-1.5 py-0.2 rounded border ${
+                              paper.tier === "FREE"
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                : paper.tier === "PRO"
+                                ? "bg-blue-50 text-blue-700 border-blue-200"
+                                : "bg-amber-50 text-amber-700 border-amber-200"
+                            }`}
+                          >
+                            {paper.tier}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-500">{paper.desc}</p>
+                      </div>
 
-                      {/* Lock overlay for premium templates on free plan */}
-                      {isLocked && (
-                        <div className="absolute inset-0 bg-slate-900/25 backdrop-blur-[0.5px] flex items-center justify-center">
-                          <div className="w-6 h-6 rounded-full bg-white shadow-md flex items-center justify-center text-amber-600">
-                            <Lock size={11} />
-                          </div>
+                      {isLocked ? (
+                        <div className="shrink-0 flex flex-col items-end gap-1.5">
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-600 bg-slate-200 px-2 py-0.5 rounded">
+                            <Lock size={10} /> Locked
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleUpgrade(paper.tier);
+                            }}
+                            className="text-[11px] font-bold text-blue-600 hover:text-blue-700 underline"
+                          >
+                            Upgrade to {paper.tier === "PREMIUM" ? "Premium" : "Pro"}
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="shrink-0 pt-0.5">
+                          <input
+                            type="radio"
+                            name="paperSize"
+                            checked={isSelected}
+                            onChange={() => handleFieldChange("paperSize", paper.id)}
+                            className="w-4 h-4 text-blue-600 border-slate-300"
+                          />
                         </div>
                       )}
                     </div>
-
-                    <div className="flex items-center justify-between mt-1.5 gap-1">
-                      <span
-                        className={`text-[11px] font-semibold truncate ${
-                          isSelected ? "text-blue-600 font-bold" : "text-slate-700"
-                        }`}
-                      >
-                        {tmpl.name}
-                      </span>
-                      {tmpl.isFree ? (
-                        <span className="text-[8px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1 py-0.5 rounded leading-none shrink-0">
-                          FREE
-                        </span>
-                      ) : (
-                        <span className="text-[8px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-1 py-0.5 rounded leading-none shrink-0 flex items-center gap-0.5">
-                          👑 PRO
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* ── CARD 3: COLOR THEMES ─────────────────────── */}
-          <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/90 shadow-xs space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-              <div>
-                <h2 className="text-sm font-bold text-slate-900">Color Themes</h2>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Themes change invoice backgrounds, borders, accents, table headers and corner styling.
-                </p>
+                  );
+                })}
               </div>
-              <span className="text-[11px] font-medium text-slate-500">
-                <strong className="text-emerald-600">3 Free Colors</strong> &middot; 13 Subscription Colors
-              </span>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3 pt-1">
-              {COLOR_THEMES.map((theme) => {
-                const isSelected = form.colorTheme === theme.id || form.themeColor === theme.primary;
-                const isLocked = !theme.isFree && !hasSubscription;
-
-                return (
-                  <div
-                    key={theme.id}
-                    onClick={() => handleSelectColor(theme)}
-                    className={`cursor-pointer rounded-xl p-1.5 border-2 transition flex flex-col gap-1.5 bg-white relative ${
-                      isSelected
-                        ? "border-blue-500 ring-2 ring-blue-500/15 shadow-xs"
-                        : "border-slate-200 hover:border-slate-300"
-                    }`}
-                    title={isLocked ? "👑 Subscription required" : theme.label}
-                  >
-                    <div
-                      className="h-10 w-full rounded-lg overflow-hidden relative shadow-2xs border border-black/5"
-                      style={{
-                        background: `linear-gradient(135deg, ${theme.light} 0%, ${theme.light} 50%, ${theme.secondary} 50%, ${theme.primary} 100%)`,
-                      }}
-                    >
-                      <div
-                        className="absolute top-0 right-0 w-3.5 h-3.5 rounded-bl-md"
-                        style={{ backgroundColor: theme.dark }}
-                      />
-                      {isLocked && (
-                        <div className="absolute inset-0 bg-slate-900/10 flex items-center justify-center">
-                          <div className="w-4 h-4 rounded-full bg-white/95 shadow-xs flex items-center justify-center text-amber-600">
-                            <Lock size={8} />
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex items-center justify-between gap-1">
-                      <span
-                        className={`text-[10px] font-semibold truncate ${
-                          isSelected ? "text-blue-600 font-bold" : "text-slate-700"
-                        }`}
-                      >
-                        {theme.label}
-                      </span>
-                      {theme.isFree ? (
-                        <span className="text-[7px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1 rounded shrink-0">
-                          FREE
-                        </span>
-                      ) : (
-                        <span className="text-[7px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-1 rounded shrink-0">
-                          PRO
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* ── CARD 4: 11 INVOICE CONFIGURATION SETTINGS ─────── */}
-          <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/90 shadow-xs space-y-5">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center font-black text-sm shadow-sm shadow-blue-500/20">
-                  11
-                </div>
+            {/* Watermark Removal (Pro Feature) */}
+            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h2 className="text-sm font-bold text-slate-900">11 Key Invoice Settings</h2>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                      Real-time Config
-                    </span>
+                    <span className="text-xs font-bold text-slate-900">Remove BILZET Watermark</span>
+                    {!isFeatureUnlocked("PRO") && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 inline-flex items-center gap-1">
+                        <Lock size={10} /> PRO FEATURE
+                      </span>
+                    )}
                   </div>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Fine-tune document parameters, GST compliance tables, branding assets, and payment settlement
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Print bills with pure 100% white-label store branding without "Powered by BILZET".
                   </p>
                 </div>
+
+                {!isFeatureUnlocked("PRO") ? (
+                  <Button
+                    variant="neutral"
+                    size="sm"
+                    icon={Lock}
+                    onClick={() => handleUpgrade("PRO")}
+                  >
+                    Upgrade to Pro
+                  </Button>
+                ) : (
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={!form.showWatermark || form.removeWatermark}
+                      onChange={(e) => {
+                        handleFieldChange("showWatermark", !e.target.checked);
+                        handleFieldChange("removeWatermark", e.target.checked);
+                      }}
+                      className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300"
+                    />
+                    <span className="text-xs font-bold text-slate-700">Remove Watermark</span>
+                  </label>
+                )}
               </div>
-              <span className="text-[11px] font-semibold text-slate-500 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200/60 self-start sm:self-auto">
-                All 11 Settings Synced Below
-              </span>
+            </div>
+          </div>
+
+          {/* Subsection 3.3: Direct Bank Settlement & Scan-to-Pay UPI QR (Pro Feature) */}
+          <div className="bg-white p-6 sm:p-7 rounded-2xl border border-slate-200/90 shadow-xs space-y-5">
+            <div className="border-b border-slate-100 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base font-bold text-slate-900">
+                    Bank Settlement &amp; UPI QR Code
+                  </h2>
+                  {!isFeatureUnlocked("PRO") && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 inline-flex items-center gap-1">
+                      <Lock size={10} /> PRO FEATURE
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Print bank account details and dynamic scan-and-pay UPI QR on invoices for instant customer settlement.
+                </p>
+              </div>
+
+              {!isFeatureUnlocked("PRO") ? (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  icon={Lock}
+                  onClick={() => handleUpgrade("PRO")}
+                >
+                  Upgrade to Pro
+                </Button>
+              ) : (
+                isAuthorizedAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => setShowFullBankDetails(!showFullBankDetails)}
+                    className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                  >
+                    {showFullBankDetails ? <EyeOff size={13} /> : <Eye size={13} />}
+                    <span>{showFullBankDetails ? "Mask Details" : "Reveal Numbers"}</span>
+                  </button>
+                )
+              )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {/* SETTING 1: Paper Size */}
-              <div className="p-4 rounded-xl border border-slate-200/80 bg-slate-50/50 hover:bg-white hover:border-slate-300 transition space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-md bg-blue-100 text-blue-700 text-[10px] font-black flex items-center justify-center">1</span>
-                    <span className="text-xs font-bold text-slate-800">Paper Size &amp; Format</span>
-                  </div>
-                  <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
-                    {form.paperSize}
+            {!isFeatureUnlocked("PRO") ? (
+              <div className="p-5 rounded-xl border border-dashed border-blue-200 bg-blue-50/40 text-center space-y-2">
+                <CreditCard size={28} className="mx-auto text-blue-500" />
+                <h3 className="text-xs font-bold text-slate-900">
+                  Accept Direct Bank Payments &amp; UPI QR on Invoices
+                </h3>
+                <p className="text-[11px] text-slate-600 max-w-md mx-auto">
+                  Upgrade to Pro to include your bank beneficiary name, account number, IFSC code, and scan-and-pay UPI QR code automatically on all printed and PDF invoices.
+                </p>
+                <div className="pt-2">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    icon={ExternalLink}
+                    onClick={() => handleUpgrade("PRO")}
+                  >
+                    Upgrade to Pro to Unlock
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <label className={labelCls}>Bank Name</label>
+                  <input
+                    type="text"
+                    value={form.bankName || ""}
+                    onChange={(e) => handleFieldChange("bankName", e.target.value)}
+                    placeholder="e.g. HDFC Bank Ltd"
+                    className={inputCls}
+                  />
+                </div>
+
+                <div>
+                  <label className={labelCls}>Beneficiary / Account Holder</label>
+                  <input
+                    type="text"
+                    value={form.accountHolder || ""}
+                    onChange={(e) => handleFieldChange("accountHolder", e.target.value)}
+                    placeholder="e.g. BILZET Retail Mart"
+                    className={inputCls}
+                  />
+                </div>
+
+                <div>
+                  <label className={labelCls}>Account Number</label>
+                  <input
+                    type="text"
+                    value={
+                      showFullBankDetails
+                        ? form.accountNumber || ""
+                        : maskAccountNumber(form.accountNumber, false)
+                    }
+                    disabled={!showFullBankDetails}
+                    onChange={(e) => handleFieldChange("accountNumber", e.target.value)}
+                    placeholder="50200012345678"
+                    className={`${inputCls} font-mono`}
+                  />
+                </div>
+
+                <div>
+                  <label className={labelCls}>IFSC Code</label>
+                  <input
+                    type="text"
+                    value={form.ifsc || ""}
+                    onChange={(e) => handleFieldChange("ifsc", e.target.value.toUpperCase())}
+                    placeholder="HDFC0001234"
+                    className={`${inputCls} font-mono uppercase`}
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className={labelCls}>UPI ID (VPA)</label>
+                  <input
+                    type="text"
+                    value={form.upiId || ""}
+                    onChange={(e) => handleFieldChange("upiId", e.target.value)}
+                    placeholder="e.g. bilzet@hdfcbank"
+                    className={`${inputCls} font-mono`}
+                  />
+                  <span className="text-[11px] text-slate-400 mt-1 block">
+                    Dynamic QR code generated from this UPI ID will be printed on bills.
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-500">Standard document or point-of-sale thermal roll format</p>
-                <div className="grid grid-cols-2 gap-1.5 pt-1">
-                  {PAPER_SIZES.map((p) => {
-                    const active = form.paperSize === p.id;
+              </div>
+            )}
+          </div>
+
+          {/* Subsection 3.4: Appearance & Brand Colors */}
+          <div className="bg-white p-6 sm:p-7 rounded-2xl border border-slate-200/90 shadow-xs space-y-5">
+            <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-bold text-slate-900">Color Palette &amp; Themes</h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Choose the invoice accent color. Free includes 3 standard themes. Custom HEX color requires Premium.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <label className={labelCls}>Standard Color Palettes</label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {COLOR_THEMES.slice(0, 4).map((theme) => {
+                  const isSel = form.colorTheme === theme.id && !form.customColor;
+                  return (
+                    <button
+                      key={theme.id}
+                      type="button"
+                      onClick={() => {
+                        handleFieldChange("colorTheme", theme.id);
+                        handleFieldChange("customColor", "");
+                      }}
+                      className={`p-3 rounded-xl border text-left transition flex items-center gap-2.5 cursor-pointer ${
+                        isSel
+                          ? "border-blue-600 bg-blue-50/40 shadow-xs"
+                          : "border-slate-200 hover:border-slate-300 bg-white"
+                      }`}
+                    >
+                      <span
+                        className="w-5 h-5 rounded-full shrink-0 border border-black/10"
+                        style={{ backgroundColor: theme.primary }}
+                      />
+                      <span className="text-xs font-semibold text-slate-800">{theme.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Custom HEX Color (Premium Feature) */}
+              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-slate-900">Custom Brand HEX Color</span>
+                      {!isFeatureUnlocked("PREMIUM") && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 inline-flex items-center gap-1">
+                          <Lock size={10} /> PREMIUM FEATURE
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      Use your exact company brand color on invoice headers, tables, and totals.
+                    </p>
+                  </div>
+
+                  {!isFeatureUnlocked("PREMIUM") ? (
+                    <Button
+                      variant="neutral"
+                      size="sm"
+                      icon={Lock}
+                      onClick={() => handleUpgrade("PREMIUM")}
+                    >
+                      Upgrade to Premium
+                    </Button>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={form.customColor || "#2563eb"}
+                        onChange={(e) => handleFieldChange("customColor", e.target.value)}
+                        className="w-8 h-8 rounded-lg cursor-pointer border border-slate-200"
+                      />
+                      <input
+                        type="text"
+                        value={form.customColor || ""}
+                        onChange={(e) => handleFieldChange("customColor", e.target.value)}
+                        placeholder="#2563EB"
+                        className={`${inputCls} w-28 font-mono`}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Subsection 3.5: Notes, Terms & Signatory */}
+          <div className="bg-white p-6 sm:p-7 rounded-2xl border border-slate-200/90 shadow-xs space-y-5">
+            <div className="border-b border-slate-100 pb-3">
+              <h2 className="text-base font-bold text-slate-900">Terms, Greetings &amp; Signatures</h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Customer notes, terms of sale, and authorized signatory line.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <label className={labelCls}>Thank-You Note / Greeting</label>
+                <input
+                  type="text"
+                  value={form.thankYouMessage || form.notes || "Thank you for shopping with us! Visit again."}
+                  onChange={(e) => {
+                    handleFieldChange("thankYouMessage", e.target.value);
+                    handleFieldChange("notes", e.target.value);
+                  }}
+                  placeholder="Thank you for shopping with us! Visit again."
+                  className={inputCls}
+                />
+              </div>
+
+              <div>
+                <label className={labelCls}>Authorized Signatory Name</label>
+                <input
+                  type="text"
+                  value={form.authorizedPerson || ""}
+                  onChange={(e) => handleFieldChange("authorizedPerson", e.target.value)}
+                  placeholder="e.g. Karthi Kevan"
+                  className={inputCls}
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className={labelCls}>Terms &amp; Conditions (Printed on bill)</label>
+                <textarea
+                  rows={3}
+                  value={form.terms || ""}
+                  onChange={(e) => handleFieldChange("terms", e.target.value)}
+                  placeholder="1. Goods once sold will not be taken back without valid bill.&#10;2. Subject to local jurisdiction."
+                  className={`${inputCls} font-mono text-[11px] leading-relaxed`}
+                />
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
+              <Button
+                variant="neutral"
+                size="sm"
+                icon={Eye}
+                onClick={() => setShowInvoicePreviewModal(true)}
+              >
+                Preview Invoice Sample
+              </Button>
+
+              <div className="flex items-center gap-3">
+                <Button variant="neutral" size="sm" onClick={handleReset} disabled={saving}>
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  icon={Save}
+                  onClick={handleSaveAll}
+                  disabled={saving}
+                >
+                  {saving ? "Saving…" : "Save Tax & Billing"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════════════════
+          SECTION 4: USERS & PERMISSIONS
+      ════════════════════════════════════════════════════ */}
+      {activeTab === "users" && (
+        <div className="space-y-4">
+          {/* Sub-tabs for Staff Access vs Roles */}
+          <div className="bg-white p-2 rounded-2xl border border-slate-200/90 shadow-xs flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setUsersSubTab("staff")}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+                usersSubTab === "staff"
+                  ? "bg-blue-600 text-white shadow-xs"
+                  : "text-slate-600 hover:bg-slate-100"
+              }`}
+            >
+              <Users size={14} />
+              <span>Staff &amp; Manager Access</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setUsersSubTab("roles")}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+                usersSubTab === "roles"
+                  ? "bg-blue-600 text-white shadow-xs"
+                  : "text-slate-600 hover:bg-slate-100"
+              }`}
+            >
+              <Shield size={14} />
+              <span>Roles &amp; Permissions</span>
+            </button>
+          </div>
+
+          {usersSubTab === "staff" ? (
+            <div className="w-full">
+              <TeamManagement />
+            </div>
+          ) : (
+            <div className="w-full">
+              <RolesManagement />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════════════════
+          SECTION 5: NOTIFICATIONS & PREFERENCES
+      ════════════════════════════════════════════════════ */}
+      {activeTab === "preferences" && (
+        <div className="space-y-6">
+          {/* Subsection 5.1: Notifications */}
+          <div className="bg-white p-6 sm:p-7 rounded-2xl border border-slate-200/90 shadow-xs space-y-5">
+            <div className="border-b border-slate-100 pb-3">
+              <h2 className="text-base font-bold text-slate-900">Notification Settings</h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Configure automated customer receipts and business alert channels.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <label className="flex items-start gap-3 p-3.5 rounded-xl border border-slate-200 hover:bg-slate-50/50 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.notifyWhatsApp}
+                  onChange={(e) => handleFieldChange("notifyWhatsApp", e.target.checked)}
+                  className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300 mt-0.5"
+                />
+                <div className="space-y-0.5">
+                  <span className="text-xs font-bold text-slate-800 block">
+                    WhatsApp Bill Sharing Prompt
+                  </span>
+                  <span className="text-[11px] text-slate-500 block">
+                    Automatically display a one-click WhatsApp share button after generating each new invoice.
+                  </span>
+                </div>
+              </label>
+
+              <label className="flex items-start gap-3 p-3.5 rounded-xl border border-slate-200 hover:bg-slate-50/50 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.notifySms}
+                  onChange={(e) => handleFieldChange("notifySms", e.target.checked)}
+                  className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300 mt-0.5"
+                />
+                <div className="space-y-0.5">
+                  <span className="text-xs font-bold text-slate-800 block">
+                    SMS Order Dispatch Alerts
+                  </span>
+                  <span className="text-[11px] text-slate-500 block">
+                    Send real-time SMS delivery confirmation alerts when goods are marked as dispatched.
+                  </span>
+                </div>
+              </label>
+
+              <label className="flex items-start gap-3 p-3.5 rounded-xl border border-slate-200 hover:bg-slate-50/50 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.notifyEmail}
+                  onChange={(e) => handleFieldChange("notifyEmail", e.target.checked)}
+                  className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300 mt-0.5"
+                />
+                <div className="space-y-0.5">
+                  <span className="text-xs font-bold text-slate-800 block">
+                    Email PDF Invoice Copies
+                  </span>
+                  <span className="text-[11px] text-slate-500 block">
+                    Attach clean PDF copies of finalized invoices and send to the customer's email address.
+                  </span>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          {/* Subsection 5.2: Business Shift & Attendance Preferences */}
+          <div className="bg-white p-6 sm:p-7 rounded-2xl border border-slate-200/90 shadow-xs space-y-5">
+            <div className="border-b border-slate-100 pb-3">
+              <h2 className="text-base font-bold text-slate-900">Business Shift &amp; Working Hours</h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Standard office opening and closing hours, grace periods, weekly off days, and automated attendance rules.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div>
+                <label className={labelCls}>Office Opening Time</label>
+                <input
+                  type="time"
+                  value={attSettings.officeStartTime}
+                  onChange={(e) => setAttSettings({ ...attSettings, officeStartTime: e.target.value })}
+                  className={inputCls}
+                />
+                <span className="text-[11px] text-slate-400 mt-1 block">
+                  Morning start time for daily business operations (e.g. 09:00 AM).
+                </span>
+              </div>
+
+              <div>
+                <label className={labelCls}>Office Closing Time</label>
+                <input
+                  type="time"
+                  value={attSettings.officeClosingTime}
+                  onChange={(e) => setAttSettings({ ...attSettings, officeClosingTime: e.target.value })}
+                  className={inputCls}
+                />
+                <span className="text-[11px] text-slate-400 mt-1 block">
+                  Evening closing time for daily business operations (e.g. 06:00 PM).
+                </span>
+              </div>
+
+              <div>
+                <label className={labelCls}>Grace Period (Minutes)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="60"
+                  value={attSettings.gracePeriod}
+                  onChange={(e) =>
+                    setAttSettings({ ...attSettings, gracePeriod: Number(e.target.value) })
+                  }
+                  className={`${inputCls} font-mono`}
+                />
+                <span className="text-[11px] text-slate-400 mt-1 block">
+                  Allowable late arrival without penalty (e.g. 15 minutes).
+                </span>
+              </div>
+
+              <div>
+                <label className={labelCls}>Late Threshold Time</label>
+                <input
+                  type="time"
+                  value={attSettings.lateThreshold}
+                  onChange={(e) => setAttSettings({ ...attSettings, lateThreshold: e.target.value })}
+                  className={inputCls}
+                />
+                <span className="text-[11px] text-slate-400 mt-1 block">
+                  Check-ins after this time are marked as Late.
+                </span>
+              </div>
+
+              <div>
+                <label className={labelCls}>Minimum Working Hours (Full Day)</label>
+                <input
+                  type="number"
+                  step="0.5"
+                  min="4"
+                  max="16"
+                  value={attSettings.minWorkingHours}
+                  onChange={(e) =>
+                    setAttSettings({ ...attSettings, minWorkingHours: Number(e.target.value) })
+                  }
+                  className={`${inputCls} font-mono`}
+                />
+                <span className="text-[11px] text-slate-400 mt-1 block">
+                  Hours needed to qualify for a full day's attendance (e.g. 8.0 hrs).
+                </span>
+              </div>
+
+              <div>
+                <label className={labelCls}>Half-Day Threshold (Hours)</label>
+                <input
+                  type="number"
+                  step="0.5"
+                  min="1"
+                  max="12"
+                  value={attSettings.halfDayThreshold}
+                  onChange={(e) =>
+                    setAttSettings({ ...attSettings, halfDayThreshold: Number(e.target.value) })
+                  }
+                  className={`${inputCls} font-mono`}
+                />
+                <span className="text-[11px] text-slate-400 mt-1 block">
+                  Working hours below this are recorded as half-day.
+                </span>
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className={labelCls}>Weekly Holidays</label>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {["Sunday", "Saturday", "Friday"].map((day) => {
+                    const isChecked = attSettings.weeklyHolidays?.includes(day);
                     return (
                       <button
+                        key={day}
                         type="button"
-                        key={p.id}
-                        onClick={() => handleSelectPaperSize(p)}
-                        className={`text-[10px] font-bold py-1.5 px-2 rounded-lg border text-left transition truncate flex items-center justify-between ${
-                          active
-                            ? "bg-blue-600 text-white border-blue-600 shadow-xs"
-                            : "bg-white text-slate-700 border-slate-200 hover:border-slate-300"
+                        onClick={() => {
+                          const list = [...(attSettings.weeklyHolidays || [])];
+                          if (isChecked) {
+                            setAttSettings({
+                              ...attSettings,
+                              weeklyHolidays: list.filter((d) => d !== day),
+                            });
+                          } else {
+                            setAttSettings({
+                              ...attSettings,
+                              weeklyHolidays: [...list, day],
+                            });
+                          }
+                        }}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                          isChecked
+                            ? "bg-blue-600 text-white shadow-2xs"
+                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                         }`}
                       >
-                        <span className="truncate">{p.label}</span>
-                        {!p.isFree && !hasSubscription && <Lock size={9} className="shrink-0 ml-1 text-amber-300" />}
+                        <span>{day}</span>
+                        {isChecked && <Check size={12} />}
                       </button>
                     );
                   })}
                 </div>
               </div>
 
-              {/* SETTING 2: Invoice Template Layout */}
-              <div className="p-4 rounded-xl border border-slate-200/80 bg-slate-50/50 hover:bg-white hover:border-slate-300 transition space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-md bg-indigo-100 text-indigo-700 text-[10px] font-black flex items-center justify-center">2</span>
-                    <span className="text-xs font-bold text-slate-800">Invoice Layout (11 Templates)</span>
-                  </div>
-                  <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200">
-                    11 Layouts
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-500">Choose the structural layout format for your invoice</p>
-                <select
-                  value={form.template}
-                  onChange={(e) => {
-                    const tmpl = INVOICE_TEMPLATES.find((t) => t.id === e.target.value);
-                    if (tmpl) handleSelectTemplate(tmpl);
-                  }}
-                  className={`${inputCls} text-[11px] py-1.5 font-bold text-slate-800`}
-                >
-                  {INVOICE_TEMPLATES.map((tmpl) => (
-                    <option key={tmpl.id} value={tmpl.id}>
-                      {tmpl.name} {tmpl.isFree ? "(Free)" : "👑 (Pro)"}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* SETTING 3: Color Palette Theme */}
-              <div className="p-4 rounded-xl border border-slate-200/80 bg-slate-50/50 hover:bg-white hover:border-slate-300 transition space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-md bg-emerald-100 text-emerald-700 text-[10px] font-black flex items-center justify-center">3</span>
-                    <span className="text-xs font-bold text-slate-800">Color Palette</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <div
-                      className="w-3 h-3 rounded-full border border-black/10"
-                      style={{
-                        backgroundColor:
-                          COLOR_THEMES.find((c) => c.id === form.colorTheme)?.primary || "#2563eb",
-                      }}
-                    />
-                    <span className="text-[10px] font-bold text-slate-600">
-                      {COLOR_THEMES.find((c) => c.id === form.colorTheme)?.label || "Blue"}
-                    </span>
-                  </div>
-                </div>
-                <p className="text-[11px] text-slate-500">Header accents, borders, and line-item coloring</p>
-                <select
-                  value={form.colorTheme}
-                  onChange={(e) => {
-                    const color = COLOR_THEMES.find((c) => c.id === e.target.value);
-                    if (color) handleSelectColor(color);
-                  }}
-                  className={`${inputCls} text-[11px] py-1.5 font-bold text-slate-800`}
-                >
-                  {COLOR_THEMES.map((theme) => (
-                    <option key={theme.id} value={theme.id}>
-                      {theme.label} {theme.isFree ? "(Free)" : "👑 (Pro)"}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* SETTING 4: Document Title */}
-              <div className="p-4 rounded-xl border border-slate-200/80 bg-slate-50/50 hover:bg-white hover:border-slate-300 transition space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-md bg-amber-100 text-amber-800 text-[10px] font-black flex items-center justify-center">4</span>
-                    <span className="text-xs font-bold text-slate-800">Document Title</span>
-                  </div>
-                  <span className="text-[10px] font-mono font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded">
-                    Heading
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-500">Statutory title printed at the top of the invoice</p>
-                <select
-                  value={form.invoiceTitle}
-                  onChange={(e) => handleChange("invoiceTitle", e.target.value)}
-                  className={`${inputCls} text-[11px] py-1.5 font-bold text-slate-800`}
-                >
-                  <option value="TAX INVOICE">TAX INVOICE (GST Standard)</option>
-                  <option value="RETAIL INVOICE">RETAIL INVOICE</option>
-                  <option value="BILL OF SUPPLY">BILL OF SUPPLY (Exempt / Comp.)</option>
-                  <option value="CASH MEMO">TAX INVOICE / CASH MEMO</option>
-                  <option value="PROFORMA INVOICE">PROFORMA INVOICE (Estimate)</option>
-                </select>
-              </div>
-
-              {/* SETTING 5: Invoice Series Prefix */}
-              <div className="p-4 rounded-xl border border-slate-200/80 bg-slate-50/50 hover:bg-white hover:border-slate-300 transition space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-md bg-purple-100 text-purple-700 text-[10px] font-black flex items-center justify-center">5</span>
-                    <span className="text-xs font-bold text-slate-800">Series Number Prefix</span>
-                  </div>
-                  <span className="text-[10px] font-mono font-bold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200">
-                    {form.invoicePrefix}
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-500">Unique alphanumeric series for your financial year</p>
-                <input
-                  type="text"
-                  value={form.invoicePrefix}
-                  onChange={(e) => handleChange("invoicePrefix", e.target.value)}
-                  placeholder="INV-2026-"
-                  className={`${inputCls} text-[11px] py-1.5 font-mono uppercase font-bold`}
-                />
-              </div>
-
-              {/* SETTING 6: Company Logo Visibility */}
-              <div className="p-4 rounded-xl border border-slate-200/80 bg-slate-50/50 hover:bg-white hover:border-slate-300 transition flex items-center justify-between gap-3">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-md bg-teal-100 text-teal-700 text-[10px] font-black flex items-center justify-center">6</span>
-                    <span className="text-xs font-bold text-slate-800">Company Logo</span>
-                  </div>
-                  <p className="text-[11px] text-slate-500">Show brand logo badge at document header</p>
-                  <span className={`text-[10px] font-bold ${form.showLogo ? "text-emerald-600" : "text-slate-400"}`}>
-                    {form.showLogo ? "● Logo Visible" : "○ Logo Hidden"}
-                  </span>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                  <input
-                    type="checkbox"
-                    checked={!!form.showLogo}
-                    onChange={(e) => handleChange("showLogo", e.target.checked)}
-                    className="sr-only peer"
-                  />
-                  <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
-                </label>
-              </div>
-
-              {/* SETTING 7: Background Watermark */}
-              <div className="p-4 rounded-xl border border-slate-200/80 bg-slate-50/50 hover:bg-white hover:border-slate-300 transition flex items-center justify-between gap-3">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-md bg-rose-100 text-rose-700 text-[10px] font-black flex items-center justify-center">7</span>
-                    <span className="text-xs font-bold text-slate-800">Background Watermark</span>
-                  </div>
-                  <p className="text-[11px] text-slate-500">Subtle diagonal watermark security stamp</p>
-                  <span className={`text-[10px] font-bold ${form.showWatermark ? "text-emerald-600" : "text-slate-400"}`}>
-                    {form.showWatermark ? "● Watermark Active" : "○ Watermark Hidden"}
-                  </span>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                  <input
-                    type="checkbox"
-                    checked={!!form.showWatermark}
-                    onChange={(e) => handleChange("showWatermark", e.target.checked)}
-                    className="sr-only peer"
-                  />
-                  <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
-                </label>
-              </div>
-
-              {/* SETTING 8: Payment Status Badge */}
-              <div className="p-4 rounded-xl border border-slate-200/80 bg-slate-50/50 hover:bg-white hover:border-slate-300 transition flex items-center justify-between gap-3">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-md bg-sky-100 text-sky-700 text-[10px] font-black flex items-center justify-center">8</span>
-                    <span className="text-xs font-bold text-slate-800">Payment Status Badge</span>
-                  </div>
-                  <p className="text-[11px] text-slate-500">PAID / UNPAID pill badge printed at top right</p>
-                  <span className={`text-[10px] font-bold ${form.showStatusBadge ? "text-emerald-600" : "text-slate-400"}`}>
-                    {form.showStatusBadge ? "● Status Badge On" : "○ Status Badge Off"}
-                  </span>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                  <input
-                    type="checkbox"
-                    checked={!!form.showStatusBadge}
-                    onChange={(e) => handleChange("showStatusBadge", e.target.checked)}
-                    className="sr-only peer"
-                  />
-                  <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
-                </label>
-              </div>
-
-              {/* SETTING 9: HSN/SAC Summary Grid */}
-              <div className="p-4 rounded-xl border border-slate-200/80 bg-slate-50/50 hover:bg-white hover:border-slate-300 transition flex items-center justify-between gap-3">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-md bg-cyan-100 text-cyan-700 text-[10px] font-black flex items-center justify-center">9</span>
-                    <span className="text-xs font-bold text-slate-800">HSN/SAC Summary Grid</span>
-                  </div>
-                  <p className="text-[11px] text-slate-500">Itemized statutory CGST &amp; SGST tax breakdown table</p>
-                  <span className={`text-[10px] font-bold ${form.showHsnSummary ? "text-emerald-600" : "text-slate-400"}`}>
-                    {form.showHsnSummary ? "● HSN Table Enabled" : "○ HSN Table Disabled"}
-                  </span>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                  <input
-                    type="checkbox"
-                    checked={!!form.showHsnSummary}
-                    onChange={(e) => handleChange("showHsnSummary", e.target.checked)}
-                    className="sr-only peer"
-                  />
-                  <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
-                </label>
-              </div>
-
-              {/* SETTING 10: Bank Settlement & UPI QR */}
-              <div className="p-4 rounded-xl border border-slate-200/80 bg-slate-50/50 hover:bg-white hover:border-slate-300 transition flex items-center justify-between gap-3">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-black flex items-center justify-center">10</span>
-                    <span className="text-xs font-bold text-slate-800">Bank &amp; UPI QR Code</span>
-                  </div>
-                  <p className="text-[11px] text-slate-500">Scan &amp; pay UPI QR code and bank account info</p>
-                  <span className={`text-[10px] font-bold ${form.showBankDetails || form.showQrCode ? "text-emerald-600" : "text-slate-400"}`}>
-                    {form.showBankDetails || form.showQrCode ? "● Payment QR & Bank Active" : "○ Payment Info Hidden"}
-                  </span>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                  <input
-                    type="checkbox"
-                    checked={!!(form.showBankDetails || form.showQrCode)}
-                    onChange={(e) => {
-                      handleChange("showBankDetails", e.target.checked);
-                      handleChange("showQrCode", e.target.checked);
-                    }}
-                    className="sr-only peer"
-                  />
-                  <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
-                </label>
-              </div>
-
-              {/* SETTING 11: Terms & Authorized Signatory */}
-              <div className="p-4 rounded-xl border border-slate-200/80 bg-slate-50/50 hover:bg-white hover:border-slate-300 transition flex items-center justify-between gap-3">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-md bg-amber-100 text-amber-900 text-[10px] font-black flex items-center justify-center">11</span>
-                    <span className="text-xs font-bold text-slate-800">Terms &amp; Signature Box</span>
-                  </div>
-                  <p className="text-[11px] text-slate-500">Footer return policies and official signature block</p>
-                  <span className={`text-[10px] font-bold ${form.showTerms && form.showSignatory ? "text-emerald-600" : "text-slate-400"}`}>
-                    {form.showTerms && form.showSignatory ? "● Terms & Signatory Active" : "○ Footer Elements Off"}
-                  </span>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                  <input
-                    type="checkbox"
-                    checked={!!(form.showTerms && form.showSignatory)}
-                    onChange={(e) => {
-                      handleChange("showTerms", e.target.checked);
-                      handleChange("showSignatory", e.target.checked);
-                    }}
-                    className="sr-only peer"
-                  />
-                  <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
-                </label>
-              </div>
-            </div>
-          </div>
-
-          </div>
-        )}
-
-      {/* ══════════════════════════════════════════════════
-          TAB 2: SHOP PROFILE & GST
-      ══════════════════════════════════════════════════ */}
-      {activeTab === "store" && (
-        <div className="bg-white p-6 rounded-2xl border border-slate-200/90 shadow-xs space-y-5">
-          <div className="pb-4 border-b border-slate-100">
-            <h2 className="text-sm font-bold text-slate-900">Shop Profile &amp; GST Registration</h2>
-            <p className="text-xs text-slate-400 mt-0.5">Printed at the header and footer of your customer invoices</p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1.5">Trade / Shop Name</label>
-              <input value={form.shopName} onChange={(e) => handleChange("shopName", e.target.value)} className={inputCls} />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1.5">Business Owner / Legal Entity Name</label>
-              <input value={form.ownerName} onChange={(e) => handleChange("ownerName", e.target.value)} className={inputCls} />
-            </div>
-
-            <div className="sm:col-span-2">
-              <label className="block text-xs font-bold text-slate-600 mb-1.5">Physical Shop / Godown Address</label>
-              <input value={form.address} onChange={(e) => handleChange("address", e.target.value)} className={inputCls} />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1.5">Phone Number</label>
-              <input value={form.phone} onChange={(e) => handleChange("phone", e.target.value)} className={inputCls} />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1.5">Email Address</label>
-              <input value={form.email} onChange={(e) => handleChange("email", e.target.value)} className={inputCls} />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1.5">15-digit GSTIN</label>
-              <input
-                value={form.gstin}
-                onChange={(e) => handleChange("gstin", e.target.value.toUpperCase())}
-                placeholder="33ABCDE1234F1Z5"
-                className={`${inputCls} font-mono uppercase font-bold`}
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1.5">Company PAN Number</label>
-              <input
-                value={form.pan}
-                onChange={(e) => handleChange("pan", e.target.value.toUpperCase())}
-                placeholder="ABCDE1234F"
-                className={`${inputCls} font-mono uppercase font-bold`}
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1.5">State Name</label>
-              <input value={form.state} onChange={(e) => handleChange("state", e.target.value)} className={inputCls} />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1.5">State Code (e.g. 33, 29, 27)</label>
-              <input value={form.stateCode} onChange={(e) => handleChange("stateCode", e.target.value)} className={`${inputCls} font-mono`} />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ══════════════════════════════════════════════════
-          TAB 3: BANK SETTLEMENT & UPI
-      ══════════════════════════════════════════════════ */}
-      {activeTab === "bank" && (
-        <div className="bg-white p-6 rounded-2xl border border-slate-200/90 shadow-xs space-y-5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
-                <Building2 size={18} />
-              </div>
               <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-sm font-bold text-slate-900">Direct Bank Settlement &amp; UPI Payment QR</h2>
-                  {canViewBankDetails ? (
-                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
-                      <CheckCircle2 size={11} /> Admin Access Granted
-                    </span>
-                  ) : (
-                    <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
-                      <Lock size={11} /> Masked (Non-Admin)
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Printed on invoice bills for customer payments via GPay, PhonePe, Paytm, or NEFT
-                </p>
-              </div>
-            </div>
-
-            {canViewBankDetails && (
-              <button
-                type="button"
-                onClick={() => setShowFullBankDetails(!showFullBankDetails)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-slate-200 hover:bg-slate-50 text-slate-700 transition"
-              >
-                {showFullBankDetails ? <EyeOff size={13} /> : <Eye size={13} />}
-                <span>{showFullBankDetails ? "Mask Financial Details" : "Reveal Full Details"}</span>
-              </button>
-            )}
-          </div>
-
-          {!canViewBankDetails && (
-            <div className="bg-amber-50 border border-amber-200/80 rounded-2xl p-4 flex items-start gap-3">
-              <Lock className="text-amber-600 mt-0.5 shrink-0" size={18} />
-              <div>
-                <h4 className="text-xs font-bold text-amber-900">Protected Settlement Account (Admin Access Required)</h4>
-                <p className="text-[11px] text-amber-800 mt-0.5 leading-relaxed">
-                  Direct settlement account numbers and routing IFSC credentials are protected by enterprise security policy. Only authenticated administrators with authorized credentials can view or modify settlement details.
-                </p>
-              </div>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1.5">Bank Name</label>
-              <input
-                value={form.bankName}
-                disabled={!canViewBankDetails}
-                onChange={(e) => handleChange("bankName", e.target.value)}
-                placeholder="HDFC Bank / State Bank of India"
-                className={`${inputCls} ${!canViewBankDetails ? "bg-slate-100 cursor-not-allowed text-slate-500" : ""}`}
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1.5">Beneficiary / Account Holder Name</label>
-              <input
-                value={form.accountHolder}
-                disabled={!canViewBankDetails}
-                onChange={(e) => handleChange("accountHolder", e.target.value)}
-                placeholder="BILZET Retail Mart"
-                className={`${inputCls} ${!canViewBankDetails ? "bg-slate-100 cursor-not-allowed text-slate-500" : ""}`}
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1.5">Bank Account Number</label>
-              <input
-                type="text"
-                value={
-                  canViewBankDetails && showFullBankDetails
-                    ? form.accountNumber
-                    : maskAccountNumber(form.accountNumber, false)
-                }
-                disabled={!canViewBankDetails || !showFullBankDetails}
-                onChange={(e) => handleChange("accountNumber", e.target.value)}
-                placeholder="50200012345678"
-                className={`${inputCls} font-mono font-bold ${
-                  !canViewBankDetails || !showFullBankDetails
-                    ? "bg-slate-100 text-slate-500 cursor-not-allowed tracking-widest"
-                    : "text-slate-900"
-                }`}
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1.5">IFSC Code (11 Characters)</label>
-              <input
-                value={
-                  canViewBankDetails && showFullBankDetails
-                    ? form.ifsc
-                    : maskIFSC(form.ifsc, false)
-                }
-                disabled={!canViewBankDetails || !showFullBankDetails}
-                onChange={(e) => handleChange("ifsc", e.target.value.toUpperCase())}
-                placeholder="HDFC0001234"
-                className={`${inputCls} font-mono uppercase font-bold ${
-                  !canViewBankDetails || !showFullBankDetails
-                    ? "bg-slate-100 text-slate-500 cursor-not-allowed"
-                    : "text-slate-900"
-                }`}
-              />
-            </div>
-
-            <div className="sm:col-span-2">
-              <label className="block text-xs font-bold text-slate-600 mb-1.5">
-                Shop UPI VPA ID (For Instant Scan &amp; Pay QR Code)
-              </label>
-              <input
-                value={
-                  canViewBankDetails
-                    ? form.upiId
-                    : maskUPI(form.upiId, false)
-                }
-                disabled={!canViewBankDetails}
-                onChange={(e) => handleChange("upiId", e.target.value)}
-                placeholder="bilzet@hdfcbank or phone@paytm"
-                className={`${inputCls} font-mono font-bold text-emerald-700 ${
-                  !canViewBankDetails ? "bg-slate-100 cursor-not-allowed" : ""
-                }`}
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ══════════════════════════════════════════════════
-          TAB 4: DOCUMENT HEADERS & COMPLIANCE TOGGLES
-      ══════════════════════════════════════════════════ */}
-      {activeTab === "compliance" && (
-        <div className="space-y-5">
-          <div className="bg-white p-6 rounded-2xl border border-slate-200/90 shadow-xs space-y-4">
-            <h2 className="text-sm font-bold text-slate-900">Document Title &amp; Series Prefix</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1.5">Invoice Document Title</label>
+                <label className={labelCls}>Overtime Rate Multiplier</label>
                 <select
-                  value={form.invoiceTitle}
-                  onChange={(e) => handleChange("invoiceTitle", e.target.value)}
+                  value={attSettings.overtimeRate}
+                  onChange={(e) =>
+                    setAttSettings({ ...attSettings, overtimeRate: Number(e.target.value) })
+                  }
                   className={inputCls}
                 >
-                  <option value="TAX INVOICE">TAX INVOICE (GST Standard)</option>
-                  <option value="RETAIL INVOICE">RETAIL INVOICE</option>
-                  <option value="BILL OF SUPPLY">BILL OF SUPPLY (Composition / Exempt)</option>
-                  <option value="CASH MEMO">TAX INVOICE / CASH MEMO</option>
-                  <option value="PROFORMA INVOICE">PROFORMA INVOICE</option>
+                  <option value={1.0}>1.0x (Standard hourly rate)</option>
+                  <option value={1.5}>1.5x (Standard 150% overtime)</option>
+                  <option value={2.0}>2.0x (Double rate)</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1.5">Invoice Series Prefix</label>
-                <input
-                  value={form.invoicePrefix}
-                  onChange={(e) => handleChange("invoicePrefix", e.target.value)}
-                  placeholder="INV-2026-"
-                  className={`${inputCls} font-mono uppercase`}
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-2xl border border-slate-200/90 shadow-xs space-y-4">
-            <h2 className="text-sm font-bold text-slate-900">Visible Elements &amp; Compliance</h2>
-            <div className="divide-y divide-slate-100">
-              {[
-                {
-                  key: "showLogo",
-                  title: "Company Trade Logo Badge",
-                  desc: "Display company logo or icon badge in the invoice header",
-                },
-                {
-                  key: "showWatermark",
-                  title: "Diagonal Security Background Watermark",
-                  desc: "Prints subtle diagonal watermark stamp across sheet body",
-                },
-                {
-                  key: "showStatusBadge",
-                  title: "PAID / UNPAID Status Pill Badge",
-                  desc: "Color-coded payment status badge in header",
-                },
-                {
-                  key: "showHsnSummary",
-                  title: "HSN / SAC Tax Summary Grid",
-                  desc: "Detailed table calculating CGST and SGST per HSN category",
-                },
-                {
-                  key: "showBankDetails",
-                  title: "Bank Account & Settlement Details",
-                  desc: "Includes bank name, account number, IFSC, and UPI ID on the invoice",
-                },
-                {
-                  key: "showQrCode",
-                  title: "UPI Dynamic Payment QR Code",
-                  desc: "Allows customers to scan and pay directly via GPay / PhonePe / Paytm",
-                },
-                {
-                  key: "showSignatory",
-                  title: "Authorized Signatory Box",
-                  desc: "Placeholders for digital verification and official seal",
-                },
-                {
-                  key: "showTerms",
-                  title: "Terms & Conditions Section",
-                  desc: "Prints return policy and jurisdiction notes at footer",
-                },
-              ].map((item) => (
-                <div key={item.key} className="py-3.5 flex items-center justify-between gap-4">
-                  <div>
-                    <p className="text-xs font-bold text-slate-800">{item.title}</p>
-                    <p className="text-[11px] text-slate-500 mt-0.5">{item.desc}</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                    <input
-                      type="checkbox"
-                      checked={!!form[item.key]}
-                      onChange={(e) => handleChange(item.key, e.target.checked)}
-                      className="sr-only peer"
-                    />
-                    <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
-                  </label>
-                </div>
-              ))}
-            </div>
-
-            <div className="pt-3">
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                Invoice Terms &amp; Legal Conditions
-              </label>
-              <textarea
-                rows={3}
-                value={form.terms}
-                onChange={(e) => handleChange("terms", e.target.value)}
-                className={`${inputCls} resize-none`}
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-        </div>
-
-        {/* RIGHT: STICKY LIVE BILL PREVIEW (5 Cols) */}
-        <div className="xl:col-span-5 xl:sticky xl:top-6 space-y-4">
-          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-sm space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                <h2 className="text-sm font-bold text-slate-900">Live Bill Preview</h2>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 font-bold border border-blue-200">
-                  {form.paperSize} &middot; {form.template}
-                </span>
-                {(!INVOICE_TEMPLATES.find((t) => t.id === form.template)?.isFree ||
-                  !COLOR_THEMES.find((c) => c.id === form.colorTheme)?.isFree) &&
-                  !hasSubscription && (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 font-bold border border-amber-300 inline-flex items-center gap-1 shadow-2xs">
-                      👑 Pro Preview
-                    </span>
-                  )}
-              </div>
-
-              <div className="flex items-center gap-2">
-                {form.paperSize?.startsWith("Thermal") && (
-                  <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-[10px] font-bold">
-                    <button
-                      type="button"
-                      onClick={() => setPreviewViewMode("template")}
-                      className={`px-2 py-0.5 rounded ${previewViewMode === "template" ? "bg-white text-blue-700 shadow-2xs font-black" : "text-slate-500 hover:text-slate-800"}`}
-                    >
-                      📄 Layout
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPreviewViewMode("thermal")}
-                      className={`px-2 py-0.5 rounded ${previewViewMode === "thermal" ? "bg-white text-blue-700 shadow-2xs font-black" : "text-slate-500 hover:text-slate-800"}`}
-                    >
-                      🧾 Slip
-                    </button>
-                  </div>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setShowFullPreview(true)}
-                  className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1.5 transition"
+                <label className={labelCls}>Late Attendance Deduction Rule</label>
+                <select
+                  value={attSettings.lateDeductionRule}
+                  onChange={(e) =>
+                    setAttSettings({ ...attSettings, lateDeductionRule: e.target.value })
+                  }
+                  className={inputCls}
                 >
-                  <Eye size={13} />
-                  <span>Fullscreen</span>
-                </button>
+                  <option value="3_TO_HALF_DAY">3 Late Marks = 0.5 Day Salary Deduction</option>
+                  <option value="2_TO_HALF_DAY">2 Late Marks = 0.5 Day Salary Deduction</option>
+                  <option value="NONE">No Automatic Deduction</option>
+                </select>
               </div>
             </div>
 
-            {/* Quick Toggle Ribbon directly on Live Preview */}
-            <div className="flex flex-wrap items-center gap-1.5 p-2 bg-slate-50 rounded-xl border border-slate-200/70 text-[10px]">
-              <span className="text-slate-500 font-bold mr-1">Quick:</span>
+            {/* Subsection 5.3: Refer & Earn Partner Program */}
+            <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/80 p-4 sm:p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 shadow-2xs">
+                  <Star size={20} />
+                </div>
+                <div>
+                  <h3 className="text-xs font-bold text-slate-900">Refer &amp; Earn Merchant Rewards</h3>
+                  <p className="text-[11px] text-slate-600 mt-0.5">
+                    Invite fellow retail merchants to BILZET. They get 10% off their subscription, and you get 1 bonus month of Pro ERP.
+                  </p>
+                </div>
+              </div>
               <button
                 type="button"
-                onClick={() => handleChange("showWatermark", !form.showWatermark)}
-                className={`px-2 py-0.5 rounded-lg border font-semibold transition ${
-                  form.showWatermark
-                    ? "bg-rose-50 text-rose-700 border-rose-200"
-                    : "bg-white text-slate-500 border-slate-200"
-                }`}
+                onClick={() => navigate("/referral")}
+                className="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shrink-0 transition-colors shadow-2xs cursor-pointer flex items-center justify-center gap-1.5 self-start sm:self-center"
               >
-                💧 Watermark {form.showWatermark ? "✓" : "✗"}
-              </button>
-              <button
-                type="button"
-                onClick={() => handleChange("showLogo", !form.showLogo)}
-                className={`px-2 py-0.5 rounded-lg border font-semibold transition ${
-                  form.showLogo
-                    ? "bg-teal-50 text-teal-700 border-teal-200"
-                    : "bg-white text-slate-500 border-slate-200"
-                }`}
-              >
-                🖼️ Logo {form.showLogo ? "✓" : "✗"}
-              </button>
-              <button
-                type="button"
-                onClick={() => handleChange("showStatusBadge", !form.showStatusBadge)}
-                className={`px-2 py-0.5 rounded-lg border font-semibold transition ${
-                  form.showStatusBadge
-                    ? "bg-sky-50 text-sky-700 border-sky-200"
-                    : "bg-white text-slate-500 border-slate-200"
-                }`}
-              >
-                🛡️ Badge {form.showStatusBadge ? "✓" : "✗"}
-              </button>
-              <button
-                type="button"
-                onClick={() => handleChange("showHsnSummary", !form.showHsnSummary)}
-                className={`px-2 py-0.5 rounded-lg border font-semibold transition ${
-                  form.showHsnSummary
-                    ? "bg-cyan-50 text-cyan-700 border-cyan-200"
-                    : "bg-white text-slate-500 border-slate-200"
-                }`}
-              >
-                📊 HSN {form.showHsnSummary ? "✓" : "✗"}
+                <span>View Refer &amp; Earn</span>
+                <ArrowRight size={13} />
               </button>
             </div>
 
-            <div className="bg-slate-100/70 border border-slate-200 rounded-2xl p-2 sm:p-3 overflow-x-auto flex justify-center max-h-[750px] overflow-y-auto">
-              <div className="w-full shadow-md rounded-xl overflow-hidden bg-white scale-[0.88] origin-top">
-                <TaxInvoice
-                  shopSettings={{
-                    ...form,
-                    showChangeIndicators: highlightSections,
-                    lastChangedField: lastChange.field,
-                    lastChangeTitle: lastChange.title,
-                    viewMode: previewViewMode,
-                  }}
-                  isModal={false}
-                />
-              </div>
+            <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
+              <Button variant="neutral" size="sm" onClick={handleReset} disabled={saving}>
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                icon={Save}
+                onClick={handleSaveAll}
+                disabled={saving}
+              >
+                {saving ? "Saving…" : "Save Preferences"}
+              </Button>
             </div>
           </div>
         </div>
-      </div>
-      </div>
-
-      {/* ══════════════════════════════════════════════════
-          MODAL: FULLSCREEN PREVIEW
-      ══════════════════════════════════════════════════ */}
-      {showFullPreview && (
-        <TaxInvoice
-          shopSettings={form}
-          isModal={true}
-          onClose={() => setShowFullPreview(false)}
-        />
       )}
 
-      {/* ══════════════════════════════════════════════════
-          MODAL: UPGRADE SUBSCRIPTION
-      ══════════════════════════════════════════════════ */}
-      {upgradeModal.open && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
-          <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl overflow-hidden border border-slate-200 p-6 space-y-5 animate-scaleIn">
-            <div className="flex items-start justify-between">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-400 to-amber-500 text-white flex items-center justify-center shadow-md shadow-amber-500/20">
-                <Crown size={24} />
-              </div>
-              <button
-                type="button"
-                onClick={() => setUpgradeModal({ open: false, item: "", type: "" })}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div>
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-50 text-amber-800 border border-amber-200 mb-2">
-                👑 Subscription Feature
-              </div>
-              <h3 className="text-lg font-black text-slate-900 tracking-tight">
-                Unlock {upgradeModal.item}
-              </h3>
-              <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                You are currently on the <strong className="text-slate-900">Free Starter Plan</strong>, which includes 3 free invoice layouts and 3 complimentary color palettes. Upgrade to <strong className="text-blue-600">Pro Suite</strong> to access all 11 designer templates, all 16 brand color schemes, and thermal printing.
-              </p>
-            </div>
-
-            <div className="p-4 bg-slate-50 border border-slate-200/90 rounded-2xl space-y-2 text-xs">
-              <p className="font-bold text-slate-800 text-[11px] uppercase tracking-wider">
-                Included with Pro Suite (₹999/mo):
-              </p>
-              <ul className="space-y-1.5 text-slate-600 text-[11px]">
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
-                  <span>All 11 modern, corporate, retail, hotel &amp; minimal layouts</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
-                  <span>All 16 tailored dual-tone diagonal color themes</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
-                  <span>80mm and 58mm POS thermal receipt printing</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
-                  <span>Unlimited invoice creation with live UPI QR payment links</span>
-                </li>
-              </ul>
-            </div>
-
-            <div className="flex items-center gap-3 pt-1">
-              <button
-                type="button"
-                onClick={() => navigate("/subscription")}
-                className="flex-1 py-2.5 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:brightness-110 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/20 transition flex items-center justify-center gap-1.5"
-              >
-                <span>Upgrade to Pro Suite →</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setUpgradeModal({ open: false, item: "", type: "" })}
-                className="py-2.5 px-4 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl text-xs font-semibold transition"
-              >
-                Keep Free
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* ════════════════════════════════════════════════════
+          MODAL: FULL MASTER INVOICE PREVIEW
+      ════════════════════════════════════════════════════ */}
+      {showInvoicePreviewModal && (
+        <TaxInvoice
+          invoice={sampleInvoiceData}
+          shopSettings={form}
+          plan={activePlan}
+          isModal={true}
+          onClose={() => setShowInvoicePreviewModal(false)}
+        />
       )}
     </div>
   );
