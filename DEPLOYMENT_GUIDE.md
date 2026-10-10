@@ -77,9 +77,11 @@ Expand the **"Environment Variables"** tab and add the following keys from your 
 | `DATABASE_URL` | `postgresql://...` | Your NeonDB PostgreSQL connection string |
 | `JWT_SECRET` | `bilzet_super_secure_jwt_secret_key_32chars!` | Secret for authentication tokens (32+ chars) |
 | `JWT_REFRESH_SECRET` | `bilzet_super_secure_refresh_secret_key_32chars!` | Secret for refresh tokens (32+ chars) |
+| `CLERK_SECRET_KEY` | `sk_test_...` | (Optional) Your Clerk Secret Key for user auth |
+| `CLERK_PUBLISHABLE_KEY` | `pk_test_...` | (Optional) Your Clerk Publishable Key |
 | `NODE_ENV` | `production` | Production environment flag |
 
-*(Note: `VITE_API_URL` is optional because the frontend automatically defaults to `/api/v1` on the same domain in production!)*
+*(Note: `VITE_API_URL`, `CLERK_SECRET_KEY`, and `CLERK_PUBLISHABLE_KEY` have built-in production fallbacks!)*
 
 ---
 

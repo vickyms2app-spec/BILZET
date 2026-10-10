@@ -97,9 +97,18 @@ export const authMiddleware = asyncHandler(async (req, res, next) => {
     req.headers['x-store-id'] ||
     null;
 
-  // 1. Try Clerk Token verification if Clerk secret key is configured
-  if (env.CLERK_SECRET_KEY && (clerkUserId || token)) {
-    let isClerk = Boolean(clerkUserId);
+  // 1. Detect if this is a Clerk token or session
+  const decodedToken = token ? jwt.decode(token) : null;
+  const isClerk = Boolean(
+    clerkUserId ||
+    (decodedToken && (
+      (decodedToken.iss && decodedToken.iss.includes('clerk')) ||
+      (typeof decodedToken.sub === 'string' && decodedToken.sub.startsWith('user_')) ||
+      decodedToken.azp
+    ))
+  );
+
+  if (isClerk) {
     try {
       let emailClaim = clerkAuth?.sessionClaims?.email || clerkAuth?.sessionClaims?.email_address;
       let userName = clerkAuth?.sessionClaims?.name;
@@ -112,17 +121,18 @@ export const authMiddleware = asyncHandler(async (req, res, next) => {
           });
           if (verifiedClerk && verifiedClerk.sub) {
             clerkUserId = verifiedClerk.sub;
-            isClerk = true;
             emailClaim = verifiedClerk.email || verifiedClerk.email_address || emailClaim;
             userName = verifiedClerk.name || userName;
           }
         } catch (clerkVerifyErr) {
-          // If verifyToken fails (e.g. network/JWKS), decode token to inspect claims
-          const decoded = jwt.decode(token);
-          if (decoded && (decoded.iss?.includes('clerk') || String(decoded.sub).startsWith('user_'))) {
-            clerkUserId = decoded.sub;
-            isClerk = true;
-            emailClaim = decoded.email || decoded.email_address || emailClaim;
+          // If verifyToken fails (e.g. network/JWKS latency or offline testing), inspect decoded claims
+          if (decodedToken && (decodedToken.iss?.includes('clerk') || String(decodedToken.sub).startsWith('user_'))) {
+            if (decodedToken.exp && decodedToken.exp * 1000 < Date.now() - 300000) {
+              throw ApiError.unauthorized('Session has expired. Please log in again.');
+            }
+            clerkUserId = decodedToken.sub;
+            emailClaim = decodedToken.email || decodedToken.email_address || decodedToken.preferred_username || emailClaim;
+            userName = decodedToken.name || userName;
           }
         }
       }
@@ -154,7 +164,7 @@ export const authMiddleware = asyncHandler(async (req, res, next) => {
         const finalEmail = emailClaim || `${clerkUserId}@clerk.user`;
         const finalName = userName || (finalEmail.includes('@') ? finalEmail.split('@')[0] : 'Clerk User');
 
-        // Ensure user is persisted in the database so foreign keys (e.g. business.ownerId) work
+        // Ensure user is persisted in the database so foreign keys work
         if (!user) {
           try {
             user = await prisma.user.create({
@@ -203,14 +213,14 @@ export const authMiddleware = asyncHandler(async (req, res, next) => {
         req.user = await attachTenantContext(user, requestedStoreId);
         return next();
       }
+
+      throw ApiError.unauthorized('Unable to resolve user from Clerk credentials');
     } catch (clerkErr) {
       if (clerkErr instanceof ApiError) {
         throw clerkErr;
       }
-      if (isClerk) {
-        console.error('[AuthMiddleware] Clerk authentication error:', clerkErr);
-        throw ApiError.unauthorized('Authentication token could not be verified with Clerk');
-      }
+      console.error('[AuthMiddleware] Clerk authentication error:', clerkErr);
+      throw ApiError.unauthorized('Authentication token could not be verified with Clerk');
     }
   }
 

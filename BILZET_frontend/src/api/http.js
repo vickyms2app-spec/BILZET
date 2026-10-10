@@ -161,8 +161,10 @@ http.interceptors.response.use(
           }
         } catch (err) {
           refreshing = null;
-          // Only clear tokens if refresh explicitly failed
-          setTokens();
+          // Only clear tokens if refresh explicitly failed and user is not logged in via Clerk
+          if (typeof window !== "undefined" && !window.Clerk?.user) {
+            setTokens();
+          }
           throw err;
         }
       }

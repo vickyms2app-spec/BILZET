@@ -13,6 +13,7 @@
     "build:frontend": "cd BILZET_frontend && npm install && npm run build"
   },
   "dependencies": {
+    "@clerk/express": "^2.1.75",
     "@clerk/react": "^6.17.5",
     "@prisma/client": "6.4.1",
     "bcryptjs": "^3.0.3",
