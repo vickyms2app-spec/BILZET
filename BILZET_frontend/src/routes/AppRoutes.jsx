@@ -231,6 +231,14 @@ export default function AppRoutes() {
         }
       />
       <Route
+        path="/ca-portal/:subTab"
+        element={
+          <Protected roles={["CA", "SUPER_ADMIN"]}>
+            <CaPortal />
+          </Protected>
+        }
+      />
+      <Route
         path="/referral"
         element={
           <Protected>

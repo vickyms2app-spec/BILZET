@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   FileText,
   Search,
@@ -40,6 +41,17 @@ import {
   Check,
   ExternalLink,
   SlidersHorizontal,
+  Users,
+  MessageSquare,
+  LayoutGrid,
+  Boxes,
+  Settings,
+  Send,
+  ArrowRight,
+  UserCheck,
+  HelpCircle,
+  Sparkles,
+  CheckCheck,
 } from "lucide-react";
 import { useAuth } from "../store/auth";
 import { caPortalApi } from "../api";
@@ -48,7 +60,42 @@ import Button, { CompactIconButton } from "../components/common/Button";
 
 export default function CaPortal() {
   const { user } = useAuth();
+  const { subTab } = useParams();
+  const navigate = useNavigate();
   const isCAUser = user?.role === "CA" || user?.role === "SUPER_ADMIN" || user?.isSuperAdmin;
+
+  // Tab mapping helper
+  const resolveTab = (tab) => {
+    if (!tab) return "dashboard";
+    switch (tab) {
+      case "dashboard": return "dashboard";
+      case "clients": return "clients";
+      case "pipeline": return "pipeline";
+      case "deadlines": return "deadlines";
+      case "sales":
+      case "invoices": return "invoices";
+      case "returns": return "returns";
+      case "purchases": return "purchases";
+      case "reconciliation": return "reconciliation";
+      case "payments": return "payments";
+      case "expenses": return "expenses";
+      case "gst": return "gst";
+      case "inventory": return "inventory";
+      case "tasks": return "tasks";
+      case "discrepancies": return "discrepancies";
+      case "documents": return "documents";
+      case "queries": return "queries";
+      case "reports":
+      case "workpapers": return "workpapers";
+      case "closing": return "closing";
+      case "audit-trail":
+      case "activity": return "activity";
+      case "team": return "team";
+      case "automation": return "automation";
+      case "settings": return "settings";
+      default: return tab;
+    }
+  };
 
   // Stores State
   const [stores, setStores] = useState([]);
@@ -63,7 +110,7 @@ export default function CaPortal() {
   const [loadingCreditNotes, setLoadingCreditNotes] = useState(false);
 
   // Tabs & Filters
-  const [activeTab, setActiveTab] = useState("invoices"); // "invoices" | "returns" | "gst" | "activity"
+  const [activeTab, setActiveTab] = useState(() => resolveTab(subTab));
   const [searchQuery, setSearchQuery] = useState("");
   const [creditNoteSearch, setCreditNoteSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -72,6 +119,22 @@ export default function CaPortal() {
   const [selectedYear, setSelectedYear] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+
+  // Sync activeTab when subTab in URL changes
+  useEffect(() => {
+    if (subTab) {
+      setActiveTab(resolveTab(subTab));
+    }
+  }, [subTab]);
+
+  const handleTabChange = (newTab) => {
+    setActiveTab(newTab);
+    // Route clean aliases
+    if (newTab === "invoices") navigate("/ca-portal/sales");
+    else if (newTab === "workpapers") navigate("/ca-portal/reports");
+    else if (newTab === "activity") navigate("/ca-portal/audit-trail");
+    else navigate(`/ca-portal/${newTab}`);
+  };
 
   // Activity Ledger State
   const [activityList, setActivityList] = useState([]);
@@ -135,6 +198,131 @@ export default function CaPortal() {
   // Module 14: Settings & Audit Rules Engine State
   const [rulesEvaluation, setRulesEvaluation] = useState(null);
   const [loadingRules, setLoadingRules] = useState(false);
+
+  // Module: Client Queries & Requests State
+  const [queriesList, setQueriesList] = useState([
+    {
+      id: "QRY-101",
+      title: "Clarification on Vendor Advance Payment without Invoice",
+      referenceNumber: "TXN-8821",
+      question: "Payment of ₹45,000 made on 12th Sept lacks matching supplier tax invoice. Please upload vendor bill or voucher.",
+      status: "WAITING_FOR_CLIENT",
+      priority: "HIGH",
+      createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
+      clientReply: "Invoice copy requested from vendor, will upload by tomorrow.",
+    },
+    {
+      id: "QRY-102",
+      title: "HSN Code Discrepancy for New Electrical Accessories",
+      referenceNumber: "INV-2026-089",
+      question: "HSN 8536 billed at 12% GST instead of standard 18%. Please confirm tariff classification.",
+      status: "RESOLVED",
+      priority: "MEDIUM",
+      createdAt: new Date(Date.now() - 86400000 * 5).toISOString(),
+      clientReply: "Corrected in master product catalogue to 18% GST.",
+    },
+  ]);
+  const [newQueryModalOpen, setNewQueryModalOpen] = useState(false);
+  const [queryForm, setQueryForm] = useState({
+    title: "",
+    referenceNumber: "",
+    question: "",
+    priority: "MEDIUM",
+  });
+
+  // Module: Team & Permissions Directory State
+  const [teamMembers, setTeamMembers] = useState([
+    {
+      id: "TM-1",
+      name: user?.name || "Karthik CA",
+      email: user?.email || "ca@bilzet.com",
+      role: "CA Partner / Principal Auditor",
+      status: "ACTIVE",
+      assignedStoresCount: 3,
+      activeTasksCount: 4,
+    },
+    {
+      id: "TM-2",
+      name: "Sneha Sharma",
+      email: "sneha.audit@bilzet.com",
+      role: "Senior Audit Manager",
+      status: "ACTIVE",
+      assignedStoresCount: 2,
+      activeTasksCount: 7,
+    },
+    {
+      id: "TM-3",
+      name: "Rahul Verma",
+      email: "rahul.assistant@bilzet.com",
+      role: "Article Assistant",
+      status: "ACTIVE",
+      assignedStoresCount: 1,
+      activeTasksCount: 5,
+    },
+  ]);
+  const [newTeamModalOpen, setNewTeamModalOpen] = useState(false);
+  const [teamForm, setTeamForm] = useState({
+    name: "",
+    email: "",
+    role: "Senior Audit Manager",
+  });
+
+  // Module: Automation Rules Configuration State
+  const [automationRulesConfig, setAutomationRulesConfig] = useState({
+    autoCreateTasksOnException: true,
+    flagCashOverLimit: true,
+    cashLimitAmount: 10000,
+    varianceThreshold: 100,
+    checkDuplicateInvoiceNumbers: true,
+    checkArithmeticGstMismatch: true,
+    checkMissingB2bGstin: true,
+    checkExcessReturns: true,
+    checkNegativeInventory: true,
+    checkUnreconciledBankCredits: true,
+  });
+
+  const handleCreateQuery = (e) => {
+    e.preventDefault();
+    if (!queryForm.title || !queryForm.question) return;
+    const newQ = {
+      id: `QRY-${Math.floor(100 + Math.random() * 900)}`,
+      title: queryForm.title,
+      referenceNumber: queryForm.referenceNumber || "GENERAL",
+      question: queryForm.question,
+      status: "WAITING_FOR_CLIENT",
+      priority: queryForm.priority,
+      createdAt: new Date().toISOString(),
+      clientReply: "Pending client review",
+    };
+    setQueriesList([newQ, ...queriesList]);
+    setNewQueryModalOpen(false);
+    setQueryForm({ title: "", referenceNumber: "", question: "", priority: "MEDIUM" });
+    alert("Query successfully transmitted to client portal!");
+  };
+
+  const handleResolveQuery = (id) => {
+    setQueriesList(
+      queriesList.map((q) => (q.id === id ? { ...q, status: "RESOLVED" } : q))
+    );
+  };
+
+  const handleCreateTeamMember = (e) => {
+    e.preventDefault();
+    if (!teamForm.name || !teamForm.email) return;
+    const newMember = {
+      id: `TM-${teamMembers.length + 1}`,
+      name: teamForm.name,
+      email: teamForm.email,
+      role: teamForm.role,
+      status: "ACTIVE",
+      assignedStoresCount: 1,
+      activeTasksCount: 0,
+    };
+    setTeamMembers([...teamMembers, newMember]);
+    setNewTeamModalOpen(false);
+    setTeamForm({ name: "", email: "", role: "Senior Audit Manager" });
+    alert(`Added ${teamForm.name} to CA Audit Firm team!`);
+  };
 
   // Modals
   const [selectedInvoice, setSelectedInvoice] = useState(null);
@@ -1051,12 +1239,60 @@ export default function CaPortal() {
           </div>
 
           {/* ══════════════════════════════════════════════════
-              MAIN SECTION TABS
+              MAIN SECTION TABS — ALL 19 WORKSPACE SUB-PAGES
           ══════════════════════════════════════════════════ */}
           <div className="flex items-center justify-between border-b border-slate-200 pb-2 print:hidden">
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full scrollbar-thin">
+              {/* Group A: Overview */}
               <button
-                onClick={() => setActiveTab("invoices")}
+                onClick={() => handleTabChange("dashboard")}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
+                  activeTab === "dashboard"
+                    ? "bg-slate-900 text-white shadow-xs"
+                    : "text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                <LayoutGrid size={14} /> CA Dashboard
+              </button>
+              <button
+                onClick={() => handleTabChange("clients")}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
+                  activeTab === "clients"
+                    ? "bg-slate-900 text-white shadow-xs"
+                    : "text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                <Building2 size={14} /> Client Management ({stores.length})
+              </button>
+              <button
+                onClick={() => {
+                  handleTabChange("pipeline");
+                  loadTasksData();
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
+                  activeTab === "pipeline"
+                    ? "bg-slate-900 text-white shadow-xs"
+                    : "text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                <Activity size={14} /> Audit Pipeline ({tasksList.length})
+              </button>
+              <button
+                onClick={() => handleTabChange("deadlines")}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
+                  activeTab === "deadlines"
+                    ? "bg-slate-900 text-white shadow-xs"
+                    : "text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                <AlertTriangle size={14} /> Deadlines &amp; Alerts
+              </button>
+
+              <span className="h-4 w-px bg-slate-200 mx-1 shrink-0" />
+
+              {/* Group B: Audit & Accounting */}
+              <button
+                onClick={() => handleTabChange("invoices")}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
                   activeTab === "invoices"
                     ? "bg-slate-900 text-white shadow-xs"
@@ -1066,7 +1302,7 @@ export default function CaPortal() {
                 <FileText size={14} /> Invoices ({invoices.length})
               </button>
               <button
-                onClick={() => setActiveTab("returns")}
+                onClick={() => handleTabChange("returns")}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
                   activeTab === "returns"
                     ? "bg-slate-900 text-white shadow-xs"
@@ -1076,31 +1312,8 @@ export default function CaPortal() {
                 <RotateCcw size={14} /> Returns &amp; CN ({creditNotes.length})
               </button>
               <button
-                onClick={() => setActiveTab("gst")}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
-                  activeTab === "gst"
-                    ? "bg-slate-900 text-white shadow-xs"
-                    : "text-slate-600 hover:bg-slate-100"
-                }`}
-              >
-                <Percent size={14} /> GST Slabs
-              </button>
-              <button
                 onClick={() => {
-                  setActiveTab("tasks");
-                  loadTasksData();
-                }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
-                  activeTab === "tasks"
-                    ? "bg-slate-900 text-white shadow-xs"
-                    : "text-slate-600 hover:bg-slate-100"
-                }`}
-              >
-                <CheckSquare size={14} /> Tasks Pipeline ({tasksList.length})
-              </button>
-              <button
-                onClick={() => {
-                  setActiveTab("purchases");
+                  handleTabChange("purchases");
                   loadPurchasesData();
                 }}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
@@ -1113,33 +1326,30 @@ export default function CaPortal() {
               </button>
               <button
                 onClick={() => {
-                  setActiveTab("payments");
-                  loadPaymentsData();
+                  handleTabChange("reconciliation");
+                  loadBankSessionData();
                 }}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
-                  activeTab === "payments"
+                  activeTab === "reconciliation"
                     ? "bg-slate-900 text-white shadow-xs"
                     : "text-slate-600 hover:bg-slate-100"
                 }`}
               >
-                <CreditCard size={14} /> Payments ({paymentsList.length})
+                <Scale size={14} /> Bank Reconciliation
               </button>
               <button
-                onClick={() => {
-                  setActiveTab("expenses");
-                  loadExpensesData();
-                }}
+                onClick={() => handleTabChange("gst")}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
-                  activeTab === "expenses"
+                  activeTab === "gst"
                     ? "bg-slate-900 text-white shadow-xs"
                     : "text-slate-600 hover:bg-slate-100"
                 }`}
               >
-                <Layers size={14} /> Expenses ({expensesList.length})
+                <Percent size={14} /> GST Slabs
               </button>
               <button
                 onClick={() => {
-                  setActiveTab("inventory");
+                  handleTabChange("inventory");
                   loadInventoryData();
                 }}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
@@ -1152,7 +1362,50 @@ export default function CaPortal() {
               </button>
               <button
                 onClick={() => {
-                  setActiveTab("discrepancies");
+                  handleTabChange("payments");
+                  loadPaymentsData();
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
+                  activeTab === "payments"
+                    ? "bg-slate-900 text-white shadow-xs"
+                    : "text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                <CreditCard size={14} /> Payments ({paymentsList.length})
+              </button>
+              <button
+                onClick={() => {
+                  handleTabChange("expenses");
+                  loadExpensesData();
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
+                  activeTab === "expenses"
+                    ? "bg-slate-900 text-white shadow-xs"
+                    : "text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                <Layers size={14} /> Expenses ({expensesList.length})
+              </button>
+
+              <span className="h-4 w-px bg-slate-200 mx-1 shrink-0" />
+
+              {/* Group C: Work Management */}
+              <button
+                onClick={() => {
+                  handleTabChange("tasks");
+                  loadTasksData();
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
+                  activeTab === "tasks"
+                    ? "bg-slate-900 text-white shadow-xs"
+                    : "text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                <CheckSquare size={14} /> Tasks ({tasksList.length})
+              </button>
+              <button
+                onClick={() => {
+                  handleTabChange("discrepancies");
                   loadDiscrepanciesData();
                 }}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
@@ -1165,7 +1418,7 @@ export default function CaPortal() {
               </button>
               <button
                 onClick={() => {
-                  setActiveTab("documents");
+                  handleTabChange("documents");
                   loadDocumentsData();
                 }}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
@@ -1177,47 +1430,22 @@ export default function CaPortal() {
                 <Paperclip size={14} /> Documents ({documentsList.length})
               </button>
               <button
-                onClick={() => {
-                  setActiveTab("closing");
-                  loadClosingsData();
-                }}
+                onClick={() => handleTabChange("queries")}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
-                  activeTab === "closing"
+                  activeTab === "queries"
                     ? "bg-slate-900 text-white shadow-xs"
                     : "text-slate-600 hover:bg-slate-100"
                 }`}
               >
-                <FileCheck size={14} /> Period Closing
+                <MessageSquare size={14} /> Client Queries ({queriesList.length})
               </button>
+
+              <span className="h-4 w-px bg-slate-200 mx-1 shrink-0" />
+
+              {/* Group D: Reporting & Compliance */}
               <button
                 onClick={() => {
-                  setActiveTab("activity");
-                  loadActivityData();
-                }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
-                  activeTab === "activity"
-                    ? "bg-slate-900 text-white shadow-xs"
-                    : "text-slate-600 hover:bg-slate-100"
-                }`}
-              >
-                <Activity size={14} /> Activity Ledger ({activityList.length})
-              </button>
-              <button
-                onClick={() => {
-                  setActiveTab("reconciliation");
-                  loadBankSessionData();
-                }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
-                  activeTab === "reconciliation"
-                    ? "bg-slate-900 text-white shadow-xs"
-                    : "text-slate-600 hover:bg-slate-100"
-                }`}
-              >
-                <Scale size={14} /> Bank Reconciliation
-              </button>
-              <button
-                onClick={() => {
-                  setActiveTab("workpapers");
+                  handleTabChange("workpapers");
                   loadWorkpapersData();
                 }}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
@@ -1230,7 +1458,60 @@ export default function CaPortal() {
               </button>
               <button
                 onClick={() => {
-                  setActiveTab("settings");
+                  handleTabChange("closing");
+                  loadClosingsData();
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
+                  activeTab === "closing"
+                    ? "bg-slate-900 text-white shadow-xs"
+                    : "text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                <FileCheck size={14} /> Period Closing
+              </button>
+              <button
+                onClick={() => {
+                  handleTabChange("activity");
+                  loadActivityData();
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
+                  activeTab === "activity"
+                    ? "bg-slate-900 text-white shadow-xs"
+                    : "text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                <Activity size={14} /> Activity Ledger ({activityList.length})
+              </button>
+
+              <span className="h-4 w-px bg-slate-200 mx-1 shrink-0" />
+
+              {/* Group E: Administration */}
+              <button
+                onClick={() => handleTabChange("team")}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
+                  activeTab === "team"
+                    ? "bg-slate-900 text-white shadow-xs"
+                    : "text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                <Users size={14} /> Team &amp; Roles ({teamMembers.length})
+              </button>
+              <button
+                onClick={() => {
+                  handleTabChange("automation");
+                  loadAuditRulesData();
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
+                  activeTab === "automation"
+                    ? "bg-slate-900 text-white shadow-xs"
+                    : "text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                <SlidersHorizontal size={14} /> Automation Rules
+              </button>
+              <button
+                onClick={() => {
+                  handleTabChange("settings");
                   loadAuditRulesData();
                 }}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
@@ -1239,7 +1520,7 @@ export default function CaPortal() {
                     : "text-slate-600 hover:bg-slate-100"
                 }`}
               >
-                <SlidersHorizontal size={14} /> Workspace Settings
+                <Settings size={14} /> Client Settings
               </button>
             </div>
 
@@ -1280,6 +1561,263 @@ export default function CaPortal() {
               )}
             </div>
           </div>
+
+          {/* ══════════════════════════════════════════════════
+              VIEW 0: CA DASHBOARD EXECUTIVE OVERVIEW (Section A)
+          ══════════════════════════════════════════════════ */}
+          {activeTab === "dashboard" && (
+            <div className="space-y-6">
+              {/* Executive Welcome & Audit Posture */}
+              <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-6 rounded-3xl text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6 border border-slate-800">
+                <div className="space-y-2">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-xs font-semibold">
+                    <Sparkles size={14} /> Professional CA Audit Automation Suite Active
+                  </div>
+                  <h2 className="text-2xl font-black tracking-tight">
+                    Welcome back, {user?.name || "Chartered Accountant"}
+                  </h2>
+                  <p className="text-slate-300 text-xs max-w-xl leading-relaxed">
+                    Client Store: <strong className="text-white font-semibold">{activeStore?.name || "Active Store"}</strong> ({activeStore?.gstin || "Unregistered / Composition"}). All transactions, GST adjustments, and reconciliation workflows are synchronized with immutable traceability.
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 shrink-0 flex-wrap">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    icon={SlidersHorizontal}
+                    loading={loadingRules}
+                    onClick={handleExecuteAuditRules}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-lg"
+                  >
+                    Execute Rules Engine
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    icon={FileSpreadsheet}
+                    onClick={() => handleTabChange("workpapers")}
+                    className="bg-white/10 hover:bg-white/20 text-white border-white/20"
+                  >
+                    View Workpapers
+                  </Button>
+                </div>
+              </div>
+
+              {/* Portfolio Quick Access Grid */}
+              <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs p-5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                      <Building2 size={16} className="text-blue-600" />
+                      Connected Client Businesses ({stores.length})
+                    </h3>
+                    <p className="text-xs text-slate-500">Quickly switch active audit client context</p>
+                  </div>
+                  <button
+                    onClick={() => handleTabChange("clients")}
+                    className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                  >
+                    Manage All Clients <ChevronRight size={14} />
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {stores.map((s) => (
+                    <button
+                      key={s.id}
+                      onClick={() => setSelectedStoreId(s.id)}
+                      className={`p-3.5 rounded-xl border text-left transition relative flex flex-col justify-between ${
+                        selectedStoreId === s.id
+                          ? "border-blue-600 bg-blue-50/40 shadow-xs"
+                          : "border-slate-200 bg-slate-50/50 hover:bg-slate-100/70"
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-slate-900 text-xs truncate max-w-[140px]">{s.name}</span>
+                          {selectedStoreId === s.id && (
+                            <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
+                          )}
+                        </div>
+                        <span className="text-[10px] font-mono text-slate-500 block mt-0.5">
+                          GSTIN: {s.gstin || "Unregistered"}
+                        </span>
+                      </div>
+                      <div className="mt-3 pt-2 border-t border-slate-200/60 flex items-center justify-between text-[10px]">
+                        <span className="text-emerald-700 font-semibold flex items-center gap-1">
+                          <CheckCircle2 size={11} /> Authorized
+                        </span>
+                        <span className="text-blue-600 font-bold">
+                          {selectedStoreId === s.id ? "Auditing Now" : "Select Client →"}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Audit Pipeline Health & Statutory Deadlines */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Pipeline Stages Card */}
+                <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200/90 shadow-xs p-5 space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                    <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                      <Activity size={16} className="text-indigo-600" />
+                      Audit Task Workflow Health
+                    </h3>
+                    <button
+                      onClick={() => handleTabChange("pipeline")}
+                      className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1"
+                    >
+                      Open Kanban Board <ArrowRight size={13} />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">To Review</span>
+                      <span className="text-xl font-black text-slate-900 mt-1 block font-mono">
+                        {tasksList.filter((t) => t.status === "PENDING" || !t.status).length}
+                      </span>
+                    </div>
+                    <div className="p-3 bg-blue-50/60 rounded-xl border border-blue-200">
+                      <span className="text-[10px] text-blue-700 font-bold uppercase tracking-wider block">In Progress</span>
+                      <span className="text-xl font-black text-blue-800 mt-1 block font-mono">
+                        {tasksList.filter((t) => t.status === "IN_PROGRESS").length}
+                      </span>
+                    </div>
+                    <div className="p-3 bg-rose-50/60 rounded-xl border border-rose-200">
+                      <span className="text-[10px] text-rose-700 font-bold uppercase tracking-wider block">Correction Req.</span>
+                      <span className="text-xl font-black text-rose-800 mt-1 block font-mono">
+                        {tasksList.filter((t) => t.status === "CORRECTION_REQUIRED").length}
+                      </span>
+                    </div>
+                    <div className="p-3 bg-emerald-50/60 rounded-xl border border-emerald-200">
+                      <span className="text-[10px] text-emerald-700 font-bold uppercase tracking-wider block">Completed</span>
+                      <span className="text-xl font-black text-emerald-800 mt-1 block font-mono">
+                        {tasksList.filter((t) => t.status === "COMPLETED" || t.status === "APPROVED").length}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Quick Action Command Center */}
+                  <div className="pt-2">
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
+                      Auditor Quick Actions
+                    </span>
+                    <div className="flex items-center gap-2 flex-wrap text-xs">
+                      <button
+                        onClick={() => setNewTaskModalOpen(true)}
+                        className="px-3 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-semibold flex items-center gap-1.5 transition shadow-2xs"
+                      >
+                        <Plus size={14} /> New Audit Task
+                      </button>
+                      <button
+                        onClick={() => setImportBankModalOpen(true)}
+                        className="px-3 py-2 bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 rounded-xl font-semibold flex items-center gap-1.5 transition shadow-2xs"
+                      >
+                        <Scale size={14} /> Import Bank Statement
+                      </button>
+                      <button
+                        onClick={() => setFlagModalOpen(true)}
+                        className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl font-semibold flex items-center gap-1.5 transition shadow-2xs"
+                      >
+                        <Flag size={14} /> Flag Discrepancy
+                      </button>
+                      <button
+                        onClick={() => setNewQueryModalOpen(true)}
+                        className="px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl font-semibold flex items-center gap-1.5 transition shadow-2xs"
+                      >
+                        <MessageSquare size={14} /> Raise Query to Client
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Deadlines & Alerts Card */}
+                <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs p-5 space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                    <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                      <AlertTriangle size={16} className="text-amber-600" />
+                      Statutory Deadlines
+                    </h3>
+                    <button
+                      onClick={() => handleTabChange("deadlines")}
+                      className="text-xs font-bold text-amber-600 hover:text-amber-700"
+                    >
+                      All Alerts →
+                    </button>
+                  </div>
+                  <div className="space-y-2.5 text-xs">
+                    <div className="p-3 rounded-xl border border-amber-200/80 bg-amber-50/30 flex items-center justify-between">
+                      <div>
+                        <span className="font-bold text-slate-900 block">GSTR-1 Monthly Return</span>
+                        <span className="text-[10px] text-slate-500">Outward B2B &amp; B2C supplies</span>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
+                        Due 11th Nov
+                      </span>
+                    </div>
+                    <div className="p-3 rounded-xl border border-blue-200/80 bg-blue-50/30 flex items-center justify-between">
+                      <div>
+                        <span className="font-bold text-slate-900 block">GSTR-3B Summary Return</span>
+                        <span className="text-[10px] text-slate-500">Tax settlement &amp; eligible ITC</span>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800">
+                        Due 20th Nov
+                      </span>
+                    </div>
+                    <div className="p-3 rounded-xl border border-slate-200 bg-slate-50/60 flex items-center justify-between">
+                      <div>
+                        <span className="font-bold text-slate-900 block">Period Closing Sign-Off</span>
+                        <span className="text-[10px] text-slate-500">Lock immutable ledger</span>
+                      </div>
+                      <button
+                        onClick={() => setCloseModalOpen(true)}
+                        className="px-2 py-1 rounded-lg text-[10px] font-bold bg-slate-900 text-white"
+                      >
+                        Freeze Period
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Live Audit Trail Stream Preview */}
+              <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs p-5 space-y-3">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                  <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                    <History size={16} className="text-slate-600" />
+                    Synchronized Audit Activity Stream
+                  </h3>
+                  <button
+                    onClick={() => handleTabChange("activity")}
+                    className="text-xs font-bold text-blue-600 hover:text-blue-700"
+                  >
+                    View Full Immutable Ledger →
+                  </button>
+                </div>
+                {activityList.length === 0 ? (
+                  <p className="text-xs text-slate-400 py-4 text-center">No recent activity recorded.</p>
+                ) : (
+                  <div className="divide-y divide-slate-100 text-xs">
+                    {activityList.slice(0, 5).map((act, i) => (
+                      <div key={i} className="py-2.5 flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-2 h-2 rounded-full bg-blue-600 shrink-0" />
+                          <div>
+                            <span className="font-bold text-slate-900">{act.action || "TRANSACTION_EVENT"}</span>
+                            <span className="text-slate-500 text-[11px] block">{act.details || act.note || "Audit record verified"}</span>
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-mono text-slate-400 shrink-0">
+                          {act.timestamp ? new Date(act.timestamp).toLocaleTimeString("en-IN") : "Just now"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* ══════════════════════════════════════════════════
               TAB 1: INVOICE MANAGEMENT REGISTER (Req 2)
@@ -3067,6 +3605,664 @@ export default function CaPortal() {
               </div>
             </div>
           )}
+
+          {/* ══════════════════════════════════════════════════
+              VIEW 2: CLIENT MANAGEMENT (Section A)
+          ══════════════════════════════════════════════════ */}
+          {activeTab === "clients" && (
+            <div className="space-y-5">
+              <div className="flex items-center justify-between flex-wrap gap-4">
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    <Building2 size={20} className="text-blue-600" />
+                    Authorized Client Portfolio ({stores.length})
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Manage multiple client businesses under your CA firm with tenant isolation and cryptographic verification.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    icon={RefreshCw}
+                    onClick={() => {
+                      caPortalApi.getStores().then((res) => setStores(res?.stores || []));
+                    }}
+                  >
+                    Refresh Clients
+                  </Button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {stores.map((s) => (
+                  <div
+                    key={s.id}
+                    className={`bg-white rounded-2xl border p-5 space-y-4 shadow-xs transition ${
+                      selectedStoreId === s.id ? "border-blue-600 ring-2 ring-blue-50" : "border-slate-200"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-1">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1 w-max">
+                          <CheckCircle2 size={11} /> Authorized Client
+                        </span>
+                        <h4 className="font-bold text-slate-900 text-base">{s.name}</h4>
+                        <span className="font-mono text-xs text-slate-500 block">
+                          GSTIN: {s.gstin || "Unregistered / Retail"}
+                        </span>
+                      </div>
+                      <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 grid place-items-center">
+                        <Building2 size={20} />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2 text-xs border-t border-slate-100 pt-3 text-slate-600">
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Financial Year:</span>
+                        <strong className="text-slate-800">2026 - 2027</strong>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Assigned CA:</span>
+                        <strong className="text-slate-800">{user?.name || "Karthik CA"}</strong>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Audit Status:</span>
+                        <span className="font-bold text-emerald-600">Active &amp; In-Audit</span>
+                      </div>
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+                      <Button
+                        variant={selectedStoreId === s.id ? "primary" : "outline"}
+                        size="sm"
+                        onClick={() => {
+                          setSelectedStoreId(s.id);
+                          handleTabChange("dashboard");
+                        }}
+                        className="w-full justify-center text-xs"
+                      >
+                        {selectedStoreId === s.id ? "Currently Auditing" : "Switch & Open Audit"}
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ══════════════════════════════════════════════════
+              VIEW 3: AUDIT PIPELINE KANBAN (Section A)
+          ══════════════════════════════════════════════════ */}
+          {activeTab === "pipeline" && (
+            <div className="space-y-5">
+              <div className="flex items-center justify-between flex-wrap gap-4">
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    <Activity size={20} className="text-indigo-600" />
+                    Multi-Stage Audit Workflow Pipeline
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Track verification tasks across standardized audit checkpoints from initial review to CA sign-off.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    icon={Plus}
+                    onClick={() => setNewTaskModalOpen(true)}
+                  >
+                    Create Task
+                  </Button>
+                </div>
+              </div>
+
+              {/* 6-Stage Kanban Board */}
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3 text-xs">
+                {[
+                  { id: "PENDING", label: "To Review", color: "border-slate-300 bg-slate-50/70" },
+                  { id: "IN_PROGRESS", label: "In Progress", color: "border-blue-300 bg-blue-50/40" },
+                  { id: "WAITING_FOR_CLIENT", label: "Waiting Client", color: "border-amber-300 bg-amber-50/40" },
+                  { id: "CORRECTION_REQUIRED", label: "Correction Req.", color: "border-rose-300 bg-rose-50/40" },
+                  { id: "READY_FOR_APPROVAL", label: "Ready Approval", color: "border-indigo-300 bg-indigo-50/40" },
+                  { id: "COMPLETED", label: "Completed", color: "border-emerald-300 bg-emerald-50/40" },
+                ].map((col) => {
+                  const colTasks = tasksList.filter((t) => {
+                    if (col.id === "PENDING") return t.status === "PENDING" || !t.status;
+                    if (col.id === "COMPLETED") return t.status === "COMPLETED" || t.status === "APPROVED";
+                    return t.status === col.id;
+                  });
+
+                  return (
+                    <div key={col.id} className={`rounded-2xl border p-3 flex flex-col min-h-[450px] ${col.color}`}>
+                      <div className="flex items-center justify-between pb-2 border-b border-slate-200/60 mb-3">
+                        <span className="font-bold text-slate-800 text-xs">{col.label}</span>
+                        <span className="w-5 h-5 rounded-full bg-white text-slate-700 font-bold grid place-items-center text-[10px] shadow-2xs">
+                          {colTasks.length}
+                        </span>
+                      </div>
+
+                      <div className="space-y-2.5 flex-1 overflow-y-auto">
+                        {colTasks.length === 0 ? (
+                          <div className="text-center py-8 text-slate-400 text-[11px] italic">
+                            No tasks
+                          </div>
+                        ) : (
+                          colTasks.map((task) => (
+                            <div key={task.id} className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs space-y-2">
+                              <div className="flex items-center justify-between">
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-700 uppercase">
+                                  {task.category || "GENERAL"}
+                                </span>
+                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                                  task.priority === "URGENT" || task.priority === "HIGH"
+                                    ? "bg-rose-100 text-rose-700"
+                                    : "bg-blue-100 text-blue-700"
+                                }`}>
+                                  {task.priority || "MEDIUM"}
+                                </span>
+                              </div>
+                              <h5 className="font-bold text-slate-900 text-xs leading-snug">{task.title}</h5>
+                              {task.description && (
+                                <p className="text-[11px] text-slate-500 line-clamp-2">{task.description}</p>
+                              )}
+                              <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-1">
+                                {col.id !== "PENDING" && (
+                                  <button
+                                    onClick={() => handleUpdateTaskStatus(task.id, "PENDING")}
+                                    title="Move back"
+                                    className="p-1 rounded text-slate-400 hover:text-slate-700 text-[10px]"
+                                  >
+                                    ←
+                                  </button>
+                                )}
+                                <div className="flex-1 text-right">
+                                  {col.id === "PENDING" && (
+                                    <button
+                                      onClick={() => handleUpdateTaskStatus(task.id, "IN_PROGRESS")}
+                                      className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-bold text-[10px] hover:bg-blue-100"
+                                    >
+                                      Start →
+                                    </button>
+                                  )}
+                                  {col.id === "IN_PROGRESS" && (
+                                    <button
+                                      onClick={() => handleUpdateTaskStatus(task.id, "READY_FOR_APPROVAL")}
+                                      className="px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 font-bold text-[10px] hover:bg-indigo-100"
+                                    >
+                                      Review →
+                                    </button>
+                                  )}
+                                  {col.id === "READY_FOR_APPROVAL" && (
+                                    <button
+                                      onClick={() => handleUpdateTaskStatus(task.id, "COMPLETED")}
+                                      className="px-2 py-0.5 rounded bg-emerald-600 text-white font-bold text-[10px] hover:bg-emerald-700"
+                                    >
+                                      Approve ✓
+                                    </button>
+                                  )}
+                                  {col.id === "CORRECTION_REQUIRED" && (
+                                    <button
+                                      onClick={() => handleUpdateTaskStatus(task.id, "IN_PROGRESS")}
+                                      className="px-2 py-0.5 rounded bg-amber-50 text-amber-700 font-bold text-[10px] hover:bg-amber-100"
+                                    >
+                                      Re-verify →
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ══════════════════════════════════════════════════
+              VIEW 4: STATUTORY DEADLINES & ALERTS (Section A)
+          ══════════════════════════════════════════════════ */}
+          {activeTab === "deadlines" && (
+            <div className="space-y-5">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                  <AlertTriangle size={20} className="text-amber-600" />
+                  Statutory Compliance Calendar &amp; Audit Deadlines
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Real-time statutory countdowns for Indian Goods and Services Tax (GST) returns, tax audits, and closing checkpoints.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {[
+                  {
+                    title: "GSTR-1 Monthly Return",
+                    desc: "Outward supply statement for B2B & B2C sales",
+                    dueDate: "11th of every month",
+                    daysLeft: "3 days remaining",
+                    status: "URGENT",
+                    form: "Form GSTR-1",
+                    color: "border-amber-200 bg-amber-50/30 text-amber-800",
+                  },
+                  {
+                    title: "GSTR-3B Monthly Return",
+                    desc: "Summary tax liability & ITC reconciliation settlement",
+                    dueDate: "20th of every month",
+                    daysLeft: "12 days remaining",
+                    status: "UPCOMING",
+                    form: "Form GSTR-3B",
+                    color: "border-blue-200 bg-blue-50/30 text-blue-800",
+                  },
+                  {
+                    title: "Tax Audit U/S 44AB",
+                    desc: "Annual audit report for turnover exceeding statutory limit",
+                    dueDate: "30th September",
+                    daysLeft: "Annual cycle",
+                    status: "ON_TRACK",
+                    form: "Form 3CD",
+                    color: "border-slate-200 bg-slate-50/50 text-slate-800",
+                  },
+                  {
+                    title: "GSTR-9 / 9C Annual Reconciliation",
+                    desc: "Audited reconciliation statement with certified financials",
+                    dueDate: "31st December",
+                    daysLeft: "Due end of year",
+                    status: "ON_TRACK",
+                    form: "Form GSTR-9C",
+                    color: "border-purple-200 bg-purple-50/30 text-purple-800",
+                  },
+                  {
+                    title: "Advance Tax Q3 Instalment",
+                    desc: "Mandatory statutory tax advance instalment",
+                    dueDate: "15th December",
+                    daysLeft: "Quarterly",
+                    status: "UPCOMING",
+                    form: "Challan ITNS 280",
+                    color: "border-emerald-200 bg-emerald-50/30 text-emerald-800",
+                  },
+                  {
+                    title: "Monthly Period Closing Sign-Off",
+                    desc: "Freeze immutable transaction ledger for current period",
+                    dueDate: "End of active month",
+                    daysLeft: "Requires CA Sign-off",
+                    status: "PENDING",
+                    form: "Audit Sign-off",
+                    color: "border-indigo-200 bg-indigo-50/30 text-indigo-800",
+                  },
+                ].map((dl, idx) => (
+                  <div key={idx} className={`p-5 rounded-2xl border space-y-3 ${dl.color}`}>
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded bg-white shadow-2xs">
+                        {dl.form}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white text-slate-800 shadow-2xs">
+                        {dl.status}
+                      </span>
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-900 text-sm">{dl.title}</h4>
+                      <p className="text-xs text-slate-600 mt-0.5">{dl.desc}</p>
+                    </div>
+                    <div className="pt-2 border-t border-slate-200/50 flex items-center justify-between text-xs">
+                      <span className="font-semibold text-slate-700">{dl.dueDate}</span>
+                      <span className="font-bold text-indigo-700">{dl.daysLeft}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ══════════════════════════════════════════════════
+              VIEW 5: CLIENT QUERIES & REQUESTS (Section C)
+          ══════════════════════════════════════════════════ */}
+          {activeTab === "queries" && (
+            <div className="space-y-5">
+              <div className="flex items-center justify-between flex-wrap gap-4">
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    <MessageSquare size={20} className="text-indigo-600" />
+                    Client Queries &amp; Clarification Tickets ({queriesList.length})
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Formally communicate transaction questions, missing bills, and tariff disputes directly to the business owner.
+                  </p>
+                </div>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  icon={Send}
+                  onClick={() => setNewQueryModalOpen(true)}
+                  className="bg-indigo-600 hover:bg-indigo-700"
+                >
+                  Raise Query to Client
+                </Button>
+              </div>
+
+              <div className="space-y-3">
+                {queriesList.map((q) => (
+                  <div key={q.id} className="bg-white rounded-2xl border border-slate-200 p-5 space-y-3 shadow-xs">
+                    <div className="flex items-start justify-between flex-wrap gap-2">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs font-bold text-indigo-600">{q.id}</span>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            q.status === "RESOLVED"
+                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                              : "bg-amber-50 text-amber-700 border border-amber-200"
+                          }`}>
+                            {q.status === "RESOLVED" ? "RESOLVED" : "WAITING FOR CLIENT"}
+                          </span>
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600">
+                            REF: {q.referenceNumber}
+                          </span>
+                        </div>
+                        <h4 className="font-bold text-slate-900 text-sm">{q.title}</h4>
+                      </div>
+                      <span className="text-xs text-slate-400 font-mono">
+                        {new Date(q.createdAt).toLocaleDateString("en-IN")}
+                      </span>
+                    </div>
+
+                    <div className="p-3 bg-slate-50 rounded-xl text-xs text-slate-700 border border-slate-100 space-y-1">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Auditor Question:</span>
+                      <p>{q.question}</p>
+                    </div>
+
+                    {q.clientReply && (
+                      <div className="p-3 bg-blue-50/60 rounded-xl text-xs text-blue-900 border border-blue-100 space-y-1">
+                        <span className="text-[10px] font-bold text-blue-500 uppercase tracking-wider block">Client Response:</span>
+                        <p>{q.clientReply}</p>
+                      </div>
+                    )}
+
+                    <div className="flex justify-end gap-2 pt-1">
+                      {q.status !== "RESOLVED" && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          icon={CheckCheck}
+                          onClick={() => handleResolveQuery(q.id)}
+                          className="text-emerald-700 border-emerald-200 hover:bg-emerald-50"
+                        >
+                          Mark as Resolved
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ══════════════════════════════════════════════════
+              VIEW 6: TEAM MANAGEMENT & PERMISSIONS (Section E)
+          ══════════════════════════════════════════════════ */}
+          {activeTab === "team" && (
+            <div className="space-y-5">
+              <div className="flex items-center justify-between flex-wrap gap-4">
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    <Users size={20} className="text-blue-600" />
+                    Audit Team &amp; Role-Based Permissions
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Manage CA audit partners, senior audit managers, and article assistants with granular segregation of duties.
+                  </p>
+                </div>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  icon={Plus}
+                  onClick={() => setNewTeamModalOpen(true)}
+                >
+                  Add Audit Team Member
+                </Button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {teamMembers.map((tm) => (
+                  <div key={tm.id} className="bg-white rounded-2xl border border-slate-200 p-5 space-y-3 shadow-xs">
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-0.5">
+                        <h4 className="font-bold text-slate-900 text-sm">{tm.name}</h4>
+                        <span className="text-xs text-slate-500">{tm.email}</span>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        {tm.status}
+                      </span>
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-100 text-xs space-y-1 text-slate-600">
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Designation:</span>
+                        <strong className="text-slate-800">{tm.role}</strong>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Assigned Stores:</span>
+                        <strong>{tm.assignedStoresCount} Stores</strong>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Active Tasks:</span>
+                        <strong>{tm.activeTasksCount} Tasks</strong>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Least-Privilege Permissions Matrix */}
+              <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-3 shadow-xs">
+                <h4 className="font-bold text-slate-900 text-sm">Least-Privilege Role Authorization Matrix</h4>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-200 text-slate-500 font-bold">
+                        <th className="py-2.5 px-3">Audit Operation</th>
+                        <th className="py-2.5 px-3 text-center">CA Partner</th>
+                        <th className="py-2.5 px-3 text-center">Audit Manager</th>
+                        <th className="py-2.5 px-3 text-center">Article Assistant</th>
+                        <th className="py-2.5 px-3 text-center">Read-Only Reviewer</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-slate-700">
+                      <tr>
+                        <td className="py-2.5 px-3 font-medium">Inspect Invoices, Returns &amp; Workpapers</td>
+                        <td className="py-2.5 px-3 text-center text-emerald-600 font-bold">✓ Full</td>
+                        <td className="py-2.5 px-3 text-center text-emerald-600 font-bold">✓ Full</td>
+                        <td className="py-2.5 px-3 text-center text-emerald-600 font-bold">✓ Full</td>
+                        <td className="py-2.5 px-3 text-center text-emerald-600 font-bold">✓ View Only</td>
+                      </tr>
+                      <tr>
+                        <td className="py-2.5 px-3 font-medium">Execute Automated Rules &amp; Flag Issues</td>
+                        <td className="py-2.5 px-3 text-center text-emerald-600 font-bold">✓ Full</td>
+                        <td className="py-2.5 px-3 text-center text-emerald-600 font-bold">✓ Full</td>
+                        <td className="py-2.5 px-3 text-center text-emerald-600 font-bold">✓ Prepare</td>
+                        <td className="py-2.5 px-3 text-center text-rose-500">✕ No</td>
+                      </tr>
+                      <tr>
+                        <td className="py-2.5 px-3 font-medium">Reconcile Bank Statements &amp; Auto-Match</td>
+                        <td className="py-2.5 px-3 text-center text-emerald-600 font-bold">✓ Full</td>
+                        <td className="py-2.5 px-3 text-center text-emerald-600 font-bold">✓ Full</td>
+                        <td className="py-2.5 px-3 text-center text-emerald-600 font-bold">✓ Suggest</td>
+                        <td className="py-2.5 px-3 text-center text-rose-500">✕ No</td>
+                      </tr>
+                      <tr>
+                        <td className="py-2.5 px-3 font-medium">Final Sign-off &amp; Freeze Tax Period</td>
+                        <td className="py-2.5 px-3 text-center text-emerald-600 font-bold">✓ Certified Sign-off</td>
+                        <td className="py-2.5 px-3 text-center text-rose-500">✕ No</td>
+                        <td className="py-2.5 px-3 text-center text-rose-500">✕ No</td>
+                        <td className="py-2.5 px-3 text-center text-rose-500">✕ No</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ══════════════════════════════════════════════════
+              VIEW 7: WORKFLOW AUTOMATION SETTINGS (Section E)
+          ══════════════════════════════════════════════════ */}
+          {activeTab === "automation" && (
+            <div className="space-y-5">
+              <div className="flex items-center justify-between flex-wrap gap-4">
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    <SlidersHorizontal size={20} className="text-indigo-600" />
+                    Automated Audit Rules Engine &amp; Automation Controls
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Configure automated validation rules that detect discrepancies, arithmetic errors, and compliance risks across all transactions.
+                  </p>
+                </div>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  icon={SlidersHorizontal}
+                  loading={loadingRules}
+                  onClick={handleExecuteAuditRules}
+                  className="bg-indigo-600 hover:bg-indigo-700"
+                >
+                  Run All 8 Rules Now
+                </Button>
+              </div>
+
+              {/* Active Rules Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                {[
+                  {
+                    id: "RULE_DUP_INV",
+                    name: "Duplicate Invoice Numbers Check",
+                    desc: "Flags identical invoice series or numbers across chronological periods.",
+                    severity: "CRITICAL",
+                    active: automationRulesConfig.checkDuplicateInvoiceNumbers,
+                  },
+                  {
+                    id: "RULE_ARITHMETIC_GST",
+                    name: "Arithmetic & GST Rate Verification",
+                    desc: "Validates taxable amount + calculated CGST/SGST/IGST == grandTotal within ₹1 rounding tolerance.",
+                    severity: "CRITICAL",
+                    active: automationRulesConfig.checkArithmeticGstMismatch,
+                  },
+                  {
+                    id: "RULE_B2B_GSTIN",
+                    name: "Missing B2B Customer GSTIN (Value > ₹50,000)",
+                    desc: "Checks statutory requirement of customer GSTIN recording for high-value B2B invoices.",
+                    severity: "HIGH",
+                    active: automationRulesConfig.checkMissingB2bGstin,
+                  },
+                  {
+                    id: "RULE_EXCESS_RETURNS",
+                    name: "Excessive Credit Note Value Reversal",
+                    desc: "Detects credit notes where returned amount exceeds original invoice taxable turnover.",
+                    severity: "HIGH",
+                    active: automationRulesConfig.checkExcessReturns,
+                  },
+                  {
+                    id: "RULE_CASH_EXPENSE_40A3",
+                    name: "High-Value Cash Payments (Sec 40A(3) > ₹10,000)",
+                    desc: "Flags non-banking single-day expense transactions exceeding Income Tax limits.",
+                    severity: "MEDIUM",
+                    active: automationRulesConfig.flagCashOverLimit,
+                  },
+                  {
+                    id: "RULE_NEGATIVE_STOCK",
+                    name: "Negative Stock Deficit Verification",
+                    desc: "Alerts when billed sales quantities exceed current verified inventory records.",
+                    severity: "HIGH",
+                    active: automationRulesConfig.checkNegativeInventory,
+                  },
+                  {
+                    id: "RULE_UNRECONCILED_BANK",
+                    name: "Unreconciled Bank Credits > 30 Days",
+                    desc: "Detects statement credit inflows without matching sales invoice receipt records.",
+                    severity: "MEDIUM",
+                    active: automationRulesConfig.checkUnreconciledBankCredits,
+                  },
+                  {
+                    id: "RULE_TARIFF_HSN_MATCH",
+                    name: "HSN Code & GST Rate Consistency",
+                    desc: "Identifies inconsistent tax rates charged on identical product or service HSN items.",
+                    severity: "MEDIUM",
+                    active: true,
+                  },
+                ].map((r) => (
+                  <div key={r.id} className="p-4 bg-white rounded-2xl border border-slate-200 space-y-2 shadow-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-slate-900 text-xs">{r.name}</span>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                        r.severity === "CRITICAL"
+                          ? "bg-rose-100 text-rose-700"
+                          : r.severity === "HIGH"
+                          ? "bg-amber-100 text-amber-700"
+                          : "bg-blue-100 text-blue-700"
+                      }`}>
+                        {r.severity}
+                      </span>
+                    </div>
+                    <p className="text-slate-500 text-[11px] leading-relaxed">{r.desc}</p>
+                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                      <span className="text-[10px] text-emerald-700 font-semibold flex items-center gap-1">
+                        <CheckCircle2 size={11} /> Engine Active
+                      </span>
+                      <label className="flex items-center gap-1 text-[11px] text-slate-600 cursor-pointer font-medium">
+                        <input
+                          type="checkbox"
+                          defaultChecked={r.active}
+                          className="rounded text-indigo-600 focus:ring-0"
+                        />
+                        Enabled
+                      </label>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Sensitivity Configuration */}
+              <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-3 shadow-xs text-xs">
+                <h4 className="font-bold text-slate-900 text-sm">Sensitivity Thresholds &amp; Auto-Actions</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-700 block">Sec 40A(3) Cash Limit (₹)</label>
+                    <input
+                      type="number"
+                      value={automationRulesConfig.cashLimitAmount}
+                      onChange={(e) => setAutomationRulesConfig({ ...automationRulesConfig, cashLimitAmount: Number(e.target.value) })}
+                      className="w-full p-2 rounded-xl border border-slate-200 font-mono"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-700 block">Rounding Tolerance Variance (₹)</label>
+                    <input
+                      type="number"
+                      value={automationRulesConfig.varianceThreshold}
+                      onChange={(e) => setAutomationRulesConfig({ ...automationRulesConfig, varianceThreshold: Number(e.target.value) })}
+                      className="w-full p-2 rounded-xl border border-slate-200 font-mono"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2 pt-5">
+                    <input
+                      type="checkbox"
+                      id="autoTasks"
+                      checked={automationRulesConfig.autoCreateTasksOnException}
+                      onChange={(e) => setAutomationRulesConfig({ ...automationRulesConfig, autoCreateTasksOnException: e.target.checked })}
+                      className="rounded text-indigo-600"
+                    />
+                    <label htmlFor="autoTasks" className="font-bold text-slate-700">
+                      Auto-generate Tasks on Rule Failures
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
 
@@ -3538,6 +4734,142 @@ export default function CaPortal() {
                 </Button>
                 <Button variant="primary" size="sm" type="submit">
                   Process &amp; Auto-Match
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* ══════════════════════════════════════════════════
+          RAISE CLIENT QUERY MODAL
+      ══════════════════════════════════════════════════ */}
+      {newQueryModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-md p-6 space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <h3 className="font-bold text-slate-900 flex items-center gap-2">
+                <MessageSquare size={16} className="text-indigo-600" />
+                Raise Formal Audit Query to Client
+              </h3>
+              <button onClick={() => setNewQueryModalOpen(false)}>
+                <X size={18} />
+              </button>
+            </div>
+            <form onSubmit={handleCreateQuery} className="space-y-3 text-xs">
+              <div>
+                <label className="font-bold block mb-1">Query Subject / Title *</label>
+                <input
+                  type="text"
+                  required
+                  value={queryForm.title}
+                  onChange={(e) => setQueryForm({ ...queryForm, title: e.target.value })}
+                  placeholder="e.g. Missing supplier tax invoice for ₹45,000"
+                  className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-hidden"
+                />
+              </div>
+              <div>
+                <label className="font-bold block mb-1">Reference Number (Invoice / Voucher / TXN)</label>
+                <input
+                  type="text"
+                  value={queryForm.referenceNumber}
+                  onChange={(e) => setQueryForm({ ...queryForm, referenceNumber: e.target.value })}
+                  placeholder="e.g. INV-2026-088 or TXN-8821"
+                  className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-hidden font-mono"
+                />
+              </div>
+              <div>
+                <label className="font-bold block mb-1">Priority</label>
+                <select
+                  value={queryForm.priority}
+                  onChange={(e) => setQueryForm({ ...queryForm, priority: e.target.value })}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-hidden"
+                >
+                  <option value="LOW">Low</option>
+                  <option value="MEDIUM">Medium</option>
+                  <option value="HIGH">High (Urgent Compliance)</option>
+                </select>
+              </div>
+              <div>
+                <label className="font-bold block mb-1">Question / Clarification Details *</label>
+                <textarea
+                  rows={3}
+                  required
+                  value={queryForm.question}
+                  onChange={(e) => setQueryForm({ ...queryForm, question: e.target.value })}
+                  placeholder="Detail the exact information, invoice copy, or clarification required from the business owner"
+                  className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-hidden"
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="secondary" size="sm" type="button" onClick={() => setNewQueryModalOpen(false)}>
+                  Cancel
+                </Button>
+                <Button variant="primary" size="sm" type="submit" className="bg-indigo-600 hover:bg-indigo-700">
+                  Transmit Query
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════
+          ADD CA AUDIT TEAM MEMBER MODAL
+      ══════════════════════════════════════════════════ */}
+      {newTeamModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-md p-6 space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <h3 className="font-bold text-slate-900 flex items-center gap-2">
+                <Users size={16} className="text-blue-600" />
+                Add CA Audit Team Member
+              </h3>
+              <button onClick={() => setNewTeamModalOpen(false)}>
+                <X size={18} />
+              </button>
+            </div>
+            <form onSubmit={handleCreateTeamMember} className="space-y-3 text-xs">
+              <div>
+                <label className="font-bold block mb-1">Full Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={teamForm.name}
+                  onChange={(e) => setTeamForm({ ...teamForm, name: e.target.value })}
+                  placeholder="e.g. Ramesh Iyer"
+                  className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-hidden"
+                />
+              </div>
+              <div>
+                <label className="font-bold block mb-1">Email Address *</label>
+                <input
+                  type="email"
+                  required
+                  value={teamForm.email}
+                  onChange={(e) => setTeamForm({ ...teamForm, email: e.target.value })}
+                  placeholder="e.g. ramesh.audit@firm.com"
+                  className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-hidden"
+                />
+              </div>
+              <div>
+                <label className="font-bold block mb-1">Assigned Role</label>
+                <select
+                  value={teamForm.role}
+                  onChange={(e) => setTeamForm({ ...teamForm, role: e.target.value })}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-hidden"
+                >
+                  <option value="Senior Audit Manager">Senior Audit Manager</option>
+                  <option value="Article Assistant">Article Assistant / Trainee</option>
+                  <option value="CA Partner / Reviewer">CA Partner / Senior Reviewer</option>
+                  <option value="Read-Only Reviewer">Read-Only Reviewer</option>
+                </select>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="secondary" size="sm" type="button" onClick={() => setNewTeamModalOpen(false)}>
+                  Cancel
+                </Button>
+                <Button variant="primary" size="sm" type="submit">
+                  Save Team Member
                 </Button>
               </div>
             </form>

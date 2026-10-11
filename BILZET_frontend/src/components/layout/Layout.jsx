@@ -49,6 +49,14 @@ import {
   Lock,
   CalendarCheck2,
   ShieldCheck,
+  Building2,
+  Scale,
+  CheckSquare,
+  Flag,
+  Paperclip,
+  FileSpreadsheet,
+  SlidersHorizontal,
+  Activity,
 } from "lucide-react";
 import { useAuth } from "../../store/auth";
 import { useConnectionStatus } from "../../hooks/useConnectionStatus";
@@ -59,6 +67,58 @@ import { isAdminEmail, isAdminUser } from "../../utils/security";
 import { useSecurityStore } from "../../store/securityStore";
 import { usePermissions } from "../../hooks/usePermissions";
 import StoreSwitcher from "../common/StoreSwitcher";
+
+export const caNavSections = [
+  {
+    title: "A. Overview",
+    key: "ca_overview",
+    items: [
+      { label: "CA Dashboard", path: "/ca-portal/dashboard", icon: LayoutGrid },
+      { label: "Client Management", path: "/ca-portal/clients", icon: Building2 },
+      { label: "Audit Pipeline", path: "/ca-portal/pipeline", icon: Activity },
+      { label: "Deadlines & Alerts", path: "/ca-portal/deadlines", icon: AlertTriangle },
+    ],
+  },
+  {
+    title: "B. Audit & Accounting",
+    key: "ca_audit",
+    items: [
+      { label: "Sales & Invoices", path: "/ca-portal/sales", icon: FileText },
+      { label: "Purchases & Suppliers", path: "/ca-portal/purchases", icon: ShoppingBag },
+      { label: "Bank Reconciliation", path: "/ca-portal/reconciliation", icon: Scale },
+      { label: "GST & Tax Review", path: "/ca-portal/gst", icon: Percent },
+      { label: "Inventory & Stock", path: "/ca-portal/inventory", icon: Boxes },
+    ],
+  },
+  {
+    title: "C. Work Management",
+    key: "ca_work",
+    items: [
+      { label: "Tasks & Reviews", path: "/ca-portal/tasks", icon: CheckSquare },
+      { label: "Discrepancies", path: "/ca-portal/discrepancies", icon: Flag },
+      { label: "Documents Center", path: "/ca-portal/documents", icon: Paperclip },
+      { label: "Client Queries", path: "/ca-portal/queries", icon: MessageSquare },
+    ],
+  },
+  {
+    title: "D. Reporting & Compliance",
+    key: "ca_reporting",
+    items: [
+      { label: "Workpapers & Reports", path: "/ca-portal/reports", icon: FileSpreadsheet },
+      { label: "Period Closing", path: "/ca-portal/closing", icon: FileCheck },
+      { label: "Audit Trail", path: "/ca-portal/audit-trail", icon: History },
+    ],
+  },
+  {
+    title: "E. Administration",
+    key: "ca_admin",
+    items: [
+      { label: "Team & Permissions", path: "/ca-portal/team", icon: Users },
+      { label: "Workflow Automation", path: "/ca-portal/automation", icon: SlidersHorizontal },
+      { label: "Client Settings", path: "/ca-portal/settings", icon: Settings },
+    ],
+  },
+];
 
 const navSections = [
   {
@@ -381,20 +441,9 @@ export default function Layout({ children }) {
       "/audit-logs": ["audit_logs.view"],
     };
 
-    const isCA = user?.role === "CA";
+    const isCA = user?.role === "CA" || location.pathname.startsWith("/ca-portal");
     if (isCA) {
-      return [
-        {
-          title: "Chartered Accountant Portal",
-          key: "ca_portal",
-          items: [
-            { label: "CA Portal", path: "/ca-portal", icon: ShieldCheck, highlight: true },
-            { label: "GST & Tax Filing", path: "/gst", icon: Percent },
-            { label: "Financial Reports", path: "/reports", icon: BarChart3 },
-            { label: "Support & Help", path: "/support", icon: LifeBuoy },
-          ],
-        },
-      ];
+      return caNavSections;
     }
 
     return navSections
@@ -495,31 +544,56 @@ export default function Layout({ children }) {
           )}
         </div>
 
-        {/* Quick Action Button: POS Billing */}
+        {/* Quick Action Button: POS Billing / CA Audit Suite */}
         {sidebarOpen ? (
           <div className="px-3.5 pt-3.5 pb-1 shrink-0">
-            <NavLink
-              to="/billing"
-              className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs text-white bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 shadow-md shadow-blue-500/25 transition-all duration-200 group"
-            >
-              <div className="flex items-center gap-2.5">
-                <Sparkles size={16} className="text-cyan-200 animate-pulse" />
-                <span>POS / New Bill</span>
-              </div>
-              <span className="px-1.5 py-0.5 rounded-md bg-white/20 text-[10px] font-mono tracking-tight text-white/90">
-                F2
-              </span>
-            </NavLink>
+            {user?.role === "CA" || location.pathname.startsWith("/ca-portal") ? (
+              <NavLink
+                to="/ca-portal/dashboard"
+                className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs text-white bg-gradient-to-r from-blue-700 to-indigo-600 shadow-md shadow-blue-500/25 transition-all duration-200 group"
+              >
+                <div className="flex items-center gap-2.5">
+                  <ShieldCheck size={16} className="text-cyan-200" />
+                  <span>CA Audit Suite</span>
+                </div>
+                <span className="px-1.5 py-0.5 rounded-md bg-white/20 text-[10px] font-mono tracking-tight text-white/90">
+                  AUDIT
+                </span>
+              </NavLink>
+            ) : (
+              <NavLink
+                to="/billing"
+                className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs text-white bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 shadow-md shadow-blue-500/25 transition-all duration-200 group"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Sparkles size={16} className="text-cyan-200 animate-pulse" />
+                  <span>POS / New Bill</span>
+                </div>
+                <span className="px-1.5 py-0.5 rounded-md bg-white/20 text-[10px] font-mono tracking-tight text-white/90">
+                  F2
+                </span>
+              </NavLink>
+            )}
           </div>
         ) : (
           <div className="px-2 pt-3 pb-1 shrink-0 flex justify-center">
-            <NavLink
-              to="/billing"
-              title="New Bill / POS (F2)"
-              className="w-10 h-10 rounded-xl flex items-center justify-center text-white bg-gradient-to-tr from-blue-600 to-cyan-500 shadow-md shadow-blue-500/30 hover:scale-105 transition"
-            >
-              <Sparkles size={17} />
-            </NavLink>
+            {user?.role === "CA" || location.pathname.startsWith("/ca-portal") ? (
+              <NavLink
+                to="/ca-portal/dashboard"
+                title="CA Audit Suite"
+                className="w-10 h-10 rounded-xl flex items-center justify-center text-white bg-gradient-to-tr from-blue-700 to-indigo-600 shadow-md shadow-blue-500/30 hover:scale-105 transition"
+              >
+                <ShieldCheck size={17} />
+              </NavLink>
+            ) : (
+              <NavLink
+                to="/billing"
+                title="New Bill / POS (F2)"
+                className="w-10 h-10 rounded-xl flex items-center justify-center text-white bg-gradient-to-tr from-blue-600 to-cyan-500 shadow-md shadow-blue-500/30 hover:scale-105 transition"
+              >
+                <Sparkles size={17} />
+              </NavLink>
+            )}
           </div>
         )}
 
@@ -553,9 +627,12 @@ export default function Layout({ children }) {
                       const Icon = item.icon;
                       const isActive =
                         location.pathname === item.path ||
+                        (item.path === "/ca-portal/dashboard" && location.pathname === "/ca-portal") ||
+                        (item.path === "/ca-portal/sales" && (location.pathname === "/ca-portal/invoices" || location.pathname === "/ca-portal/sales")) ||
+                        (item.path === "/ca-portal/reports" && (location.pathname === "/ca-portal/workpapers" || location.pathname === "/ca-portal/reports")) ||
                         (item.path === "/staff/attendance" && location.pathname === "/attendance") ||
                         (item.path !== "/" &&
-                          !["/staff", "/staff/attendance", "/staff/payroll"].includes(item.path) &&
+                          !["/staff", "/staff/attendance", "/staff/payroll", "/ca-portal"].includes(item.path) &&
                           location.pathname.startsWith(`${item.path}/`));
 
                       return (
