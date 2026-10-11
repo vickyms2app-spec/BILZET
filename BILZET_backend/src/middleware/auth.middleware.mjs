@@ -78,6 +78,8 @@ export const authMiddleware = asyncHandler(async (req, res, next) => {
 
   if (authHeader && authHeader.startsWith('Bearer ')) {
     token = authHeader.split(' ')[1];
+  } else if (req.query && req.query.token) {
+    token = req.query.token;
   }
 
   // Check if Clerk already verified the request via clerkMiddleware

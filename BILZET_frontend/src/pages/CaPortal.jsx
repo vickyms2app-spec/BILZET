@@ -57,6 +57,7 @@ import { useAuth } from "../store/auth";
 import { caPortalApi } from "../api";
 import TaxInvoice from "../components/invoice/TaxInvoice";
 import Button, { CompactIconButton } from "../components/common/Button";
+import useRealtimeSync from "../hooks/useRealtimeSync";
 
 export default function CaPortal() {
   const { user } = useAuth();
@@ -575,6 +576,28 @@ export default function CaPortal() {
     }
   };
 
+  const handleApproveCorrection = async (discrepancyId) => {
+    try {
+      await caPortalApi.approveCorrection(discrepancyId, { notes: "Approved by reviewer" });
+      loadDiscrepanciesData();
+      loadStoreData();
+      loadActivityData();
+    } catch (err) {
+      alert("Failed to approve correction: " + (err.message || "Unknown error"));
+    }
+  };
+
+  const handleRejectCorrection = async (discrepancyId) => {
+    const reason = window.prompt("Enter rejection reason:");
+    if (reason === null) return;
+    try {
+      await caPortalApi.rejectCorrection(discrepancyId, { reason });
+      loadDiscrepanciesData();
+    } catch (err) {
+      alert("Failed to reject correction: " + (err.message || "Unknown error"));
+    }
+  };
+
   // 11. Documents Loader & Actions
   const loadDocumentsData = async () => {
     if (!selectedStoreId) return;
@@ -789,6 +812,64 @@ export default function CaPortal() {
   const activeStore = useMemo(() => {
     return stores.find((s) => s.id === selectedStoreId) || null;
   }, [stores, selectedStoreId]);
+
+  // ══════════════════════════════════════════════════
+  // REAL-TIME SYNCHRONIZATION WITH BILL INVOICE & ADMIN
+  // ══════════════════════════════════════════════════
+  const [realtimeNotification, setRealtimeNotification] = useState(null);
+
+  const handleRealtimeEvent = useCallback((type, payload) => {
+    let msg = "";
+    if (type === "SALE_CREATED" || type === "INVOICE_CREATED") {
+      msg = `⚡ Real-Time Sync: New Invoice #${payload.data?.invoiceNumber || ""} created (₹${payload.data?.grandTotal || 0})`;
+      loadStoreData();
+      loadActivityData();
+    } else if (type === "PAYMENT_RECORDED") {
+      msg = `⚡ Real-Time Sync: Payment recorded for #${payload.data?.invoiceNumber || ""} (₹${payload.data?.amountPaid || payload.data?.paymentAmount || 0})`;
+      loadStoreData();
+      loadPaymentsData();
+      loadActivityData();
+    } else if (type === "RETURN_PROCESSED" || type === "CREDIT_NOTE_CREATED") {
+      msg = `⚡ Real-Time Sync: Return processed & Credit Note issued for #${payload.data?.invoiceNumber || ""}`;
+      loadStoreData();
+      loadCreditNotesData();
+      loadActivityData();
+    } else if (type === "INVOICE_VOIDED") {
+      msg = `⚡ Real-Time Sync: Invoice #${payload.data?.invoiceNumber || ""} voided/cancelled`;
+      loadStoreData();
+      loadActivityData();
+    } else if (type === "INVOICE_CORRECTION_REQUESTED" || type === "DISCREPANCY_FLAGGED") {
+      msg = `⚡ Real-Time Sync: Discrepancy / correction requested for #${payload.data?.referenceNumber || payload.data?.invoiceNumber || ""}`;
+      loadDiscrepanciesData();
+      loadActivityData();
+    } else if (type === "INVOICE_CORRECTION_APPLIED" || type === "DISCREPANCY_RESOLVED" || type === "DISCREPANCY_VERIFIED") {
+      msg = `⚡ Real-Time Sync: Correction approved & applied to #${payload.data?.invoiceNumber || ""}`;
+      loadDiscrepanciesData();
+      loadStoreData();
+      loadActivityData();
+    } else if (type === "PERIOD_CLOSED" || type === "PERIOD_SIGNED_OFF") {
+      msg = `⚡ Real-Time Sync: Financial period closing updated (${payload.data?.period || ""})`;
+      loadClosingsData();
+      loadActivityData();
+    } else if (type === "STOCK_ADJUSTED") {
+      loadInventoryData();
+    }
+
+    if (msg) {
+      setRealtimeNotification(msg);
+      setTimeout(() => setRealtimeNotification(null), 5000);
+    }
+  }, [selectedStoreId]);
+
+  const {
+    status: realtimeStatus,
+    eventCount: realtimeEventCount,
+    reconnect: reconnectRealtime,
+  } = useRealtimeSync({
+    businessId: selectedStoreId,
+    onEvent: handleRealtimeEvent,
+    enabled: Boolean(selectedStoreId),
+  });
 
   // Handle opening an invoice modal
   const handleOpenInvoice = (inv) => {
@@ -1069,6 +1150,42 @@ export default function CaPortal() {
             </div>
           </div>
 
+          {/* Live Real-Time SSE Indicator */}
+          <div
+            title={`Real-Time Synchronized via SSE. Events received: ${realtimeEventCount}. Click to force reconnect.`}
+            onClick={reconnectRealtime}
+            className={`px-3 py-2 rounded-xl border flex items-center gap-2 text-xs font-semibold shadow-2xs transition-all cursor-pointer ${
+              realtimeStatus === "connected"
+                ? "bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100/60"
+                : realtimeStatus === "connecting" || realtimeStatus === "reconnecting"
+                ? "bg-amber-50 text-amber-800 border-amber-200 animate-pulse"
+                : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+            }`}
+          >
+            <span className="relative flex h-2.5 w-2.5">
+              {realtimeStatus === "connected" && (
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              )}
+              <span
+                className={`relative inline-flex rounded-full h-2.5 w-2.5 ${
+                  realtimeStatus === "connected"
+                    ? "bg-emerald-500"
+                    : realtimeStatus === "reconnecting"
+                    ? "bg-amber-500"
+                    : "bg-slate-400"
+                }`}
+              ></span>
+            </span>
+            <span className="hidden xl:inline">
+              {realtimeStatus === "connected" ? "Live Synced (SSE)" : realtimeStatus === "reconnecting" ? "Reconnecting..." : "Sync Offline"}
+            </span>
+            {realtimeEventCount > 0 && (
+              <span className="px-1.5 py-0.2 bg-emerald-200/80 text-emerald-900 rounded-full text-[10px] font-bold font-mono">
+                {realtimeEventCount}
+              </span>
+            )}
+          </div>
+
           <button
             onClick={() => {
               loadStoreData();
@@ -1092,6 +1209,24 @@ export default function CaPortal() {
           </Button>
         </div>
       </div>
+
+      {/* Real-time Event Notification Toast Banner */}
+      {realtimeNotification && (
+        <div className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white px-5 py-3 rounded-2xl shadow-lg flex items-center justify-between text-xs font-semibold animate-in fade-in slide-in-from-top duration-300">
+          <div className="flex items-center gap-2.5">
+            <span className="p-1 rounded-lg bg-white/20 text-white">
+              <Sparkles size={16} />
+            </span>
+            <span>{realtimeNotification}</span>
+          </div>
+          <button
+            onClick={() => setRealtimeNotification(null)}
+            className="p-1 rounded-lg hover:bg-white/20 text-white/80 hover:text-white transition"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
 
       {/* Empty State when no stores are connected */}
       {stores.length === 0 && !loadingStores && (
@@ -3016,7 +3151,7 @@ export default function CaPortal() {
                           )}
                         </div>
 
-                        <div>
+                        <div className="flex items-center gap-2">
                           {d.status === "RESOLVED" && (
                             <Button
                               variant="outline"
@@ -3027,6 +3162,28 @@ export default function CaPortal() {
                             >
                               Verify Correction
                             </Button>
+                          )}
+                          {d.status === "CORRECTION_REQUESTED" && (
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="primary"
+                                size="sm"
+                                icon={Check}
+                                onClick={() => handleApproveCorrection(d.id)}
+                                className="bg-emerald-600 hover:bg-emerald-700 border-emerald-600 text-white"
+                              >
+                                Approve &amp; Apply
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                icon={X}
+                                onClick={() => handleRejectCorrection(d.id)}
+                                className="text-rose-600 border-rose-300 hover:bg-rose-50"
+                              >
+                                Reject
+                              </Button>
+                            </div>
                           )}
                         </div>
                       </div>

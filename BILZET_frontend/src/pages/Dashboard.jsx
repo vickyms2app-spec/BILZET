@@ -52,6 +52,7 @@ import { useAuth } from "../store/auth";
 import Modal from "../components/common/Modal";
 import TaxInvoice from "../components/invoice/TaxInvoice";
 import Button, { CompactIconButton } from "../components/common/Button";
+import useRealtimeSync from "../hooks/useRealtimeSync";
 
 export default function Dashboard() {
   const nav = useNavigate();
@@ -182,6 +183,22 @@ export default function Dashboard() {
   useEffect(() => {
     refreshAllData();
   }, []);
+
+  useRealtimeSync({
+    onEvent: (type) => {
+      if (
+        type === "SALE_CREATED" ||
+        type === "INVOICE_CREATED" ||
+        type === "PAYMENT_RECORDED" ||
+        type === "RETURN_PROCESSED" ||
+        type === "INVOICE_VOIDED" ||
+        type === "STOCK_ADJUSTED" ||
+        type === "INVOICE_CORRECTION_APPLIED"
+      ) {
+        refreshAllData();
+      }
+    },
+  });
 
   // Dynamic Greeting
   const greeting = useMemo(() => {

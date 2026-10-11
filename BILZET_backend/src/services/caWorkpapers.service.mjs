@@ -79,6 +79,24 @@ export const generateAuditWorkpapers = async (caUser, storeId, query = {}) => {
     verifiedAt: d.verifiedAt,
   }));
 
+  salesRegister.rowCount = salesRegister.length;
+  creditNotesRegister.rowCount = creditNotesRegister.length;
+  purchasesRegister.rowCount = purchasesRegister.length;
+  discrepanciesRegister.rowCount = discrepanciesRegister.length;
+
+  const summary = {
+    grossSales: metrics.totalSalesBeforeReturns,
+    salesReturns: metrics.totalReturnsAndCreditNotes,
+    netTurnover: metrics.netSalesAfterReturns,
+    grossOutputGst: metrics.gstCollectedOnSales,
+    gstReversalOnReturns: metrics.gstAdjustmentsFromReturns,
+    netOutputGstLiability: metrics.netGst,
+    totalPurchases: purchases.reduce((acc, p) => acc + (p.grandTotal || 0), 0),
+    totalEligibleITC: purchases.reduce((acc, p) => acc + (p.itcEligible ? p.taxTotal || 0 : 0), 0),
+    openDiscrepanciesCount: discrepancies.filter((d) => d.status !== 'VERIFIED' && d.status !== 'RESOLVED').length,
+    resolvedDiscrepanciesCount: discrepancies.filter((d) => d.status === 'VERIFIED' || d.status === 'RESOLVED').length,
+  };
+
   const workpapers = {
     metadata: {
       storeId: store.id,
@@ -90,18 +108,9 @@ export const generateAuditWorkpapers = async (caUser, storeId, query = {}) => {
       auditTimestamp: new Date().toISOString(),
       reportTitle: `CA Audit & Accounting Workpapers — ${store.name}`,
     },
-    reconciliationSummary: {
-      grossSales: metrics.totalSalesBeforeReturns,
-      salesReturns: metrics.totalReturnsAndCreditNotes,
-      netTurnover: metrics.netSalesAfterReturns,
-      grossOutputGst: metrics.gstCollectedOnSales,
-      gstReversalOnReturns: metrics.gstAdjustmentsFromReturns,
-      netOutputGstLiability: metrics.netGst,
-      totalPurchases: purchases.reduce((acc, p) => acc + (p.grandTotal || 0), 0),
-      totalEligibleITC: purchases.reduce((acc, p) => acc + (p.itcEligible ? p.taxTotal || 0 : 0), 0),
-      openDiscrepanciesCount: discrepancies.filter((d) => d.status !== 'VERIFIED' && d.status !== 'RESOLVED').length,
-      resolvedDiscrepanciesCount: discrepancies.filter((d) => d.status === 'VERIFIED' || d.status === 'RESOLVED').length,
-    },
+    store,
+    executiveSummary: summary,
+    reconciliationSummary: summary,
     salesRegister,
     creditNotesRegister,
     purchasesRegister,

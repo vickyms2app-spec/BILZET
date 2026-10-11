@@ -28,6 +28,7 @@ import ReturnModal from "../components/invoice/ReturnModal";
 import DateNavigator from "../components/common/DateNavigator";
 import SearchBar from "../components/common/SearchBar";
 import Button, { CompactIconButton } from "../components/common/Button";
+import useRealtimeSync from "../hooks/useRealtimeSync";
 
 export default function Invoices() {
   const nav = useNavigate();
@@ -79,6 +80,21 @@ export default function Invoices() {
     // Load sales invoices
     loadInvoices();
   }, []);
+
+  const { status: realtimeStatus } = useRealtimeSync({
+    onEvent: (type) => {
+      if (
+        type === "SALE_CREATED" ||
+        type === "INVOICE_CREATED" ||
+        type === "PAYMENT_RECORDED" ||
+        type === "RETURN_PROCESSED" ||
+        type === "INVOICE_VOIDED" ||
+        type === "INVOICE_CORRECTION_APPLIED"
+      ) {
+        loadInvoices();
+      }
+    },
+  });
 
   const loadInvoices = () => {
     setLoading(true);

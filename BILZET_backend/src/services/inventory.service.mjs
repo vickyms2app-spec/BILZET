@@ -1,6 +1,7 @@
 import prisma from '../config/prisma.mjs';
 import { ApiError } from '../utils/ApiError.mjs';
 import { getPaginationParams, buildPaginationMeta } from '../utils/pagination.mjs';
+import realtimeService from './realtime.service.mjs';
 
 const mapProduct = (p) => {
   if (!p) return null;
@@ -190,11 +191,26 @@ export const adjustStock = async (adjustmentData, user, context = {}) => {
         },
       });
 
-      return {
+      const result = {
         product: mapProduct(updated),
         transaction: { ...stockTx, _id: stockTx.id },
         newStock,
       };
+
+      try {
+        const targetBusinessId = updated.businessId || user?.businessId;
+        if (targetBusinessId) {
+          realtimeService.broadcastBusinessEvent(targetBusinessId, 'STOCK_ADJUSTED', {
+            productId: updated.id,
+            productName: updated.name,
+            delta,
+            newStock,
+            reason: stockTx.reason,
+          }, { userId: user ? user.id : null, action: 'STOCK_ADJUSTED' });
+        }
+      } catch (_) {}
+
+      return result;
     });
   } catch (err) {
     if (err instanceof ApiError) throw err;

@@ -367,6 +367,15 @@ export const caPortalApi = {
   updateBankMatch: (id, data, params) => http.patch(`/ca-portal/bank-reconciliation/match/${id}`, data, { params }).then(unwrap),
   // Reports & Workpapers
   getWorkpapers: (params) => http.get("/ca-portal/workpapers", { params }).then(unwrap),
+  // Correction Workflow
+  requestCorrection: (invoiceId, data, params) => http.post(`/ca-portal/invoices/${invoiceId}/request-correction`, data, { params }).then(unwrap),
+  approveCorrection: (discrepancyId, data, params) => http.post(`/ca-portal/discrepancies/${discrepancyId}/approve`, data, { params }).then(unwrap),
+  rejectCorrection: (discrepancyId, data, params) => http.post(`/ca-portal/discrepancies/${discrepancyId}/reject`, data, { params }).then(unwrap),
+};
+
+export const realtimeApi = {
+  getReconcile: (businessId) => http.get("/realtime/reconcile", { params: { businessId } }).then(unwrap),
+  ping: (businessId) => http.get("/realtime/ping", { params: { businessId } }).then(unwrap),
 };
 
 

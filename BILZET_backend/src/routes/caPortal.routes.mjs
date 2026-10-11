@@ -48,6 +48,11 @@ router.get('/discrepancies', caPortalController.getDiscrepancies);
 router.post('/discrepancies', caPortalController.flagDiscrepancy);
 router.post('/discrepancies/:id/verify', caPortalController.verifyDiscrepancy);
 router.patch('/discrepancies/:id/verify', caPortalController.verifyDiscrepancy);
+router.post('/discrepancies/:id/approve', caPortalController.approveInvoiceCorrection);
+router.patch('/discrepancies/:id/approve', caPortalController.approveInvoiceCorrection);
+router.post('/discrepancies/:id/reject', caPortalController.rejectInvoiceCorrection);
+router.patch('/discrepancies/:id/reject', caPortalController.rejectInvoiceCorrection);
+router.post('/invoices/:id/request-correction', caPortalController.requestInvoiceCorrection);
 
 // Documents & Evidence
 router.get('/documents', caPortalController.getDocuments);

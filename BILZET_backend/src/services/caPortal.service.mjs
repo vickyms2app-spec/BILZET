@@ -2,6 +2,7 @@ import prisma from '../config/prisma.mjs';
 import { ApiError } from '../utils/ApiError.mjs';
 import { getPaginationParams, buildPaginationMeta } from '../utils/pagination.mjs';
 import { mapSale, buildDateFilter } from './billing.service.mjs';
+import realtimeService from './realtime.service.mjs';
 
 /**
  * Chartered Accountant (CA) Portal Service
@@ -545,8 +546,11 @@ export const getStoreCreditNotesForCA = async (caUser, storeId, query = {}) => {
     const enriched = (mappedSale?.returns || []).find((r) => r.id === ret.id) || (mappedSale?.returns || [])[0] || ret;
     const cnNumber = enriched.creditNoteNumber || (ret.returnNumber ? ret.returnNumber.replace(/^RET-/, 'CN-') : `CN-${ret.id}`);
 
+    const creditAmount = Number(enriched.totalAmount || enriched.totalRefund || ret.totalAmount || ret.totalRefund || 0);
     return {
       ...enriched,
+      amount: creditAmount,
+      totalAmount: creditAmount,
       creditNoteNumber: cnNumber,
       invoiceNumber: enriched.invoiceNumber || ret.sale?.invoiceNumber,
       invoiceId: enriched.invoiceId || ret.sale?.id,
@@ -759,15 +763,11 @@ export const getStorePaymentsForCA = async (caUser, storeId, query = {}) => {
   const store = await verifyCAStoreAccess(caUser, storeId);
   const { page, limit, skip } = getPaginationParams(query);
 
-  const sales = await prisma.sale.findMany({
-    where: { businessId: storeId },
-    select: { id: true, invoiceNumber: true, customer: { select: { name: true } } },
-  });
-  const saleMap = new Map(sales.map((s) => [s.id, s]));
-  const saleIds = Array.from(saleMap.keys());
-
   const where = {
-    saleId: { in: saleIds },
+    OR: [
+      { sale: { businessId: storeId } },
+      { customer: { businessId: storeId } },
+    ],
   };
   if (query.method && query.method !== 'ALL') {
     where.method = query.method.toUpperCase();
@@ -780,6 +780,7 @@ export const getStorePaymentsForCA = async (caUser, storeId, query = {}) => {
       take: limit,
       orderBy: { createdAt: 'desc' },
       include: {
+        sale: { select: { id: true, invoiceNumber: true } },
         customer: { select: { id: true, name: true, phone: true } },
       },
     }),
@@ -788,15 +789,14 @@ export const getStorePaymentsForCA = async (caUser, storeId, query = {}) => {
 
   let totalReconciled = 0;
   const formattedPayments = payments.map((p) => {
-    const sale = saleMap.get(p.saleId);
     const amount = Number(p.amount || 0);
     totalReconciled += amount;
 
     return {
       id: p.id,
       saleId: p.saleId,
-      invoiceNumber: sale?.invoiceNumber || 'Linked Bill',
-      customerName: p.customer?.name || sale?.customer?.name || 'Walk-in Retail Customer',
+      invoiceNumber: p.sale?.invoiceNumber || (p.saleId ? `Invoice #${p.saleId.slice(0, 8)}` : 'Payment In (On-Account)'),
+      customerName: p.customer?.name || 'Walk-in Retail Customer',
       amount,
       method: p.method,
       transactionId: p.transactionId || null,
@@ -1129,6 +1129,16 @@ export const flagDiscrepancyForCA = async (caUser, storeId, data) => {
     },
   });
 
+  try {
+    realtimeService.broadcastBusinessEvent(storeId, 'DISCREPANCY_FLAGGED', {
+      discrepancyId: discrepancy.id,
+      title: discrepancy.title,
+      entityType: discrepancy.entityType,
+      referenceNumber: discrepancy.referenceNumber,
+      discrepancy,
+    }, { userId: caUser.id, action: 'DISCREPANCY_FLAGGED' });
+  } catch (_) {}
+
   return discrepancy;
 };
 
@@ -1153,6 +1163,13 @@ export const resolveDiscrepancy = async (user, discrepancyId, data) => {
       changes: { correctionResponse: updated.correctionResponse },
     },
   });
+
+  try {
+    realtimeService.broadcastBusinessEvent(disc.businessId, 'DISCREPANCY_RESOLVED', {
+      discrepancyId,
+      discrepancy: updated,
+    }, { userId: user.id, action: 'CORRECTION_RESOLVED' });
+  } catch (_) {}
 
   return updated;
 };
@@ -1179,6 +1196,183 @@ export const verifyDiscrepancyForCA = async (caUser, discrepancyId, data = {}) =
       changes: { status: 'VERIFIED', verifiedAt: updated.verifiedAt },
     },
   });
+
+  try {
+    realtimeService.broadcastBusinessEvent(disc.businessId, 'DISCREPANCY_VERIFIED', {
+      discrepancyId,
+      discrepancy: updated,
+    }, { userId: caUser.id, action: 'CORRECTION_VERIFIED' });
+  } catch (_) {}
+
+  return updated;
+};
+
+/**
+ * 10B. CA Correction Workflow: Request, Approve & Reject Invoice Correction
+ */
+export const requestInvoiceCorrection = async (caUser, storeId, invoiceId, data = {}) => {
+  await verifyCAStoreAccess(caUser, storeId);
+  const invoice = await prisma.sale.findUnique({
+    where: { id: invoiceId },
+    include: { customer: true, items: true },
+  });
+  if (!invoice) throw ApiError.notFound('Invoice not found');
+
+  // Check period closing protection
+  const invoiceDate = new Date(invoice.createdAt);
+  const periodStr = `${invoiceDate.getFullYear()}-${String(invoiceDate.getMonth() + 1).padStart(2, '0')}`;
+  const closedPeriod = await prisma.periodClosing.findFirst({
+    where: { businessId: storeId, period: periodStr, status: { in: ['CLOSED', 'SIGNED_OFF'] } },
+  });
+  if (closedPeriod) {
+    throw ApiError.badRequest(
+      `Period '${periodStr}' has already been closed/signed off. Retroactive corrections must be handled as controlled tax adjustments.`
+    );
+  }
+
+  const discrepancy = await prisma.auditDiscrepancy.create({
+    data: {
+      businessId: storeId,
+      entityType: 'INVOICE',
+      entityId: invoiceId,
+      referenceNumber: invoice.invoiceNumber,
+      title: data.title || `Correction Requested for ${invoice.invoiceNumber}`,
+      description: data.reason || data.description || 'Chartered Accountant requested invoice correction',
+      discrepancyType: data.discrepancyType || 'INVOICE_CORRECTION',
+      amount: data.amount ? Number(data.amount) : Number(invoice.grandTotal),
+      status: 'CORRECTION_REQUESTED',
+      flaggedById: caUser.id,
+      correctionRequested: JSON.stringify(data.proposedChanges || data),
+    },
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      userId: caUser.id,
+      action: 'INVOICE_CORRECTION_REQUESTED',
+      entity: 'SALE',
+      entityId: invoiceId,
+      changes: {
+        eventType: 'INVOICE_CORRECTION_REQUESTED',
+        discrepancyId: discrepancy.id,
+        invoiceNumber: invoice.invoiceNumber,
+        proposedChanges: data.proposedChanges || data,
+        requestedBy: caUser.name || caUser.email,
+      },
+    },
+  });
+
+  try {
+    realtimeService.broadcastBusinessEvent(storeId, 'INVOICE_CORRECTION_REQUESTED', {
+      discrepancyId: discrepancy.id,
+      invoiceId,
+      invoiceNumber: invoice.invoiceNumber,
+      discrepancy,
+    }, { userId: caUser.id, action: 'INVOICE_CORRECTION_REQUESTED' });
+  } catch (_) {}
+
+  return discrepancy;
+};
+
+export const approveInvoiceCorrection = async (user, discrepancyId, approvalData = {}) => {
+  const discrepancy = await prisma.auditDiscrepancy.findUnique({
+    where: { id: discrepancyId },
+  });
+  if (!discrepancy) throw ApiError.notFound('Discrepancy not found');
+  if (discrepancy.status !== 'CORRECTION_REQUESTED' && discrepancy.status !== 'FLAGGED') {
+    throw ApiError.badRequest('Only pending corrections can be approved');
+  }
+
+  const storeId = discrepancy.businessId;
+
+  // Verify role authorization
+  const isSuperAdmin = user.role === 'SUPER_ADMIN' || user.isSuperAdmin;
+  const isAdmin = user.role === 'ADMIN' || user.role === 'OWNER' || user.role === 'MANAGER';
+  if (!isSuperAdmin && !isAdmin && user.businessId !== storeId) {
+    throw ApiError.forbidden('Only store administrator or authorized reviewer can approve invoice corrections');
+  }
+
+  const updatedDiscrepancy = await prisma.auditDiscrepancy.update({
+    where: { id: discrepancyId },
+    data: {
+      status: 'VERIFIED',
+      verifiedAt: new Date(),
+      correctionResponse: approvalData.notes || 'Approved and applied by store reviewer',
+    },
+  });
+
+  let updatedSale = null;
+  if (discrepancy.entityType === 'INVOICE' && discrepancy.entityId) {
+    const sale = await prisma.sale.findUnique({ where: { id: discrepancy.entityId } });
+    if (sale) {
+      const updateData = {};
+      if (approvalData.dueDate) updateData.dueDate = new Date(approvalData.dueDate);
+
+      if (Object.keys(updateData).length > 0) {
+        updatedSale = await prisma.sale.update({
+          where: { id: discrepancy.entityId },
+          data: updateData,
+        });
+      }
+
+      await prisma.auditLog.create({
+        data: {
+          userId: user.id,
+          action: 'INVOICE_CORRECTION_APPLIED',
+          entity: 'SALE',
+          entityId: discrepancy.entityId,
+          changes: {
+            eventType: 'INVOICE_CORRECTION_APPLIED',
+            discrepancyId,
+            approvedBy: user.name || user.email,
+            approvalData,
+          },
+        },
+      });
+    }
+  }
+
+  try {
+    realtimeService.broadcastBusinessEvent(storeId, 'INVOICE_CORRECTION_APPLIED', {
+      discrepancyId,
+      discrepancy: updatedDiscrepancy,
+      invoiceId: discrepancy.entityId,
+      invoiceNumber: discrepancy.referenceNumber,
+      approvedBy: user.name || user.email,
+    }, { userId: user.id, action: 'INVOICE_CORRECTION_APPLIED' });
+  } catch (_) {}
+
+  return { discrepancy: updatedDiscrepancy, sale: updatedSale };
+};
+
+export const rejectInvoiceCorrection = async (user, discrepancyId, data = {}) => {
+  const discrepancy = await prisma.auditDiscrepancy.findUnique({ where: { id: discrepancyId } });
+  if (!discrepancy) throw ApiError.notFound('Discrepancy not found');
+
+  const updated = await prisma.auditDiscrepancy.update({
+    where: { id: discrepancyId },
+    data: {
+      status: 'DISMISSED',
+      correctionResponse: data.reason || 'Rejected by authorized reviewer',
+    },
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      userId: user.id,
+      action: 'INVOICE_CORRECTION_REJECTED',
+      entity: 'DISCREPANCY',
+      entityId: discrepancyId,
+      changes: { reason: data.reason, rejectedBy: user.name || user.email },
+    },
+  });
+
+  try {
+    realtimeService.broadcastBusinessEvent(discrepancy.businessId, 'INVOICE_CORRECTION_REJECTED', {
+      discrepancyId,
+      reason: data.reason,
+    }, { userId: user.id, action: 'INVOICE_CORRECTION_REJECTED' });
+  } catch (_) {}
 
   return updated;
 };
@@ -1311,6 +1505,14 @@ export const closePeriodForCA = async (caUser, storeId, data) => {
     },
   });
 
+  try {
+    realtimeService.broadcastBusinessEvent(storeId, 'PERIOD_CLOSED', {
+      periodId: closing.id,
+      period: closing.period,
+      status: closing.status,
+    }, { userId: caUser.id, action: 'PERIOD_CLOSED' });
+  } catch (_) {}
+
   return closing;
 };
 
@@ -1341,6 +1543,14 @@ export const signOffPeriodForCA = async (caUser, storeId, periodId, data = {}) =
     },
   });
 
+  try {
+    realtimeService.broadcastBusinessEvent(storeId, 'PERIOD_SIGNED_OFF', {
+      periodId: updated.id,
+      period: updated.period,
+      status: updated.status,
+    }, { userId: caUser.id, action: 'PERIOD_SIGNED_OFF' });
+  } catch (_) {}
+
   return updated;
 };
 
@@ -1368,6 +1578,9 @@ export default {
   flagDiscrepancyForCA,
   resolveDiscrepancy,
   verifyDiscrepancyForCA,
+  requestInvoiceCorrection,
+  approveInvoiceCorrection,
+  rejectInvoiceCorrection,
   getStoreDocumentsForCA,
   createDocumentForCA,
   getStorePeriodClosingsForCA,

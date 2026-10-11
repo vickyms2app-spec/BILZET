@@ -130,6 +130,27 @@ export const verifyDiscrepancy = asyncHandler(async (req, res) => {
   return sendResponse(res, 200, { discrepancy }, 'Discrepancy verified by CA successfully');
 });
 
+export const requestInvoiceCorrection = asyncHandler(async (req, res) => {
+  const { storeId } = req.query;
+  const discrepancy = await caPortalService.requestInvoiceCorrection(
+    req.user,
+    storeId || req.body.storeId,
+    req.params.id,
+    req.body
+  );
+  return sendResponse(res, 201, { discrepancy }, 'Invoice correction requested and registered in audit log');
+});
+
+export const approveInvoiceCorrection = asyncHandler(async (req, res) => {
+  const result = await caPortalService.approveInvoiceCorrection(req.user, req.params.id, req.body);
+  return sendResponse(res, 200, result, 'Invoice correction approved, applied to record, and broadcast');
+});
+
+export const rejectInvoiceCorrection = asyncHandler(async (req, res) => {
+  const discrepancy = await caPortalService.rejectInvoiceCorrection(req.user, req.params.id, req.body);
+  return sendResponse(res, 200, { discrepancy }, 'Invoice correction rejected and recorded');
+});
+
 export const getDocuments = asyncHandler(async (req, res) => {
   const { storeId, ...query } = req.query;
   const result = await caPortalService.getStoreDocumentsForCA(req.user, storeId, query);
@@ -238,6 +259,9 @@ export default {
   flagDiscrepancy,
   resolveDiscrepancy,
   verifyDiscrepancy,
+  requestInvoiceCorrection,
+  approveInvoiceCorrection,
+  rejectInvoiceCorrection,
   getDocuments,
   createDocument,
   getPeriodClosings,

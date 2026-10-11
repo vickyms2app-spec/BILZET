@@ -35,6 +35,10 @@ router.get('/tasks', caPortalController.getTasks);
 router.get('/discrepancies', caPortalController.getDiscrepancies);
 router.post('/discrepancies/:id/resolve', caPortalController.resolveDiscrepancy);
 router.patch('/discrepancies/:id/resolve', caPortalController.resolveDiscrepancy);
+router.post('/discrepancies/:id/approve', caPortalController.approveInvoiceCorrection);
+router.patch('/discrepancies/:id/approve', caPortalController.approveInvoiceCorrection);
+router.post('/discrepancies/:id/reject', caPortalController.rejectInvoiceCorrection);
+router.patch('/discrepancies/:id/reject', caPortalController.rejectInvoiceCorrection);
 
 // Documents & Period Closings
 router.get('/documents', caPortalController.getDocuments);

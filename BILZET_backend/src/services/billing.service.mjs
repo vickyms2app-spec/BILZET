@@ -1,6 +1,7 @@
 import prisma from '../config/prisma.mjs';
 import { ApiError } from '../utils/ApiError.mjs';
 import { getPaginationParams, buildPaginationMeta } from '../utils/pagination.mjs';
+import realtimeService from './realtime.service.mjs';
 
 /**
  * Builds date range filtering for date-wise, month-wise, and year-wise queries.
@@ -414,7 +415,7 @@ export const createSale = async (saleData, user, context = {}) => {
     throw ApiError.badRequest('At least one item is required to generate an invoice');
   }
 
-  return await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     // 1. Resolve or Automatically Create Customer Record
     let customer = null;
     const cleanPhone = customerPhone && String(customerPhone).trim() ? String(customerPhone).trim() : null;
@@ -796,6 +797,45 @@ export const createSale = async (saleData, user, context = {}) => {
       isInterState,
     });
   });
+
+  // Broadcast real-time change event to CA Connect & Admin
+  try {
+    const targetBusinessId = result.businessId || user?.businessId || saleData.businessId;
+    if (targetBusinessId) {
+      realtimeService.broadcastBusinessEvent(targetBusinessId, 'SALE_CREATED', {
+        saleId: result.id,
+        invoiceNumber: result.invoiceNumber,
+        grandTotal: result.grandTotal,
+        taxTotal: result.taxTotal,
+        subtotal: result.subtotal,
+        paidAmount: result.paidAmount,
+        balanceDue: result.balanceDue,
+        paymentStatus: result.paymentStatus,
+        paymentMethod: result.paymentMethod,
+        customerName: result.customer?.name || 'Walk-in Retail Customer',
+        customerPhone: result.customer?.phone || null,
+        sale: result,
+      }, {
+        userId: user ? user.id : null,
+        action: 'SALE_CREATED',
+      });
+
+      if (Number(result.paidAmount || 0) > 0) {
+        realtimeService.broadcastBusinessEvent(targetBusinessId, 'PAYMENT_RECORDED', {
+          saleId: result.id,
+          invoiceNumber: result.invoiceNumber,
+          amountPaid: Number(result.paidAmount),
+          balanceDue: result.balanceDue,
+          paymentStatus: result.paymentStatus,
+          paymentMethod: result.paymentMethod,
+        }, { userId: user ? user.id : null });
+      }
+    }
+  } catch (err) {
+    console.error('[BillingService] Failed to broadcast SALE_CREATED event:', err.message);
+  }
+
+  return result;
 };
 
 export const getSales = async (query = {}, user = null) => {
@@ -1056,7 +1096,7 @@ export const recordPayment = async (saleId, paymentData = {}, user = null) => {
     throw ApiError.badRequest(`Payment amount (₹${amount}) exceeds outstanding balance (₹${mapped.balanceDue})`);
   }
 
-  return await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const newPaidAmount = Number((Number(sale.paidAmount || 0) + amount).toFixed(2));
     const newBalance = Math.max(0, Number((mapped.netPayable - newPaidAmount).toFixed(2)));
     const newPaymentStatus = newBalance === 0 ? 'PAID' : 'PARTIALLY_PAID';
@@ -1171,6 +1211,29 @@ export const recordPayment = async (saleId, paymentData = {}, user = null) => {
 
     return mapSale(updatedSale);
   });
+
+  try {
+    const targetBusinessId = result.businessId || sale.businessId || user?.businessId;
+    if (targetBusinessId) {
+      realtimeService.broadcastBusinessEvent(targetBusinessId, 'PAYMENT_RECORDED', {
+        saleId: result.id,
+        invoiceNumber: result.invoiceNumber,
+        amountPaid: amount,
+        paidAmount: result.paidAmount,
+        balanceDue: result.balanceDue,
+        paymentStatus: result.paymentStatus,
+        paymentMethod: (paymentData.paymentMethod || 'CASH').toUpperCase(),
+        sale: result,
+      }, {
+        userId: user ? user.id : null,
+        action: 'PAYMENT_RECORDED',
+      });
+    }
+  } catch (err) {
+    console.error('[BillingService] Failed to broadcast PAYMENT_RECORDED event:', err.message);
+  }
+
+  return result;
 };
 
 export const returnSale = async (saleId, returnData = {}, user = null) => {
@@ -1198,7 +1261,7 @@ export const returnSale = async (saleId, returnData = {}, user = null) => {
     throw ApiError.conflict('This sale has already been fully returned/refunded');
   }
 
-  return await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     // 1. Concurrency Guard: Re-fetch latest sale state inside transaction row lock
     const currentSale = await tx.sale.findUnique({
       where: { id: saleId },
@@ -1529,6 +1592,36 @@ export const returnSale = async (saleId, returnData = {}, user = null) => {
 
     return mapSale(updated);
   });
+
+  try {
+    const targetBusinessId = result.businessId || sale.businessId || user?.businessId;
+    if (targetBusinessId) {
+      realtimeService.broadcastBusinessEvent(targetBusinessId, 'RETURN_PROCESSED', {
+        saleId: result.id,
+        invoiceNumber: result.invoiceNumber,
+        returnStatus: result.returnStatus,
+        status: result.status,
+        sale: result,
+      }, {
+        userId: user ? user.id : null,
+        action: 'RETURN_PROCESSED',
+      });
+
+      realtimeService.broadcastBusinessEvent(targetBusinessId, 'CREDIT_NOTE_CREATED', {
+        saleId: result.id,
+        invoiceNumber: result.invoiceNumber,
+        reason: returnData?.reason || 'Customer Return',
+        returnStatus: result.returnStatus,
+      }, {
+        userId: user ? user.id : null,
+        action: 'CREDIT_NOTE_CREATED',
+      });
+    }
+  } catch (err) {
+    console.error('[BillingService] Failed to broadcast RETURN_PROCESSED event:', err.message);
+  }
+
+  return result;
 };
 
 export const voidSale = async (saleId, reason = 'Voided by authorized manager', user = null) => {
@@ -1546,7 +1639,7 @@ export const voidSale = async (saleId, reason = 'Voided by authorized manager', 
     throw ApiError.conflict('Invoice is already cancelled/voided');
   }
 
-  return await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     // Restore inventory for items that were not returned
     for (const item of sale.items) {
       if (item.productId) {
@@ -1597,6 +1690,26 @@ export const voidSale = async (saleId, reason = 'Voided by authorized manager', 
 
     return mapSale(updated);
   });
+
+  try {
+    const targetBusinessId = result.businessId || sale.businessId || user?.businessId;
+    if (targetBusinessId) {
+      realtimeService.broadcastBusinessEvent(targetBusinessId, 'INVOICE_VOIDED', {
+        saleId: result.id,
+        invoiceNumber: result.invoiceNumber,
+        status: 'CANCELLED',
+        reason,
+        sale: result,
+      }, {
+        userId: user ? user.id : null,
+        action: 'INVOICE_VOIDED',
+      });
+    }
+  } catch (err) {
+    console.error('[BillingService] Failed to broadcast INVOICE_VOIDED event:', err.message);
+  }
+
+  return result;
 };
 
 export default {

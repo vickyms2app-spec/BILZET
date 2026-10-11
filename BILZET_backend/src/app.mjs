@@ -32,6 +32,7 @@ import caConnectRoutes from './routes/caConnect.routes.mjs';
 import storeRoutes from './routes/store.routes.mjs';
 import referralRoutes from './routes/referral.routes.mjs';
 import caPortalRoutes from './routes/caPortal.routes.mjs';
+import realtimeRoutes from './routes/realtime.routes.mjs';
 
 // Error middlewares
 import { notFoundHandler } from './middleware/notFound.middleware.mjs';
@@ -300,6 +301,7 @@ app.use('/api/v1/ca-connect', caConnectRoutes);
 app.use('/api/v1/ca-portal', caPortalRoutes);
 app.use(['/api/v1/referral', '/api/v1/referrals'], referralRoutes);
 app.use('/api/v1/super-admin', superAdminRoutes);
+app.use(['/api/v1/realtime', '/api/v1/events'], realtimeRoutes);
 
 
 // Fallback 404 Handler

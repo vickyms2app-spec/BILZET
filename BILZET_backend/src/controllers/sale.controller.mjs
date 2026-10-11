@@ -3,6 +3,7 @@ import { sendResponse } from '../utils/apiResponse.mjs';
 import { ApiError } from '../utils/ApiError.mjs';
 import billingService from '../services/billing.service.mjs';
 import prisma from '../config/prisma.mjs';
+import realtimeService from '../services/realtime.service.mjs';
 
 export const createSale = asyncHandler(async (req, res) => {
   const sale = await billingService.createSale(req.body, req.user, { req });
@@ -135,6 +136,19 @@ export const createPaymentIn = asyncHandler(async (req, res) => {
 
     return pay;
   });
+
+  try {
+    const targetBusinessId = req.user?.businessId || (payment.customerId ? null : null);
+    if (targetBusinessId) {
+      realtimeService.broadcastBusinessEvent(targetBusinessId, 'PAYMENT_RECORDED', {
+        paymentId: payment.id,
+        customerId: payment.customerId,
+        saleId: payment.saleId,
+        amount: payment.amount,
+        method: payment.method,
+      }, { userId: req.user.id, action: 'PAYMENT_IN' });
+    }
+  } catch (_) {}
 
   return sendResponse(res, 201, { payment }, 'Payment recorded successfully');
 });
