@@ -6,7 +6,9 @@ import prisma from '../config/prisma.mjs';
 
 export const createSale = asyncHandler(async (req, res) => {
   const sale = await billingService.createSale(req.body, req.user, { req });
-  return sendResponse(res, 201, { sale }, 'Sale created successfully');
+  const status = sale._isExisting ? 200 : 201;
+  const message = sale._isExisting ? 'Existing invoice returned (idempotent)' : 'Sale created successfully';
+  return sendResponse(res, status, { sale }, message);
 });
 
 export const getSales = asyncHandler(async (req, res) => {
@@ -190,14 +192,80 @@ export const preventInvoiceDelete = asyncHandler(async (req, res) => {
   );
 });
 
+export const getStoreActivity = asyncHandler(async (req, res) => {
+  const storeId = req.user.businessId;
+  const where = storeId ? { businessId: storeId } : {};
+  const sales = await prisma.sale.findMany({
+    where,
+    select: { id: true, invoiceNumber: true, customer: { select: { name: true } } },
+    take: 100,
+    orderBy: { createdAt: 'desc' },
+  });
+
+  const saleMap = new Map(sales.map((s) => [s.id, s]));
+  const saleIds = Array.from(saleMap.keys());
+
+  const logs = await prisma.auditLog.findMany({
+    where: {
+      entity: 'SALE',
+      entityId: { in: saleIds },
+    },
+    orderBy: { createdAt: 'desc' },
+    take: 100,
+    include: {
+      user: { select: { id: true, name: true, email: true, role: true } },
+    },
+  });
+
+  const activity = logs.map((log) => {
+    const sale = saleMap.get(log.entityId);
+    const changes = log.changes || {};
+    const invoiceNumber = sale?.invoiceNumber || changes.invoiceNumber || 'INV';
+    const customerName = sale?.customer?.name || changes.customerName || 'Walk-in Customer';
+    const eventType = changes.eventType || log.action;
+
+    return {
+      id: log.id,
+      invoiceId: log.entityId,
+      invoiceNumber,
+      customerName,
+      eventType,
+      action: log.action,
+      changes,
+      details: {
+        ...changes,
+        invoiceNumber,
+        customerName,
+        eventType,
+      },
+      before: changes.before || null,
+      after: changes.after || null,
+      adjustment: changes.adjustment || null,
+      performedBy: log.user,
+      timestamp: log.createdAt,
+      status: 'SYNCHRONIZED',
+    };
+  });
+
+  return sendResponse(res, 200, { activity, total: activity.length }, 'Invoice activity ledger fetched successfully');
+});
+
+export const voidInvoice = asyncHandler(async (req, res) => {
+  const reason = req.body?.reason || 'Voided by authorized manager';
+  const sale = await billingService.voidSale(req.params.id, reason, req.user);
+  return sendResponse(res, 200, { sale }, 'Invoice voided and transaction permanently recorded in audit ledger');
+});
+
 export default {
   createSale,
   getSales,
   getMySales,
   getSaleById,
   getSaleAuditTrail,
+  getStoreActivity,
   recordPayment,
   returnSale,
+  voidInvoice,
   getSaleCreditNotes,
   preventInvoiceEdit,
   preventInvoiceDelete,

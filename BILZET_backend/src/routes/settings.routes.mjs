@@ -20,5 +20,11 @@ router.patch(
   validate(updateShopSettingsSchema),
   settingsController.updateShopSettings
 );
+router.put(
+  '/shop',
+  authorizeRoles(ROLES.ADMIN),
+  validate(updateShopSettingsSchema),
+  settingsController.updateShopSettings
+);
 
 export default router;

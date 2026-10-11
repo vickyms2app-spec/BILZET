@@ -79,6 +79,8 @@ export const salesApi = {
   return: (id, p) => http.post(`/sales/${id}/return`, p).then(unwrap),
   recordPayment: (id, p) => http.post(`/sales/${id}/payment`, p).then(unwrap),
   auditTrail: (id) => http.get(`/sales/${id}/audit-trail`).then(unwrap),
+  activity: (p) => http.get("/sales/activity", { params: p }).then(unwrap),
+  void: (id, reason) => http.post(`/sales/${id}/void`, { reason }).then(unwrap),
   returns: () => withFallback(http.get("/sales/returns").then(unwrap), []),
   challans: () => withFallback(http.get("/sales/challans").then(unwrap), []),
   createChallan: (p) => http.post("/sales/challans", p).then(unwrap),
@@ -289,6 +291,10 @@ export const caConnectApi = {
   list: () => http.get("/ca-connect/accountants").then(unwrap),
   invite: (p) => http.post("/ca-connect/invite", p).then(unwrap),
   remove: (id) => http.delete(`/ca-connect/invite/${id}`).then(unwrap),
+  getActivity: (p) => http.get("/ca-connect/activity", { params: p }).then(unwrap),
+  getInvoices: (p) => http.get("/ca-connect/invoices", { params: p }).then(unwrap),
+  getFinancialSummary: (p) => http.get("/ca-connect/financial-summary", { params: p }).then(unwrap),
+  getCreditNotes: (p) => http.get("/ca-connect/credit-notes", { params: p }).then(unwrap),
 };
 
 export const referralApi = {
@@ -320,6 +326,7 @@ export const caPortalApi = {
   getInvoices: (params) => http.get("/ca-portal/invoices", { params }).then(unwrap),
   getInvoice: (id) => http.get(`/ca-portal/invoices/${id}`).then(unwrap),
   getAuditTrail: (id) => http.get(`/ca-portal/invoices/${id}/audit-trail`).then(unwrap),
+  getActivity: (params) => http.get("/ca-portal/activity", { params }).then(unwrap),
   getFinancialSummary: (params) => http.get("/ca-portal/financial-summary", { params }).then(unwrap),
   getCreditNotes: (params) => http.get("/ca-portal/credit-notes", { params }).then(unwrap),
   getInvoiceCreditNotes: (id) => http.get(`/ca-portal/invoices/${id}/credit-notes`).then(unwrap),

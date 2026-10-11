@@ -555,6 +555,95 @@ export const getStoreCreditNotesForCA = async (caUser, storeId, query = {}) => {
   };
 };
 
+/**
+ * Fetch all invoice activities and audit events for an authorized store.
+ * Synchronizes committed invoices, payments, returns, and adjustments for CA audit.
+ */
+export const getStoreActivityForCA = async (caUser, storeId, query = {}) => {
+  const store = await verifyCAStoreAccess(caUser, storeId);
+  const where = {
+    businessId: storeId,
+  };
+
+  const dateFilter = buildDateFilter(query);
+  if (dateFilter) {
+    where.createdAt = dateFilter;
+  }
+
+  const sales = await prisma.sale.findMany({
+    where,
+    select: {
+      id: true,
+      invoiceNumber: true,
+      grandTotal: true,
+      paidAmount: true,
+      paymentStatus: true,
+      returnStatus: true,
+      createdAt: true,
+      customer: { select: { id: true, name: true, phone: true } },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  const saleMap = new Map(sales.map((s) => [s.id, s]));
+  const saleIds = Array.from(saleMap.keys());
+
+  const logWhere = {
+    entity: 'SALE',
+    entityId: { in: saleIds },
+  };
+  if (dateFilter) {
+    logWhere.createdAt = dateFilter;
+  }
+
+  const logs = await prisma.auditLog.findMany({
+    where: logWhere,
+    orderBy: { createdAt: 'desc' },
+    include: {
+      user: { select: { id: true, name: true, email: true, role: true } },
+    },
+  });
+
+  const activity = logs.map((log) => {
+    const sale = saleMap.get(log.entityId);
+    const changes = log.changes || {};
+    const invoiceNumber = sale?.invoiceNumber || changes.invoiceNumber || 'INV';
+    const customerName = sale?.customer?.name || changes.customerName || 'Walk-in Retail Customer';
+    const eventType = changes.eventType || log.action;
+
+    return {
+      id: log.id,
+      invoiceId: log.entityId,
+      invoiceNumber,
+      customerName,
+      customerPhone: sale?.customer?.phone || changes.customerPhone || null,
+      eventType,
+      action: log.action,
+      changes,
+      details: {
+        ...changes,
+        invoiceNumber,
+        customerName,
+        eventType,
+      },
+      before: changes.before || null,
+      after: changes.after || null,
+      adjustment: changes.adjustment || null,
+      storeId,
+      storeName: store.name,
+      performedBy: log.user,
+      timestamp: log.createdAt,
+      status: 'SYNCHRONIZED',
+    };
+  });
+
+  return {
+    store,
+    activity,
+    total: activity.length,
+  };
+};
+
 export default {
   getAuthorizedStoresForCA,
   verifyCAStoreAccess,
@@ -565,5 +654,6 @@ export default {
   getFinancialSummaryForCA,
   getInvoiceCreditNotesForCA,
   getStoreCreditNotesForCA,
+  getStoreActivityForCA,
 };
 

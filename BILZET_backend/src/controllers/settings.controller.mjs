@@ -143,6 +143,9 @@ export const updateShopSettings = asyncHandler(async (req, res) => {
     'gstin', 'state', 'stateCode', 'invoicePrefix', 'paperSize'
   ];
   const dbData = {};
+  if (req.body.name && !req.body.shopName) {
+    dbData.shopName = req.body.name;
+  }
   for (const key of dbAllowed) {
     if (req.body[key] !== undefined) {
       dbData[key] = req.body[key];

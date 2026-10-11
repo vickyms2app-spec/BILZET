@@ -24,11 +24,15 @@ router.post('/payments-in', requirePermission('sales_ops.payment'), saleControll
 router.get('/returns', requirePermission('sales_ops.return'), saleController.getSalesReturns);
 router.post('/:id/return', requirePermission('sales_ops.return'), saleController.returnSale);
 
-// Invoice detail & Audit trail
+// Invoice detail, Activity & Audit trail
+router.get('/activity', requirePermission('billing.view'), saleController.getStoreActivity);
 router.get('/:id/audit-trail', requirePermission('billing.view'), saleController.getSaleAuditTrail);
+router.get('/:id/activity', requirePermission('billing.view'), saleController.getSaleAuditTrail);
 router.get('/:id/credit-notes', requirePermission('billing.view'), saleController.getSaleCreditNotes);
-router.get('/:id/returns', requirePermission('billing.view'), saleController.getSaleCreditNotes);
 router.post('/:id/payment', requirePermission('sales_ops.payment'), saleController.recordPayment);
+router.post('/:id/payments', requirePermission('sales_ops.payment'), saleController.recordPayment);
+router.post('/:id/void', requirePermission('billing.create', 'billing.manage'), saleController.voidInvoice);
+router.post('/:id/cancel', requirePermission('billing.create', 'billing.manage'), saleController.voidInvoice);
 router.get('/:id', requirePermission('billing.view'), saleController.getSaleById);
 
 // Guard: Prevent arbitrary edits or deletes to finalized invoices (Req 8 & Req 9)

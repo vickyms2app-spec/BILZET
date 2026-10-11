@@ -26,6 +26,8 @@ import {
   DollarSign,
   PackageCheck,
   Scale,
+  Activity,
+  AlertTriangle,
 } from "lucide-react";
 import { useAuth } from "../store/auth";
 import { caPortalApi } from "../api";
@@ -49,7 +51,7 @@ export default function CaPortal() {
   const [loadingCreditNotes, setLoadingCreditNotes] = useState(false);
 
   // Tabs & Filters
-  const [activeTab, setActiveTab] = useState("invoices"); // "invoices" | "returns" | "gst"
+  const [activeTab, setActiveTab] = useState("invoices"); // "invoices" | "returns" | "gst" | "activity"
   const [searchQuery, setSearchQuery] = useState("");
   const [creditNoteSearch, setCreditNoteSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -58,6 +60,10 @@ export default function CaPortal() {
   const [selectedYear, setSelectedYear] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+
+  // Activity Ledger State
+  const [activityList, setActivityList] = useState([]);
+  const [loadingActivity, setLoadingActivity] = useState(false);
 
   // Modals
   const [selectedInvoice, setSelectedInvoice] = useState(null);
@@ -143,10 +149,26 @@ export default function CaPortal() {
     }
   };
 
+  // 4. Fetch synchronized audit & activity stream for CA
+  const loadActivityData = async () => {
+    if (!selectedStoreId) return;
+    setLoadingActivity(true);
+    try {
+      const res = await caPortalApi.getActivity({ storeId: selectedStoreId, limit: 100 });
+      setActivityList(res?.activity || []);
+    } catch (err) {
+      console.error("Failed to fetch activity logs for CA:", err);
+      setActivityList([]);
+    } finally {
+      setLoadingActivity(false);
+    }
+  };
+
   useEffect(() => {
     if (selectedStoreId) {
       loadStoreData();
       loadCreditNotesData();
+      loadActivityData();
     }
   }, [selectedStoreId, statusFilter, returnFilter, selectedMonth, selectedYear, startDate, endDate]);
 
@@ -653,6 +675,19 @@ export default function CaPortal() {
               >
                 <Percent size={16} /> GST Tax Filing &amp; Slabs Analysis
               </button>
+              <button
+                onClick={() => {
+                  setActiveTab("activity");
+                  loadActivityData();
+                }}
+                className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-2 whitespace-nowrap ${
+                  activeTab === "activity"
+                    ? "bg-slate-900 text-white shadow-xs"
+                    : "text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                <Activity size={16} /> Activity Ledger &amp; Sync ({activityList.length})
+              </button>
             </div>
 
             <div className="flex items-center gap-2">
@@ -676,6 +711,18 @@ export default function CaPortal() {
                   title="Export Credit Notes to CSV"
                 >
                   Export Credit Notes CSV
+                </Button>
+              )}
+              {activeTab === "activity" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  icon={RefreshCw}
+                  loading={loadingActivity}
+                  onClick={loadActivityData}
+                  title="Refresh Activity Ledger"
+                >
+                  Refresh Ledger
                 </Button>
               )}
             </div>
@@ -1184,6 +1231,199 @@ export default function CaPortal() {
                     </tbody>
                   </table>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* ══════════════════════════════════════════════════
+              TAB 4: SYNCHRONIZED ACTIVITY & AUDIT LEDGER
+          ══════════════════════════════════════════════════ */}
+          {activeTab === "activity" && (
+            <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
+              <div className="p-4 bg-slate-50/80 border-b border-slate-200 flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                    <History size={16} className="text-indigo-600" />
+                    Synchronized Invoice Activity Ledger
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Immutable chronological record of all bill creation, payments, product returns, credit notes, and voiding events for {activeStore?.name || "Authorized Store"}.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                    <ShieldCheck size={13} /> Authoritative PostgreSQL Ledger
+                  </span>
+                  <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 font-mono">
+                    {activityList.length} Events
+                  </span>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs text-left">
+                  <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider text-[10px] font-bold border-b border-slate-200">
+                    <tr>
+                      <th className="py-3 px-4">Event Type</th>
+                      <th className="py-3 px-4">Invoice # &amp; Customer</th>
+                      <th className="py-3 px-4">Timestamp</th>
+                      <th className="py-3 px-4">Financial State (Before → After)</th>
+                      <th className="py-3 px-4">Adjustment / Notes</th>
+                      <th className="py-3 px-4">Performed By</th>
+                      <th className="py-3 px-4 text-center">Inspect</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {loadingActivity ? (
+                      <tr>
+                        <td colSpan={7} className="py-12 text-center text-slate-400">
+                          <div className="flex items-center justify-center gap-2">
+                            <RefreshCw size={16} className="animate-spin text-indigo-600" />
+                            <span>Loading synchronized activity stream...</span>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : activityList.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="py-12 text-center text-slate-400">
+                          No synchronized activity records found for this store.
+                        </td>
+                      </tr>
+                    ) : (
+                      activityList.map((log) => {
+                        const d = log.details || {};
+                        const action = log.action || d.eventType || "INVOICE_EVENT";
+                        const isCreate = action === "INVOICE_CREATED";
+                        const isPay = action === "PAYMENT_RECEIVED" || action === "PARTIAL_PAYMENT";
+                        const isRet = action === "SALE_RETURNED" || action === "PRODUCT_RETURN";
+                        const isVoid = action === "INVOICE_VOIDED" || action === "INVOICE_CANCELLED";
+
+                        return (
+                          <tr key={log.id} className="hover:bg-slate-50/70 transition">
+                            <td className="py-3.5 px-4">
+                              <span
+                                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                                  isCreate
+                                    ? "bg-blue-50 text-blue-700 border border-blue-200"
+                                    : isPay
+                                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                    : isRet
+                                    ? "bg-purple-50 text-purple-700 border border-purple-200"
+                                    : isVoid
+                                    ? "bg-rose-50 text-rose-700 border border-rose-200"
+                                    : "bg-slate-100 text-slate-700 border border-slate-200"
+                                }`}
+                              >
+                                {isCreate && <FileText size={11} />}
+                                {isPay && <CreditCard size={11} />}
+                                {isRet && <RotateCcw size={11} />}
+                                {isVoid && <AlertTriangle size={11} />}
+                                {action.replace(/_/g, " ")}
+                              </span>
+                            </td>
+
+                            <td className="py-3.5 px-4">
+                              <div className="font-mono font-bold text-slate-900">
+                                {d.invoiceNumber || (log.entityType === "SALE" ? `#${log.entityId.slice(0, 8)}` : "—")}
+                              </div>
+                              <div className="text-[11px] text-slate-500">
+                                {d.customerName || "Walk-in Customer"}
+                              </div>
+                            </td>
+
+                            <td className="py-3.5 px-4 text-slate-600 font-mono text-[11px]">
+                              {new Date(log.timestamp || log.createdAt).toLocaleString("en-IN", {
+                                day: "2-digit",
+                                month: "short",
+                                year: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                second: "2-digit",
+                              })}
+                            </td>
+
+                            <td className="py-3.5 px-4 font-mono text-[11px]">
+                              {d.before && d.after ? (
+                                <div className="space-y-0.5">
+                                  <div>
+                                    <span className="text-slate-400">Total: </span>
+                                    <span className="line-through text-slate-400">₹{Number(d.before.grandTotal || 0).toFixed(0)}</span>
+                                    <span className="text-slate-900 font-bold"> → ₹{Number(d.after.grandTotal || 0).toFixed(0)}</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-slate-400">Paid: </span>
+                                    <span className="line-through text-slate-400">₹{Number(d.before.paidAmount || 0).toFixed(0)}</span>
+                                    <span className="text-emerald-700 font-bold"> → ₹{Number(d.after.paidAmount || 0).toFixed(0)}</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-slate-400">Due: </span>
+                                    <span className="line-through text-slate-400">₹{Number(d.before.balanceDue || 0).toFixed(0)}</span>
+                                    <span className="text-rose-600 font-bold"> → ₹{Number(d.after.balanceDue || 0).toFixed(0)}</span>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="space-y-0.5">
+                                  <div>
+                                    <span className="text-slate-400">Total: </span>
+                                    <span className="font-bold text-slate-900">₹{Number(d.grandTotal || 0).toFixed(2)}</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-slate-400">Paid: </span>
+                                    <span className="font-semibold text-emerald-700">₹{Number(d.paidAmount || 0).toFixed(2)}</span>
+                                    <span className="text-slate-400 ml-2">Due: </span>
+                                    <span className="font-semibold text-rose-600">₹{Number(d.balanceDue || 0).toFixed(2)}</span>
+                                  </div>
+                                </div>
+                              )}
+                            </td>
+
+                            <td className="py-3.5 px-4 text-[11px]">
+                              {d.creditNoteNumber && (
+                                <div className="text-purple-700 font-semibold">
+                                  CN #{d.creditNoteNumber} (GST Adj: ₹{Number(d.gstAdjustment || 0).toFixed(2)})
+                                </div>
+                              )}
+                              {d.returnNumber && (
+                                <div className="text-slate-600">
+                                  Return #{d.returnNumber}
+                                </div>
+                              )}
+                              {d.reason && (
+                                <div className="text-slate-500 italic">
+                                  Reason: {d.reason}
+                                </div>
+                              )}
+                              {!d.creditNoteNumber && !d.returnNumber && !d.reason && (
+                                <span className="text-slate-400 font-mono text-[10px]">Normal Transaction</span>
+                              )}
+                            </td>
+
+                            <td className="py-3.5 px-4">
+                              <span className="font-medium text-slate-800">
+                                {log.user?.name || log.user?.email || "System"}
+                              </span>
+                              <span className="block text-[10px] text-slate-400">
+                                {log.user?.role || "SYSTEM"}
+                              </span>
+                            </td>
+
+                            <td className="py-3.5 px-4 text-center">
+                              {log.entityType === "SALE" && (
+                                <CompactIconButton
+                                  variant="primary"
+                                  size="sm"
+                                  icon={Eye}
+                                  title="View Linked Invoice"
+                                  onClick={() => handleOpenInvoice({ id: log.entityId })}
+                                />
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}

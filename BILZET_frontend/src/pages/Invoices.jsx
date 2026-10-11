@@ -17,6 +17,10 @@ import {
   AlertCircle,
   ShieldCheck,
   RefreshCw,
+  History,
+  X,
+  CreditCard,
+  AlertTriangle,
 } from "lucide-react";
 import { salesApi, settingsApi } from "../api";
 import TaxInvoice from "../components/invoice/TaxInvoice";
@@ -33,10 +37,28 @@ export default function Invoices() {
   const [invoices, setInvoices] = useState([]);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [returnModalInvoice, setReturnModalInvoice] = useState(null);
+  const [auditModalInvoice, setAuditModalInvoice] = useState(null);
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [loadingAudit, setLoadingAudit] = useState(false);
   const [shopSettings, setShopSettings] = useState(null);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState(null);
   const [dateFilter, setDateFilter] = useState(null);
+
+  const handleOpenAudit = async (inv, e) => {
+    if (e) e.stopPropagation();
+    setAuditModalInvoice(inv);
+    setLoadingAudit(true);
+    try {
+      const res = await salesApi.getActivity(inv.id || inv._id);
+      setAuditLogs(res?.activity || res?.auditTrail || []);
+    } catch (err) {
+      console.error("Failed to load invoice audit:", err);
+      setAuditLogs([]);
+    } finally {
+      setLoadingAudit(false);
+    }
+  };
 
   useEffect(() => {
     // Load shop settings for invoice formatting
@@ -412,6 +434,13 @@ export default function Invoices() {
                             />
                           )}
                           <CompactIconButton
+                            variant="secondary"
+                            size="sm"
+                            icon={History}
+                            onClick={(e) => handleOpenAudit(inv, e)}
+                            title="View CA Synchronized Audit Trail"
+                          />
+                          <CompactIconButton
                             variant="primary"
                             size="sm"
                             icon={Eye}
@@ -460,6 +489,91 @@ export default function Invoices() {
             setSelectedInvoice(updatedSale);
           }}
         />
+      )}
+
+      {/* ══════════════════════════════════════════════════
+          CA AUDIT TRAIL MODAL (IMMUTABLE DATABASE LOGS)
+      ══════════════════════════════════════════════════ */}
+      {auditModalInvoice && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs fade-up">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-xl max-h-[85vh] overflow-y-auto">
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 grid place-items-center">
+                  <History size={20} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-base">
+                    Audit Trail: {auditModalInvoice.invoiceNumber}
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Authoritative PostgreSQL ledger synchronized with CA Connect
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setAuditModalInvoice(null)}
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {loadingAudit ? (
+                <div className="py-8 text-center text-slate-400 flex items-center justify-center gap-2">
+                  <RefreshCw size={18} className="animate-spin text-indigo-600" />
+                  <span>Loading audit trail...</span>
+                </div>
+              ) : auditLogs.length === 0 ? (
+                <div className="py-8 text-center text-slate-400 text-xs">
+                  No subsequent modification logs found. Invoice is in original creation state.
+                </div>
+              ) : (
+                auditLogs.map((log) => {
+                  const d = log.details || {};
+                  return (
+                    <div key={log.id} className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-1.5 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-slate-900 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-indigo-500" />
+                          {log.action || d.eventType}
+                        </span>
+                        <span className="text-[11px] text-slate-400 font-mono">
+                          {new Date(log.timestamp || log.createdAt).toLocaleString("en-IN")}
+                        </span>
+                      </div>
+                      {log.user && (
+                        <div className="text-[11px] text-slate-600">
+                          Performed by: <strong>{log.user.name || log.user.email}</strong> ({log.user.role})
+                        </div>
+                      )}
+                      {d.before && d.after && (
+                        <div className="mt-2 p-2.5 bg-white border border-slate-200 rounded-lg text-[11px] font-mono space-y-1">
+                          <div className="text-slate-500 font-bold uppercase text-[9px]">Financial Transition:</div>
+                          <div>Total: ₹{Number(d.before.grandTotal || 0).toFixed(0)} → ₹{Number(d.after.grandTotal || 0).toFixed(0)}</div>
+                          <div>Paid: ₹{Number(d.before.paidAmount || 0).toFixed(0)} → ₹{Number(d.after.paidAmount || 0).toFixed(0)}</div>
+                          <div>Due: ₹{Number(d.before.balanceDue || 0).toFixed(0)} → ₹{Number(d.after.balanceDue || 0).toFixed(0)}</div>
+                        </div>
+                      )}
+                      {d.creditNoteNumber && (
+                        <div className="text-purple-700 font-semibold text-[11px]">
+                          Issued Credit Note: #{d.creditNoteNumber} (GST Reversal: ₹{Number(d.gstAdjustment || 0).toFixed(2)})
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="p-4 border-t border-slate-100 flex justify-end bg-slate-50/50">
+              <Button variant="secondary" size="sm" onClick={() => setAuditModalInvoice(null)}>
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

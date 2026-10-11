@@ -16,10 +16,12 @@ router.use(authorizeRoles('CA', 'SUPER_ADMIN'));
 router.get('/stores', caPortalController.getAuthorizedStores);
 router.get('/invoices', caPortalController.getInvoices);
 router.get('/invoices/:id/audit-trail', caPortalController.getInvoiceAuditTrail);
+router.get('/invoices/:id/activity', caPortalController.getInvoiceAuditTrail);
 router.get('/invoices/:id/credit-notes', caPortalController.getInvoiceCreditNotes);
 router.get('/invoices/:id', caPortalController.getInvoiceById);
 router.get('/credit-notes', caPortalController.getCreditNotes);
 router.get('/financial-summary', caPortalController.getFinancialSummary);
+router.get('/activity', caPortalController.getStoreActivity);
 
 export default router;
 

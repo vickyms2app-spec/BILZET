@@ -515,6 +515,13 @@ export const createSale = async (saleData, user, context = {}) => {
         throw ApiError.badRequest('GST rate must be between 0 and 100');
       }
 
+      if (item.productId) {
+        const productExists = await tx.product.findUnique({ where: { id: item.productId } });
+        if (!productExists) {
+          throw ApiError.badRequest(`Product with ID '${item.productId}' does not exist.`);
+        }
+      }
+
       const isItemInclusive =
         item.isTaxInclusive !== undefined
           ? Boolean(item.isTaxInclusive)
@@ -620,8 +627,32 @@ export const createSale = async (saleData, user, context = {}) => {
 
     let invoiceNumber = saleData.invoiceNumber && String(saleData.invoiceNumber).trim();
     if (invoiceNumber) {
-      const existing = await tx.sale.findUnique({ where: { invoiceNumber } });
+      const existing = await tx.sale.findUnique({
+        where: { invoiceNumber },
+        include: {
+          items: true,
+          customer: true,
+          business: true,
+          returns: { include: { items: true } },
+          payments: true,
+        },
+      });
       if (existing) {
+        // Idempotency check: if existing invoice matches active store and either:
+        // 1. Matches customer & grandTotal (repeated click / network retry)
+        // 2. Was created within the last 5 minutes with identical grandTotal
+        const isSameStore = !activeBusinessId || !existing.businessId || existing.businessId === activeBusinessId;
+        const isSameAmount = Math.abs(Number(existing.grandTotal) - grandTotal) < 0.01;
+        const isSameCustomer = !existing.customerId || !customer || existing.customerId === customer.id;
+        const isRecent = (Date.now() - new Date(existing.createdAt).getTime()) < 300000;
+
+        if (isSameStore && isSameAmount && (isSameCustomer || isRecent)) {
+          // Idempotent duplicate: return existing finalized invoice without creating duplicate
+          const mapped = mapSale(existing);
+          return { ...mapped, _isExisting: true };
+        }
+
+        // If genuinely different invoice sharing a base sequence, generate a unique number
         invoiceNumber = `${invoiceNumber}-${Date.now().toString().slice(-4)}`;
       }
     } else {
@@ -694,7 +725,7 @@ export const createSale = async (saleData, user, context = {}) => {
       });
     }
 
-    // 5. Maintain Audit Trail (Req 7)
+    // 5. Maintain Audit Trail with Before and After Financial Snapshots
     await tx.auditLog.create({
       data: {
         userId: user ? user.id : null,
@@ -702,29 +733,56 @@ export const createSale = async (saleData, user, context = {}) => {
         entity: 'SALE',
         entityId: sale.id,
         changes: {
+          eventType: 'INVOICE_CREATED',
           invoiceNumber,
           grandTotal,
+          subtotal,
           taxTotal,
           paidAmount: Number(paidAmount || 0),
+          balanceDue: Math.max(0, grandTotal - Number(paidAmount || 0)),
           paymentStatus,
           paymentMethod: paymentMethod.toUpperCase(),
           itemCount: calculatedItems.length,
+          customerName: customer ? customer.name : 'Walk-in Retail Customer',
+          customerPhone: customer ? customer.phone : null,
+          storeId: activeBusinessId,
+          before: null,
+          after: {
+            grandTotal,
+            subtotal,
+            taxTotal,
+            paidAmount: Number(paidAmount || 0),
+            balanceDue: Math.max(0, grandTotal - Number(paidAmount || 0)),
+            paymentStatus,
+          },
         },
       },
     });
 
     if (Number(paidAmount) > 0) {
+      const isFull = Number(paidAmount) >= grandTotal;
       await tx.auditLog.create({
         data: {
           userId: user ? user.id : null,
-          action: 'PAYMENT_RECORDED',
+          action: isFull ? 'PAYMENT_RECEIVED' : 'PARTIAL_PAYMENT_RECEIVED',
           entity: 'SALE',
           entityId: sale.id,
           changes: {
+            eventType: isFull ? 'PAYMENT_RECEIVED' : 'PARTIAL_PAYMENT_RECEIVED',
             invoiceNumber,
             amountPaid: Number(paidAmount),
             paymentMethod: paymentMethod.toUpperCase(),
             paymentStatus,
+            before: {
+              paidAmount: 0,
+              balanceDue: grandTotal,
+              paymentStatus: 'UNPAID',
+            },
+            after: {
+              paidAmount: Number(paidAmount),
+              balanceDue: Math.max(0, grandTotal - Number(paidAmount)),
+              paymentStatus,
+            },
           },
         },
       });
@@ -945,7 +1003,9 @@ export const getSaleAuditTrail = async (saleId, user = null) => {
     id: log.id,
     action: log.action,
     entity: log.entity,
+    eventType: log.changes?.eventType || log.action,
     changes: log.changes,
+    details: log.changes,
     performedBy: log.user
       ? { id: log.user.id, name: log.user.name, email: log.user.email, role: log.user.role }
       : null,
@@ -955,6 +1015,7 @@ export const getSaleAuditTrail = async (saleId, user = null) => {
   return {
     invoiceId: saleId,
     invoiceNumber: sale.invoiceNumber,
+    activity: formattedLogs,
     auditTrail: formattedLogs,
     auditLogs: formattedLogs,
   };
@@ -1034,26 +1095,53 @@ export const recordPayment = async (saleId, paymentData = {}, user = null) => {
       },
     });
 
-    // 4. Audit Log
+    // 4. Audit Log with Before and After Financial Snapshots
+    const isFullPayment = newBalance === 0;
     await tx.auditLog.create({
       data: {
         userId: user ? user.id : null,
-        action: 'PAYMENT_RECORDED',
+        action: isFullPayment ? 'PAYMENT_RECEIVED' : 'PARTIAL_PAYMENT_RECEIVED',
         entity: 'SALE',
         entityId: sale.id,
         changes: {
+          eventType: isFullPayment ? 'PAYMENT_RECEIVED' : 'PARTIAL_PAYMENT_RECEIVED',
           invoiceNumber: sale.invoiceNumber,
           paymentId: payment.id,
           amountPaid: amount,
           paymentMethod: (paymentData.paymentMethod || 'CASH').toUpperCase(),
-          previousPaidAmount: Number(sale.paidAmount || 0),
-          newPaidAmount,
-          previousPaymentStatus: sale.paymentStatus,
-          newPaymentStatus,
-          balanceRemaining: newBalance,
+          before: {
+            paidAmount: Number(sale.paidAmount || 0),
+            balanceDue: Number(mapped.balanceDue || 0),
+            paymentStatus: sale.paymentStatus,
+          },
+          after: {
+            paidAmount: newPaidAmount,
+            balanceDue: newBalance,
+            paymentStatus: newPaymentStatus,
+          },
         },
       },
     });
+
+    if (sale.paymentStatus !== newPaymentStatus) {
+      await tx.auditLog.create({
+        data: {
+          userId: user ? user.id : null,
+          action: 'PAYMENT_STATUS_CHANGED',
+          entity: 'SALE',
+          entityId: sale.id,
+          changes: {
+            eventType: 'PAYMENT_STATUS_CHANGED',
+            invoiceNumber: sale.invoiceNumber,
+            from: sale.paymentStatus,
+            to: newPaymentStatus,
+            reason: `Payment of ₹${amount} received`,
+            before: { paymentStatus: sale.paymentStatus },
+            after: { paymentStatus: newPaymentStatus },
+          },
+        },
+      });
+    }
 
     return mapSale(updatedSale);
   });
@@ -1113,11 +1201,17 @@ export const returnSale = async (saleId, returnData = {}, user = null) => {
 
     let itemsToProcess = [];
 
-    if (Array.isArray(returnData.items) && returnData.items.length > 0) {
+    const returnItemsList = (Array.isArray(returnData.items) && returnData.items.length > 0)
+      ? returnData.items
+      : (Array.isArray(returnData.returnedItems) && returnData.returnedItems.length > 0
+        ? returnData.returnedItems
+        : null);
+
+    if (returnItemsList) {
       // Partial return specified by caller
-      for (const reqItem of returnData.items) {
+      for (const reqItem of returnItemsList) {
         const lineItem = currentSale.items.find(
-          (si) => si.id === reqItem.saleItemId || si.id === reqItem.id || si.productId === reqItem.productId || si.name.toLowerCase() === (reqItem.name || '').toLowerCase()
+          (si) => si.id === reqItem.saleItemId || si.id === reqItem.id || (reqItem.productId && si.productId === reqItem.productId) || (reqItem.name && si.name.toLowerCase() === reqItem.name.toLowerCase())
         );
         if (!lineItem) {
           throw ApiError.badRequest(`Invoice item '${reqItem.name || reqItem.productId || reqItem.saleItemId}' not found on this invoice`);
@@ -1281,14 +1375,15 @@ export const returnSale = async (saleId, returnData = {}, user = null) => {
       },
     });
 
-    // Audit logs for return and GST adjustment (Req 7, 12, 14)
+    // Audit logs for return, credit note, and GST adjustment
     await tx.auditLog.create({
       data: {
         userId: user ? user.id : null,
-        action: 'RETURN_PROCESSED',
+        action: 'SALE_RETURNED',
         entity: 'SALE',
         entityId: currentSale.id,
         changes: {
+          eventType: 'SALE_RETURNED',
           invoiceNumber: currentSale.invoiceNumber,
           returnNumber,
           creditNoteNumber,
@@ -1297,6 +1392,88 @@ export const returnSale = async (saleId, returnData = {}, user = null) => {
           refundMethod,
           itemCount: itemsToProcess.length,
           reason: returnData?.reason || 'Customer Return',
+          creditNote: {
+            creditNoteNumber,
+            amount: Number(returnTotalAmount.toFixed(2)),
+            gstAdjustment: Number(returnGstTotal.toFixed(2)),
+          },
+          creditNoteNumber,
+          gstAdjustment: Number(returnGstTotal.toFixed(2)),
+          before: {
+            returnStatus: currentSale.returnStatus,
+            netSales: Number(currentSale.grandTotal),
+          },
+          after: {
+            returnStatus: newReturnStatus,
+            netSales: Math.max(0, Number(currentSale.grandTotal) - returnTotalAmount),
+          },
+          adjustment: {
+            returnNumber,
+            creditNoteNumber,
+            returnedAmount: Number(returnTotalAmount.toFixed(2)),
+            gstAdjustment: Number(returnGstTotal.toFixed(2)),
+          },
+        },
+      },
+    });
+
+    await tx.auditLog.create({
+      data: {
+        userId: user ? user.id : null,
+        action: 'RETURN_PROCESSED',
+        entity: 'SALE',
+        entityId: currentSale.id,
+        changes: {
+          eventType: 'RETURN_PROCESSED',
+          invoiceNumber: currentSale.invoiceNumber,
+          returnNumber,
+          creditNoteNumber,
+          returnStatus: newReturnStatus,
+          refundAmount: Number(returnTotalAmount.toFixed(2)),
+          refundMethod,
+          itemCount: itemsToProcess.length,
+          reason: returnData?.reason || 'Customer Return',
+          creditNote: {
+            creditNoteNumber,
+            amount: Number(returnTotalAmount.toFixed(2)),
+            gstAdjustment: Number(returnGstTotal.toFixed(2)),
+          },
+          creditNoteNumber,
+          gstAdjustment: Number(returnGstTotal.toFixed(2)),
+          before: {
+            returnStatus: currentSale.returnStatus,
+            netSales: Number(currentSale.grandTotal),
+          },
+          after: {
+            returnStatus: newReturnStatus,
+            netSales: Math.max(0, Number(currentSale.grandTotal) - returnTotalAmount),
+          },
+          adjustment: {
+            returnNumber,
+            creditNoteNumber,
+            returnedAmount: Number(returnTotalAmount.toFixed(2)),
+            gstAdjustment: Number(returnGstTotal.toFixed(2)),
+          },
+        },
+      },
+    });
+
+    await tx.auditLog.create({
+      data: {
+        userId: user ? user.id : null,
+        action: 'CREDIT_NOTE_CREATED',
+        entity: 'SALE',
+        entityId: currentSale.id,
+        changes: {
+          eventType: 'CREDIT_NOTE_CREATED',
+          invoiceNumber: currentSale.invoiceNumber,
+          creditNoteNumber,
+          returnNumber,
+          creditAmount: Number(returnTotalAmount.toFixed(2)),
+          gstAdjustment: Number(returnGstTotal.toFixed(2)),
+          reason: returnData?.reason || 'Customer Return',
+          linkedInvoiceId: currentSale.id,
+          linkedInvoiceNumber: currentSale.invoiceNumber,
         },
       },
     });
@@ -1308,13 +1485,86 @@ export const returnSale = async (saleId, returnData = {}, user = null) => {
         entity: 'SALE',
         entityId: currentSale.id,
         changes: {
+          eventType: 'GST_ADJUSTED',
           invoiceNumber: currentSale.invoiceNumber,
           returnNumber,
           creditNoteNumber,
           gstAdjustment: Number(returnGstTotal.toFixed(2)),
-          originalTaxTotal: Number(currentSale.taxTotal || 0),
-          netTaxTotal: Math.max(0, Number(currentSale.taxTotal || 0) - returnGstTotal),
+          before: {
+            taxTotal: Number(currentSale.taxTotal || 0),
+          },
+          after: {
+            taxTotal: Math.max(0, Number(currentSale.taxTotal || 0) - returnGstTotal),
+          },
           reason: `GST adjustment credit note ${creditNoteNumber} for return ${returnNumber}`,
+        },
+      },
+    });
+
+    return mapSale(updated);
+  });
+};
+
+export const voidSale = async (saleId, reason = 'Voided by authorized manager', user = null) => {
+  const sale = await prisma.sale.findUnique({
+    where: { id: saleId },
+    include: {
+      items: true,
+      returns: { include: { items: true } },
+    },
+  });
+
+  if (!sale) throw ApiError.notFound('Sale not found');
+
+  if (sale.status === 'CANCELLED') {
+    throw ApiError.conflict('Invoice is already cancelled/voided');
+  }
+
+  return await prisma.$transaction(async (tx) => {
+    // Restore inventory for items that were not returned
+    for (const item of sale.items) {
+      if (item.productId) {
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { stock: { increment: item.quantity } },
+        });
+
+        await tx.stockTransaction.create({
+          data: {
+            productId: item.productId,
+            type: 'ADJUST',
+            quantity: item.quantity,
+            previousStock: 0,
+            newStock: item.quantity,
+            reason: `Restoration from voided invoice ${sale.invoiceNumber}`,
+          },
+        });
+      }
+    }
+
+    const updated = await tx.sale.update({
+      where: { id: saleId },
+      data: { status: 'CANCELLED' },
+      include: {
+        items: true,
+        customer: true,
+        payments: true,
+        returns: { include: { items: true } },
+      },
+    });
+
+    await tx.auditLog.create({
+      data: {
+        userId: user ? user.id : null,
+        action: 'INVOICE_VOIDED',
+        entity: 'SALE',
+        entityId: saleId,
+        changes: {
+          eventType: 'INVOICE_VOIDED',
+          invoiceNumber: sale.invoiceNumber,
+          reason,
+          before: { status: sale.status },
+          after: { status: 'CANCELLED' },
         },
       },
     });
@@ -1333,4 +1583,5 @@ export default {
   getSaleAuditTrail,
   recordPayment,
   returnSale,
+  voidSale,
 };

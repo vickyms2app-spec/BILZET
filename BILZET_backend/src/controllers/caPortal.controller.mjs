@@ -45,6 +45,12 @@ export const getCreditNotes = asyncHandler(async (req, res) => {
   return sendResponse(res, 200, result, 'Store credit notes retrieved successfully');
 });
 
+export const getStoreActivity = asyncHandler(async (req, res) => {
+  const { storeId, ...query } = req.query;
+  const result = await caPortalService.getStoreActivityForCA(req.user, storeId, query);
+  return sendResponse(res, 200, result, 'Store invoice activity ledger retrieved successfully');
+});
+
 export default {
   getAuthorizedStores,
   getInvoices,
@@ -53,5 +59,6 @@ export default {
   getFinancialSummary,
   getInvoiceCreditNotes,
   getCreditNotes,
+  getStoreActivity,
 };
 
