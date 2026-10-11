@@ -393,32 +393,6 @@ export default function Settings({ defaultTab: initialTab }) {
 
         {/* Header Action Buttons */}
         <div className="flex flex-wrap items-center gap-2.5">
-          {/* Plan Simulation Switcher for previewing Free, Pro, Premium */}
-          <div className="hidden sm:flex items-center gap-1 bg-slate-100 p-1 rounded-xl text-[11px] mr-1">
-            <span className="text-slate-500 px-1 font-medium">Plan:</span>
-            {["FREE", "PRO", "PREMIUM"].map((tier) => (
-              <button
-                key={tier}
-                type="button"
-                onClick={() => {
-                  setActivePlan(tier);
-                  localStorage.setItem(
-                    "bilzet_subscription_data",
-                    JSON.stringify({ currentPlan: tier })
-                  );
-                }}
-                className={`px-2.5 py-1 rounded-lg font-bold transition cursor-pointer ${
-                  activePlan === tier
-                    ? "bg-white text-slate-900 shadow-xs"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-                title={`Simulate ${tier} subscription tier`}
-              >
-                {tier}
-              </button>
-            ))}
-          </div>
-
           <Button
             variant="neutral"
             size="sm"

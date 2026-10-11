@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutGrid,
+  Plus,
   FilePlus,
   FileText,
   Boxes,
@@ -122,8 +123,8 @@ export const caNavSections = [
 
 const navSections = [
   {
-    title: "Dashboard",
-    key: "dash",
+    title: "Overview",
+    key: "overview",
     items: [
       { label: "Dashboard", path: "/dashboard", icon: LayoutGrid },
       { label: "Staff Workspace", path: "/staff-dashboard", icon: UserCheck },
@@ -179,21 +180,6 @@ const navSections = [
       { label: "Online Store Orders", path: "/online-orders", icon: OnlineIcon },
       { label: "Expenses", path: "/expenses", icon: Wallet },
       { label: "SMS Campaigns", path: "/sms-marketing", icon: MessageSquare },
-    ],
-  },
-  {
-    title: "CA Connect & Audit Suite",
-    key: "ca_connect_section",
-    items: [
-      { label: "CA Connect Hub", path: "/ca-connect", icon: Briefcase },
-      { label: "CA Audit Workspace", path: "/ca-portal/dashboard", icon: ShieldCheck, highlight: true },
-      { label: "Client Portfolio", path: "/ca-portal/clients", icon: Building2 },
-      { label: "Audit Pipeline", path: "/ca-portal/pipeline", icon: Activity },
-      { label: "Compliance & Deadlines", path: "/ca-portal/deadlines", icon: AlertTriangle },
-      { label: "Sales & Invoices Audit", path: "/ca-portal/sales", icon: FileText },
-      { label: "Bank Reconciliation", path: "/ca-portal/reconciliation", icon: Scale },
-      { label: "Audit Workpapers", path: "/ca-portal/reports", icon: FileSpreadsheet },
-      { label: "Workflow Automation", path: "/ca-portal/automation", icon: SlidersHorizontal },
     ],
   },
   {
@@ -525,17 +511,16 @@ export default function Layout({ children }) {
       ══════════════════════════════════════════════════ */}
       <aside
         className={`h-full shrink-0 hidden md:flex flex-col transition-all duration-300 ease-in-out z-30 select-none ${
-          sidebarOpen ? "w-[264px]" : "w-[76px]"
+          sidebarOpen ? "w-[264px]" : "w-[72px]"
         }`}
         style={{
-          background: "linear-gradient(180deg, #0F2747 0%, #0B1D36 50%, #081628 100%)",
+          backgroundColor: "#0A1628",
           borderRight: "1px solid rgba(255,255,255,0.08)",
-          boxShadow: "4px 0 24px -2px rgba(15,39,71,0.25)",
         }}
       >
         {/* Brand Header */}
         <div
-          className={`flex items-center h-16 px-4 border-b border-white/[0.06] shrink-0 ${
+          className={`flex items-center h-16 px-4 border-b border-white/[0.08] shrink-0 ${
             sidebarOpen ? "justify-between" : "justify-center"
           }`}
         >
@@ -543,8 +528,9 @@ export default function Layout({ children }) {
           {sidebarOpen && (
             <button
               onClick={() => setSidebarOpen(false)}
-              className="text-slate-400 hover:text-white p-1.5 rounded-xl hover:bg-white/[0.08] transition duration-150"
+              className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-white/[0.08] transition duration-150 cursor-pointer"
               title="Collapse sidebar"
+              aria-label="Collapse sidebar"
             >
               <ChevronLeft size={16} />
             </button>
@@ -552,8 +538,9 @@ export default function Layout({ children }) {
           {!sidebarOpen && (
             <button
               onClick={() => setSidebarOpen(true)}
-              className="text-slate-400 hover:text-white p-1.5 rounded-xl hover:bg-white/[0.08] transition duration-150"
+              className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-white/[0.08] transition duration-150 cursor-pointer"
               title="Expand sidebar"
+              aria-label="Expand sidebar"
             >
               <ChevronRight size={16} />
             </button>
@@ -562,24 +549,24 @@ export default function Layout({ children }) {
 
         {/* Quick Action Button: POS Billing / CA Audit Suite */}
         {sidebarOpen ? (
-          <div className="px-3.5 pt-3.5 pb-1 shrink-0">
+          <div className="px-3.5 pt-3 pb-2 shrink-0">
             {user?.role === "CA" || location.pathname.startsWith("/ca-portal") ? (
               <div className="space-y-1.5">
                 <NavLink
                   to="/ca-portal/dashboard"
-                  className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs text-white bg-gradient-to-r from-blue-700 to-indigo-600 shadow-md shadow-blue-500/25 transition-all duration-200 group"
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg font-semibold text-xs text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-xs group"
                 >
-                  <div className="flex items-center gap-2.5">
-                    <ShieldCheck size={16} className="text-cyan-200" />
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck size={16} className="text-white shrink-0" />
                     <span>CA Audit Suite</span>
                   </div>
-                  <span className="px-1.5 py-0.5 rounded-md bg-white/20 text-[10px] font-mono tracking-tight text-white/90">
+                  <span className="px-1.5 py-0.5 rounded bg-white/20 text-[10px] font-mono tracking-tight text-white/90">
                     AUDIT
                   </span>
                 </NavLink>
                 <NavLink
                   to="/dashboard"
-                  className="w-full flex items-center justify-center gap-1.5 py-1 px-2 text-[11px] font-semibold text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition"
+                  className="w-full flex items-center justify-center gap-1.5 py-1 px-2 text-[11px] font-medium text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition"
                 >
                   <ArrowRightLeft size={12} className="text-cyan-300" />
                   <span>Exit to Shop Dashboard</span>
@@ -588,51 +575,51 @@ export default function Layout({ children }) {
             ) : (
               <NavLink
                 to="/billing"
-                className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs text-white bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 shadow-md shadow-blue-500/25 transition-all duration-200 group"
+                className="w-full flex items-center justify-between px-3 py-2 rounded-lg font-semibold text-xs text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-xs group"
               >
-                <div className="flex items-center gap-2.5">
-                  <Sparkles size={16} className="text-cyan-200 animate-pulse" />
-                  <span>POS / New Bill</span>
+                <div className="flex items-center gap-2">
+                  <Plus size={16} className="text-white shrink-0" />
+                  <span>New Bill</span>
                 </div>
-                <span className="px-1.5 py-0.5 rounded-md bg-white/20 text-[10px] font-mono tracking-tight text-white/90">
+                <span className="px-1.5 py-0.5 rounded bg-white/20 text-[10px] font-mono tracking-wide text-white/90">
                   F2
                 </span>
               </NavLink>
             )}
           </div>
         ) : (
-          <div className="px-2 pt-3 pb-1 shrink-0 flex justify-center">
+          <div className="px-2 pt-3 pb-2 shrink-0 flex justify-center">
             {user?.role === "CA" || location.pathname.startsWith("/ca-portal") ? (
               <NavLink
                 to="/ca-portal/dashboard"
                 title="CA Audit Suite"
-                className="w-10 h-10 rounded-xl flex items-center justify-center text-white bg-gradient-to-tr from-blue-700 to-indigo-600 shadow-md shadow-blue-500/30 hover:scale-105 transition"
+                className="w-10 h-10 rounded-lg flex items-center justify-center text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-xs"
               >
-                <ShieldCheck size={17} />
+                <ShieldCheck size={18} />
               </NavLink>
             ) : (
               <NavLink
                 to="/billing"
-                title="New Bill / POS (F2)"
-                className="w-10 h-10 rounded-xl flex items-center justify-center text-white bg-gradient-to-tr from-blue-600 to-cyan-500 shadow-md shadow-blue-500/30 hover:scale-105 transition"
+                title="New Bill (F2)"
+                className="w-10 h-10 rounded-lg flex items-center justify-center text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-xs"
               >
-                <Sparkles size={17} />
+                <Plus size={18} />
               </NavLink>
             )}
           </div>
         )}
 
         {/* Navigation list */}
-        <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-3 scrollbar-thin scrollbar-thumb-white/10 hover:scrollbar-thumb-white/20">
+        <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-2.5 scrollbar-thin scrollbar-thumb-white/10 hover:scrollbar-thumb-white/20">
           {displayedNavSections.map((section, sIdx) => {
             const isSectionCollapsed = !!collapsedSections[section.key];
 
             return (
-              <div key={section.key || section.title || sIdx} className="space-y-1">
+              <div key={section.key || section.title || sIdx} className="space-y-0.5">
                 {sidebarOpen ? (
                   <button
                     onClick={() => toggleSection(section.key)}
-                    className="w-full flex items-center justify-between px-2.5 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400/80 hover:text-slate-200 transition"
+                    className="w-full flex items-center justify-between px-2.5 pt-2.5 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400/80 hover:text-slate-200 transition cursor-pointer"
                   >
                     <span className="truncate">{section.title}</span>
                     <ChevronDown
@@ -643,7 +630,7 @@ export default function Layout({ children }) {
                     />
                   </button>
                 ) : (
-                  sIdx > 0 && <div className="mx-2 my-2 border-t border-white/[0.06]" />
+                  sIdx > 0 && <div className="mx-2 my-2 border-t border-white/[0.08]" />
                 )}
 
                 {(!isSectionCollapsed || !sidebarOpen) && (
@@ -665,23 +652,20 @@ export default function Layout({ children }) {
                           key={item.path}
                           to={item.path}
                           title={!sidebarOpen ? item.label : undefined}
-                          className={`flex items-center gap-3 px-3 py-2 rounded-xl text-[12px] font-medium transition-all duration-150 relative group ${
+                          className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-colors relative group ${
                             isActive
-                              ? "bg-gradient-to-r from-blue-600 to-blue-500 text-white font-semibold shadow-md shadow-blue-600/30"
-                              : "text-slate-300/80 hover:text-white hover:bg-white/[0.07]"
+                              ? "bg-blue-600 text-white font-semibold shadow-xs"
+                              : "text-slate-300 hover:text-white hover:bg-white/[0.06]"
                           } ${!sidebarOpen ? "justify-center px-0 py-2.5" : ""}`}
                         >
                           <Icon
                             size={16}
-                            className={`shrink-0 transition-transform duration-150 group-hover:scale-110 ${
+                            className={`shrink-0 transition-transform duration-150 group-hover:scale-105 ${
                               isActive ? "text-white" : "text-slate-400 group-hover:text-slate-200"
                             }`}
                             strokeWidth={isActive ? 2.2 : 1.8}
                           />
                           {sidebarOpen && <span className="truncate">{item.label}</span>}
-                          {isActive && sidebarOpen && (
-                            <span className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-400 shadow-xs shadow-blue-400 shrink-0" />
-                          )}
                         </NavLink>
                       );
                     })}
@@ -692,65 +676,42 @@ export default function Layout({ children }) {
           })}
         </nav>
 
-        {/* Bottom Store Card & User */}
-        <div className="p-3 border-t border-white/[0.08] bg-black/25 shrink-0 space-y-2">
-          {sidebarOpen ? (
-            <>
-              {/* Store Switcher Component */}
-              <StoreSwitcher variant="sidebar" />
-
-              <div className="bg-white/[0.04] border border-white/[0.08] hover:border-white/[0.12] rounded-xl p-2.5 transition duration-150">
-                <div className="flex items-center gap-2.5 mb-2">
-                  <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xs shadow-xs shrink-0">
-                    {userInitials}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-white font-bold text-xs leading-tight truncate">
-                      {displayName}
-                    </p>
-                    <p className="text-[10px] text-slate-400 font-medium truncate mt-0.5">
-                      {displayRole}
-                    </p>
-                  </div>
-                </div>
-
-                {isAuthorizedAdmin && (
-                  <NavLink
-                    to="/admin"
-                    className="w-full mb-1.5 py-1 px-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:brightness-110 text-white text-[10px] font-bold rounded-lg transition flex items-center justify-center gap-1.5 shadow-xs"
-                  >
-                    <Shield size={11} />
-                    <span>Admin Console & Vault</span>
-                  </NavLink>
-                )}
-
-                <button
-                  onClick={handleLogout}
-                  className="w-full py-1.5 px-2.5 bg-white/[0.06] hover:bg-rose-500/20 hover:text-rose-300 hover:border-rose-500/30 border border-white/[0.08] text-slate-300 text-[10px] font-semibold rounded-lg transition flex items-center justify-center gap-1.5"
+        {/* Admin Console & Vault — Only Bottom Item */}
+        {isAuthorizedAdmin && (
+          <div className="p-3 border-t border-white/[0.08] bg-[#0A1628] shrink-0">
+            {sidebarOpen ? (
+              <NavLink
+                to="/admin"
+                className={({ isActive }) =>
+                  `flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                    isActive || location.pathname === "/app-admin"
+                      ? "bg-blue-600 text-white font-semibold shadow-xs"
+                      : "text-slate-300 hover:text-white hover:bg-white/[0.06]"
+                  }`
+                }
+              >
+                <Shield size={16} className="shrink-0" />
+                <span className="truncate">Admin Console & Vault</span>
+              </NavLink>
+            ) : (
+              <div className="flex justify-center">
+                <NavLink
+                  to="/admin"
+                  title="Admin Console & Vault"
+                  className={({ isActive }) =>
+                    `w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
+                      isActive || location.pathname === "/app-admin"
+                        ? "bg-blue-600 text-white shadow-xs"
+                        : "text-slate-400 hover:text-white hover:bg-white/[0.06]"
+                    }`
+                  }
                 >
-                  <LogOut size={11} className="text-slate-400 group-hover:text-rose-300" />
-                  <span>Sign Out</span>
-                </button>
+                  <Shield size={18} />
+                </NavLink>
               </div>
-            </>
-          ) : (
-            <div className="flex flex-col items-center gap-2">
-              <div
-                className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xs shadow-xs"
-                title={`${displayName} (${displayRole})`}
-              >
-                {userInitials}
-              </div>
-              <button
-                onClick={handleLogout}
-                className="p-2 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition"
-                title="Logout"
-              >
-                <LogOut size={16} />
-              </button>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </aside>
 
       {/* ══════════════════════════════════════════════════
@@ -764,33 +725,39 @@ export default function Layout({ children }) {
           />
           <div
             className="relative w-72 max-w-[85vw] h-full flex flex-col z-10 p-4 overflow-y-auto animate-in slide-in-from-left duration-250 shadow-2xl"
-            style={{ background: "linear-gradient(180deg, #0F2747 0%, #0B1D36 100%)" }}
+            style={{ backgroundColor: "#0A1628" }}
           >
-            <div className="flex items-center justify-between pb-4 border-b border-white/[0.08]">
+            <div className="flex items-center justify-between pb-3.5 border-b border-white/[0.08]">
               <Logo variant="full" theme="dark" size="md" />
               <button
                 onClick={() => setMobileDrawer(false)}
-                className="p-1.5 text-slate-400 hover:text-white rounded-xl hover:bg-white/10 transition"
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-white/10 transition cursor-pointer"
+                aria-label="Close Navigation"
               >
                 <X size={18} />
               </button>
             </div>
 
-            <div className="pt-3 pb-2">
+            <div className="pt-3 pb-2 shrink-0">
               <NavLink
                 to="/billing"
                 onClick={() => setMobileDrawer(false)}
-                className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl font-bold text-xs text-white bg-gradient-to-r from-blue-600 to-blue-500 shadow-md shadow-blue-500/20"
+                className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg font-semibold text-xs text-white bg-blue-600 hover:bg-blue-700 shadow-xs transition"
               >
-                <Sparkles size={14} />
-                <span>POS / Quick Bill</span>
+                <div className="flex items-center gap-2">
+                  <Plus size={16} />
+                  <span>New Bill</span>
+                </div>
+                <span className="px-1.5 py-0.5 rounded bg-white/20 text-[10px] font-mono tracking-wide text-white/90">
+                  F2
+                </span>
               </NavLink>
             </div>
 
-            <nav className="flex-1 overflow-y-auto py-2 space-y-3">
+            <nav className="flex-1 overflow-y-auto py-2 space-y-2.5">
               {displayedNavSections.map((section) => (
-                <div key={section.title} className="space-y-1">
-                  <div className="px-3 pt-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                <div key={section.title} className="space-y-0.5">
+                  <div className="px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400/80">
                     {section.title}
                   </div>
                   {section.items.map((item) => {
@@ -804,10 +771,10 @@ export default function Layout({ children }) {
                         key={item.path}
                         to={item.path}
                         onClick={() => setMobileDrawer(false)}
-                        className={`flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition ${
+                        className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
                           isActive
-                            ? "bg-gradient-to-r from-blue-600 to-blue-500 text-white font-semibold shadow-md shadow-blue-600/30"
-                            : "text-slate-300/80 hover:text-white hover:bg-white/[0.07]"
+                            ? "bg-blue-600 text-white font-semibold shadow-xs"
+                            : "text-slate-300 hover:text-white hover:bg-white/[0.06]"
                         }`}
                       >
                         <Icon
@@ -816,9 +783,6 @@ export default function Layout({ children }) {
                           strokeWidth={isActive ? 2.2 : 1.8}
                         />
                         <span>{item.label}</span>
-                        {isActive && (
-                          <span className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-400" />
-                        )}
                       </NavLink>
                     );
                   })}
@@ -826,24 +790,25 @@ export default function Layout({ children }) {
               ))}
             </nav>
 
-            <div className="pt-3 border-t border-white/[0.08]">
-              <div className="bg-white/[0.04] border border-white/[0.08] rounded-xl p-3 mb-2 flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xs shrink-0">
-                  {userInitials}
-                </div>
-                <div className="min-w-0">
-                  <p className="text-white font-bold text-xs truncate">{displayName}</p>
-                  <p className="text-[10px] text-slate-400">{displayRole}</p>
-                </div>
+            {/* Admin Console & Vault at bottom of Mobile Drawer */}
+            {isAuthorizedAdmin && (
+              <div className="pt-3 border-t border-white/[0.08] shrink-0">
+                <NavLink
+                  to="/admin"
+                  onClick={() => setMobileDrawer(false)}
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition ${
+                      isActive || location.pathname === "/app-admin"
+                        ? "bg-blue-600 text-white font-semibold shadow-xs"
+                        : "text-slate-300 hover:text-white hover:bg-white/[0.06]"
+                    }`
+                  }
+                >
+                  <Shield size={16} />
+                  <span>Admin Console & Vault</span>
+                </NavLink>
               </div>
-              <button
-                onClick={handleLogout}
-                className="w-full py-2 bg-white/[0.06] hover:bg-rose-500/20 text-slate-300 hover:text-rose-300 text-xs font-semibold rounded-xl flex items-center justify-center gap-2 transition"
-              >
-                <LogOut size={13} />
-                <span>Logout</span>
-              </button>
-            </div>
+            )}
           </div>
         </div>
       )}
@@ -853,29 +818,33 @@ export default function Layout({ children }) {
       ══════════════════════════════════════════════════ */}
       <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
         {/* ── Top Header Bar ── */}
-        <header className="h-16 shrink-0 bg-white border-b border-slate-200/90 px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4 z-20 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+        <header className="h-16 shrink-0 bg-white border-b border-slate-200 px-4 sm:px-6 flex items-center justify-between gap-4 z-20">
           {/* Left: Mobile trigger & Global Search with Ctrl+K */}
-          <div className="flex items-center gap-3 min-w-0 flex-1 max-w-xl">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1 max-w-md">
+            {/* Simple Hamburger Menu on the left */}
             <button
+              type="button"
               onClick={() => setMobileDrawer(true)}
-              className="md:hidden p-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 transition"
+              className="md:hidden p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition shrink-0 cursor-pointer"
               aria-label="Open Navigation"
             >
               <Menu size={18} />
             </button>
 
             <button
+              type="button"
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="hidden md:flex p-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 hover:text-slate-900 transition shrink-0"
+              className="hidden md:flex p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition shrink-0 cursor-pointer"
               title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+              aria-label="Toggle Sidebar"
             >
-              <Menu size={17} />
+              <Menu size={18} />
             </button>
 
-            {/* Global Search Bar with Ctrl+K badge & Live Autocomplete Dropdown */}
-            <div className="relative w-full max-w-md">
-              <div className="flex items-center gap-2.5 px-3.5 py-2 bg-slate-50 border border-slate-200/90 rounded-xl text-xs text-slate-400 w-full focus-within:border-blue-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-500/10 transition shadow-2xs">
-                <Search size={15} className="text-slate-400 shrink-0" />
+            {/* Compact Customer Search Bar with Ctrl+K */}
+            <div className="relative w-full">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-400 w-full focus-within:border-blue-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-500/10 transition">
+                <Search size={14} className="text-slate-400 shrink-0" />
                 <input
                   ref={searchInputRef}
                   type="text"
@@ -884,7 +853,7 @@ export default function Layout({ children }) {
                   onFocus={() => {
                     if (searchQuery.trim()) setSearchOpen(true);
                   }}
-                  placeholder="Search customers, products, invoices..."
+                  placeholder="Search customers, products, bills..."
                   className="bg-transparent outline-none w-full text-slate-800 text-xs placeholder:text-slate-400 font-normal"
                 />
                 {searchQuery ? (
@@ -894,12 +863,12 @@ export default function Layout({ children }) {
                       setSearchQuery("");
                       setSearchOpen(false);
                     }}
-                    className="text-slate-400 hover:text-slate-600 p-0.5"
+                    className="text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
                   >
                     <X size={13} />
                   </button>
                 ) : (
-                  <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 text-[10px] font-mono font-semibold text-slate-400 bg-white border border-slate-200 rounded shadow-2xs shrink-0">
+                  <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 text-[10px] font-mono font-medium text-slate-400 bg-white border border-slate-200 rounded shrink-0 select-none">
                     Ctrl K
                   </kbd>
                 )}
@@ -1037,81 +1006,41 @@ export default function Layout({ children }) {
             </div>
           </div>
 
-          {/* Right: Quick Punch, Theme Toggle, Notifications, Store, Connection, User Profile */}
-          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
-            {/* Header Attendance Quick Punch Clock Button */}
-            {user && (
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={handleHeaderQuickPunch}
-                  disabled={headerPunching || Boolean(headerAttendance?.checkIn && headerAttendance?.checkOut)}
-                  className={`h-[36px] px-3 rounded-full border text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs ${
-                    headerAttendance?.checkIn && !headerAttendance?.checkOut
-                      ? "bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100"
-                      : headerAttendance?.checkIn && headerAttendance?.checkOut
-                      ? "bg-slate-100 text-slate-600 border-slate-200 cursor-default"
-                      : "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
-                  }`}
-                  title={
-                    headerAttendance?.checkIn && !headerAttendance?.checkOut
-                      ? "Click to Punch Out (End Shift)"
-                      : headerAttendance?.checkIn && headerAttendance?.checkOut
-                      ? "Today's shift completed"
-                      : "Click to Punch In (Start Shift)"
-                  }
-                >
-                  <span
-                    className={`w-2 h-2 rounded-full ${
-                      headerAttendance?.checkIn && !headerAttendance?.checkOut
-                        ? "bg-emerald-500 animate-pulse"
-                        : headerAttendance?.checkIn && headerAttendance?.checkOut
-                        ? "bg-slate-400"
-                        : "bg-blue-500"
-                    }`}
-                  />
-                  <span className="hidden sm:inline">
-                    {headerPunching
-                      ? "Updating…"
-                      : headerAttendance?.checkIn && !headerAttendance?.checkOut
-                      ? "On Duty"
-                      : headerAttendance?.checkIn && headerAttendance?.checkOut
-                      ? "Shift Done"
-                      : "Punch In"}
-                  </span>
-                </button>
+          {/* Right: Store, Online Status, Notifications, Primary New Bill, User Profile */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {/* Store Switcher: Current store name with small store icon & dropdown */}
+            <StoreSwitcher variant="header" />
 
-                {headerPunchToast && (
-                  <div className="absolute right-0 top-11 bg-slate-900 text-white text-[11px] font-semibold px-2.5 py-1 rounded-lg shadow-lg whitespace-nowrap z-50 animate-in fade-in">
-                    {headerPunchToast}
-                  </div>
-                )}
+            {/* Subtle Divider */}
+            <div className="h-5 w-px bg-slate-200 hidden sm:block" />
+
+            {/* Online Status: Small green dot with subtle text, no large bordered badge */}
+            {connStatus === "online" ? (
+              <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-500 select-none px-1">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                <span className="text-[11px] font-medium text-slate-600">Online</span>
               </div>
+            ) : (
+              <button
+                type="button"
+                onClick={checkConnection}
+                className="hidden sm:flex items-center gap-1.5 text-xs text-rose-600 hover:text-rose-700 px-1 cursor-pointer"
+                title="Click to retry server connection"
+              >
+                <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping shrink-0" />
+                <span className="text-[11px] font-medium">Offline (Retry)</span>
+              </button>
             )}
 
-            {/* Real Interactive Theme Toggle Button */}
-            <button
-              type="button"
-              onClick={toggleTheme}
-              className="w-[38px] h-[38px] rounded-full border border-slate-200/90 bg-white hover:bg-slate-50 text-slate-600 hover:text-slate-900 transition flex items-center justify-center shadow-[0_1px_2px_rgba(15,23,42,0.04)] active:scale-95 group"
-              title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
-            >
-              <span className="w-[28px] h-[28px] rounded-full bg-slate-100 group-hover:bg-slate-200 flex items-center justify-center transition-colors">
-                {isDark ? <Sun size={14} className="text-amber-500" /> : <Moon size={14} className="text-slate-600" />}
-              </span>
-            </button>
-
-            {/* Real Interactive Notification Bell with Dropdown */}
+            {/* Notifications: Simple bell icon button */}
             <div className="relative">
               <button
                 type="button"
                 onClick={() => setShowNotifications(!showNotifications)}
-                className="relative w-[38px] h-[38px] rounded-full border border-slate-200/90 bg-white hover:bg-slate-50 text-slate-600 hover:text-slate-900 transition flex items-center justify-center shadow-[0_1px_2px_rgba(15,23,42,0.04)] active:scale-95 group"
-                title="Notifications & System Activity"
+                className="relative p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition cursor-pointer"
+                title="Notifications & Activity"
               >
-                <span className="w-[28px] h-[28px] rounded-full bg-slate-100 group-hover:bg-slate-200 flex items-center justify-center transition-colors">
-                  <Bell size={14} />
-                </span>
+                <Bell size={18} />
                 {unreadCount > 0 && (
                   <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white" />
                 )}
@@ -1194,76 +1123,39 @@ export default function Layout({ children }) {
               )}
             </div>
 
-            {/* Store Switcher Header */}
-            <StoreSwitcher variant="header" />
-
-            {/* Connection Badge */}
-            {connStatus === "online" ? (
-              <span className="hidden sm:inline-flex items-center gap-1.5 pl-2 pr-3 h-[38px] rounded-full text-xs font-semibold text-[#111827] bg-white border border-slate-200/90 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-                <span className="w-[24px] h-[24px] rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center shrink-0">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                </span>
-                <span>Online</span>
-              </span>
-            ) : (
-              <button
-                onClick={checkConnection}
-                className="hidden sm:inline-flex items-center gap-1.5 pl-2 pr-3 h-[38px] rounded-full text-xs font-semibold text-[#111827] bg-white border border-rose-200 shadow-[0_1px_2px_rgba(15,23,42,0.04)] animate-bounce"
-              >
-                <span className="w-[24px] h-[24px] rounded-full bg-rose-50 text-rose-600 border border-rose-200 flex items-center justify-center shrink-0">
-                  <span className="w-2 h-2 rounded-full bg-rose-500" />
-                </span>
-                <span>Offline · Retry</span>
-              </button>
-            )}
-
-            {/* Quick POS Button */}
+            {/* Primary Action: Solid blue "New Bill" button with plus icon */}
             <NavLink
               to="/billing"
-              className="inline-flex items-center gap-2 pl-2 pr-4 h-[38px] rounded-full text-xs font-semibold text-[#111827] bg-white hover:bg-blue-50/20 border border-slate-200/90 hover:border-blue-300 transition shadow-[0_1px_2px_rgba(15,23,42,0.04)] group"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition shadow-xs hover:shadow active:scale-98 shrink-0"
             >
-              <span className="w-[26px] h-[26px] rounded-full bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center shrink-0 shadow-2xs group-hover:bg-blue-600 group-hover:text-white transition-all">
-                <FilePlus size={13} />
-              </span>
+              <Plus size={15} className="shrink-0" />
               <span>New Bill</span>
             </NavLink>
 
-            {/* Admin Sensitive Details Master Switch */}
-            {isAuthorizedAdmin && (
-              <button
-                type="button"
-                onClick={toggleAdminReveal}
-                className="hidden lg:inline-flex items-center gap-2 pl-2 pr-3.5 h-[38px] rounded-full text-xs font-semibold text-[#111827] bg-white hover:bg-slate-50 border border-slate-200/90 hover:border-slate-300 transition shadow-[0_1px_2px_rgba(15,23,42,0.04)] group"
-                title="Admin Master Toggle: Reveal or mask sensitive credentials across entire website"
-              >
-                <span className={`w-[26px] h-[26px] rounded-full border flex items-center justify-center shrink-0 shadow-2xs transition-all ${
-                  adminRevealed
-                    ? "bg-amber-50 text-amber-600 border-amber-200 group-hover:bg-amber-600 group-hover:text-white"
-                    : "bg-purple-50 text-purple-600 border-purple-200 group-hover:bg-purple-600 group-hover:text-white"
-                }`}>
-                  {adminRevealed ? <Unlock size={12} /> : <Lock size={12} />}
-                </span>
-                <span>{adminRevealed ? "Vault Unmasked" : "Secure Masked"}</span>
-              </button>
-            )}
+            {/* Subtle Divider */}
+            <div className="h-5 w-px bg-slate-200 hidden sm:block" />
 
-            {/* User Dropdown Chip */}
+            {/* Profile Section: Avatar, name, and dropdown together in one compact profile section */}
             <div className="relative">
               <button
+                type="button"
                 onClick={() => setUserDropdown(!userDropdown)}
-                className="flex items-center gap-2 p-1 pl-1.5 pr-3 h-[38px] rounded-full border border-slate-200/90 hover:border-slate-300 bg-white hover:bg-slate-50 transition shadow-[0_1px_2px_rgba(15,23,42,0.04)] group"
+                className="flex items-center gap-2 p-1 sm:px-2 py-1 rounded-lg hover:bg-slate-100 transition cursor-pointer text-left group"
+                title="Account & Profile"
               >
-                <div className="w-[28px] h-[28px] rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-[11px] shadow-2xs">
+                <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
                   {userInitials}
                 </div>
-                <div className="text-left hidden sm:block">
-                  <p className="text-xs font-semibold text-[#111827] leading-none truncate max-w-[120px]">
+                <div className="hidden lg:flex flex-col text-left leading-tight">
+                  <span className="text-xs font-semibold text-slate-800 truncate max-w-[120px]">
                     {displayName}
-                  </p>
+                  </span>
+                  <span className="text-[10px] text-slate-400 capitalize">
+                    {displayRole}
+                  </span>
                 </div>
-                <ChevronDown size={13} className="text-slate-400 group-hover:text-slate-600" />
+                <ChevronDown size={14} className="text-slate-400 group-hover:text-slate-600 transition shrink-0" />
               </button>
-
 
               {userDropdown && (
                 <>
@@ -1271,7 +1163,7 @@ export default function Layout({ children }) {
                     className="fixed inset-0 z-40"
                     onClick={() => setUserDropdown(false)}
                   />
-                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl p-2 shadow-xl border border-slate-200 z-50 animate-in fade-in zoom-in-95">
+                  <div className="absolute right-0 mt-2 w-60 bg-white rounded-2xl p-2 shadow-xl border border-slate-200 z-50 animate-in fade-in zoom-in-95">
                     <div className="px-3 py-2 border-b border-slate-100 mb-1">
                       <p className="text-xs font-bold text-slate-900 truncate">{displayName}</p>
                       <p className="text-[11px] text-slate-500 truncate">{user?.email || "owner@bilzet.com"}</p>
@@ -1319,6 +1211,76 @@ export default function Layout({ children }) {
                       </NavLink>
                     )}
 
+                    {/* Preserved Sensitive Data Mask Toggle */}
+                    {isAuthorizedAdmin && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          toggleAdminReveal();
+                          setUserDropdown(false);
+                        }}
+                        className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs text-slate-700 hover:bg-slate-50 font-medium transition"
+                      >
+                        <span className="flex items-center gap-2.5">
+                          {adminRevealed ? (
+                            <Unlock size={14} className="text-amber-600" />
+                          ) : (
+                            <Lock size={14} className="text-purple-600" />
+                          )}
+                          <span>{adminRevealed ? "Vault Unmasked" : "Secure Masked"}</span>
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-mono">Toggle</span>
+                      </button>
+                    )}
+
+                    {/* Preserved Theme Toggle */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        toggleTheme();
+                        setUserDropdown(false);
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs text-slate-700 hover:bg-slate-50 font-medium transition"
+                    >
+                      <span className="flex items-center gap-2.5">
+                        {isDark ? <Sun size={14} className="text-amber-500" /> : <Moon size={14} className="text-slate-500" />}
+                        <span>{isDark ? "Light Mode" : "Dark Mode"}</span>
+                      </span>
+                      <span className="text-[10px] text-slate-400">Theme</span>
+                    </button>
+
+                    {/* Preserved Quick Punch */}
+                    {user && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleHeaderQuickPunch();
+                          setUserDropdown(false);
+                        }}
+                        disabled={headerPunching || Boolean(headerAttendance?.checkIn && headerAttendance?.checkOut)}
+                        className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs text-slate-700 hover:bg-slate-50 font-medium transition"
+                      >
+                        <span className="flex items-center gap-2.5">
+                          <span className={`w-2 h-2 rounded-full ${
+                            headerAttendance?.checkIn && !headerAttendance?.checkOut
+                              ? "bg-emerald-500 animate-pulse"
+                              : headerAttendance?.checkIn && headerAttendance?.checkOut
+                              ? "bg-slate-400"
+                              : "bg-blue-500"
+                          }`} />
+                          <span>
+                            {headerPunching
+                              ? "Updating Shift..."
+                              : headerAttendance?.checkIn && !headerAttendance?.checkOut
+                              ? "End Shift (Punch Out)"
+                              : headerAttendance?.checkIn && headerAttendance?.checkOut
+                              ? "Shift Completed"
+                              : "Start Shift (Punch In)"}
+                          </span>
+                        </span>
+                      </button>
+                    )}
+
                     <div className="border-t border-slate-100 my-1" />
 
                     <button
@@ -1346,22 +1308,11 @@ export default function Layout({ children }) {
         </main>
 
         {/* ── Fixed Clean Footer ── */}
-        <footer className="h-11 shrink-0 border-t border-slate-200/80 bg-white/90 backdrop-blur-xs px-6 text-xs text-slate-500 flex items-center justify-between gap-3 z-10">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-slate-700">BILZET Retail &amp; POS Systems</span>
-            <span className="text-slate-300 hidden sm:inline">·</span>
-            <span className="hidden sm:inline">© {new Date().getFullYear()} All rights reserved.</span>
-          </div>
-
-          <div className="flex items-center gap-4 text-[11px]">
-            <span className="text-slate-400 hidden md:inline">
-              Cloud Sync: <strong className="text-slate-600 font-semibold">Active &amp; Secure</strong>
-            </span>
-            <span className="inline-flex items-center gap-1.5 text-slate-400">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              <span>Encrypted SSL</span>
-            </span>
-            <span className="text-slate-400 font-mono">v2.4.0</span>
+        <footer className="h-10 shrink-0 bg-white border-t border-slate-200 border-l-4 border-l-emerald-600 px-4 sm:px-6 flex items-center z-10">
+          <div className="flex items-center gap-2.5 sm:gap-3 text-xs">
+            <span className="font-bold text-emerald-800 tracking-tight">Garden Greens</span>
+            <span className="h-3.5 w-px bg-slate-300" aria-hidden="true" />
+            <span className="text-slate-500 font-normal">© 2026 All rights reserved.</span>
           </div>
         </footer>
       </div>

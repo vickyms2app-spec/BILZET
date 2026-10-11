@@ -255,6 +255,7 @@ export default function StaffManagement({ defaultTab = "directory" }) {
     try {
       const res = await staffApi.remove(deleteTarget.id);
       notify("success", res?.message || `Employee ${deleteTarget.name} removed successfully.`);
+      setStaffList((prev) => prev.filter((s) => s.id !== deleteTarget.id));
       setDeleteTarget(null);
       loadData();
     } catch (err) {

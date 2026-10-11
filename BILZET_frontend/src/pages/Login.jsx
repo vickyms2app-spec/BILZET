@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../store/auth";
 import { apiError } from "../api/http";
+import { referralApi } from "../api";
+import { getWorkspaceRedirectPath } from "../utils/workspaceRouter";
 import Logo from "../components/common/Logo";
 import HeroBillingIllustration from "../components/illustrations/HeroBillingIllustration";
 import { ClerkAuthBox, ClerkGoogleButton } from "../components/auth/ClerkAuth";
@@ -16,6 +18,9 @@ import {
   Sparkles,
   Zap,
   CheckCircle2,
+  Tag,
+  AlertCircle,
+  Loader2,
 } from "lucide-react";
 import { hasClerk } from "../config/clerk";
 
@@ -28,6 +33,9 @@ const leftPanelStyle = {
 
 export default function Login({ initialMode = "login" }) {
   const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const initialRefCode = searchParams.get("ref") || "";
+
   const isRegister =
     location.pathname.startsWith("/sign-up") ||
     location.pathname === "/register" ||
@@ -41,6 +49,8 @@ export default function Login({ initialMode = "login" }) {
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [referralCode, setReferralCode] = useState(initialRefCode);
+  const [referralStatus, setReferralStatus] = useState({ checking: false, valid: null, message: "" });
 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -54,10 +64,10 @@ export default function Login({ initialMode = "login" }) {
   const googleLogin = useAuth((s) => s.googleLogin);
   const nav = useNavigate();
 
-  // If already authenticated, redirect to dashboard
+  // If already authenticated, redirect to role-specific workspace
   useEffect(() => {
     if (user) {
-      nav("/dashboard", { replace: true });
+      nav(getWorkspaceRedirectPath(user), { replace: true });
     }
   }, [user, nav]);
 
@@ -108,20 +118,50 @@ export default function Login({ initialMode = "login" }) {
   }, [googleLogin, nav]);
 
 
+  const handleValidateReferral = async (codeToTest) => {
+    const code = (codeToTest !== undefined ? codeToTest : referralCode).trim().toUpperCase();
+    if (!code) {
+      setReferralStatus({ checking: false, valid: null, message: "" });
+      return;
+    }
+    setReferralStatus({ checking: true, valid: null, message: "" });
+    try {
+      const res = await referralApi.validate(code);
+      setReferralStatus({
+        checking: false,
+        valid: true,
+        message: res?.message || "Valid referral code applied! 10% discount enabled.",
+      });
+    } catch (err) {
+      setReferralStatus({
+        checking: false,
+        valid: false,
+        message: apiError(err) || "Invalid or unrecognized referral code.",
+      });
+    }
+  };
+
+  // Validate initial referral code if present in URL query
+  useEffect(() => {
+    if (initialRefCode) {
+      handleValidateReferral(initialRefCode);
+    }
+  }, [initialRefCode]);
+
   const switchMode = (newMode) => {
     setMode(newMode);
     setError("");
     setSuccess("");
     if (newMode === "register") {
-      nav("/sign-up");
+      nav("/sign-up" + (referralCode ? `?ref=${encodeURIComponent(referralCode)}` : ""));
     } else {
       nav("/sign-in");
     }
   };
 
-
   async function submit(e) {
     e.preventDefault();
+    if (busy) return;
     setError("");
     setSuccess("");
 
@@ -140,8 +180,9 @@ export default function Login({ initialMode = "login" }) {
     setBusy(true);
     try {
       if (mode === "login") {
-        await login({ email: email.trim().toLowerCase(), password });
-        nav("/dashboard");
+        const loggedUser = await login({ email: email.trim().toLowerCase(), password });
+        const targetPath = getWorkspaceRedirectPath(loggedUser?.user || useAuth.getState().user);
+        nav(targetPath, { replace: true });
       } else {
         const payload = {
           name: name.trim(),
@@ -149,10 +190,12 @@ export default function Login({ initialMode = "login" }) {
           phone: phone.trim() || undefined,
           password,
           role: "ADMIN",
+          referralCode: referralCode.trim().toUpperCase() || undefined,
         };
-        await register(payload);
-        setSuccess("Account created successfully! Redirecting...");
-        setTimeout(() => nav("/dashboard"), 600);
+        const regUser = await register(payload);
+        setSuccess("Account created successfully! Redirecting to your workspace...");
+        const targetPath = getWorkspaceRedirectPath(regUser?.user || useAuth.getState().user);
+        setTimeout(() => nav(targetPath, { replace: true }), 400);
       }
     } catch (e) {
       setError(apiError(e));
@@ -525,6 +568,72 @@ export default function Login({ initialMode = "login" }) {
                       {showConfirmPwd ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                   </div>
+                </div>
+              )}
+
+              {/* REGISTER ONLY: Referral Code Input (Optional) */}
+              {mode === "register" && (
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-semibold text-slate-700">
+                      Referral Code <span className="text-slate-400 font-normal">(Optional)</span>
+                    </label>
+                    {referralStatus.valid === true && (
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
+                        <CheckCircle2 size={11} className="text-emerald-600" /> 10% Discount Valid
+                      </span>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <Tag
+                      size={16}
+                      className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+                    />
+                    <input
+                      className="input-premium uppercase tracking-wider font-mono pr-20"
+                      style={{ paddingLeft: "2.75rem" }}
+                      type="text"
+                      disabled={busy}
+                      value={referralCode}
+                      onChange={(e) => {
+                        const val = e.target.value.toUpperCase();
+                        setReferralCode(val);
+                        if (!val.trim()) {
+                          setReferralStatus({ checking: false, valid: null, message: "" });
+                        }
+                      }}
+                      onBlur={() => handleValidateReferral()}
+                      placeholder="e.g. BZPROMO8"
+                    />
+                    {referralCode.trim() && (
+                      <button
+                        type="button"
+                        onClick={() => handleValidateReferral()}
+                        disabled={referralStatus.checking || busy}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 px-2.5 py-1 text-[11px] font-bold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 rounded-md transition"
+                      >
+                        {referralStatus.checking ? (
+                          <Loader2 size={12} className="animate-spin text-blue-600" />
+                        ) : (
+                          "Apply"
+                        )}
+                      </button>
+                    )}
+                  </div>
+                  {referralStatus.message && (
+                    <p
+                      className={`text-[11px] font-medium flex items-center gap-1 mt-1 ${
+                        referralStatus.valid ? "text-emerald-600" : "text-rose-600"
+                      }`}
+                    >
+                      {referralStatus.valid ? (
+                        <CheckCircle2 size={12} />
+                      ) : (
+                        <AlertCircle size={12} />
+                      )}
+                      <span>{referralStatus.message}</span>
+                    </p>
+                  )}
                 </div>
               )}
 

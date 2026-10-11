@@ -58,7 +58,7 @@ enum OrderStatus {
 
 model Business {
   id              String         @id @default(uuid())
-  ownerId         String         @unique @map("owner_id")
+  ownerId         String         @map("owner_id")
   name            String         @default("My Business")
   gstin           String?
   phone           String?
@@ -76,6 +76,7 @@ model Business {
   caAccesses      CaStoreAccess[] @relation("BusinessCAAccess")
   caInvitations   CaInvitation[]  @relation("BusinessCAInvitations")
 
+  @@index([ownerId])
   @@map("businesses")
 }
 
@@ -83,7 +84,7 @@ model User {
   id           String   @id @default(uuid())
   businessId   String?  @map("business_id")
   business     Business? @relation("BusinessMembers", fields: [businessId], references: [id])
-  ownedBusiness Business? @relation("BusinessOwner")
+  ownedBusinesses Business[] @relation("BusinessOwner")
 
   name         String
   email        String   @unique
@@ -520,10 +521,12 @@ model Staff {
   salary           Decimal   @default(0) @db.Decimal(12, 2)
   joiningDate      DateTime  @default(now()) @map("joining_date")
   status           String    @default("ACTIVE") // ACTIVE, INACTIVE, TERMINATED
+  isDeleted        Boolean   @default(false) @map("is_deleted")
+  deletedAt        DateTime? @map("deleted_at")
   businessId       String?   @map("business_id")
   business         Business? @relation(fields: [businessId], references: [id])
   userId           String?   @unique @map("user_id")
-  user             User?     @relation(fields: [userId], references: [id])
+  user             User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
   createdAt        DateTime  @default(now()) @map("created_at")
   updatedAt        DateTime  @updatedAt @map("updated_at")
 
@@ -531,6 +534,7 @@ model Staff {
   payrolls         StaffPayroll[]
 
   @@index([businessId])
+  @@index([isDeleted])
   @@map("staff")
 }
 

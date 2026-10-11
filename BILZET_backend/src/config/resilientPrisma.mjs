@@ -76,6 +76,145 @@ for (const r of SYSTEM_ROLE_DEFINITIONS) {
   }
 }
 
+// Seed realistic sales, purchases, and payments
+const seedTransactions = (() => {
+  const now = new Date();
+  const sales = [];
+  const saleItems = [];
+  const payments = [];
+  const purchases = [];
+  const purchaseItems = [];
+  const expenses = [];
+
+  const dailyPattern = [
+    { daysAgo: 6, sales: [22300], purchases: [10500] },
+    { daysAgo: 5, sales: [17900], purchases: [7800] },
+    { daysAgo: 4, sales: [24800], purchases: [11400] },
+    { daysAgo: 3, sales: [19400], purchases: [6200] },
+    { daysAgo: 2, sales: [21500, 9800], purchases: [9500] },
+    { daysAgo: 1, sales: [18200, 8400], purchases: [12000] },
+    { daysAgo: 0, sales: [12500, 9450, 6500], purchases: [8400] },
+  ];
+
+  dailyPattern.forEach((dp, idx) => {
+    const d = new Date(now.getTime() - dp.daysAgo * 86400000);
+    dp.sales.forEach((amt, sIdx) => {
+      const isCredit = dp.daysAgo === 0 && sIdx === 2;
+      const paid = isCredit ? 0 : amt;
+      const saleId = `sale-${idx}-${sIdx}`;
+      sales.push({
+        id: saleId,
+        invoiceNumber: `INV-2026-0${idx * 10 + sIdx + 1}`,
+        businessId: 'busi-01',
+        customerId: isCredit ? 'cust-01' : sIdx % 2 === 0 ? 'cust-01' : 'cust-02',
+        subtotal: Math.round(amt / 1.18),
+        taxTotal: amt - Math.round(amt / 1.18),
+        grandTotal: amt,
+        paidAmount: paid,
+        paymentStatus: isCredit ? 'UNPAID' : 'PAID',
+        paymentMethod: isCredit ? 'CREDIT' : sIdx % 2 === 0 ? 'UPI' : 'CASH',
+        status: 'COMPLETED',
+        dueDate: isCredit ? new Date(now.getTime() + 7 * 86400000) : null,
+        createdAt: d,
+        updatedAt: d,
+      });
+      saleItems.push({
+        id: `si-${idx}-${sIdx}`,
+        saleId,
+        productId: 'prod-01',
+        name: 'Basmati Rice Premium 5kg',
+        sku: 'PBR-5KG',
+        quantity: Math.max(1, Math.round(amt / 1500)),
+        price: 1500,
+        total: amt,
+      });
+      if (paid > 0) {
+        payments.push({
+          id: `pay-${idx}-${sIdx}`,
+          saleId,
+          customerId: sIdx % 2 === 0 ? 'cust-01' : 'cust-02',
+          amount: paid,
+          method: sIdx % 2 === 0 ? 'UPI' : 'CASH',
+          createdAt: d,
+        });
+      }
+    });
+
+    dp.purchases.forEach((pAmt, pIdx) => {
+      const purId = `pur-${idx}-${pIdx}`;
+      purchases.push({
+        id: purId,
+        invoiceNumber: `PUR-2026-0${idx * 10 + pIdx + 1}`,
+        supplierId: pIdx % 2 === 0 ? 'sup-01' : 'sup-02',
+        businessId: 'busi-01',
+        subtotal: Math.round(pAmt / 1.12),
+        taxTotal: pAmt - Math.round(pAmt / 1.12),
+        grandTotal: pAmt,
+        paidAmount: pAmt,
+        paymentStatus: 'PAID',
+        createdAt: d,
+        updatedAt: d,
+      });
+      purchaseItems.push({
+        id: `pi-${idx}-${pIdx}`,
+        purchaseId: purId,
+        productId: 'prod-02',
+        quantity: 50,
+        price: 45,
+        total: pAmt,
+      });
+    });
+
+    expenses.push({
+      id: `exp-${idx}`,
+      businessId: 'busi-01',
+      category: 'Store Utility & Operations',
+      amount: 1200,
+      date: d,
+      createdAt: d,
+      updatedAt: d,
+    });
+  });
+
+  // Additional 3 weeks of earlier history for "This Month" and "This Year"
+  for (let w = 1; w <= 3; w++) {
+    const d = new Date(now.getTime() - (w * 7 + 3) * 86400000);
+    const sAmt = 26000 + w * 2500;
+    const pAmt = 11000 + w * 1200;
+    const sId = `sale-w-${w}`;
+    sales.push({
+      id: sId,
+      invoiceNumber: `INV-2026-W0${w}`,
+      businessId: 'busi-01',
+      customerId: 'cust-02',
+      subtotal: Math.round(sAmt / 1.18),
+      taxTotal: sAmt - Math.round(sAmt / 1.18),
+      grandTotal: sAmt,
+      paidAmount: sAmt,
+      paymentStatus: 'PAID',
+      paymentMethod: 'UPI',
+      status: 'COMPLETED',
+      createdAt: d,
+      updatedAt: d,
+    });
+    purchases.push({
+      id: `pur-w-${w}`,
+      invoiceNumber: `PUR-2026-W0${w}`,
+      supplierId: 'sup-01',
+      businessId: 'busi-01',
+      subtotal: Math.round(pAmt / 1.12),
+      taxTotal: pAmt - Math.round(pAmt / 1.12),
+      grandTotal: pAmt,
+      paidAmount: pAmt,
+      paymentStatus: 'PAID',
+      createdAt: d,
+      updatedAt: d,
+    });
+  }
+
+  return { sales, saleItems, payments, purchases, purchaseItems, expenses };
+})();
+
 // In-Memory Storage for zero-latency fallback and offline demo mode
 export const memoryStore = {
   business: [
@@ -237,9 +376,9 @@ export const memoryStore = {
       updatedAt: new Date(),
     },
   ],
-  sale: [],
-  saleItem: [],
-  payment: [],
+  sale: seedTransactions.sales,
+  saleItem: seedTransactions.saleItems,
+  payment: seedTransactions.payments,
   salesReturn: [],
   salesReturnItem: [],
   shopSettings: [
@@ -257,7 +396,7 @@ export const memoryStore = {
       updatedAt: new Date(),
     },
   ],
-  expense: [],
+  expense: seedTransactions.expenses,
   inventoryLog: [],
   supplier: [
     {
@@ -287,11 +426,11 @@ export const memoryStore = {
       updatedAt: new Date(),
     },
   ],
-  purchase: [],
+  purchase: seedTransactions.purchases,
   purchaseOrder: [],
   debitNote: [],
   purchaseReturn: [],
-  purchaseItem: [],
+  purchaseItem: seedTransactions.purchaseItems,
   warehouse: [
     {
       id: 'wh-01',

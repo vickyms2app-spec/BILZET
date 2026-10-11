@@ -96,6 +96,21 @@ const ROLE_PREVIEWS = {
       { module: "Business Settings", view: true, create: true, edit: true, delete: true, print: true, export: true },
     ],
   },
+  CA: {
+    title: "Chartered Accountant (CA)",
+    badgeColor: "bg-indigo-100 text-indigo-800 border-indigo-200",
+    description: "External auditor and tax consultant. Review sales ledgers, purchase registers, GST computations, bank reconciliations, and compliance workpapers in the CA Workspace.",
+    badges: ["CA Workspace", "Sales & Invoices Audit", "GST & Tax Review", "Bank Reconciliation", "Audit Reports"],
+    matrix: [
+      { module: "Billing & POS", view: true, create: false, edit: false, delete: false, print: true, export: true },
+      { module: "Inventory & Stock", view: true, create: false, edit: false, delete: false, print: true, export: true },
+      { module: "Purchases & PO", view: true, create: false, edit: false, delete: false, print: true, export: true },
+      { module: "Customer Details", view: true, create: false, edit: false, delete: false, print: true, export: true },
+      { module: "Staff Attendance", view: false, create: false, edit: false, delete: false, print: false, export: false },
+      { module: "Reports & Analytics", view: true, create: false, edit: false, delete: false, print: true, export: true },
+      { module: "Business Settings", view: false, create: false, edit: false, delete: false, print: false, export: false },
+    ],
+  },
 };
 
 export default function TeamManagement() {
@@ -965,9 +980,10 @@ export default function TeamManagement() {
                   <option value="MANAGER">Manager (Operational Store Supervisor: Billing, Stock, Purchases, Reports)</option>
                   <option value="STAFF">Staff (Retail Sales: POS Billing, Delivery Challans, Customers)</option>
                   <option value="CASHIER">Cashier (Point-of-Sale Counter Billing &amp; Receipts)</option>
+                  <option value="CA">Chartered Accountant (CA: Sales, Purchases, GST Review &amp; Audit Portal)</option>
                   <option value="ADMIN">Administrator (Full Store Ownership &amp; System Settings)</option>
                   {roles
-                    .filter((r) => !["ADMIN", "MANAGER", "STAFF", "CASHIER"].includes(r.code))
+                    .filter((r) => !["ADMIN", "MANAGER", "STAFF", "CASHIER", "CA"].includes(r.code))
                     .map((r) => (
                       <option
                         key={r.id || r._id}

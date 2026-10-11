@@ -203,18 +203,16 @@ export default function StoreSwitcher({ variant = "header" }) {
   // VARIANT: HEADER (Top Header Bar)
   // ═════════════════════════════════════════════════════════════════════
   if (!isAdmin || !hasMultipleStores) {
-    // Single store Admin or staff: clean badge display
+    // Single store Admin or staff: clean subtle display
     return (
-      <div className="hidden lg:flex items-center gap-2 pl-2 pr-3.5 h-[38px] rounded-full border border-slate-200/90 bg-white text-xs font-semibold text-[#111827] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-        <span className="w-[26px] h-[26px] rounded-full bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center shrink-0">
-          <Store size={13} />
-        </span>
-        <span className="truncate max-w-[150px]">{storeDisplayName}</span>
+      <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700">
+        <Store size={15} className="text-slate-500 shrink-0" />
+        <span className="font-semibold text-slate-800 truncate max-w-[150px]">{storeDisplayName}</span>
       </div>
     );
   }
 
-  // Multiple-store Admin: Interactive dropdown with checkmarks and confirmation
+  // Multiple-store Admin: Clean minimal dropdown trigger
   return (
     <>
       <div className="relative" ref={dropdownRef}>
@@ -222,25 +220,18 @@ export default function StoreSwitcher({ variant = "header" }) {
           type="button"
           onClick={() => setOpen(!open)}
           disabled={switching}
-          className="flex items-center gap-2 pl-2 pr-3 h-[38px] rounded-full border border-slate-200/90 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-800 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition active:scale-98 cursor-pointer"
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 text-xs font-medium text-slate-700 transition cursor-pointer"
           title="Switch Store"
         >
-          <span className="w-[26px] h-[26px] rounded-full bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center shrink-0">
-            {switching ? (
-              <RefreshCw size={13} className="animate-spin text-blue-600" />
-            ) : (
-              <Store size={13} />
-            )}
-          </span>
+          {switching ? (
+            <RefreshCw size={15} className="animate-spin text-blue-600 shrink-0" />
+          ) : (
+            <Store size={15} className="text-slate-500 shrink-0" />
+          )}
 
-          <div className="flex flex-col text-left leading-tight">
-            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
-              Current Store
-            </span>
-            <span className="font-bold text-slate-900 truncate max-w-[140px] text-xs">
-              {storeDisplayName}
-            </span>
-          </div>
+          <span className="font-semibold text-slate-800 truncate max-w-[140px]">
+            {storeDisplayName}
+          </span>
 
           <ChevronDown
             size={13}

@@ -111,7 +111,17 @@ export default function Billing() {
     const local = localStorage.getItem("bilzet_invoice_settings");
     if (local) {
       try {
-        setShopSettings(JSON.parse(local));
+        const parsed = JSON.parse(local);
+        if (
+          parsed &&
+          parsed.invoiceTitle &&
+          (parsed.invoiceTitle.includes("TAX INVOICESUPER") ||
+            parsed.invoiceTitle.includes("SUPER TAX INVOICE"))
+        ) {
+          parsed.invoiceTitle = "TAX INVOICE";
+          localStorage.setItem("bilzet_invoice_settings", JSON.stringify(parsed));
+        }
+        setShopSettings(parsed);
       } catch (e) {}
     } else {
       settingsApi

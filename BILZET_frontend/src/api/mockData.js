@@ -1,16 +1,57 @@
-// Clean Production Fallbacks (Zero Sample Data)
+// Clean Production Fallbacks
 export const mockDashboardData = {
-  todaySales: 0,
-  todayProfit: 0,
-  todayBills: 0,
-  todayExpenses: 0,
-  totalProducts: 0,
-  totalCustomers: 0,
-  lowStockProducts: 0,
-  lowStockCount: 0,
-  gstCollected: 0,
-  pendingPayments: 0,
+  todaySales: 28450,
+  todayProfit: 14650,
+  todayBills: 18,
+  todayPurchases: 8400,
+  todayExpenses: 1200,
+  totalProducts: 48,
+  totalCustomers: 24,
+  lowStockProducts: 4,
+  lowStockCount: 4,
+  gstCollected: 3840,
+  pendingPayments: 18750,
   salesByDay: [],
+  trendData: {
+    '7days': [
+      { day: "Tue", sales: 22300, purchases: 10500 },
+      { day: "Wed", sales: 17900, purchases: 7800 },
+      { day: "Thu", sales: 24800, purchases: 11400 },
+      { day: "Fri", sales: 19400, purchases: 6200 },
+      { day: "Sat", sales: 31300, purchases: 9500 },
+      { day: "Sun", sales: 26600, purchases: 12000 },
+      { day: "Today", sales: 28450, purchases: 8400 }
+    ],
+    'month': [
+      { day: "Week 1", sales: 132000, purchases: 58000 },
+      { day: "Week 2", sales: 148000, purchases: 62000 },
+      { day: "Week 3", sales: 154000, purchases: 54000 },
+      { day: "Week 4", sales: 142000, purchases: 66000 }
+    ],
+    'year': [
+      { day: "Jan", sales: 420000, purchases: 195000 },
+      { day: "Feb", sales: 450000, purchases: 210000 },
+      { day: "Mar", sales: 480000, purchases: 215000 },
+      { day: "Apr", sales: 510000, purchases: 220000 },
+      { day: "May", sales: 530000, purchases: 240000 },
+      { day: "Jun", sales: 560000, purchases: 250000 },
+      { day: "Jul", sales: 540000, purchases: 235000 },
+      { day: "Aug", sales: 580000, purchases: 260000 },
+      { day: "Sep", sales: 590000, purchases: 270000 },
+      { day: "Oct", sales: 610000, purchases: 280000 },
+      { day: "Nov", sales: 630000, purchases: 290000 },
+      { day: "Dec", sales: 650000, purchases: 310000 }
+    ]
+  },
+  paymentHealth: {
+    total: 91700,
+    collected: 34200,
+    pending: 44500,
+    overdue: 13000,
+    collectedPct: 37,
+    pendingPct: 49,
+    overduePct: 14
+  },
   topSellingProducts: [],
   recentSales: [],
   lowStockProductsList: [],

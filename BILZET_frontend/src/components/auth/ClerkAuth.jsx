@@ -12,6 +12,7 @@ import {
 import { useAuth } from "../../store/auth";
 import { useNavigate } from "react-router-dom";
 import { registerTokenProvider, setTokens } from "../../api/http";
+import { getWorkspaceRedirectPath } from "../../utils/workspaceRouter";
 
 /**
  * ClerkAuthSync
@@ -65,7 +66,7 @@ export function ClerkAuthSync() {
             if (needsOnboarding) {
               navigate("/settings?onboarding=true", { replace: true });
             } else {
-              navigate("/dashboard", { replace: true });
+              navigate(getWorkspaceRedirectPath(appUser), { replace: true });
             }
           }
         })

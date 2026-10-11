@@ -227,7 +227,38 @@ export const createSubUser = asyncHandler(async (req, res) => {
     await updateUserPermissionOverrides(newUser.id, permissions);
   }
 
-  // 7. Audit Log
+  // 7. Sync Staff profile
+  try {
+    const existingStaff = await prisma.staff.findFirst({
+      where: {
+        OR: [
+          { userId: newUser.id },
+          { email: { equals: newUser.email, mode: 'insensitive' } },
+        ],
+      },
+    });
+
+    if (!existingStaff) {
+      const dep = newUser.role === 'CASHIER' ? 'Billing' : newUser.role === 'MANAGER' ? 'Management' : 'Operations';
+      await prisma.staff.create({
+        data: {
+          staffId: `EMP-${Date.now().toString().slice(-5)}`,
+          name: newUser.name,
+          email: newUser.email,
+          phone: newUser.phone,
+          role: newUser.role,
+          department: dep,
+          salary: 0,
+          status: newUser.isActive ? 'ACTIVE' : 'INACTIVE',
+          isDeleted: false,
+          businessId,
+          userId: newUser.id,
+        },
+      });
+    }
+  } catch (_) {}
+
+  // 8. Audit Log
   try {
     await prisma.auditLog.create({
       data: {
@@ -424,6 +455,23 @@ export const deleteUser = asyncHandler(async (req, res) => {
     where: { id },
     data: { isActive: false },
   });
+
+  // Also soft-delete / deactivate corresponding staff record
+  try {
+    await prisma.staff.updateMany({
+      where: {
+        OR: [
+          { userId: id },
+          { email: { equals: targetUser.email, mode: 'insensitive' } },
+        ],
+      },
+      data: {
+        status: 'INACTIVE',
+        isDeleted: true,
+        deletedAt: new Date(),
+      },
+    });
+  } catch (_) {}
 
   // Audit Log
   try {

@@ -26,6 +26,7 @@ import Support from "../pages/Support";
 import { ClerkSsoCallback } from "../components/auth/ClerkAuth";
 import { isAdminEmail, isAdminUser, isSuperAdminUser } from "../utils/security";
 import { usePermissions } from "../hooks/usePermissions";
+import { getWorkspaceRedirectPath } from "../utils/workspaceRouter";
 export { isAdminEmail, isAdminUser, isSuperAdminUser };
 
 // New ERP Modules
@@ -88,6 +89,13 @@ function AuthLoadingScreen() {
   );
 }
 
+function RootRedirect() {
+  const { user, loading } = useAuth();
+  if (loading) return <AuthLoadingScreen />;
+  if (!user) return <Navigate to="/sign-in" replace />;
+  return <Navigate to={getWorkspaceRedirectPath(user)} replace />;
+}
+
 function ClerkProtectedWrapper({ children, roles, permission }) {
   const { user, loading: authLoading } = useAuth();
   const { isLoaded: isClerkLoaded, isSignedIn } = useClerkAuth();
@@ -104,11 +112,11 @@ function ClerkProtectedWrapper({ children, roles, permission }) {
   }
 
   if (roles && user && !roles.includes(user.role) && !isAdminUser(user) && !isAdminEmail(user?.email) && user.role !== "GUEST") {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={getWorkspaceRedirectPath(user)} replace />;
   }
 
   if (permission && !hasPermission(permission)) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={getWorkspaceRedirectPath(user)} replace />;
   }
 
   return <Layout>{children}</Layout>;
@@ -124,11 +132,11 @@ function StandardProtectedWrapper({ children, roles, permission }) {
 
   if (!user) return <Navigate to="/login" replace />;
   if (roles && !roles.includes(user.role) && !isAdminUser(user) && !isAdminEmail(user?.email) && user.role !== "GUEST") {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={getWorkspaceRedirectPath(user)} replace />;
   }
 
   if (permission && !hasPermission(permission)) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={getWorkspaceRedirectPath(user)} replace />;
   }
 
   return <Layout>{children}</Layout>;
@@ -158,11 +166,11 @@ export default function AppRoutes() {
       <Route path="/register" element={<Navigate to="/sign-up" replace />} />
       <Route path="/sso-callback" element={<ClerkSsoCallback />} />
       <Route path="/sso-callback/*" element={<ClerkSsoCallback />} />
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/" element={<RootRedirect />} />
       <Route
         path="/dashboard"
         element={
-          <Protected>
+          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER", "MANAGER"]}>
             <Dashboard />
           </Protected>
         }
@@ -170,7 +178,7 @@ export default function AppRoutes() {
       <Route
         path="/billing"
         element={
-          <Protected>
+          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER", "MANAGER", "STAFF", "CASHIER"]}>
             <Billing />
           </Protected>
         }
@@ -178,7 +186,7 @@ export default function AppRoutes() {
       <Route
         path="/invoices"
         element={
-          <Protected>
+          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER", "MANAGER", "STAFF", "CASHIER"]}>
             <Invoices />
           </Protected>
         }
@@ -186,7 +194,7 @@ export default function AppRoutes() {
       <Route
         path="/products"
         element={
-          <Protected>
+          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER", "MANAGER", "STAFF", "CASHIER"]}>
             <Products />
           </Protected>
         }
@@ -194,7 +202,7 @@ export default function AppRoutes() {
       <Route
         path="/customers"
         element={
-          <Protected>
+          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER", "MANAGER", "STAFF", "CASHIER"]}>
             <Customers />
           </Protected>
         }
@@ -202,7 +210,7 @@ export default function AppRoutes() {
       <Route
         path="/inventory"
         element={
-          <Protected>
+          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER", "MANAGER", "STAFF"]}>
             <Inventory />
           </Protected>
         }
@@ -210,7 +218,7 @@ export default function AppRoutes() {
       <Route
         path="/gst"
         element={
-          <Protected>
+          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER", "MANAGER"]}>
             <Gst />
           </Protected>
         }
@@ -223,7 +231,7 @@ export default function AppRoutes() {
       <Route
         path="/ca-connect"
         element={
-          <Protected>
+          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER", "MANAGER"]}>
             <CaConnect />
           </Protected>
         }
@@ -287,7 +295,7 @@ export default function AppRoutes() {
       <Route
         path="/purchases"
         element={
-          <Protected>
+          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER", "MANAGER"]}>
             <Purchases defaultTab="invoices" />
           </Protected>
         }
@@ -295,7 +303,7 @@ export default function AppRoutes() {
       <Route
         path="/purchases/orders"
         element={
-          <Protected>
+          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER", "MANAGER"]}>
             <Purchases defaultTab="orders" />
           </Protected>
         }
@@ -303,7 +311,7 @@ export default function AppRoutes() {
       <Route
         path="/purchases/debit-notes"
         element={
-          <Protected>
+          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER", "MANAGER"]}>
             <Purchases defaultTab="debitNotes" />
           </Protected>
         }
@@ -311,7 +319,7 @@ export default function AppRoutes() {
       <Route
         path="/suppliers"
         element={
-          <Protected>
+          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER", "MANAGER"]}>
             <Suppliers />
           </Protected>
         }
@@ -319,7 +327,7 @@ export default function AppRoutes() {
       <Route
         path="/expenses"
         element={
-          <Protected>
+          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER", "MANAGER"]}>
             <Expenses />
           </Protected>
         }
@@ -327,7 +335,7 @@ export default function AppRoutes() {
       <Route
         path="/reports"
         element={
-          <Protected>
+          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER", "MANAGER"]}>
             <Reports />
           </Protected>
         }
@@ -335,7 +343,7 @@ export default function AppRoutes() {
       <Route
         path="/settings"
         element={
-          <Protected>
+          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER"]}>
             <Settings />
           </Protected>
         }
@@ -343,7 +351,7 @@ export default function AppRoutes() {
       <Route
         path="/team"
         element={
-          <Protected>
+          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER", "MANAGER"]}>
             <Settings defaultTab="team" />
           </Protected>
         }
@@ -351,7 +359,7 @@ export default function AppRoutes() {
       <Route
         path="/roles"
         element={
-          <Protected>
+          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER"]}>
             <Settings defaultTab="roles" />
           </Protected>
         }
@@ -361,7 +369,7 @@ export default function AppRoutes() {
       <Route
         path="/warehouses"
         element={
-          <Protected>
+          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER", "MANAGER", "STAFF"]}>
             <Warehouses />
           </Protected>
         }
@@ -369,7 +377,7 @@ export default function AppRoutes() {
       <Route
         path="/inventory/godowns"
         element={
-          <Protected>
+          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER", "MANAGER", "STAFF"]}>
             <Warehouses />
           </Protected>
         }
@@ -377,7 +385,7 @@ export default function AppRoutes() {
       <Route
         path="/warehouses/transfer"
         element={
-          <Protected>
+          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER", "MANAGER"]}>
             <StockTransfers />
           </Protected>
         }
@@ -385,7 +393,7 @@ export default function AppRoutes() {
       <Route
         path="/inventory/stock-transfers"
         element={
-          <Protected>
+          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER", "MANAGER"]}>
             <StockTransfers />
           </Protected>
         }
@@ -393,7 +401,7 @@ export default function AppRoutes() {
       <Route
         path="/inventory/transfers"
         element={
-          <Protected>
+          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER", "MANAGER"]}>
             <StockTransfers />
           </Protected>
         }
@@ -401,7 +409,7 @@ export default function AppRoutes() {
       <Route
         path="/staff-dashboard"
         element={
-          <Protected>
+          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER", "MANAGER", "STAFF", "CASHIER"]}>
             <StaffDashboard />
           </Protected>
         }
@@ -409,7 +417,7 @@ export default function AppRoutes() {
       <Route
         path="/workspace"
         element={
-          <Protected>
+          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER", "MANAGER", "STAFF", "CASHIER"]}>
             <StaffDashboard />
           </Protected>
         }
@@ -417,7 +425,7 @@ export default function AppRoutes() {
       <Route
         path="/staff"
         element={
-          <Protected>
+          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER", "MANAGER"]}>
             <StaffManagement />
           </Protected>
         }
@@ -425,7 +433,7 @@ export default function AppRoutes() {
       <Route
         path="/staff/attendance"
         element={
-          <Protected>
+          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER", "MANAGER"]}>
             <StaffManagement defaultTab="attendance" />
           </Protected>
         }
@@ -433,7 +441,7 @@ export default function AppRoutes() {
       <Route
         path="/attendance"
         element={
-          <Protected>
+          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER", "MANAGER"]}>
             <StaffManagement defaultTab="attendance" />
           </Protected>
         }
@@ -441,7 +449,7 @@ export default function AppRoutes() {
       <Route
         path="/staff/payroll"
         element={
-          <Protected>
+          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER"]}>
             <StaffManagement defaultTab="payroll" />
           </Protected>
         }
@@ -465,7 +473,7 @@ export default function AppRoutes() {
       <Route
         path="/audit-logs"
         element={
-          <Protected>
+          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER"]}>
             <AuditLogs />
           </Protected>
         }

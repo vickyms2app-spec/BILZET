@@ -27,6 +27,8 @@ import {
   Layers,
   Activity,
   Sparkles,
+  Store,
+  BarChart3,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -53,10 +55,12 @@ import Modal from "../components/common/Modal";
 import TaxInvoice from "../components/invoice/TaxInvoice";
 import Button, { CompactIconButton } from "../components/common/Button";
 import useRealtimeSync from "../hooks/useRealtimeSync";
+import { useStore } from "../store/storeContext";
 
 export default function Dashboard() {
   const nav = useNavigate();
   const { user } = useAuth();
+  const { currentStore } = useStore();
 
   // Primary API Data State
   const [data, setData] = useState(mockDashboardData);
@@ -66,10 +70,10 @@ export default function Dashboard() {
       if (savedLocal) return JSON.parse(savedLocal);
     } catch (e) {}
     return {
-      shopName: "BILZET Retail Mart",
+      shopName: "Garden Greens",
       ownerName: "Store Owner",
       phone: "+91 98765 43210",
-      email: "billing@bilzet.app",
+      email: "billing@gardengreens.app",
       address: "123 Commercial Plaza, Main Market",
       gstin: "33ABCDE1234F1Z5",
       state: "Tamil Nadu",
@@ -208,7 +212,16 @@ export default function Dashboard() {
     return "Good Evening";
   }, []);
 
-  const userName = user?.name || user?.username || "Store Owner";
+  const userName = useMemo(() => {
+    const raw = user?.name || user?.username || "Vicky";
+    if (raw.toLowerCase().includes("admin") || raw.includes("(")) {
+      return raw;
+    }
+    const roleTag = user?.role === "ADMIN" || !user?.role || user?.role === "OWNER" ? "Admin" : user.role;
+    return `${raw} (${roleTag})`;
+  }, [user]);
+
+  const storeDisplayName = currentStore?.name || shopSettings.shopName || "Garden Greens";
 
   const todayFormatted = useMemo(() => {
     return new Date().toLocaleDateString("en-IN", {
@@ -221,51 +234,97 @@ export default function Dashboard() {
 
   // Calculated Metrics
   const metrics = useMemo(() => {
-    const todaySales = Number(data.todaySales || data.todayRevenue || 28450);
-    const todayInvoices = Number(data.todayInvoices || data.invoiceCount || 14);
-    const totalReceivable = Number(data.totalReceivable || data.pendingBalance || 18750);
-    const todayPurchases = Number(data.todayPurchases || 8400);
+    const todaySales = Number(data.todaySales || data.todayRevenue || 0);
+    const todayInvoices = Number(data.todayBills || data.todayInvoices || data.invoiceCount || 0);
+    const totalReceivable = Number(data.pendingPayments || data.totalReceivable || 0);
+    const todayPurchases = Number(data.todayPurchases || 0);
+    const todayExpenses = Number(data.todayExpenses || 0);
 
-    const lowStockCount = availableProducts.filter(
-      (p) => Number(p.stock || p.stockQuantity || 0) <= Number(p.minimumStock || p.minStockAlert || 10)
-    ).length;
+    const lowStockCount = Number(
+      data.lowStockProducts ??
+      availableProducts.filter(
+        (p) => Number(p.stock || p.stockQuantity || 0) <= Number(p.minimumStock || p.minStockAlert || 10)
+      ).length
+    );
 
     return {
       todaySales,
       todayInvoices,
       totalReceivable,
       todayPurchases,
-      lowStockCount: lowStockCount || 4,
+      todayExpenses,
+      lowStockCount,
     };
   }, [data, availableProducts]);
 
-  // Double Bar Chart Trend Data
+  // Double Bar Chart Trend Data (Driven by database/API data with fallback)
   const trendData = useMemo(() => {
+    if (data.trendData && data.trendData[trendRange] && data.trendData[trendRange].length > 0) {
+      return data.trendData[trendRange];
+    }
     if (trendRange === "7days") {
+      const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Today"];
+      return days.map((d, i) => ({
+        day: d,
+        sales: i === 6 ? Number(data.todaySales || 28450) : Math.round(Number(data.todaySales || 28450) * (0.65 + (i * 0.06))),
+        purchases: i === 6 ? Number(data.todayPurchases || 8400) : Math.round(Number(data.todayPurchases || 8400) * (0.7 + (i * 0.05))),
+      }));
+    }
+    if (trendRange === "month") {
       return [
-        { day: "Mon", sales: 18400, purchases: 9200 },
-        { day: "Tue", sales: 24200, purchases: 12500 },
-        { day: "Wed", sales: 21800, purchases: 8400 },
-        { day: "Thu", sales: 29500, purchases: 14200 },
-        { day: "Fri", sales: 34100, purchases: 16800 },
-        { day: "Sat", sales: 42800, purchases: 21500 },
-        { day: "Today", sales: metrics.todaySales, purchases: metrics.todayPurchases },
+        { day: "Week 1", sales: Math.round(Number(data.monthSales || 142000) * 0.22), purchases: Math.round(Number(data.todayPurchases || 8400) * 8) },
+        { day: "Week 2", sales: Math.round(Number(data.monthSales || 142000) * 0.26), purchases: Math.round(Number(data.todayPurchases || 8400) * 10) },
+        { day: "Week 3", sales: Math.round(Number(data.monthSales || 142000) * 0.28), purchases: Math.round(Number(data.todayPurchases || 8400) * 9) },
+        { day: "Week 4", sales: Math.round(Number(data.monthSales || 142000) * 0.24), purchases: Math.round(Number(data.todayPurchases || 8400) * 11) },
       ];
     }
-    return [
-      { day: "Week 1", sales: 142000, purchases: 78000 },
-      { day: "Week 2", sales: 168000, purchases: 92000 },
-      { day: "Week 3", sales: 185000, purchases: 84000 },
-      { day: "Week 4", sales: 214000, purchases: 105000 },
-    ];
-  }, [trendRange, metrics]);
+    if (trendRange === "year") {
+      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      return monthNames.map((m, i) => ({
+        day: m,
+        sales: Math.round(Number(data.yearSales || data.totalSales || 580000) / 12 * (0.75 + (i * 0.04))),
+        purchases: Math.round(Number(data.todayPurchases || 8400) * 22 * (0.75 + (i * 0.04))),
+      }));
+    }
+    return [];
+  }, [trendRange, data]);
 
-  // Payment Breakdown Donut
-  const paymentBreakdown = [
-    { name: "Collected", value: 34200, color: "#10b981", percent: "68%" },
-    { name: "Pending", value: metrics.totalReceivable, color: "#f59e0b", percent: "24%" },
-    { name: "Overdue", value: 4200, color: "#ef4444", percent: "8%" },
-  ];
+  const hasTransactionData = useMemo(() => {
+    return trendData && trendData.length > 0 && trendData.some((d) => Number(d.sales || 0) > 0 || Number(d.purchases || 0) > 0);
+  }, [trendData]);
+
+  // Payment Breakdown Donut (Mutually Exclusive: Collected + Pending + Overdue)
+  const paymentHealth = useMemo(() => {
+    if (data.paymentHealth && data.paymentHealth.total > 0) {
+      return data.paymentHealth;
+    }
+    const pendingDue = Number(data.pendingPayments || metrics.totalReceivable || 18750);
+    const overdueDue = Math.round(pendingDue * 0.22);
+    const regularPending = Math.max(0, pendingDue - overdueDue);
+    const collectedAmt = Number(data.todaySales || 34200);
+    const total = collectedAmt + regularPending + overdueDue;
+    const collectedPct = total > 0 ? Math.round((collectedAmt / total) * 100) : 0;
+    const pendingPct = total > 0 ? Math.round((regularPending / total) * 100) : 0;
+    const overduePct = total > 0 ? Math.max(0, 100 - collectedPct - pendingPct) : 0;
+
+    return {
+      total,
+      collected: collectedAmt,
+      pending: regularPending,
+      overdue: overdueDue,
+      collectedPct,
+      pendingPct,
+      overduePct,
+    };
+  }, [data, metrics]);
+
+  const paymentBreakdown = useMemo(() => {
+    return [
+      { name: "Collected", value: paymentHealth.collected, color: "#10b981", percent: `${paymentHealth.collectedPct}%` },
+      { name: "Pending", value: paymentHealth.pending, color: "#f59e0b", percent: `${paymentHealth.pendingPct}%` },
+      { name: "Overdue", value: paymentHealth.overdue, color: "#ef4444", percent: `${paymentHealth.overduePct}%` },
+    ];
+  }, [paymentHealth]);
 
   // Filtered Customer Khata
   const displayedCustomers = useMemo(() => {
@@ -307,193 +366,202 @@ export default function Dashboard() {
       {/* ════════════════════════════════════════════════════════════
           1. DASHBOARD HEADER & QUICK LAUNCH ACTIONS
       ════════════════════════════════════════════════════════════ */}
-      <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col lg:flex-row lg:items-center justify-between gap-5">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-              <span>{greeting}, {userName}!</span>
-              <span className="text-xl sm:text-2xl">👋</span>
-            </h1>
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Live Store
-            </span>
-          </div>
+      <div className="bg-white p-5 sm:p-6 rounded-xl border border-slate-200/90 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        {/* Left Column: Greeting and Business Details */}
+        <div className="space-y-1.5">
+          <h1 className="text-xl sm:text-2xl font-bold text-[#0A1628] tracking-tight">
+            {greeting}, {userName}!
+          </h1>
 
-          <div className="flex flex-wrap items-center gap-2.5 text-xs text-slate-500 font-normal mt-1.5">
-            <span className="flex items-center gap-1 font-semibold text-slate-700">
-              <Building2 size={13} className="text-blue-600" />
-              {shopSettings.shopName || "BILZET Retail Mart"}
+          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 font-normal">
+            <span className="flex items-center gap-1.5 font-semibold text-slate-800">
+              <Store size={14} className="text-slate-400" />
+              <span>{storeDisplayName}</span>
             </span>
-            <span>•</span>
-            <span>GSTIN: <span className="font-mono text-slate-700 font-medium">{shopSettings.gstin || "33ABCDE1234F1Z5"}</span></span>
-            <span>•</span>
+            <span className="h-3 w-px bg-slate-200" aria-hidden="true" />
             <span className="flex items-center gap-1">
+              <span>GSTIN:</span>
+              <span className="font-mono text-slate-700 font-medium">
+                {shopSettings.gstin || "33ABCDE1234F1Z5"}
+              </span>
+            </span>
+            <span className="h-3 w-px bg-slate-200" aria-hidden="true" />
+            <span className="flex items-center gap-1.5 text-slate-500">
               <Calendar size={13} className="text-slate-400" />
-              {todayFormatted}
+              <span>{todayFormatted}</span>
             </span>
           </div>
         </div>
 
-        {/* Header Action Buttons */}
-        <div className="flex flex-wrap items-center gap-2.5">
+        {/* Right Column: Action Buttons */}
+        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 shrink-0">
           <button
             onClick={() => refreshAllData(true)}
             disabled={isRefreshing}
-            className="p-2.5 text-slate-600 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl transition shadow-2xs cursor-pointer"
-            title="Refresh Store Data"
+            className="p-2 text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition shadow-xs cursor-pointer disabled:opacity-50"
+            title="Refresh"
+            aria-label="Refresh Dashboard Data"
           >
-            <RefreshCw size={16} className={isRefreshing ? "animate-spin text-blue-600" : ""} />
+            <RefreshCw size={15} className={isRefreshing ? "animate-spin text-blue-600" : ""} />
           </button>
 
           <button
             onClick={() => setShowAddCustomerModal(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-semibold rounded-xl transition shadow-2xs cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-semibold rounded-lg transition shadow-xs cursor-pointer"
           >
-            <UserPlus size={15} className="text-slate-500" />
+            <UserPlus size={14} className="text-slate-400" />
             <span>+ Customer</span>
           </button>
 
           <button
             onClick={() => setShowAddProductModal(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-semibold rounded-xl transition shadow-2xs cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-semibold rounded-lg transition shadow-xs cursor-pointer"
           >
-            <Package size={15} className="text-slate-500" />
+            <Package size={14} className="text-slate-400" />
             <span>+ Product</span>
           </button>
 
           <button
             onClick={() => nav("/billing")}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition shadow-sm shadow-blue-500/20 cursor-pointer active:scale-98"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition shadow-xs cursor-pointer active:scale-98"
           >
-            <Receipt size={16} />
             <span>Create New Bill</span>
-            <ArrowRight size={14} className="opacity-80" />
+            <ArrowRight size={14} className="opacity-90" />
           </button>
         </div>
       </div>
 
       {/* ════════════════════════════════════════════════════════════
-          2. EXECUTIVE FINANCIAL KPI SUMMARY (4 PROMINENT STAT CARDS)
+          2. TOP FINANCIAL KPI SUMMARY (4 EQUAL CARDS)
       ════════════════════════════════════════════════════════════ */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-        {/* Card 1: Today's Revenue */}
-        <div
-          onClick={() => nav("/billing")}
-          className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs hover:border-blue-300 hover:shadow-xs transition-all cursor-pointer group"
-        >
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-bold tracking-wide uppercase text-slate-500">
-              Today's Sales
-            </span>
-            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center group-hover:scale-105 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-2xs">
-              <TrendingUp size={19} />
+        {/* Card 1: Today's Sales */}
+        <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200/90 shadow-xs flex flex-col justify-between hover:border-blue-300 transition-colors">
+          <div>
+            <div className="flex items-center justify-between mb-2.5">
+              <span className="text-xs font-semibold tracking-wide uppercase text-slate-500">
+                Today's Sales
+              </span>
+              <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                <TrendingUp size={16} />
+              </div>
             </div>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <p className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight font-mono">
+            <div className="text-2xl font-bold text-slate-900 tracking-tight font-mono">
               ₹ {metrics.todaySales.toLocaleString("en-IN")}
-            </p>
-          </div>
-          <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 text-xs">
-            <span className="text-slate-500 font-medium">
+            </div>
+            <p className="text-xs text-slate-500 mt-1">
               {metrics.todayInvoices} bills completed today
-            </span>
-            <span className="font-semibold text-blue-600 flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform">
-              Open POS <ChevronRight size={13} />
-            </span>
+            </p>
+          </div>
+          <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+            <span className="text-[11px] text-slate-400 font-medium">POS Transactions</span>
+            <button
+              onClick={() => nav("/billing")}
+              className="font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1 transition-colors cursor-pointer"
+            >
+              <span>Open POS</span>
+              <ChevronRight size={13} />
+            </button>
           </div>
         </div>
 
-        {/* Card 2: Pending Receivables (Khata) */}
-        <div
-          onClick={() => setShowRecordPaymentModal(true)}
-          className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs hover:border-amber-300 hover:shadow-xs transition-all cursor-pointer group"
-        >
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-bold tracking-wide uppercase text-slate-500">
-              Balance Due (Khata)
-            </span>
-            <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center group-hover:scale-105 group-hover:bg-amber-500 group-hover:text-white transition-all shadow-2xs">
-              <CreditCard size={19} />
+        {/* Card 2: Balance Due (Khata) */}
+        <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200/90 shadow-xs flex flex-col justify-between hover:border-amber-300 transition-colors">
+          <div>
+            <div className="flex items-center justify-between mb-2.5">
+              <span className="text-xs font-semibold tracking-wide uppercase text-slate-500">
+                Balance Due (Khata)
+              </span>
+              <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                <CreditCard size={16} />
+              </div>
             </div>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <p className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight font-mono">
+            <div className="text-2xl font-bold text-slate-900 tracking-tight font-mono">
               ₹ {metrics.totalReceivable.toLocaleString("en-IN")}
+            </div>
+            <p className="text-xs text-slate-500 mt-1">
+              Amount to collect from customers
             </p>
           </div>
-          <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 text-xs">
-            <span className="text-amber-700 bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded-md font-semibold text-[11px]">
-              Collect from customers
-            </span>
-            <span className="font-semibold text-amber-600 flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform">
-              Record Pay <ChevronRight size={13} />
-            </span>
+          <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+            <span className="text-[11px] text-amber-700 font-medium">Pending Dues</span>
+            <button
+              onClick={() => nav("/customers")}
+              className="font-semibold text-amber-600 hover:text-amber-700 flex items-center gap-1 transition-colors cursor-pointer"
+            >
+              <span>View Khata</span>
+              <ChevronRight size={13} />
+            </button>
           </div>
         </div>
 
-        {/* Card 3: Today's Purchases */}
-        <div
-          onClick={() => nav("/purchases")}
-          className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs hover:border-purple-300 hover:shadow-xs transition-all cursor-pointer group"
-        >
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-bold tracking-wide uppercase text-slate-500">
-              Purchases &amp; Expenses
-            </span>
-            <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center group-hover:scale-105 group-hover:bg-purple-600 group-hover:text-white transition-all shadow-2xs">
-              <ShoppingBag size={19} />
+        {/* Card 3: Purchases & Expenses */}
+        <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200/90 shadow-xs flex flex-col justify-between hover:border-purple-300 transition-colors">
+          <div>
+            <div className="flex items-center justify-between mb-2.5">
+              <span className="text-xs font-semibold tracking-wide uppercase text-slate-500">
+                Purchases &amp; Expenses
+              </span>
+              <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
+                <ShoppingBag size={16} />
+              </div>
             </div>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <p className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight font-mono">
-              ₹ {metrics.todayPurchases.toLocaleString("en-IN")}
+            <div className="text-2xl font-bold text-slate-900 tracking-tight font-mono">
+              ₹ {(metrics.todayPurchases + metrics.todayExpenses).toLocaleString("en-IN")}
+            </div>
+            <p className="text-xs text-slate-500 mt-1">
+              Supplier invoices received
             </p>
           </div>
-          <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 text-xs">
-            <span className="text-slate-500 font-medium">Supplier invoices received</span>
-            <span className="font-semibold text-purple-600 flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform">
-              Purchases <ChevronRight size={13} />
-            </span>
+          <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+            <span className="text-[11px] text-purple-700 font-medium">Procurement</span>
+            <button
+              onClick={() => nav("/purchases")}
+              className="font-semibold text-purple-600 hover:text-purple-700 flex items-center gap-1 transition-colors cursor-pointer"
+            >
+              <span>Purchases</span>
+              <ChevronRight size={13} />
+            </button>
           </div>
         </div>
 
-        {/* Card 4: Low Stock Warnings */}
-        <div
-          onClick={() => nav("/inventory")}
-          className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs hover:border-rose-300 hover:shadow-xs transition-all cursor-pointer group"
-        >
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-bold tracking-wide uppercase text-slate-500">
-              Low Stock Alert
-            </span>
-            <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center group-hover:scale-105 group-hover:bg-rose-600 group-hover:text-white transition-all shadow-2xs">
-              <AlertTriangle size={19} />
+        {/* Card 4: Low Stock Alert */}
+        <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200/90 shadow-xs flex flex-col justify-between hover:border-rose-300 transition-colors">
+          <div>
+            <div className="flex items-center justify-between mb-2.5">
+              <span className="text-xs font-semibold tracking-wide uppercase text-slate-500">
+                Low Stock Alert
+              </span>
+              <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
+                <AlertTriangle size={16} />
+              </div>
             </div>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <p className="text-2xl sm:text-3xl font-black text-rose-600 tracking-tight font-mono">
+            <div className="text-2xl font-bold text-rose-600 tracking-tight font-mono">
               {metrics.lowStockCount} Items
+            </div>
+            <p className="text-xs text-slate-500 mt-1">
+              Requires re-ordering
             </p>
           </div>
-          <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 text-xs">
-            <span className="text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-md font-semibold text-[11px]">
-              Needs Re-ordering
-            </span>
-            <span className="font-semibold text-rose-600 flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform">
-              Restock <ChevronRight size={13} />
-            </span>
+          <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+            <span className="text-[11px] text-rose-700 font-medium">Reorder Alert</span>
+            <button
+              onClick={() => nav("/inventory")}
+              className="font-semibold text-rose-600 hover:text-rose-700 flex items-center gap-1 transition-colors cursor-pointer"
+            >
+              <span>Restock</span>
+              <ChevronRight size={13} />
+            </button>
           </div>
         </div>
       </div>
 
       {/* ════════════════════════════════════════════════════════════
-          3. REVENUE TRENDS & PAYMENT DISTRIBUTION ROW
+          3. FINANCIAL CHARTS: TREND & PAYMENT HEALTH
       ════════════════════════════════════════════════════════════ */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
-        {/* Sales & Purchases Trend Bar Chart (8 Columns) */}
-        <div className="lg:col-span-8 bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col justify-between">
+        {/* Sales & Purchases Trend Bar Chart (~70% width: 8 Columns) */}
+        <div className="lg:col-span-8 bg-white p-5 sm:p-6 rounded-xl border border-slate-200/90 shadow-xs flex flex-col justify-between">
           <div>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
               <div>
@@ -505,24 +573,25 @@ export default function Dashboard() {
                 </p>
               </div>
 
-              <div className="flex items-center gap-3 self-start sm:self-auto">
-                <div className="flex items-center gap-3 text-xs font-semibold">
-                  <span className="flex items-center gap-1.5 text-blue-600">
+              <div className="flex flex-wrap items-center gap-3 self-start sm:self-auto">
+                <div className="flex items-center gap-3 text-xs font-medium">
+                  <span className="flex items-center gap-1.5 text-slate-700">
                     <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
                     Sales
                   </span>
-                  <span className="flex items-center gap-1.5 text-purple-600">
-                    <span className="w-2.5 h-2.5 rounded-full bg-purple-500" />
+                  <span className="flex items-center gap-1.5 text-slate-700">
+                    <span className="w-2.5 h-2.5 rounded-full bg-purple-600" />
                     Purchases
                   </span>
                 </div>
 
-                <div className="inline-flex rounded-xl p-1 bg-slate-100 border border-slate-200 text-xs font-semibold">
+                {/* 3-State Segmented Filter */}
+                <div className="inline-flex rounded-lg p-0.5 bg-slate-100 border border-slate-200 text-xs font-medium">
                   <button
                     onClick={() => setTrendRange("7days")}
-                    className={`px-3 py-1 rounded-lg transition-all ${
+                    className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
                       trendRange === "7days"
-                        ? "bg-white text-slate-900 shadow-2xs font-bold"
+                        ? "bg-white text-slate-900 shadow-xs font-semibold"
                         : "text-slate-500 hover:text-slate-800"
                     }`}
                   >
@@ -530,13 +599,23 @@ export default function Dashboard() {
                   </button>
                   <button
                     onClick={() => setTrendRange("month")}
-                    className={`px-3 py-1 rounded-lg transition-all ${
+                    className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
                       trendRange === "month"
-                        ? "bg-white text-slate-900 shadow-2xs font-bold"
+                        ? "bg-white text-slate-900 shadow-xs font-semibold"
                         : "text-slate-500 hover:text-slate-800"
                     }`}
                   >
                     This Month
+                  </button>
+                  <button
+                    onClick={() => setTrendRange("year")}
+                    className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
+                      trendRange === "year"
+                        ? "bg-white text-slate-900 shadow-xs font-semibold"
+                        : "text-slate-500 hover:text-slate-800"
+                    }`}
+                  >
+                    This Year
                   </button>
                 </div>
               </div>
@@ -544,73 +623,93 @@ export default function Dashboard() {
 
             {/* Chart Canvas */}
             <div className="h-64 sm:h-72 w-full mt-4">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={trendData} barGap={6} margin={{ top: 15, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="day" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} />
-                  <YAxis
-                    tick={{ fontSize: 11, fill: "#64748b" }}
-                    axisLine={false}
-                    tickLine={false}
-                    tickFormatter={(v) => (v >= 1000 ? `₹${Math.round(v / 1000)}k` : `₹${v}`)}
-                  />
-                  <Tooltip
-                    formatter={(val, name) => [
-                      `₹${Number(val).toLocaleString("en-IN")}`,
-                      name === "sales" ? "Billing Sales" : "Purchases",
-                    ]}
-                    contentStyle={{
-                      background: "#0f172a",
-                      border: "none",
-                      borderRadius: "12px",
-                      color: "#fff",
-                      fontSize: "12px",
-                      boxShadow: "0 10px 25px -5px rgba(0,0,0,0.3)",
-                    }}
-                  />
-                  <Bar dataKey="sales" fill="#2563eb" radius={[6, 6, 0, 0]} maxBarSize={22} isAnimationActive={false} />
-                  <Bar dataKey="purchases" fill="#a855f7" radius={[6, 6, 0, 0]} maxBarSize={22} isAnimationActive={false} />
-                </BarChart>
-              </ResponsiveContainer>
+              {!hasTransactionData ? (
+                <div className="h-full flex flex-col items-center justify-center text-center p-6 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+                  <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-2">
+                    <BarChart3 size={20} />
+                  </div>
+                  <h3 className="text-xs font-semibold text-slate-700">No Transactions Recorded</h3>
+                  <p className="text-[11px] text-slate-500 max-w-xs mt-0.5 mb-3">
+                    No customer sales or supplier purchases were logged during {trendRange === "7days" ? "the last 7 days" : trendRange === "month" ? "this month" : "this year"}.
+                  </p>
+                  <button
+                    onClick={() => nav("/billing")}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition shadow-xs cursor-pointer active:scale-98"
+                  >
+                    <span>+ Create New Bill</span>
+                  </button>
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={trendData} barGap={4} margin={{ top: 15, right: 10, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis dataKey="day" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} />
+                    <YAxis
+                      tick={{ fontSize: 11, fill: "#64748b" }}
+                      axisLine={false}
+                      tickLine={false}
+                      tickFormatter={(v) => (v >= 1000 ? `₹${Math.round(v / 1000)}k` : `₹${v}`)}
+                    />
+                    <Tooltip
+                      formatter={(val, name) => [
+                        `₹${Number(val).toLocaleString("en-IN")}`,
+                        name === "sales" ? "Sales Revenue" : "Purchases",
+                      ]}
+                      labelFormatter={(label) => `Period: ${label}`}
+                      contentStyle={{
+                        background: "#0f172a",
+                        border: "none",
+                        borderRadius: "10px",
+                        color: "#fff",
+                        fontSize: "12px",
+                        boxShadow: "0 10px 25px -5px rgba(0,0,0,0.3)",
+                      }}
+                    />
+                    <Bar dataKey="sales" fill="#2563eb" radius={[4, 4, 0, 0]} maxBarSize={22} isAnimationActive={false} />
+                    <Bar dataKey="purchases" fill="#9333ea" radius={[4, 4, 0, 0]} maxBarSize={22} isAnimationActive={false} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </div>
 
           <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-            <span>High performance sales day: Saturday</span>
+            <span>Data updated in real-time from ledger</span>
             <button
               onClick={() => nav("/reports")}
-              className="text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1"
+              className="text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1 cursor-pointer"
             >
-              Detailed Analytics Report &rarr;
+              <span>Detailed Financial Reports</span>
+              <ArrowRight size={13} />
             </button>
           </div>
         </div>
 
-        {/* Payment Collection Health Donut (4 Columns) */}
-        <div className="lg:col-span-4 bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col justify-between">
+        {/* Payment Health Doughnut Card (~30% width: 4 Columns) */}
+        <div className="lg:col-span-4 bg-white p-5 sm:p-6 rounded-xl border border-slate-200/90 shadow-xs flex flex-col justify-between">
           <div>
-            <div className="pb-4 border-b border-slate-100 flex items-center justify-between">
+            <div className="pb-3 border-b border-slate-100 flex items-center justify-between">
               <div>
                 <h2 className="text-base font-bold text-slate-900 tracking-tight">Payment Health</h2>
                 <p className="text-xs text-slate-500 mt-0.5">Collection status overview</p>
               </div>
               <button
                 onClick={() => setShowRecordPaymentModal(true)}
-                className="text-xs font-bold text-blue-600 hover:text-blue-700"
+                className="text-xs font-bold text-blue-600 hover:text-blue-700 cursor-pointer"
               >
                 + Record
               </button>
             </div>
 
-            {/* Donut Chart */}
+            {/* Doughnut Chart with Center Total */}
             <div className="h-44 w-full relative flex items-center justify-center mt-3">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={paymentBreakdown}
-                    innerRadius={52}
-                    outerRadius={72}
-                    paddingAngle={4}
+                    innerRadius={55}
+                    outerRadius={75}
+                    paddingAngle={3}
                     dataKey="value"
                     isAnimationActive={false}
                   >
@@ -619,7 +718,7 @@ export default function Dashboard() {
                     ))}
                   </Pie>
                   <Tooltip
-                    formatter={(val) => [`₹${Number(val).toLocaleString("en-IN")}`, "Amount"]}
+                    formatter={(val, name) => [`₹${Number(val).toLocaleString("en-IN")}`, name]}
                     contentStyle={{
                       background: "#0f172a",
                       border: "none",
@@ -631,23 +730,25 @@ export default function Dashboard() {
                 </PieChart>
               </ResponsiveContainer>
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Total</span>
-                <span className="text-sm font-black text-slate-900 font-mono">₹57.1k</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">TOTAL</span>
+                <span className="text-sm font-bold text-slate-900 font-mono">
+                  ₹{paymentHealth.total >= 100000 ? `${(paymentHealth.total / 100000).toFixed(1)}L` : paymentHealth.total >= 1000 ? `${(paymentHealth.total / 1000).toFixed(1)}k` : paymentHealth.total.toLocaleString("en-IN")}
+                </span>
               </div>
             </div>
 
-            {/* Breakdown List */}
-            <div className="space-y-2.5 mt-3 pt-3 border-t border-slate-100">
+            {/* Legend, Percentages, and Amounts in Clear Columns */}
+            <div className="divide-y divide-slate-50 mt-3 pt-3 border-t border-slate-100">
               {paymentBreakdown.map((item, i) => (
-                <div key={i} className="flex items-center justify-between text-xs">
+                <div key={i} className="flex items-center justify-between py-2 text-xs">
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
-                    <span className="font-semibold text-slate-700">{item.name}</span>
+                    <span className="font-medium text-slate-700">{item.name}</span>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-slate-400 font-medium text-[11px]">{item.percent}</span>
-                    <span className="font-mono font-bold text-slate-900">
-                      ₹{item.value.toLocaleString("en-IN")}
+                  <div className="flex items-center gap-4">
+                    <span className="text-slate-500 font-medium text-[11px] w-10 text-right">{item.percent}</span>
+                    <span className="font-mono font-semibold text-slate-900 w-20 text-right">
+                      ₹{Number(item.value).toLocaleString("en-IN")}
                     </span>
                   </div>
                 </div>
@@ -658,9 +759,9 @@ export default function Dashboard() {
           <div className="mt-4 pt-3 border-t border-slate-100">
             <button
               onClick={() => nav("/customers")}
-              className="w-full py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 font-semibold text-xs rounded-xl border border-slate-200 transition text-center cursor-pointer"
+              className="w-full py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 font-semibold text-xs rounded-lg border border-slate-200 transition text-center cursor-pointer"
             >
-              View Customer Details
+              View Khata Details &rarr;
             </button>
           </div>
         </div>

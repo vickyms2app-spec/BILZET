@@ -1,3 +1,4 @@
+import bcrypt from 'bcryptjs';
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendResponse } from '../utils/apiResponse.mjs';
 import { ApiError } from '../utils/ApiError.mjs';
@@ -24,6 +25,7 @@ export const getStaffList = asyncHandler(async (req, res) => {
     where.status = req.query.status.toUpperCase();
   } else if (req.query.includeInactive !== 'true') {
     where.isDeleted = { not: true };
+    where.status = { not: 'INACTIVE' };
   }
 
   if (req.query.department && req.query.department !== 'ALL') {
@@ -50,8 +52,8 @@ export const getStaffList = asyncHandler(async (req, res) => {
 });
 
 export const createStaff = asyncHandler(async (req, res) => {
-  const { name, email, phone, address, role, department, salary, joiningDate } = req.body;
-  if (!name) {
+  const { name, email, phone, address, role, department, salary, joiningDate, password } = req.body;
+  if (!name || !name.trim()) {
     throw ApiError.badRequest('Staff member name is required');
   }
 
@@ -61,21 +63,61 @@ export const createStaff = asyncHandler(async (req, res) => {
     req.user?.businessId ||
     'busi-01';
 
+  let linkedUserId = null;
+
+  // Account Provisioning: If email provided, link or provision user login account
+  if (email && email.trim()) {
+    const normalizedEmail = email.trim().toLowerCase();
+    let user = await prisma.user.findFirst({
+      where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
+    });
+
+    if (!user) {
+      const rUpper = String(role || '').toUpperCase();
+      let assignedRole = 'STAFF';
+      if (rUpper === 'MANAGER') assignedRole = 'MANAGER';
+      else if (rUpper === 'CASHIER') assignedRole = 'CASHIER';
+      else if (rUpper === 'CA' || rUpper === 'ACCOUNTANT') assignedRole = 'ACCOUNTANT';
+      else if (rUpper === 'ADMIN') assignedRole = 'ADMIN';
+
+      const salt = await bcrypt.genSalt(10);
+      const rawPassword = password || 'Bilzet@2026';
+      const passwordHash = await bcrypt.hash(rawPassword, salt);
+
+      user = await prisma.user.create({
+        data: {
+          name: name.trim(),
+          email: normalizedEmail,
+          phone: phone?.trim() || null,
+          passwordHash,
+          role: assignedRole,
+          businessId: activeBusinessId,
+          isOwner: false,
+          isActive: true,
+        },
+      });
+    }
+
+    linkedUserId = user.id;
+  }
+
   const staffId = `EMP-${Date.now().toString().slice(-5)}`;
 
   const member = await prisma.staff.create({
     data: {
       staffId,
-      name,
-      email: email || null,
-      phone: phone || null,
-      address: address || null,
+      name: name.trim(),
+      email: email ? email.trim().toLowerCase() : null,
+      phone: phone?.trim() || null,
+      address: address?.trim() || null,
       role: role || 'Staff',
       department: department || 'Operations',
       salary: Number(salary || 0),
       status: 'ACTIVE',
+      isDeleted: false,
       joiningDate: joiningDate ? new Date(joiningDate) : new Date(),
       businessId: activeBusinessId,
+      userId: linkedUserId,
     },
   });
 
@@ -143,7 +185,7 @@ export const deleteStaff = asyncHandler(async (req, res) => {
   }
 
   const activeBusinessId = req.headers['x-business-id'] || req.user?.businessId;
-  if (staff.businessId && activeBusinessId && staff.businessId !== activeBusinessId) {
+  if (staff.businessId && activeBusinessId && staff.businessId !== activeBusinessId && req.user?.role !== 'SUPER_ADMIN') {
     throw ApiError.forbidden('Unauthorized: Staff member belongs to another store');
   }
 
@@ -151,31 +193,19 @@ export const deleteStaff = asyncHandler(async (req, res) => {
   if (staff.userId && req.user?.id && staff.userId === req.user.id) {
     throw ApiError.forbidden('You cannot delete your own account');
   }
-  if (staff.email && req.user?.email && staff.email === req.user.email) {
+  if (staff.email && req.user?.email && staff.email.toLowerCase() === req.user.email.toLowerCase()) {
     throw ApiError.forbidden('You cannot delete your own account');
   }
 
-  // Check historical records
-  const [attendanceCount, payrollCount] = await Promise.all([
-    prisma.staffAttendance.count({ where: { staffId: id } }),
-    prisma.staffPayroll.count({ where: { staffId: id } }),
-  ]);
-
-  const hasHistory = attendanceCount > 0 || payrollCount > 0;
-
-  if (hasHistory) {
-    // Soft deletion: preserve historical data
-    await prisma.staff.update({
-      where: { id },
-      data: {
-        status: 'INACTIVE',
-        isDeleted: true,
-        deletedAt: new Date(),
-      },
-    });
-  } else {
-    await prisma.staff.delete({ where: { id } });
-  }
+  // Safe soft-delete: Always preserve historical accounting, attendance, and payroll records
+  await prisma.staff.update({
+    where: { id },
+    data: {
+      status: 'INACTIVE',
+      isDeleted: true,
+      deletedAt: new Date(),
+    },
+  });
 
   // Revoke application access on any linked user accounts
   if (staff.userId || staff.email) {
@@ -183,7 +213,7 @@ export const deleteStaff = asyncHandler(async (req, res) => {
       where: {
         OR: [
           ...(staff.userId ? [{ id: staff.userId }] : []),
-          ...(staff.email ? [{ email: staff.email }] : []),
+          ...(staff.email ? [{ email: { equals: staff.email, mode: 'insensitive' } }] : []),
         ],
       },
     });
@@ -197,20 +227,30 @@ export const deleteStaff = asyncHandler(async (req, res) => {
     }
   }
 
+  // Record audit log
+  try {
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user.id,
+        action: 'STAFF_DELETED',
+        entity: 'Staff',
+        entityId: staff.id,
+        businessId: staff.businessId || req.user.businessId,
+        details: { staffId: staff.staffId, name: staff.name, email: staff.email },
+      },
+    });
+  } catch (_) {}
+
   return sendResponse(
     res,
     200,
     {
       id,
       name: staff.name,
-      isDeactivated: hasHistory,
-      historyPreserved: hasHistory,
-      attendanceRecords: attendanceCount,
-      payrollRecords: payrollCount,
+      status: 'INACTIVE',
+      isDeleted: true,
     },
-    hasHistory
-      ? `Employee ${staff.name} deactivated successfully. Historical attendance (${attendanceCount}) and payroll (${payrollCount}) records have been preserved.`
-      : `Employee ${staff.name} deleted successfully.`
+    `Employee ${staff.name} successfully removed and access revoked. Historical records preserved.`
   );
 });
 
