@@ -459,6 +459,7 @@ export const memoryStore = {
   auditLog: [],
   payment: [],
   caStoreAccess: [],
+  caInvitation: [],
   auditTask: [],
   auditDiscrepancy: [],
   auditDocument: [],
@@ -847,6 +848,32 @@ function resolveIncludes(modelName, item, include) {
     if (include.toWarehouse) {
       const wh = (memoryStore.warehouse || []).find((w) => w.id === clone.toWarehouseId);
       clone.toWarehouse = wh ? applySelect('warehouse', wh, include.toWarehouse.select || include.toWarehouse) : null;
+    }
+  }
+
+  if (modelName === 'caInvitation') {
+    if (include.business) {
+      const b = (memoryStore.business || []).find((bus) => bus.id === clone.businessId);
+      clone.business = b ? applySelect('business', b, include.business.select || include.business) : null;
+    }
+    if (include.inviter) {
+      const u = (memoryStore.user || []).find((usr) => usr.id === clone.inviterId);
+      clone.inviter = u ? applySelect('user', u, include.inviter.select || include.inviter) : null;
+    }
+    if (include.caUser) {
+      const u = (memoryStore.user || []).find((usr) => usr.id === clone.caUserId);
+      clone.caUser = u ? applySelect('user', u, include.caUser.select || include.caUser) : null;
+    }
+  }
+
+  if (modelName === 'caStoreAccess') {
+    if (include.business) {
+      const b = (memoryStore.business || []).find((bus) => bus.id === clone.businessId);
+      clone.business = b ? applySelect('business', b, include.business.select || include.business) : null;
+    }
+    if (include.caUser) {
+      const u = (memoryStore.user || []).find((usr) => usr.id === clone.caUserId);
+      clone.caUser = u ? applySelect('user', u, include.caUser.select || include.caUser) : null;
     }
   }
 

@@ -32,6 +32,7 @@ import caConnectRoutes from './routes/caConnect.routes.mjs';
 import storeRoutes from './routes/store.routes.mjs';
 import referralRoutes from './routes/referral.routes.mjs';
 import caPortalRoutes from './routes/caPortal.routes.mjs';
+import caInvitationRoutes from './routes/caInvitation.routes.mjs';
 import realtimeRoutes from './routes/realtime.routes.mjs';
 
 // Error middlewares
@@ -299,6 +300,7 @@ app.use('/api/v1/permissions', roleRoutes);
 app.use(['/api/v1/subscription', '/api/v1/subscriptions'], subscriptionRoutes);
 app.use('/api/v1/ca-connect', caConnectRoutes);
 app.use('/api/v1/ca-portal', caPortalRoutes);
+app.use('/api/v1/ca-invitations', caInvitationRoutes);
 app.use(['/api/v1/referral', '/api/v1/referrals'], referralRoutes);
 app.use('/api/v1/super-admin', superAdminRoutes);
 app.use(['/api/v1/realtime', '/api/v1/events'], realtimeRoutes);

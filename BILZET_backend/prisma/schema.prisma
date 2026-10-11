@@ -73,6 +73,8 @@ model Business {
   attendances     StaffAttendance[]
   customers       Customer[]
   sales           Sale[]
+  caAccesses      CaStoreAccess[] @relation("BusinessCAAccess")
+  caInvitations   CaInvitation[]  @relation("BusinessCAInvitations")
 
   @@map("businesses")
 }
@@ -104,6 +106,9 @@ model User {
   expenses            Expense[]
   auditLogs           AuditLog[]
   subscriptions       Subscription[]
+  caAccesses          CaStoreAccess[] @relation("CAUserAccess")
+  sentCaInvites       CaInvitation[]  @relation("InvitedCAUsers")
+  acceptedCaInvites   CaInvitation[]  @relation("AcceptedCAInvitations")
 
   @@index([businessId])
   @@map("users")
@@ -776,4 +781,57 @@ model PeriodClosing {
   @@unique([businessId, period])
   @@index([businessId])
   @@map("period_closings")
+}
+
+model CaStoreAccess {
+  id           String    @id @default(uuid())
+  caUserId     String    @map("ca_user_id")
+  caUser       User      @relation("CAUserAccess", fields: [caUserId], references: [id], onDelete: Cascade)
+  businessId   String    @map("business_id")
+  business     Business  @relation("BusinessCAAccess", fields: [businessId], references: [id], onDelete: Cascade)
+  status       String    @default("ACTIVE") // ACTIVE, REVOKED, SUSPENDED
+  permissions  Json      @default("[\"sales_audit\", \"purchase_audit\", \"tax_audit\", \"reconciliation\", \"reports\", \"tasks\", \"discrepancies\", \"documents\"]")
+  role         String    @default("CA")     // CA, AUDITOR, TAX_CONSULTANT
+  assignedById String?   @map("assigned_by_id")
+  revokedAt    DateTime? @map("revoked_at")
+  revokedById  String?   @map("revoked_by_id")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  @@unique([caUserId, businessId])
+  @@index([caUserId])
+  @@index([businessId])
+  @@map("ca_store_access")
+}
+
+model CaInvitation {
+  id               String    @id @default(uuid())
+  businessId       String    @map("business_id")
+  business         Business  @relation("BusinessCAInvitations", fields: [businessId], references: [id], onDelete: Cascade)
+  inviterId        String    @map("inviter_id")
+  inviter          User      @relation("InvitedCAUsers", fields: [inviterId], references: [id], onDelete: Cascade)
+  caUserId         String?   @map("ca_user_id")
+  caUser           User?     @relation("AcceptedCAInvitations", fields: [caUserId], references: [id], onDelete: SetNull)
+  email            String
+  name             String?
+  tokenHash        String    @unique @map("token_hash")
+  status           String    @default("PENDING") // PENDING, ACCEPTED, EXPIRED, REVOKED, DECLINED, FAILED
+  deliveryStatus   String    @default("SENT") @map("delivery_status") // PENDING, SENT, DELIVERED, FAILED
+  deliveryError    String?   @map("delivery_error")
+  deliveryAttempts Int       @default(1) @map("delivery_attempts")
+  message          String?
+  permissions      Json      @default("[\"sales_audit\", \"purchase_audit\", \"tax_audit\", \"reconciliation\", \"reports\", \"tasks\", \"discrepancies\", \"documents\"]")
+  role             String    @default("CA")
+  expiresAt        DateTime  @map("expires_at")
+  acceptedAt       DateTime? @map("accepted_at")
+  declinedAt       DateTime? @map("declined_at")
+  revokedAt        DateTime? @map("revoked_at")
+  metadata         Json?
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  @@index([businessId])
+  @@index([email])
+  @@index([status])
+  @@map("ca_invitations")
 }

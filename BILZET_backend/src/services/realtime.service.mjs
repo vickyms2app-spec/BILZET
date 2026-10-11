@@ -178,6 +178,13 @@ class RealtimeService {
   }
 
   /**
+   * Alias for broadcastBusinessEvent
+   */
+  broadcastEvent(businessId, eventType, data = {}, meta = {}) {
+    return this.broadcastBusinessEvent(businessId, eventType, data, meta);
+  }
+
+  /**
    * Replay events that occurred since a given eventId or timestamp for client catch-up.
    */
   getMissedEvents(businessId, lastEventId = null, sinceTimestamp = null) {

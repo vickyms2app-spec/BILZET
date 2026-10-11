@@ -763,10 +763,25 @@ export const getStorePaymentsForCA = async (caUser, storeId, query = {}) => {
   const store = await verifyCAStoreAccess(caUser, storeId);
   const { page, limit, skip } = getPaginationParams(query);
 
+  const [sales, customers] = await Promise.all([
+    prisma.sale.findMany({
+      where: { businessId: storeId },
+      select: { id: true, invoiceNumber: true, customer: { select: { name: true } } },
+    }),
+    prisma.customer.findMany({
+      where: { businessId: storeId },
+      select: { id: true },
+    }),
+  ]);
+
+  const saleMap = new Map(sales.map((s) => [s.id, s]));
+  const saleIds = Array.from(saleMap.keys());
+  const customerIds = customers.map((c) => c.id);
+
   const where = {
     OR: [
-      { sale: { businessId: storeId } },
-      { customer: { businessId: storeId } },
+      { saleId: { in: saleIds } },
+      { customerId: { in: customerIds } },
     ],
   };
   if (query.method && query.method !== 'ALL') {
@@ -780,7 +795,6 @@ export const getStorePaymentsForCA = async (caUser, storeId, query = {}) => {
       take: limit,
       orderBy: { createdAt: 'desc' },
       include: {
-        sale: { select: { id: true, invoiceNumber: true } },
         customer: { select: { id: true, name: true, phone: true } },
       },
     }),
@@ -789,14 +803,15 @@ export const getStorePaymentsForCA = async (caUser, storeId, query = {}) => {
 
   let totalReconciled = 0;
   const formattedPayments = payments.map((p) => {
+    const sale = saleMap.get(p.saleId);
     const amount = Number(p.amount || 0);
     totalReconciled += amount;
 
     return {
       id: p.id,
       saleId: p.saleId,
-      invoiceNumber: p.sale?.invoiceNumber || (p.saleId ? `Invoice #${p.saleId.slice(0, 8)}` : 'Payment In (On-Account)'),
-      customerName: p.customer?.name || 'Walk-in Retail Customer',
+      invoiceNumber: sale?.invoiceNumber || 'Linked Bill',
+      customerName: p.customer?.name || sale?.customer?.name || 'Walk-in Retail Customer',
       amount,
       method: p.method,
       transactionId: p.transactionId || null,
@@ -1137,7 +1152,7 @@ export const flagDiscrepancyForCA = async (caUser, storeId, data) => {
       referenceNumber: discrepancy.referenceNumber,
       discrepancy,
     }, { userId: caUser.id, action: 'DISCREPANCY_FLAGGED' });
-  } catch (_) {}
+  } catch (_) { }
 
   return discrepancy;
 };
@@ -1169,7 +1184,7 @@ export const resolveDiscrepancy = async (user, discrepancyId, data) => {
       discrepancyId,
       discrepancy: updated,
     }, { userId: user.id, action: 'CORRECTION_RESOLVED' });
-  } catch (_) {}
+  } catch (_) { }
 
   return updated;
 };
@@ -1202,7 +1217,7 @@ export const verifyDiscrepancyForCA = async (caUser, discrepancyId, data = {}) =
       discrepancyId,
       discrepancy: updated,
     }, { userId: caUser.id, action: 'CORRECTION_VERIFIED' });
-  } catch (_) {}
+  } catch (_) { }
 
   return updated;
 };
@@ -1269,7 +1284,7 @@ export const requestInvoiceCorrection = async (caUser, storeId, invoiceId, data 
       invoiceNumber: invoice.invoiceNumber,
       discrepancy,
     }, { userId: caUser.id, action: 'INVOICE_CORRECTION_REQUESTED' });
-  } catch (_) {}
+  } catch (_) { }
 
   return discrepancy;
 };
@@ -1340,7 +1355,7 @@ export const approveInvoiceCorrection = async (user, discrepancyId, approvalData
       invoiceNumber: discrepancy.referenceNumber,
       approvedBy: user.name || user.email,
     }, { userId: user.id, action: 'INVOICE_CORRECTION_APPLIED' });
-  } catch (_) {}
+  } catch (_) { }
 
   return { discrepancy: updatedDiscrepancy, sale: updatedSale };
 };
@@ -1372,7 +1387,7 @@ export const rejectInvoiceCorrection = async (user, discrepancyId, data = {}) =>
       discrepancyId,
       reason: data.reason,
     }, { userId: user.id, action: 'INVOICE_CORRECTION_REJECTED' });
-  } catch (_) {}
+  } catch (_) { }
 
   return updated;
 };
@@ -1511,7 +1526,7 @@ export const closePeriodForCA = async (caUser, storeId, data) => {
       period: closing.period,
       status: closing.status,
     }, { userId: caUser.id, action: 'PERIOD_CLOSED' });
-  } catch (_) {}
+  } catch (_) { }
 
   return closing;
 };
@@ -1549,7 +1564,7 @@ export const signOffPeriodForCA = async (caUser, storeId, periodId, data = {}) =
       period: updated.period,
       status: updated.status,
     }, { userId: caUser.id, action: 'PERIOD_SIGNED_OFF' });
-  } catch (_) {}
+  } catch (_) { }
 
   return updated;
 };

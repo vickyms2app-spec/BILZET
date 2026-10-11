@@ -378,4 +378,17 @@ export const realtimeApi = {
   ping: (businessId) => http.get("/realtime/ping", { params: { businessId } }).then(unwrap),
 };
 
+export const caInvitationApi = {
+  invite: (payload) => http.post("/ca-invitations", payload).then(unwrap),
+  list: (params) => http.get("/ca-invitations", { params }).then(unwrap),
+  getConnected: (params) => http.get("/ca-invitations/connected", { params }).then(unwrap),
+  resend: (id) => http.post(`/ca-invitations/${id}/resend`).then(unwrap),
+  revoke: (id) => http.post(`/ca-invitations/${id}/revoke`).then(unwrap),
+  disconnect: (caUserId, params) => http.delete(`/ca-invitations/connected/${caUserId}`, { params }).then(unwrap),
+  verify: (token) => http.get("/ca-invitations/verify", { params: { token } }).then(unwrap),
+  accept: (payload) => http.post("/ca-invitations/accept", payload).then(unwrap),
+  decline: (payload) => http.post("/ca-invitations/decline", payload).then(unwrap),
+};
+
+
 

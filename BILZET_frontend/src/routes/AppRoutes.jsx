@@ -19,6 +19,7 @@ import Invoices from "../pages/Invoices";
 import Gst from "../pages/Gst";
 import CaConnect from "../pages/CaConnect";
 import CaPortal from "../pages/CaPortal";
+import AcceptCaInvitation from "../pages/AcceptCaInvitation";
 import Referral from "../pages/Referral";
 import Plans from "../pages/Plans";
 import Support from "../pages/Support";
@@ -214,6 +215,11 @@ export default function AppRoutes() {
           </Protected>
         }
       />
+      {/* CA Invitation Acceptance Routes (Publicly accessible with single-use token verification) */}
+      <Route path="/ca-connect/accept-invitation" element={<AcceptCaInvitation />} />
+      <Route path="/ca-portal/accept-invitation" element={<AcceptCaInvitation />} />
+      <Route path="/accept-invitation" element={<AcceptCaInvitation />} />
+
       <Route
         path="/ca-connect"
         element={
