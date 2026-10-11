@@ -1123,6 +1123,32 @@ export const recordPayment = async (saleId, paymentData = {}, user = null) => {
       },
     });
 
+    await tx.auditLog.create({
+      data: {
+        userId: user ? user.id : null,
+        action: 'PAYMENT_RECORDED',
+        entity: 'SALE',
+        entityId: sale.id,
+        changes: {
+          eventType: 'PAYMENT_RECORDED',
+          invoiceNumber: sale.invoiceNumber,
+          paymentId: payment.id,
+          amountPaid: amount,
+          paymentMethod: (paymentData.paymentMethod || 'CASH').toUpperCase(),
+          before: {
+            paidAmount: Number(sale.paidAmount || 0),
+            balanceDue: Number(mapped.balanceDue || 0),
+            paymentStatus: sale.paymentStatus,
+          },
+          after: {
+            paidAmount: newPaidAmount,
+            balanceDue: newBalance,
+            paymentStatus: newPaymentStatus,
+          },
+        },
+      },
+    });
+
     if (sale.paymentStatus !== newPaymentStatus) {
       await tx.auditLog.create({
         data: {
