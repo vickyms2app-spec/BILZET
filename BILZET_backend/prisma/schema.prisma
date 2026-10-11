@@ -687,18 +687,6 @@ model AppConfig {
   @@map("app_configs")
 }
 
-model CAStoreAccess {
-  id         String   @id @default(uuid())
-  caUserId   String   @map("ca_user_id")
-  businessId String   @map("business_id")
-  assignedAt DateTime @default(now()) @map("assigned_at")
-  status     String   @default("ACTIVE") // ACTIVE, REVOKED
-
-  @@unique([caUserId, businessId])
-  @@index([caUserId])
-  @@index([businessId])
-  @@map("ca_store_access")
-}
 
 model AuditTask {
   id              String    @id @default(uuid())
