@@ -168,9 +168,13 @@ export default function CaConnect() {
     subscription.status?.toLowerCase() !== "inactive";
 
   const isUnlocked =
-    subscription.isUnlocked !== undefined
+    user?.role === "ADMIN" ||
+    user?.role === "SUPER_ADMIN" ||
+    user?.role === "OWNER" ||
+    user?.isSuperAdmin ||
+    (subscription.isUnlocked !== undefined
       ? subscription.isUnlocked
-      : isPremiumOrEnterprise && isStatusValid;
+      : isPremiumOrEnterprise && isStatusValid);
 
   const loadAccountants = async () => {
     try {
@@ -426,6 +430,54 @@ export default function CaConnect() {
           <ShieldCheck size={14} />
           <span>Encrypted Tax Portal</span>
         </span>
+      </div>
+
+      {/* ══════════════════════════════════════════════════
+          CA CONNECT AUDIT AUTOMATION WORKSPACE LAUNCHER
+      ══════════════════════════════════════════════════ */}
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-6 rounded-3xl text-white shadow-xl border border-slate-800 space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-1.5">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-semibold border border-indigo-400/30">
+              <ShieldCheck size={14} /> CA Connect Professional Audit Suite
+            </div>
+            <h2 className="text-xl sm:text-2xl font-black tracking-tight">
+              End-to-End CA Audit &amp; Automation Workspace
+            </h2>
+            <p className="text-slate-300 text-xs max-w-2xl leading-relaxed">
+              Transform your accounting workflow with automated audit rules, proportional GST return adjustments, bank statement reconciliation, workpapers generation, and interactive pipeline management.
+            </p>
+          </div>
+          <Button
+            variant="primary"
+            size="lg"
+            icon={ArrowRight}
+            onClick={() => navigate("/ca-portal/dashboard")}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-lg shrink-0"
+          >
+            Open CA Workspace
+          </Button>
+        </div>
+
+        {/* 5 Pillar Quick Access Badges */}
+        <div className="pt-3 border-t border-slate-800 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 text-xs">
+          {[
+            { label: "CA Dashboard", path: "/ca-portal/dashboard" },
+            { label: "Client Portfolio", path: "/ca-portal/clients" },
+            { label: "Audit Pipeline", path: "/ca-portal/pipeline" },
+            { label: "Sales & Tax Audit", path: "/ca-portal/sales" },
+            { label: "Bank Reconciliation", path: "/ca-portal/reconciliation" },
+            { label: "Audit Workpapers", path: "/ca-portal/reports" },
+          ].map((item, idx) => (
+            <button
+              key={idx}
+              onClick={() => navigate(item.path)}
+              className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-200 hover:text-white font-semibold text-center border border-white/10 transition"
+            >
+              {item.label} →
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* ══════════════════════════════════════════════════

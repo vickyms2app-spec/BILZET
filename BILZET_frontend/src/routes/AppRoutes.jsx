@@ -225,7 +225,7 @@ export default function AppRoutes() {
       <Route
         path="/ca-portal"
         element={
-          <Protected roles={["CA", "SUPER_ADMIN"]}>
+          <Protected roles={["CA", "SUPER_ADMIN", "ADMIN", "OWNER"]}>
             <CaPortal />
           </Protected>
         }
@@ -233,7 +233,7 @@ export default function AppRoutes() {
       <Route
         path="/ca-portal/:subTab"
         element={
-          <Protected roles={["CA", "SUPER_ADMIN"]}>
+          <Protected roles={["CA", "SUPER_ADMIN", "ADMIN", "OWNER"]}>
             <CaPortal />
           </Protected>
         }

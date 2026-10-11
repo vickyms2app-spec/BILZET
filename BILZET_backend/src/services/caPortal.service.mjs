@@ -16,8 +16,9 @@ export const getAuthorizedStoresForCA = async (caUser) => {
   if (!caUser) throw ApiError.unauthorized('Authentication required');
 
   const isSuperAdmin = caUser.role === 'SUPER_ADMIN' || caUser.isSuperAdmin;
+  const isAdmin = caUser.role === 'ADMIN' || caUser.role === 'OWNER';
 
-  if (isSuperAdmin) {
+  if (isSuperAdmin || (isAdmin && !caUser.businessId)) {
     const allStores = await prisma.business.findMany({
       orderBy: { name: 'asc' },
     });
@@ -97,6 +98,14 @@ export const getAuthorizedStoresForCA = async (caUser) => {
 export const verifyCAStoreAccess = async (caUser, storeId) => {
   if (!storeId) {
     throw ApiError.badRequest('Store ID is required');
+  }
+
+  if (caUser.role === 'SUPER_ADMIN' || caUser.isSuperAdmin) {
+    return { id: storeId };
+  }
+
+  if ((caUser.role === 'ADMIN' || caUser.role === 'OWNER') && (!caUser.businessId || caUser.businessId === storeId)) {
+    return { id: storeId };
   }
 
   const authorizedStores = await getAuthorizedStoresForCA(caUser);

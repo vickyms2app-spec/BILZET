@@ -182,6 +182,21 @@ const navSections = [
     ],
   },
   {
+    title: "CA Connect & Audit Suite",
+    key: "ca_connect_section",
+    items: [
+      { label: "CA Connect Hub", path: "/ca-connect", icon: Briefcase },
+      { label: "CA Audit Workspace", path: "/ca-portal/dashboard", icon: ShieldCheck, highlight: true },
+      { label: "Client Portfolio", path: "/ca-portal/clients", icon: Building2 },
+      { label: "Audit Pipeline", path: "/ca-portal/pipeline", icon: Activity },
+      { label: "Compliance & Deadlines", path: "/ca-portal/deadlines", icon: AlertTriangle },
+      { label: "Sales & Invoices Audit", path: "/ca-portal/sales", icon: FileText },
+      { label: "Bank Reconciliation", path: "/ca-portal/reconciliation", icon: Scale },
+      { label: "Audit Workpapers", path: "/ca-portal/reports", icon: FileSpreadsheet },
+      { label: "Workflow Automation", path: "/ca-portal/automation", icon: SlidersHorizontal },
+    ],
+  },
+  {
     title: "System & Settings",
     key: "system",
     items: [
@@ -438,6 +453,7 @@ export default function Layout({ children }) {
       "/subscription": ["subscription.manage"],
       "/gst": ["gst.view"],
       "/ca-connect": ["gst.view"],
+      "/ca-portal": ["gst.view"],
       "/audit-logs": ["audit_logs.view"],
     };
 
@@ -548,18 +564,27 @@ export default function Layout({ children }) {
         {sidebarOpen ? (
           <div className="px-3.5 pt-3.5 pb-1 shrink-0">
             {user?.role === "CA" || location.pathname.startsWith("/ca-portal") ? (
-              <NavLink
-                to="/ca-portal/dashboard"
-                className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs text-white bg-gradient-to-r from-blue-700 to-indigo-600 shadow-md shadow-blue-500/25 transition-all duration-200 group"
-              >
-                <div className="flex items-center gap-2.5">
-                  <ShieldCheck size={16} className="text-cyan-200" />
-                  <span>CA Audit Suite</span>
-                </div>
-                <span className="px-1.5 py-0.5 rounded-md bg-white/20 text-[10px] font-mono tracking-tight text-white/90">
-                  AUDIT
-                </span>
-              </NavLink>
+              <div className="space-y-1.5">
+                <NavLink
+                  to="/ca-portal/dashboard"
+                  className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs text-white bg-gradient-to-r from-blue-700 to-indigo-600 shadow-md shadow-blue-500/25 transition-all duration-200 group"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <ShieldCheck size={16} className="text-cyan-200" />
+                    <span>CA Audit Suite</span>
+                  </div>
+                  <span className="px-1.5 py-0.5 rounded-md bg-white/20 text-[10px] font-mono tracking-tight text-white/90">
+                    AUDIT
+                  </span>
+                </NavLink>
+                <NavLink
+                  to="/dashboard"
+                  className="w-full flex items-center justify-center gap-1.5 py-1 px-2 text-[11px] font-semibold text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition"
+                >
+                  <ArrowRightLeft size={12} className="text-cyan-300" />
+                  <span>Exit to Shop Dashboard</span>
+                </NavLink>
+              </div>
             ) : (
               <NavLink
                 to="/billing"

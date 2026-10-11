@@ -62,7 +62,7 @@ export default function CaPortal() {
   const { user } = useAuth();
   const { subTab } = useParams();
   const navigate = useNavigate();
-  const isCAUser = user?.role === "CA" || user?.role === "SUPER_ADMIN" || user?.isSuperAdmin;
+  const isCAUser = user?.role === "CA" || user?.role === "SUPER_ADMIN" || user?.role === "ADMIN" || user?.role === "OWNER" || user?.isSuperAdmin;
 
   // Tab mapping helper
   const resolveTab = (tab) => {
