@@ -1,6 +1,9 @@
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendResponse } from '../utils/apiResponse.mjs';
 import caPortalService from '../services/caPortal.service.mjs';
+import auditRulesService from '../services/auditRules.service.mjs';
+import bankReconciliationService from '../services/bankReconciliation.service.mjs';
+import caWorkpapersService from '../services/caWorkpapers.service.mjs';
 
 /**
  * Controller for the Chartered Accountant (CA) Portal.
@@ -157,6 +160,62 @@ export const signOffPeriod = asyncHandler(async (req, res) => {
   return sendResponse(res, 200, { period }, 'Period signed off by CA successfully');
 });
 
+// ══════════════════════════════════════════════════════════════
+// AUDIT RULES ENGINE HANDLERS
+// ══════════════════════════════════════════════════════════════
+export const getAuditRules = asyncHandler(async (req, res) => {
+  const { storeId, autoCreateTasks } = req.query;
+  const result = await auditRulesService.runAuditRulesEngine(req.user, storeId, {
+    autoCreateTasks: autoCreateTasks === 'true' || autoCreateTasks === true,
+  });
+  return sendResponse(res, 200, result, 'Audit rules evaluated successfully');
+});
+
+export const runAuditRules = asyncHandler(async (req, res) => {
+  const { storeId } = req.query;
+  const result = await auditRulesService.runAuditRulesEngine(req.user, storeId || req.body.storeId, {
+    autoCreateTasks: req.body.autoCreateTasks ?? true,
+  });
+  return sendResponse(res, 200, result, 'Audit rules executed and exceptions logged');
+});
+
+// ══════════════════════════════════════════════════════════════
+// BANK RECONCILIATION HANDLERS
+// ══════════════════════════════════════════════════════════════
+export const getBankReconciliation = asyncHandler(async (req, res) => {
+  const { storeId } = req.query;
+  const result = await bankReconciliationService.getBankReconciliationSession(req.user, storeId);
+  return sendResponse(res, 200, result, 'Bank reconciliation session retrieved successfully');
+});
+
+export const importBankStatement = asyncHandler(async (req, res) => {
+  const { storeId } = req.query;
+  const result = await bankReconciliationService.importBankStatement(req.user, storeId || req.body.storeId, req.body);
+  return sendResponse(res, 200, result, 'Bank statement imported and reconciled successfully');
+});
+
+export const updateBankMatch = asyncHandler(async (req, res) => {
+  const { storeId } = req.query;
+  const { action, matchDetails } = req.body;
+  const result = await bankReconciliationService.updateStatementRowMatch(
+    req.user,
+    storeId || req.body.storeId,
+    req.params.id,
+    action,
+    matchDetails
+  );
+  return sendResponse(res, 200, result, 'Statement row match status updated');
+});
+
+// ══════════════════════════════════════════════════════════════
+// WORKPAPERS AND REPORTS HANDLERS
+// ══════════════════════════════════════════════════════════════
+export const getWorkpapers = asyncHandler(async (req, res) => {
+  const { storeId, ...query } = req.query;
+  const workpapers = await caWorkpapersService.generateAuditWorkpapers(req.user, storeId, query);
+  return sendResponse(res, 200, { workpapers }, 'CA Audit workpapers compiled successfully');
+});
+
 export default {
   getAuthorizedStores,
   getInvoices,
@@ -184,5 +243,11 @@ export default {
   getPeriodClosings,
   closePeriod,
   signOffPeriod,
+  getAuditRules,
+  runAuditRules,
+  getBankReconciliation,
+  importBankStatement,
+  updateBankMatch,
+  getWorkpapers,
 };
 

@@ -58,5 +58,17 @@ router.get('/period-closings', caPortalController.getPeriodClosings);
 router.post('/period-closings', caPortalController.closePeriod);
 router.post('/period-closings/:id/sign-off', caPortalController.signOffPeriod);
 
+// Audit Rules Engine
+router.get('/audit-rules', caPortalController.getAuditRules);
+router.post('/audit-rules/run', caPortalController.runAuditRules);
+
+// Bank & Payment Reconciliation
+router.get('/bank-reconciliation', caPortalController.getBankReconciliation);
+router.post('/bank-reconciliation/import', caPortalController.importBankStatement);
+router.patch('/bank-reconciliation/match/:id', caPortalController.updateBankMatch);
+
+// Reports & Workpapers
+router.get('/workpapers', caPortalController.getWorkpapers);
+
 export default router;
 

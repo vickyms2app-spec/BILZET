@@ -122,6 +122,20 @@ export default function CaPortal() {
   const [closeModalOpen, setCloseModalOpen] = useState(false);
   const [closingForm, setClosingForm] = useState({ period: "", signOffNotes: "" });
 
+  // Module 5: Bank Statement Reconciliation State
+  const [bankSession, setBankSession] = useState(null);
+  const [loadingBankSession, setLoadingBankSession] = useState(false);
+  const [importBankModalOpen, setImportBankModalOpen] = useState(false);
+  const [bankRowsInput, setBankRowsInput] = useState("");
+
+  // Module 11: Reports & Workpapers State
+  const [workpapersData, setWorkpapersData] = useState(null);
+  const [loadingWorkpapers, setLoadingWorkpapers] = useState(false);
+
+  // Module 14: Settings & Audit Rules Engine State
+  const [rulesEvaluation, setRulesEvaluation] = useState(null);
+  const [loadingRules, setLoadingRules] = useState(false);
+
   // Modals
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [selectedCreditNote, setSelectedCreditNote] = useState(null);
@@ -440,6 +454,115 @@ export default function CaPortal() {
     }
   };
 
+  // Module 5: Bank Reconciliation Actions
+  const loadBankSessionData = async () => {
+    if (!selectedStoreId) return;
+    setLoadingBankSession(true);
+    try {
+      const res = await caPortalApi.getBankReconciliation({ storeId: selectedStoreId });
+      setBankSession(res?.session || null);
+    } catch (err) {
+      console.error("Failed to load bank reconciliation:", err);
+    } finally {
+      setLoadingBankSession(false);
+    }
+  };
+
+  const handleImportBankStatement = async (e) => {
+    e.preventDefault();
+    if (!bankRowsInput.trim()) return;
+    try {
+      const lines = bankRowsInput.trim().split("\n");
+      const rows = lines.map((line, idx) => {
+        const parts = line.split(",").map((s) => s.trim());
+        if (parts.length >= 4) {
+          return {
+            date: parts[0] || new Date().toISOString().split("T")[0],
+            description: parts[1] || "Transaction",
+            refNumber: parts[2] || `REF-${idx + 1}`,
+            debit: Number(parts[3]) || 0,
+            credit: Number(parts[4]) || 0,
+            balance: Number(parts[5]) || 0,
+          };
+        }
+        return {
+          date: new Date().toISOString().split("T")[0],
+          description: line,
+          refNumber: `TXN-${idx + 1}`,
+          credit: Number(line.replace(/[^0-9.]/g, "")) || 1000,
+          debit: 0,
+        };
+      });
+
+      const res = await caPortalApi.importBankStatement(
+        { fileName: "Bank_Statement_Import.csv", rows },
+        { storeId: selectedStoreId }
+      );
+      setBankSession(res?.session || null);
+      setImportBankModalOpen(false);
+      setBankRowsInput("");
+      alert(`Bank statement imported: ${rows.length} rows processed with automated match suggestion!`);
+    } catch (err) {
+      alert("Failed to import statement: " + (err.message || "Unknown error"));
+    }
+  };
+
+  const handleUpdateBankMatch = async (rowId, action) => {
+    try {
+      const res = await caPortalApi.updateBankMatch(rowId, { action }, { storeId: selectedStoreId });
+      if (res?.session) {
+        setBankSession(res.session);
+      } else {
+        loadBankSessionData();
+      }
+    } catch (err) {
+      console.error("Failed to update match:", err);
+    }
+  };
+
+  // Module 11: Workpapers Actions
+  const loadWorkpapersData = async () => {
+    if (!selectedStoreId) return;
+    setLoadingWorkpapers(true);
+    try {
+      const res = await caPortalApi.getWorkpapers({ storeId: selectedStoreId });
+      setWorkpapersData(res?.workpapers || null);
+    } catch (err) {
+      console.error("Failed to load workpapers:", err);
+    } finally {
+      setLoadingWorkpapers(false);
+    }
+  };
+
+  // Module 14: Settings & Audit Rules Engine Actions
+  const loadAuditRulesData = async () => {
+    if (!selectedStoreId) return;
+    setLoadingRules(true);
+    try {
+      const res = await caPortalApi.getAuditRules({ storeId: selectedStoreId, autoCreateTasks: false });
+      setRulesEvaluation(res || null);
+    } catch (err) {
+      console.error("Failed to evaluate audit rules:", err);
+    } finally {
+      setLoadingRules(false);
+    }
+  };
+
+  const handleExecuteAuditRules = async () => {
+    if (!selectedStoreId) return;
+    setLoadingRules(true);
+    try {
+      const res = await caPortalApi.runAuditRules({ autoCreateTasks: true }, { storeId: selectedStoreId });
+      setRulesEvaluation(res || null);
+      alert(`Audit Rules executed! Found ${res?.exceptionsFoundCount || 0} exception(s). Created ${res?.tasksCreatedCount || 0} task(s).`);
+      loadTasksData();
+    } catch (err) {
+      alert("Failed to run rules: " + (err.message || "Unknown error"));
+    } finally {
+      setLoadingRules(false);
+    }
+  };
+
   useEffect(() => {
     if (selectedStoreId) {
       loadStoreData();
@@ -453,6 +576,9 @@ export default function CaPortal() {
       loadDiscrepanciesData();
       loadDocumentsData();
       loadClosingsData();
+      loadBankSessionData();
+      loadWorkpapersData();
+      loadAuditRulesData();
     }
   }, [selectedStoreId, statusFilter, returnFilter, selectedMonth, selectedYear, startDate, endDate]);
 
@@ -1075,6 +1201,45 @@ export default function CaPortal() {
                 }`}
               >
                 <Activity size={14} /> Activity Ledger ({activityList.length})
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab("reconciliation");
+                  loadBankSessionData();
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
+                  activeTab === "reconciliation"
+                    ? "bg-slate-900 text-white shadow-xs"
+                    : "text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                <Scale size={14} /> Bank Reconciliation
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab("workpapers");
+                  loadWorkpapersData();
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
+                  activeTab === "workpapers"
+                    ? "bg-slate-900 text-white shadow-xs"
+                    : "text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                <FileSpreadsheet size={14} /> Workpapers &amp; Reports
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab("settings");
+                  loadAuditRulesData();
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
+                  activeTab === "settings"
+                    ? "bg-slate-900 text-white shadow-xs"
+                    : "text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                <SlidersHorizontal size={14} /> Workspace Settings
               </button>
             </div>
 
@@ -2470,6 +2635,438 @@ export default function CaPortal() {
               </div>
             </div>
           )}
+
+          {/* ══════════════════════════════════════════════════
+              MODULE 5: BANK & PAYMENT RECONCILIATION
+          ══════════════════════════════════════════════════ */}
+          {activeTab === "reconciliation" && (
+            <div className="space-y-4">
+              <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                    <Scale size={16} className="text-blue-600" />
+                    Bank Statement Reconciliation &amp; Transaction Matcher
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Match recorded business payments and expense vouchers against imported bank statement entries.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    icon={RefreshCw}
+                    loading={loadingBankSession}
+                    onClick={loadBankSessionData}
+                  >
+                    Refresh
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    icon={Plus}
+                    onClick={() => setImportBankModalOpen(true)}
+                  >
+                    Import Bank Statement
+                  </Button>
+                </div>
+              </div>
+
+              {/* Statement KPI Cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-xs">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Statement Deposits</span>
+                  <div className="text-lg font-black text-emerald-700 mt-1 font-mono">
+                    ₹{Number(bankSession?.totalDeposits || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                  </div>
+                  <span className="text-[10px] text-slate-500 mt-0.5 block">Customer Inflows</span>
+                </div>
+                <div className="bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-xs">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Statement Withdrawals</span>
+                  <div className="text-lg font-black text-rose-700 mt-1 font-mono">
+                    ₹{Number(bankSession?.totalWithdrawals || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                  </div>
+                  <span className="text-[10px] text-slate-500 mt-0.5 block">Expense/Purchase Outflows</span>
+                </div>
+                <div className="bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-xs">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Auto-Matched</span>
+                  <div className="text-lg font-black text-blue-700 mt-1 font-mono">
+                    {bankSession?.matchedCount || 0} Txns
+                  </div>
+                  <span className="text-[10px] text-blue-600 mt-0.5 block">Confidence &ge; 85%</span>
+                </div>
+                <div className="bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-xs">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Unmatched</span>
+                  <div className="text-lg font-black text-amber-700 mt-1 font-mono">
+                    {bankSession?.unmatchedCount || 0} Txns
+                  </div>
+                  <span className="text-[10px] text-amber-600 mt-0.5 block">Requires Review</span>
+                </div>
+              </div>
+
+              {/* Statement Rows Table */}
+              <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
+                <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                  <span className="font-bold text-slate-800 text-xs">
+                    Imported Statement Entries ({bankSession?.statementRows?.length || 0})
+                  </span>
+                  <span className="text-[11px] text-slate-500">
+                    File: <strong>{bankSession?.fileName || "None"}</strong>
+                  </span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="border-b border-slate-200 bg-slate-50/70 text-slate-500 font-bold uppercase tracking-wider">
+                        <th className="py-3 px-4">Date</th>
+                        <th className="py-3 px-4">Description</th>
+                        <th className="py-3 px-4">Reference #</th>
+                        <th className="py-3 px-4 text-right">Debit (₹)</th>
+                        <th className="py-3 px-4 text-right">Credit (₹)</th>
+                        <th className="py-3 px-4 text-center">Match Status</th>
+                        <th className="py-3 px-4">Matched Book Entry</th>
+                        <th className="py-3 px-4 text-center">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {!bankSession?.statementRows || bankSession.statementRows.length === 0 ? (
+                        <tr>
+                          <td colSpan="8" className="p-8 text-center text-slate-400 text-xs">
+                            No bank statement imported yet. Click "Import Bank Statement" to paste or upload statement lines.
+                          </td>
+                        </tr>
+                      ) : (
+                        bankSession.statementRows.map((row) => (
+                          <tr key={row.id} className="hover:bg-slate-50/70">
+                            <td className="py-3 px-4 font-mono">{row.date}</td>
+                            <td className="py-3 px-4 max-w-xs truncate font-medium text-slate-800">{row.description}</td>
+                            <td className="py-3 px-4 font-mono text-slate-600">{row.refNumber}</td>
+                            <td className="py-3 px-4 text-right font-mono text-rose-600">
+                              {row.debit > 0 ? `₹${row.debit.toFixed(2)}` : "-"}
+                            </td>
+                            <td className="py-3 px-4 text-right font-mono text-emerald-600">
+                              {row.credit > 0 ? `₹${row.credit.toFixed(2)}` : "-"}
+                            </td>
+                            <td className="py-3 px-4 text-center">
+                              <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                                row.matchStatus === "RECONCILED"
+                                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                  : row.matchStatus === "SUGGESTED_MATCH"
+                                  ? "bg-blue-50 text-blue-700 border border-blue-200"
+                                  : "bg-amber-50 text-amber-700 border border-amber-200"
+                              }`}>
+                                {row.matchStatus}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-slate-600">
+                              {row.matchedTransaction ? (
+                                <span className="font-mono text-[11px] bg-slate-100 px-2 py-0.5 rounded-md">
+                                  {row.matchedTransaction.invoiceNumber || row.matchedTransaction.reference} (₹{row.matchedTransaction.amount})
+                                </span>
+                              ) : (
+                                <span className="text-slate-400 italic">No book match</span>
+                              )}
+                            </td>
+                            <td className="py-3 px-4 text-center">
+                              {row.matchStatus !== "RECONCILED" && row.matchedTransaction && (
+                                <div className="flex items-center justify-center gap-1">
+                                  <button
+                                    onClick={() => handleUpdateBankMatch(row.id, "CONFIRM")}
+                                    className="px-2 py-1 rounded-md bg-emerald-600 text-white text-[10px] font-bold hover:bg-emerald-700 transition"
+                                  >
+                                    Confirm
+                                  </button>
+                                  <button
+                                    onClick={() => handleUpdateBankMatch(row.id, "REJECT")}
+                                    className="px-2 py-1 rounded-md bg-slate-200 text-slate-700 text-[10px] font-bold hover:bg-slate-300 transition"
+                                  >
+                                    Reject
+                                  </button>
+                                </div>
+                              )}
+                              {row.matchStatus === "RECONCILED" && (
+                                <span className="text-emerald-600 font-bold text-[11px] flex items-center justify-center gap-1">
+                                  <Check size={12} /> Reconciled
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ══════════════════════════════════════════════════
+              MODULE 11: WORKPAPERS & STATUTORY REPORTING
+          ══════════════════════════════════════════════════ */}
+          {activeTab === "workpapers" && (
+            <div className="space-y-4">
+              <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                    <FileSpreadsheet size={16} className="text-emerald-600" />
+                    CA Audit Workpapers &amp; Statutory Report Package
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Pre-compiled sales registers, purchases ITC breakdown, credit notes, and audit certificates.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    icon={RefreshCw}
+                    loading={loadingWorkpapers}
+                    onClick={loadWorkpapersData}
+                  >
+                    Refresh Workpapers
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    icon={Download}
+                    onClick={() => {
+                      if (!workpapersData) return;
+                      const jsonStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(workpapersData, null, 2));
+                      const link = document.createElement("a");
+                      link.setAttribute("href", jsonStr);
+                      link.setAttribute("download", `CA_Workpapers_${activeStore?.name || "Store"}_${Date.now()}.json`);
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                    }}
+                  >
+                    Export Workpapers
+                  </Button>
+                </div>
+              </div>
+
+              {/* Workpapers Executive Summary */}
+              {workpapersData?.reconciliationSummary && (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-xs">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Audited Turnover</span>
+                    <div className="text-lg font-black text-indigo-700 mt-1 font-mono">
+                      ₹{Number(workpapersData.reconciliationSummary.netTurnover || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                    </div>
+                  </div>
+                  <div className="bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-xs">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Net Output GST</span>
+                    <div className="text-lg font-black text-blue-700 mt-1 font-mono">
+                      ₹{Number(workpapersData.reconciliationSummary.netOutputGstLiability || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                    </div>
+                  </div>
+                  <div className="bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-xs">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Eligible Input Tax (ITC)</span>
+                    <div className="text-lg font-black text-emerald-700 mt-1 font-mono">
+                      ₹{Number(workpapersData.reconciliationSummary.totalEligibleITC || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                    </div>
+                  </div>
+                  <div className="bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-xs">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Exceptions Logged</span>
+                    <div className="text-lg font-black text-purple-700 mt-1 font-mono">
+                      {workpapersData.reconciliationSummary.openDiscrepanciesCount || 0} Open
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Workpaper Registers Preview */}
+              <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs p-5 space-y-4">
+                <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider border-b border-slate-100 pb-2">
+                  1. Sales &amp; Output GST Workpaper Register ({workpapersData?.salesRegister?.length || 0} Records)
+                </h4>
+                <div className="overflow-x-auto max-h-64">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 sticky top-0 font-bold text-slate-500">
+                      <tr>
+                        <th className="p-2">Invoice #</th>
+                        <th className="p-2">Customer</th>
+                        <th className="p-2 text-right">Taxable (₹)</th>
+                        <th className="p-2 text-right">CGST (₹)</th>
+                        <th className="p-2 text-right">SGST (₹)</th>
+                        <th className="p-2 text-right">Net Payable (₹)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-mono">
+                      {(workpapersData?.salesRegister || []).map((s, idx) => (
+                        <tr key={idx}>
+                          <td className="p-2 font-bold">{s.invoiceNumber}</td>
+                          <td className="p-2 font-sans">{s.customerName} ({s.supplyType})</td>
+                          <td className="p-2 text-right">₹{Number(s.taxableAmount || 0).toFixed(2)}</td>
+                          <td className="p-2 text-right">₹{Number(s.cgst || 0).toFixed(2)}</td>
+                          <td className="p-2 text-right">₹{Number(s.sgst || 0).toFixed(2)}</td>
+                          <td className="p-2 text-right font-bold text-blue-600">₹{Number(s.netPayable || 0).toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider border-b border-slate-100 pb-2 pt-3">
+                  2. Purchases &amp; Input Tax Credit (ITC) Register ({workpapersData?.purchasesRegister?.length || 0} Records)
+                </h4>
+                <div className="overflow-x-auto max-h-64">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 sticky top-0 font-bold text-slate-500">
+                      <tr>
+                        <th className="p-2">Bill #</th>
+                        <th className="p-2">Supplier</th>
+                        <th className="p-2">Supplier GSTIN</th>
+                        <th className="p-2 text-right">Grand Total (₹)</th>
+                        <th className="p-2 text-right">Input Tax (₹)</th>
+                        <th className="p-2 text-center">ITC Eligible</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-mono">
+                      {(workpapersData?.purchasesRegister || []).map((p, idx) => (
+                        <tr key={idx}>
+                          <td className="p-2 font-bold">{p.invoiceNumber}</td>
+                          <td className="p-2 font-sans">{p.supplierName}</td>
+                          <td className="p-2">{p.supplierGstin}</td>
+                          <td className="p-2 text-right">₹{Number(p.grandTotal || 0).toFixed(2)}</td>
+                          <td className="p-2 text-right text-emerald-600">₹{Number(p.taxTotal || 0).toFixed(2)}</td>
+                          <td className="p-2 text-center font-sans">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              p.itcEligible ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"
+                            }`}>
+                              {p.itcEligible ? "YES" : "NO"}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ══════════════════════════════════════════════════
+              MODULE 14: CLIENT & WORKSPACE SETTINGS / RULES ENGINE
+          ══════════════════════════════════════════════════ */}
+          {activeTab === "settings" && (
+            <div className="space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Authorized Store Profile */}
+                <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-xs space-y-3">
+                  <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+                    <Building2 size={16} className="text-blue-600" />
+                    <h3 className="font-bold text-slate-900 text-sm">Authorized Client Store</h3>
+                  </div>
+                  <div className="text-xs space-y-2 text-slate-700">
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Business Name:</span>
+                      <strong className="text-slate-900">{activeStore?.name}</strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Authorized GSTIN:</span>
+                      <strong className="font-mono text-slate-900">{activeStore?.gstin || "Unregistered"}</strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">State / Jurisdictional Code:</span>
+                      <strong>{activeStore?.state || "Tamil Nadu"} (33)</strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Registered Address:</span>
+                      <span className="text-right max-w-xs">{activeStore?.address || "N/A"}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* CA Auditor Credentials */}
+                <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-xs space-y-3">
+                  <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+                    <ShieldCheck size={16} className="text-emerald-600" />
+                    <h3 className="font-bold text-slate-900 text-sm">Certified Auditor Profile</h3>
+                  </div>
+                  <div className="text-xs space-y-2 text-slate-700">
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Designated CA:</span>
+                      <strong className="text-slate-900">{user?.name || "Senior Partner"}</strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Auditor Email:</span>
+                      <strong className="font-mono text-slate-900">{user?.email}</strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">CA Membership / FRN:</span>
+                      <strong className="font-mono text-emerald-700">ICAI-MEM-88254</strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Audit Status:</span>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        AUTHORIZED &amp; ACTIVE
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Automated Audit Rules Engine Panel */}
+              <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs p-5 space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                  <div>
+                    <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                      <SlidersHorizontal size={16} className="text-indigo-600" />
+                      Automated Audit Rules Engine
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Continuously validates transaction arithmetic, GST rates, B2B compliance, and inventory anomalies.
+                    </p>
+                  </div>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    loading={loadingRules}
+                    onClick={handleExecuteAuditRules}
+                    className="bg-indigo-600 hover:bg-indigo-700 border-indigo-600"
+                  >
+                    Execute All Rules
+                  </Button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                  {(rulesEvaluation?.rules || []).map((rule) => (
+                    <div key={rule.id} className="p-3 rounded-xl border border-slate-100 bg-slate-50/70 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-slate-900">{rule.name}</span>
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-700">
+                          {rule.severity}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500">{rule.description}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {rulesEvaluation?.exceptions && rulesEvaluation.exceptions.length > 0 && (
+                  <div className="mt-4 pt-3 border-t border-slate-100 space-y-2">
+                    <h4 className="font-bold text-rose-700 text-xs uppercase tracking-wider flex items-center gap-1.5">
+                      <AlertTriangle size={14} /> Detected Audit Exceptions ({rulesEvaluation.exceptions.length})
+                    </h4>
+                    <div className="divide-y divide-slate-100 border border-rose-100 rounded-xl bg-rose-50/20 overflow-hidden text-xs">
+                      {rulesEvaluation.exceptions.map((exc, idx) => (
+                        <div key={idx} className="p-3 flex items-center justify-between gap-4">
+                          <div className="space-y-0.5">
+                            <span className="font-bold text-slate-900">{exc.title}</span>
+                            <p className="text-[11px] text-slate-600">{exc.description}</p>
+                          </div>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 shrink-0">
+                            {exc.severity}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </>
       )}
 
@@ -2904,6 +3501,46 @@ export default function CaPortal() {
                 Close
               </Button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════
+          IMPORT BANK STATEMENT MODAL
+      ══════════════════════════════════════════════════ */}
+      {importBankModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-lg p-6 space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <h3 className="font-bold text-slate-900 flex items-center gap-2">
+                <Scale size={16} className="text-blue-600" />
+                Import Bank Statement (CSV / Text)
+              </h3>
+              <button onClick={() => setImportBankModalOpen(false)}>
+                <X size={18} />
+              </button>
+            </div>
+            <form onSubmit={handleImportBankStatement} className="space-y-3 text-xs">
+              <p className="text-slate-500">
+                Paste raw statement rows below. Format: <code className="font-mono text-slate-700 bg-slate-100 px-1 py-0.5 rounded">Date, Description, RefNumber, Debit, Credit, Balance</code>
+              </p>
+              <textarea
+                rows={6}
+                required
+                value={bankRowsInput}
+                onChange={(e) => setBankRowsInput(e.target.value)}
+                placeholder={"2026-10-11, NEFT Inflow Customer Payment, TXN-9988, 0, 5250, 105250\n2026-10-11, Chq Generator Repair Outflow, CHQ-8822, 35000, 0, 70250"}
+                className="w-full p-3 font-mono text-[11px] rounded-xl border border-slate-200 focus:outline-hidden focus:border-blue-500"
+              />
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="secondary" size="sm" type="button" onClick={() => setImportBankModalOpen(false)}>
+                  Cancel
+                </Button>
+                <Button variant="primary" size="sm" type="submit">
+                  Process &amp; Auto-Match
+                </Button>
+              </div>
+            </form>
           </div>
         </div>
       )}

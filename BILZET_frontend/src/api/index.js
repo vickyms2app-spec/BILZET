@@ -358,5 +358,15 @@ export const caPortalApi = {
   getPeriodClosings: (params) => http.get("/ca-portal/period-closings", { params }).then(unwrap),
   closePeriod: (data, params) => http.post("/ca-portal/period-closings", data, { params }).then(unwrap),
   signOffPeriod: (id, data, params) => http.post(`/ca-portal/period-closings/${id}/sign-off`, data, { params }).then(unwrap),
+  // Audit Rules Engine
+  getAuditRules: (params) => http.get("/ca-portal/audit-rules", { params }).then(unwrap),
+  runAuditRules: (data, params) => http.post("/ca-portal/audit-rules/run", data, { params }).then(unwrap),
+  // Bank & Payment Reconciliation
+  getBankReconciliation: (params) => http.get("/ca-portal/bank-reconciliation", { params }).then(unwrap),
+  importBankStatement: (data, params) => http.post("/ca-portal/bank-reconciliation/import", data, { params }).then(unwrap),
+  updateBankMatch: (id, data, params) => http.patch(`/ca-portal/bank-reconciliation/match/${id}`, data, { params }).then(unwrap),
+  // Reports & Workpapers
+  getWorkpapers: (params) => http.get("/ca-portal/workpapers", { params }).then(unwrap),
 };
+
 
