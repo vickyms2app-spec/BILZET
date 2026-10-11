@@ -19,6 +19,8 @@ import {
   RotateCcw,
   CreditCard,
   AlertTriangle,
+  Flag,
+  MessageSquare,
 } from "lucide-react";
 import { caConnectApi, staffApi } from "../api";
 import { useAuth } from "../store/auth";
@@ -75,9 +77,16 @@ export default function CaConnect() {
   const [invitedList, setInvitedList] = useState([]);
 
   // Phase 2: Authoritative CA Activity Ledger synchronization
-  const [activeTab, setActiveTab] = useState("consultants"); // "consultants" | "activity"
+  const [activeTab, setActiveTab] = useState("consultants"); // "consultants" | "activity" | "discrepancies"
   const [activityList, setActivityList] = useState([]);
   const [loadingActivity, setLoadingActivity] = useState(false);
+
+  // CA Audit Discrepancies & Merchant Resolutions
+  const [discrepanciesList, setDiscrepanciesList] = useState([]);
+  const [loadingDiscrepancies, setLoadingDiscrepancies] = useState(false);
+  const [resolvingId, setResolvingId] = useState(null);
+  const [resolutionNote, setResolutionNote] = useState("");
+  const [submittingResolution, setSubmittingResolution] = useState(false);
 
   const loadActivity = async () => {
     setLoadingActivity(true);
@@ -88,6 +97,33 @@ export default function CaConnect() {
       console.error("Failed to load CA sync activity:", err);
     } finally {
       setLoadingActivity(false);
+    }
+  };
+
+  const loadDiscrepancies = async () => {
+    setLoadingDiscrepancies(true);
+    try {
+      const res = await caConnectApi.getDiscrepancies();
+      setDiscrepanciesList(res?.discrepancies || []);
+    } catch (err) {
+      console.error("Failed to load discrepancies:", err);
+    } finally {
+      setLoadingDiscrepancies(false);
+    }
+  };
+
+  const handleResolveDiscrepancy = async (id) => {
+    if (!resolutionNote.trim()) return;
+    setSubmittingResolution(true);
+    try {
+      await caConnectApi.resolveDiscrepancy(id, { correctionResponse: resolutionNote.trim() });
+      setResolvingId(null);
+      setResolutionNote("");
+      loadDiscrepancies();
+    } catch (err) {
+      alert("Failed to submit resolution note: " + (err.message || "Unknown error"));
+    } finally {
+      setSubmittingResolution(false);
     }
   };
 
@@ -420,6 +456,19 @@ export default function CaConnect() {
           >
             <Activity size={16} /> Real-Time CA Activity Ledger ({activityList.length})
           </button>
+          <button
+            onClick={() => {
+              setActiveTab("discrepancies");
+              loadDiscrepancies();
+            }}
+            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-2 ${
+              activeTab === "discrepancies"
+                ? "bg-slate-900 text-white shadow-xs"
+                : "text-slate-600 hover:bg-slate-100"
+            }`}
+          >
+            <Flag size={16} /> CA Correction Requests ({discrepanciesList.length})
+          </button>
         </div>
 
         {activeTab === "activity" && (
@@ -431,6 +480,17 @@ export default function CaConnect() {
             onClick={loadActivity}
           >
             Refresh Ledger
+          </Button>
+        )}
+        {activeTab === "discrepancies" && (
+          <Button
+            size="sm"
+            variant="secondary"
+            icon={RefreshCw}
+            loading={loadingDiscrepancies}
+            onClick={loadDiscrepancies}
+          >
+            Refresh Corrections
           </Button>
         )}
       </div>
@@ -579,7 +639,7 @@ export default function CaConnect() {
             )}
           </div>
         </>
-      ) : (
+      ) : activeTab === "activity" ? (
         /* Real-Time CA Activity Ledger View */
         <div className="card p-0 overflow-hidden border border-slate-200/80 shadow-xs bg-white">
           <div className="p-4 bg-slate-50/80 border-b border-slate-100 flex items-center justify-between">
@@ -745,6 +805,116 @@ export default function CaConnect() {
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+      ) : (
+        /* CA Audit Discrepancies & Merchant Resolution View */
+        <div className="card p-0 overflow-hidden border border-slate-200/80 shadow-xs bg-white">
+          <div className="p-4 bg-rose-50/50 border-b border-rose-100 flex items-center justify-between">
+            <div>
+              <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                <Flag size={16} className="text-rose-600" />
+                Chartered Accountant Correction Requests &amp; Discrepancies
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Review issues flagged by your auditor (missing bills, tax rate mismatches, over-returns) and submit clarification notes or corrections.
+              </p>
+            </div>
+            <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full bg-rose-100 text-rose-800 border border-rose-200">
+              {discrepanciesList.filter((d) => d.status === "CORRECTION_REQUESTED").length} Action Required
+            </span>
+          </div>
+
+          <div className="divide-y divide-slate-100">
+            {loadingDiscrepancies ? (
+              <div className="p-12 text-center text-slate-400">Loading auditor discrepancies...</div>
+            ) : discrepanciesList.length === 0 ? (
+              <div className="p-12 text-center text-slate-400 text-xs">
+                No discrepancies flagged by your auditor. All reconciled!
+              </div>
+            ) : (
+              discrepanciesList.map((d) => (
+                <div key={d.id} className="p-5 hover:bg-slate-50/50 transition space-y-3">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-900 text-sm">{d.title}</span>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          d.status === "VERIFIED"
+                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                            : d.status === "RESOLVED"
+                            ? "bg-teal-50 text-teal-700 border border-teal-200"
+                            : "bg-rose-50 text-rose-700 border border-rose-200"
+                        }`}>
+                          {d.status}
+                        </span>
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 text-slate-700">
+                          {d.discrepancyType}
+                        </span>
+                        {d.referenceNumber && (
+                          <span className="font-mono text-xs text-blue-600 font-bold">Ref: {d.referenceNumber}</span>
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-600 leading-relaxed">{d.description}</p>
+                    </div>
+
+                    {d.status === "CORRECTION_REQUESTED" && (
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        icon={MessageSquare}
+                        onClick={() => {
+                          setResolvingId(d.id);
+                          setResolutionNote("");
+                        }}
+                      >
+                        Respond / Resolve
+                      </Button>
+                    )}
+                  </div>
+
+                  {d.correctionResponse && (
+                    <div className="p-3 bg-teal-50 rounded-xl border border-teal-200 text-xs text-teal-900 space-y-1">
+                      <span className="font-bold block text-[10px] uppercase text-teal-700">Your Submitted Resolution / Explanation:</span>
+                      <p>{d.correctionResponse}</p>
+                    </div>
+                  )}
+
+                  {resolvingId === d.id && (
+                    <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3 mt-2">
+                      <label className="font-bold text-xs text-slate-800 block">
+                        Clarification / Correction Notes for CA:
+                      </label>
+                      <textarea
+                        rows={2}
+                        required
+                        value={resolutionNote}
+                        onChange={(e) => setResolutionNote(e.target.value)}
+                        placeholder="e.g. Attached corrected purchase voucher #PV-102. Credit note reconciled with GST portal."
+                        className="w-full p-2.5 rounded-xl border border-slate-200 text-xs focus:outline-hidden"
+                      />
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => setResolvingId(null)}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="primary"
+                          loading={submittingResolution}
+                          onClick={() => handleResolveDiscrepancy(d.id)}
+                        >
+                          Submit Resolution Note
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
           </div>
         </div>
       )}

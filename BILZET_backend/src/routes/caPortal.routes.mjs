@@ -23,5 +23,40 @@ router.get('/credit-notes', caPortalController.getCreditNotes);
 router.get('/financial-summary', caPortalController.getFinancialSummary);
 router.get('/activity', caPortalController.getStoreActivity);
 
+// Purchases & Suppliers
+router.get('/purchases', caPortalController.getPurchases);
+router.get('/suppliers', caPortalController.getSuppliers);
+
+// Payments & Bank Reconciliation
+router.get('/payments', caPortalController.getPayments);
+
+// Expenses
+router.get('/expenses', caPortalController.getExpenses);
+
+// Inventory & Stock Movements
+router.get('/inventory', caPortalController.getInventory);
+
+// Tasks Pipeline
+router.get('/tasks', caPortalController.getTasks);
+router.post('/tasks', caPortalController.createTask);
+router.put('/tasks/:id', caPortalController.updateTask);
+router.patch('/tasks/:id', caPortalController.updateTask);
+router.delete('/tasks/:id', caPortalController.deleteTask);
+
+// Discrepancies & Corrections
+router.get('/discrepancies', caPortalController.getDiscrepancies);
+router.post('/discrepancies', caPortalController.flagDiscrepancy);
+router.post('/discrepancies/:id/verify', caPortalController.verifyDiscrepancy);
+router.patch('/discrepancies/:id/verify', caPortalController.verifyDiscrepancy);
+
+// Documents & Evidence
+router.get('/documents', caPortalController.getDocuments);
+router.post('/documents', caPortalController.createDocument);
+
+// Period Closing & Sign-off
+router.get('/period-closings', caPortalController.getPeriodClosings);
+router.post('/period-closings', caPortalController.closePeriod);
+router.post('/period-closings/:id/sign-off', caPortalController.signOffPeriod);
+
 export default router;
 

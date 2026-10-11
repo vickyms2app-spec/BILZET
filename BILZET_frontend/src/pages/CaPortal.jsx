@@ -28,6 +28,18 @@ import {
   Scale,
   Activity,
   AlertTriangle,
+  CheckSquare,
+  Flag,
+  Paperclip,
+  Lock,
+  FileCheck,
+  Layers,
+  ShoppingBag,
+  FolderCheck,
+  Plus,
+  Check,
+  ExternalLink,
+  SlidersHorizontal,
 } from "lucide-react";
 import { useAuth } from "../store/auth";
 import { caPortalApi } from "../api";
@@ -64,6 +76,51 @@ export default function CaPortal() {
   // Activity Ledger State
   const [activityList, setActivityList] = useState([]);
   const [loadingActivity, setLoadingActivity] = useState(false);
+
+  // Module 4: Purchases & Suppliers State
+  const [purchasesList, setPurchasesList] = useState([]);
+  const [suppliersList, setSuppliersList] = useState([]);
+  const [loadingPurchases, setLoadingPurchases] = useState(false);
+
+  // Module 5: Payments State
+  const [paymentsList, setPaymentsList] = useState([]);
+  const [loadingPayments, setLoadingPayments] = useState(false);
+
+  // Module 6: Expenses State
+  const [expensesList, setExpensesList] = useState([]);
+  const [expensesTotal, setExpensesTotal] = useState(0);
+  const [loadingExpenses, setLoadingExpenses] = useState(false);
+
+  // Module 8: Inventory Audit State
+  const [inventoryProducts, setInventoryProducts] = useState([]);
+  const [inventoryMovements, setInventoryMovements] = useState([]);
+  const [inventorySummary, setInventorySummary] = useState(null);
+  const [loadingInventory, setLoadingInventory] = useState(false);
+
+  // Module 2: Tasks Pipeline State
+  const [tasksList, setTasksList] = useState([]);
+  const [tasksCounts, setTasksCounts] = useState({});
+  const [loadingTasks, setLoadingTasks] = useState(false);
+  const [newTaskModalOpen, setNewTaskModalOpen] = useState(false);
+  const [taskForm, setTaskForm] = useState({ title: "", description: "", category: "GENERAL", priority: "MEDIUM", dueDate: "" });
+
+  // Module 10: Discrepancies State
+  const [discrepanciesList, setDiscrepanciesList] = useState([]);
+  const [loadingDiscrepancies, setLoadingDiscrepancies] = useState(false);
+  const [flagModalOpen, setFlagModalOpen] = useState(false);
+  const [discrepancyForm, setDiscrepancyForm] = useState({ title: "", description: "", discrepancyType: "TAX_MISMATCH", referenceNumber: "", amount: "" });
+
+  // Module 9: Documents State
+  const [documentsList, setDocumentsList] = useState([]);
+  const [loadingDocuments, setLoadingDocuments] = useState(false);
+  const [newDocModalOpen, setNewDocModalOpen] = useState(false);
+  const [docForm, setDocForm] = useState({ title: "", fileUrl: "", category: "SUPPORTING_EVIDENCE" });
+
+  // Module 13: Period Closing State
+  const [periodClosingsList, setPeriodClosingsList] = useState([]);
+  const [loadingClosings, setLoadingClosings] = useState(false);
+  const [closeModalOpen, setCloseModalOpen] = useState(false);
+  const [closingForm, setClosingForm] = useState({ period: "", signOffNotes: "" });
 
   // Modals
   const [selectedInvoice, setSelectedInvoice] = useState(null);
@@ -164,11 +221,238 @@ export default function CaPortal() {
     }
   };
 
+  // 5. Purchases & Suppliers Loader
+  const loadPurchasesData = async () => {
+    if (!selectedStoreId) return;
+    setLoadingPurchases(true);
+    try {
+      const [pRes, sRes] = await Promise.all([
+        caPortalApi.getPurchases({ storeId: selectedStoreId, limit: 100 }),
+        caPortalApi.getSuppliers({ storeId: selectedStoreId }),
+      ]);
+      setPurchasesList(pRes?.purchases || []);
+      setSuppliersList(sRes?.suppliers || []);
+    } catch (err) {
+      console.error("Failed to fetch purchases for CA:", err);
+      setPurchasesList([]);
+    } finally {
+      setLoadingPurchases(false);
+    }
+  };
+
+  // 6. Payments Loader
+  const loadPaymentsData = async () => {
+    if (!selectedStoreId) return;
+    setLoadingPayments(true);
+    try {
+      const res = await caPortalApi.getPayments({ storeId: selectedStoreId, limit: 100 });
+      setPaymentsList(res?.payments || []);
+    } catch (err) {
+      console.error("Failed to fetch payments for CA:", err);
+      setPaymentsList([]);
+    } finally {
+      setLoadingPayments(false);
+    }
+  };
+
+  // 7. Expenses Loader
+  const loadExpensesData = async () => {
+    if (!selectedStoreId) return;
+    setLoadingExpenses(true);
+    try {
+      const res = await caPortalApi.getExpenses({ storeId: selectedStoreId, limit: 100 });
+      setExpensesList(res?.expenses || []);
+      setExpensesTotal(res?.totalAmount || 0);
+    } catch (err) {
+      console.error("Failed to fetch expenses for CA:", err);
+      setExpensesList([]);
+    } finally {
+      setLoadingExpenses(false);
+    }
+  };
+
+  // 8. Inventory Loader
+  const loadInventoryData = async () => {
+    if (!selectedStoreId) return;
+    setLoadingInventory(true);
+    try {
+      const res = await caPortalApi.getInventory({ storeId: selectedStoreId, limit: 100 });
+      setInventoryProducts(res?.products || []);
+      setInventoryMovements(res?.recentMovements || []);
+      setInventorySummary(res?.summary || null);
+    } catch (err) {
+      console.error("Failed to fetch inventory for CA:", err);
+      setInventoryProducts([]);
+    } finally {
+      setLoadingInventory(false);
+    }
+  };
+
+  // 9. Tasks Pipeline Loader & Actions
+  const loadTasksData = async () => {
+    if (!selectedStoreId) return;
+    setLoadingTasks(true);
+    try {
+      const res = await caPortalApi.getTasks({ storeId: selectedStoreId });
+      setTasksList(res?.tasks || []);
+      setTasksCounts(res?.counts || {});
+    } catch (err) {
+      console.error("Failed to fetch tasks for CA:", err);
+      setTasksList([]);
+    } finally {
+      setLoadingTasks(false);
+    }
+  };
+
+  const handleCreateTask = async (e) => {
+    e.preventDefault();
+    if (!taskForm.title) return;
+    try {
+      await caPortalApi.createTask(taskForm, { storeId: selectedStoreId });
+      setNewTaskModalOpen(false);
+      setTaskForm({ title: "", description: "", category: "GENERAL", priority: "MEDIUM", dueDate: "" });
+      loadTasksData();
+    } catch (err) {
+      alert("Failed to create audit task: " + (err.message || "Unknown error"));
+    }
+  };
+
+  const handleUpdateTaskStatus = async (taskId, newStatus) => {
+    try {
+      await caPortalApi.updateTask(taskId, { status: newStatus }, { storeId: selectedStoreId });
+      loadTasksData();
+    } catch (err) {
+      console.error("Failed to update task status:", err);
+    }
+  };
+
+  const handleDeleteTask = async (taskId) => {
+    if (!window.confirm("Are you sure you want to delete this task?")) return;
+    try {
+      await caPortalApi.deleteTask(taskId, { storeId: selectedStoreId });
+      loadTasksData();
+    } catch (err) {
+      console.error("Failed to delete task:", err);
+    }
+  };
+
+  // 10. Discrepancies Loader & Actions
+  const loadDiscrepanciesData = async () => {
+    if (!selectedStoreId) return;
+    setLoadingDiscrepancies(true);
+    try {
+      const res = await caPortalApi.getDiscrepancies({ storeId: selectedStoreId });
+      setDiscrepanciesList(res?.discrepancies || []);
+    } catch (err) {
+      console.error("Failed to fetch discrepancies for CA:", err);
+      setDiscrepanciesList([]);
+    } finally {
+      setLoadingDiscrepancies(false);
+    }
+  };
+
+  const handleFlagDiscrepancy = async (e) => {
+    e.preventDefault();
+    if (!discrepancyForm.title || !discrepancyForm.description) return;
+    try {
+      await caPortalApi.flagDiscrepancy(discrepancyForm, { storeId: selectedStoreId });
+      setFlagModalOpen(false);
+      setDiscrepancyForm({ title: "", description: "", discrepancyType: "TAX_MISMATCH", referenceNumber: "", amount: "" });
+      loadDiscrepanciesData();
+    } catch (err) {
+      alert("Failed to flag discrepancy: " + (err.message || "Unknown error"));
+    }
+  };
+
+  const handleVerifyDiscrepancy = async (discrepancyId) => {
+    try {
+      await caPortalApi.verifyDiscrepancy(discrepancyId, {}, { storeId: selectedStoreId });
+      loadDiscrepanciesData();
+    } catch (err) {
+      console.error("Failed to verify discrepancy:", err);
+    }
+  };
+
+  // 11. Documents Loader & Actions
+  const loadDocumentsData = async () => {
+    if (!selectedStoreId) return;
+    setLoadingDocuments(true);
+    try {
+      const res = await caPortalApi.getDocuments({ storeId: selectedStoreId });
+      setDocumentsList(res?.documents || []);
+    } catch (err) {
+      console.error("Failed to fetch documents for CA:", err);
+      setDocumentsList([]);
+    } finally {
+      setLoadingDocuments(false);
+    }
+  };
+
+  const handleCreateDocument = async (e) => {
+    e.preventDefault();
+    if (!docForm.title || !docForm.fileUrl) return;
+    try {
+      await caPortalApi.createDocument(docForm, { storeId: selectedStoreId });
+      setNewDocModalOpen(false);
+      setDocForm({ title: "", fileUrl: "", category: "SUPPORTING_EVIDENCE" });
+      loadDocumentsData();
+    } catch (err) {
+      alert("Failed to attach document: " + (err.message || "Unknown error"));
+    }
+  };
+
+  // 12. Period Closings Loader & Actions
+  const loadClosingsData = async () => {
+    if (!selectedStoreId) return;
+    setLoadingClosings(true);
+    try {
+      const res = await caPortalApi.getPeriodClosings({ storeId: selectedStoreId });
+      setPeriodClosingsList(res?.periods || []);
+    } catch (err) {
+      console.error("Failed to fetch period closings for CA:", err);
+      setPeriodClosingsList([]);
+    } finally {
+      setLoadingClosings(false);
+    }
+  };
+
+  const handleClosePeriod = async (e) => {
+    e.preventDefault();
+    if (!closingForm.period) return;
+    try {
+      await caPortalApi.closePeriod(closingForm, { storeId: selectedStoreId });
+      setCloseModalOpen(false);
+      setClosingForm({ period: "", signOffNotes: "" });
+      loadClosingsData();
+    } catch (err) {
+      alert("Failed to close period: " + (err.message || "Unknown error"));
+    }
+  };
+
+  const handleSignOffPeriod = async (periodId) => {
+    const notes = window.prompt("Enter CA Audit Sign-off Notes / Certificate reference:");
+    if (notes === null) return;
+    try {
+      await caPortalApi.signOffPeriod(periodId, { signOffNotes: notes }, { storeId: selectedStoreId });
+      loadClosingsData();
+    } catch (err) {
+      console.error("Failed to sign off period:", err);
+    }
+  };
+
   useEffect(() => {
     if (selectedStoreId) {
       loadStoreData();
       loadCreditNotesData();
       loadActivityData();
+      loadPurchasesData();
+      loadPaymentsData();
+      loadExpensesData();
+      loadInventoryData();
+      loadTasksData();
+      loadDiscrepanciesData();
+      loadDocumentsData();
+      loadClosingsData();
     }
   }, [selectedStoreId, statusFilter, returnFilter, selectedMonth, selectedYear, startDate, endDate]);
 
@@ -644,49 +928,153 @@ export default function CaPortal() {
               MAIN SECTION TABS
           ══════════════════════════════════════════════════ */}
           <div className="flex items-center justify-between border-b border-slate-200 pb-2 print:hidden">
-            <div className="flex items-center gap-2 overflow-x-auto pb-1">
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full scrollbar-thin">
               <button
                 onClick={() => setActiveTab("invoices")}
-                className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-2 whitespace-nowrap ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
                   activeTab === "invoices"
                     ? "bg-slate-900 text-white shadow-xs"
                     : "text-slate-600 hover:bg-slate-100"
                 }`}
               >
-                <FileText size={16} /> Invoices Register ({invoices.length})
+                <FileText size={14} /> Invoices ({invoices.length})
               </button>
               <button
                 onClick={() => setActiveTab("returns")}
-                className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-2 whitespace-nowrap ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
                   activeTab === "returns"
                     ? "bg-slate-900 text-white shadow-xs"
                     : "text-slate-600 hover:bg-slate-100"
                 }`}
               >
-                <RotateCcw size={16} /> Returns &amp; Credit Notes ({creditNotes.length})
+                <RotateCcw size={14} /> Returns &amp; CN ({creditNotes.length})
               </button>
               <button
                 onClick={() => setActiveTab("gst")}
-                className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-2 whitespace-nowrap ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
                   activeTab === "gst"
                     ? "bg-slate-900 text-white shadow-xs"
                     : "text-slate-600 hover:bg-slate-100"
                 }`}
               >
-                <Percent size={16} /> GST Tax Filing &amp; Slabs Analysis
+                <Percent size={14} /> GST Slabs
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab("tasks");
+                  loadTasksData();
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
+                  activeTab === "tasks"
+                    ? "bg-slate-900 text-white shadow-xs"
+                    : "text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                <CheckSquare size={14} /> Tasks Pipeline ({tasksList.length})
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab("purchases");
+                  loadPurchasesData();
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
+                  activeTab === "purchases"
+                    ? "bg-slate-900 text-white shadow-xs"
+                    : "text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                <ShoppingBag size={14} /> Purchases ({purchasesList.length})
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab("payments");
+                  loadPaymentsData();
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
+                  activeTab === "payments"
+                    ? "bg-slate-900 text-white shadow-xs"
+                    : "text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                <CreditCard size={14} /> Payments ({paymentsList.length})
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab("expenses");
+                  loadExpensesData();
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
+                  activeTab === "expenses"
+                    ? "bg-slate-900 text-white shadow-xs"
+                    : "text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                <Layers size={14} /> Expenses ({expensesList.length})
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab("inventory");
+                  loadInventoryData();
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
+                  activeTab === "inventory"
+                    ? "bg-slate-900 text-white shadow-xs"
+                    : "text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                <PackageCheck size={14} /> Inventory Audit ({inventoryProducts.length})
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab("discrepancies");
+                  loadDiscrepanciesData();
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
+                  activeTab === "discrepancies"
+                    ? "bg-rose-600 text-white shadow-xs"
+                    : "text-rose-600 hover:bg-rose-50"
+                }`}
+              >
+                <Flag size={14} /> Discrepancies ({discrepanciesList.length})
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab("documents");
+                  loadDocumentsData();
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
+                  activeTab === "documents"
+                    ? "bg-slate-900 text-white shadow-xs"
+                    : "text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                <Paperclip size={14} /> Documents ({documentsList.length})
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab("closing");
+                  loadClosingsData();
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
+                  activeTab === "closing"
+                    ? "bg-slate-900 text-white shadow-xs"
+                    : "text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                <FileCheck size={14} /> Period Closing
               </button>
               <button
                 onClick={() => {
                   setActiveTab("activity");
                   loadActivityData();
                 }}
-                className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-2 whitespace-nowrap ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
                   activeTab === "activity"
                     ? "bg-slate-900 text-white shadow-xs"
                     : "text-slate-600 hover:bg-slate-100"
                 }`}
               >
-                <Activity size={16} /> Activity Ledger &amp; Sync ({activityList.length})
+                <Activity size={14} /> Activity Ledger ({activityList.length})
               </button>
             </div>
 
@@ -1427,7 +1815,885 @@ export default function CaPortal() {
               </div>
             </div>
           )}
+
+          {/* ══════════════════════════════════════════════════
+              MODULE 2: AUDIT WORKFLOW & TASK PIPELINE
+          ══════════════════════════════════════════════════ */}
+          {activeTab === "tasks" && (
+            <div className="space-y-4">
+              <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                    <CheckSquare size={16} className="text-blue-600" />
+                    Audit Tasks &amp; Review Pipeline
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Track pending reviews, flags, correction requests, and auditor sign-offs for {activeStore?.name}.
+                  </p>
+                </div>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  icon={Plus}
+                  onClick={() => setNewTaskModalOpen(true)}
+                >
+                  Create Audit Task
+                </Button>
+              </div>
+
+              {/* Status Summary Pills */}
+              <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 text-center text-xs">
+                {[
+                  { label: "Pending", count: tasksCounts.PENDING || 0, bg: "bg-amber-50 text-amber-700 border-amber-200" },
+                  { label: "In Review", count: tasksCounts.IN_REVIEW || 0, bg: "bg-blue-50 text-blue-700 border-blue-200" },
+                  { label: "Flagged", count: tasksCounts.FLAGGED || 0, bg: "bg-rose-50 text-rose-700 border-rose-200" },
+                  { label: "Correction Req", count: tasksCounts.CORRECTION_REQUESTED || 0, bg: "bg-purple-50 text-purple-700 border-purple-200" },
+                  { label: "Resolved", count: tasksCounts.RESOLVED || 0, bg: "bg-teal-50 text-teal-700 border-teal-200" },
+                  { label: "Completed", count: tasksCounts.COMPLETED || 0, bg: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+                ].map((s) => (
+                  <div key={s.label} className={`p-2.5 rounded-xl border font-bold ${s.bg}`}>
+                    <div className="text-lg font-black">{s.count}</div>
+                    <div className="text-[10px] uppercase tracking-wider">{s.label}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Tasks List */}
+              <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
+                <div className="divide-y divide-slate-100">
+                  {loadingTasks ? (
+                    <div className="p-12 text-center text-slate-400">Loading audit tasks...</div>
+                  ) : tasksList.length === 0 ? (
+                    <div className="p-12 text-center text-slate-400 text-xs">
+                      No audit tasks created yet. Click "Create Audit Task" above to add review items.
+                    </div>
+                  ) : (
+                    tasksList.map((t) => (
+                      <div key={t.id} className="p-4 hover:bg-slate-50/70 transition flex items-center justify-between gap-4">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-slate-900 text-sm">{t.title}</span>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                              t.priority === "URGENT" || t.priority === "HIGH"
+                                ? "bg-rose-100 text-rose-800"
+                                : t.priority === "MEDIUM"
+                                ? "bg-blue-100 text-blue-800"
+                                : "bg-slate-100 text-slate-700"
+                            }`}>
+                              {t.priority}
+                            </span>
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 text-slate-600">
+                              {t.category}
+                            </span>
+                          </div>
+                          {t.description && (
+                            <p className="text-xs text-slate-600 max-w-2xl">{t.description}</p>
+                          )}
+                          <div className="flex items-center gap-4 text-[11px] text-slate-400">
+                            <span>Created: {new Date(t.createdAt).toLocaleDateString("en-IN")}</span>
+                            {t.dueDate && <span>Due: {new Date(t.dueDate).toLocaleDateString("en-IN")}</span>}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <select
+                            value={t.status}
+                            onChange={(e) => handleUpdateTaskStatus(t.id, e.target.value)}
+                            className="text-xs font-semibold px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white text-slate-800 focus:outline-hidden"
+                          >
+                            <option value="PENDING">Pending</option>
+                            <option value="IN_REVIEW">In Review</option>
+                            <option value="FLAGGED">Flagged</option>
+                            <option value="CORRECTION_REQUESTED">Correction Requested</option>
+                            <option value="RESOLVED">Resolved</option>
+                            <option value="COMPLETED">Completed</option>
+                          </select>
+                          <CompactIconButton
+                            variant="danger"
+                            size="sm"
+                            icon={Trash2}
+                            title="Delete Task"
+                            onClick={() => handleDeleteTask(t.id)}
+                          />
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ══════════════════════════════════════════════════
+              MODULE 4: PURCHASES & SUPPLIERS AUDIT
+          ══════════════════════════════════════════════════ */}
+          {activeTab === "purchases" && (
+            <div className="space-y-4">
+              <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                    <ShoppingBag size={16} className="text-blue-600" />
+                    Purchases Register &amp; Supplier Audit
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Review vendor purchase bills, supplier GSTINs, input tax credits, and accounts payable.
+                  </p>
+                </div>
+                <span className="text-xs font-bold px-3 py-1 rounded-full bg-slate-100 text-slate-800">
+                  {purchasesList.length} Purchase Bills
+                </span>
+              </div>
+
+              <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider text-[10px] font-bold border-b border-slate-200">
+                      <tr>
+                        <th className="py-3 px-4">Invoice #</th>
+                        <th className="py-3 px-4">Supplier &amp; GSTIN</th>
+                        <th className="py-3 px-4">Date</th>
+                        <th className="py-3 px-4 text-right">Taxable (₹)</th>
+                        <th className="py-3 px-4 text-right">GST (₹)</th>
+                        <th className="py-3 px-4 text-right">Grand Total (₹)</th>
+                        <th className="py-3 px-4 text-right">Paid (₹)</th>
+                        <th className="py-3 px-4 text-right">Balance Due (₹)</th>
+                        <th className="py-3 px-4 text-center">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-mono">
+                      {loadingPurchases ? (
+                        <tr><td colSpan={9} className="py-12 text-center text-slate-400">Loading purchase bills...</td></tr>
+                      ) : purchasesList.length === 0 ? (
+                        <tr><td colSpan={9} className="py-12 text-center text-slate-400">No purchase records found for this store.</td></tr>
+                      ) : (
+                        purchasesList.map((p) => (
+                          <tr key={p.id} className="hover:bg-slate-50/70 transition">
+                            <td className="py-3 px-4 font-bold text-slate-900">{p.invoiceNumber}</td>
+                            <td className="py-3 px-4 font-sans">
+                              <div className="font-semibold text-slate-800">{p.supplierName}</div>
+                              {p.supplierGstin && <div className="text-[10px] text-slate-400 font-mono">GSTIN: {p.supplierGstin}</div>}
+                            </td>
+                            <td className="py-3 px-4 font-sans text-slate-600">{new Date(p.purchaseDate).toLocaleDateString("en-IN")}</td>
+                            <td className="py-3 px-4 text-right text-slate-800">₹{p.subtotal?.toFixed(2)}</td>
+                            <td className="py-3 px-4 text-right text-blue-600">₹{p.taxTotal?.toFixed(2)}</td>
+                            <td className="py-3 px-4 text-right font-bold text-slate-900">₹{p.grandTotal?.toFixed(2)}</td>
+                            <td className="py-3 px-4 text-right text-emerald-600">₹{p.paidAmount?.toFixed(2)}</td>
+                            <td className="py-3 px-4 text-right text-rose-600 font-bold">₹{p.balanceDue?.toFixed(2)}</td>
+                            <td className="py-3 px-4 text-center font-sans">
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                p.paymentStatus === "PAID"
+                                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                  : "bg-rose-50 text-rose-700 border border-rose-200"
+                              }`}>
+                                {p.paymentStatus}
+                              </span>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ══════════════════════════════════════════════════
+              MODULE 5: PAYMENTS & BANK RECONCILIATION
+          ══════════════════════════════════════════════════ */}
+          {activeTab === "payments" && (
+            <div className="space-y-4">
+              <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                    <CreditCard size={16} className="text-emerald-600" />
+                    Payments &amp; Bank Reconciliation
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Compare recorded payments, transaction IDs, payment methods, and ledger settlement status.
+                  </p>
+                </div>
+                <span className="text-xs font-bold px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 font-mono">
+                  {paymentsList.length} Payment Receipts
+                </span>
+              </div>
+
+              <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider text-[10px] font-bold border-b border-slate-200">
+                      <tr>
+                        <th className="py-3 px-4">Receipt Date</th>
+                        <th className="py-3 px-4">Invoice # &amp; Customer</th>
+                        <th className="py-3 px-4">Method</th>
+                        <th className="py-3 px-4">Transaction / Ref #</th>
+                        <th className="py-3 px-4 text-right">Amount (₹)</th>
+                        <th className="py-3 px-4 text-center">Reconciliation Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {loadingPayments ? (
+                        <tr><td colSpan={6} className="py-12 text-center text-slate-400">Loading payment receipts...</td></tr>
+                      ) : paymentsList.length === 0 ? (
+                        <tr><td colSpan={6} className="py-12 text-center text-slate-400">No payment receipts recorded for this store.</td></tr>
+                      ) : (
+                        paymentsList.map((p) => (
+                          <tr key={p.id} className="hover:bg-slate-50/70 transition">
+                            <td className="py-3 px-4 font-mono text-slate-600">{new Date(p.createdAt).toLocaleDateString("en-IN")}</td>
+                            <td className="py-3 px-4">
+                              <span className="font-mono font-bold text-slate-900">{p.invoiceNumber}</span>
+                              <div className="text-[11px] text-slate-500">{p.customerName}</div>
+                            </td>
+                            <td className="py-3 px-4">
+                              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-800">
+                                {p.method}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 font-mono text-slate-500">{p.transactionId || "—"}</td>
+                            <td className="py-3 px-4 text-right font-mono font-bold text-emerald-700">₹{p.amount?.toFixed(2)}</td>
+                            <td className="py-3 px-4 text-center">
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                p.reconciliationStatus === "MATCHED"
+                                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                  : "bg-blue-50 text-blue-700 border border-blue-200"
+                              }`}>
+                                {p.reconciliationStatus}
+                              </span>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ══════════════════════════════════════════════════
+              MODULE 6: EXPENSES & FINANCIAL REVIEW
+          ══════════════════════════════════════════════════ */}
+          {activeTab === "expenses" && (
+            <div className="space-y-4">
+              <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                    <Layers size={16} className="text-purple-600" />
+                    Business Expenses &amp; Outflow Review
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Audit operational overheads, vendor payouts, utility payments, and tax-deductible items.
+                  </p>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] text-slate-400 font-bold uppercase block">Total Expenses</span>
+                  <span className="text-base font-black font-mono text-purple-700">₹{Number(expensesTotal || 0).toFixed(2)}</span>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider text-[10px] font-bold border-b border-slate-200">
+                      <tr>
+                        <th className="py-3 px-4">Date</th>
+                        <th className="py-3 px-4">Expense Title</th>
+                        <th className="py-3 px-4">Category</th>
+                        <th className="py-3 px-4">Payment Method</th>
+                        <th className="py-3 px-4">Recorded By</th>
+                        <th className="py-3 px-4 text-right">Amount (₹)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {loadingExpenses ? (
+                        <tr><td colSpan={6} className="py-12 text-center text-slate-400">Loading expenses...</td></tr>
+                      ) : expensesList.length === 0 ? (
+                        <tr><td colSpan={6} className="py-12 text-center text-slate-400">No expense records found for this store.</td></tr>
+                      ) : (
+                        expensesList.map((e) => (
+                          <tr key={e.id} className="hover:bg-slate-50/70 transition">
+                            <td className="py-3 px-4 font-mono text-slate-600">{new Date(e.date).toLocaleDateString("en-IN")}</td>
+                            <td className="py-3 px-4 font-bold text-slate-900">{e.title}</td>
+                            <td className="py-3 px-4">
+                              <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-purple-50 text-purple-700 border border-purple-200">
+                                {e.category}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 font-mono text-slate-600">{e.paymentMethod}</td>
+                            <td className="py-3 px-4 text-slate-600">{e.recordedBy}</td>
+                            <td className="py-3 px-4 text-right font-mono font-bold text-slate-900">₹{e.amount?.toFixed(2)}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ══════════════════════════════════════════════════
+              MODULE 8: INVENTORY AUDIT & STOCK MOVEMENTS
+          ══════════════════════════════════════════════════ */}
+          {activeTab === "inventory" && (
+            <div className="space-y-4">
+              <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                    <PackageCheck size={16} className="text-amber-600" />
+                    Inventory Valuation &amp; Stock Ledger Audit
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Verify stock balances, preventing duplicate additions/deductions upon returns and voiding.
+                  </p>
+                </div>
+                {inventorySummary && (
+                  <div className="flex items-center gap-4 text-right font-mono">
+                    <div>
+                      <span className="text-[10px] text-slate-400 block font-sans">Total Products</span>
+                      <strong className="text-slate-900">{inventorySummary.totalProducts}</strong>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 block font-sans">Stock Valuation</span>
+                      <strong className="text-amber-700 font-black">₹{Number(inventorySummary.totalValuation || 0).toLocaleString("en-IN")}</strong>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Products Table */}
+              <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
+                <div className="p-3 bg-slate-50 font-bold text-xs text-slate-700 border-b border-slate-200">
+                  Stock Holdings &amp; HSN/GST Classification
+                </div>
+                <div className="overflow-x-auto max-h-96">
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider text-[10px] font-bold border-b border-slate-200 sticky top-0">
+                      <tr>
+                        <th className="py-2.5 px-4">Product Name</th>
+                        <th className="py-2.5 px-4 font-mono">HSN Code</th>
+                        <th className="py-2.5 px-4 font-mono">GST Rate</th>
+                        <th className="py-2.5 px-4 text-right">In Stock</th>
+                        <th className="py-2.5 px-4 text-right">Cost Price (₹)</th>
+                        <th className="py-2.5 px-4 text-right">Selling Price (₹)</th>
+                        <th className="py-2.5 px-4 text-right">Valuation (₹)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-mono">
+                      {loadingInventory ? (
+                        <tr><td colSpan={7} className="py-8 text-center text-slate-400">Loading stock catalog...</td></tr>
+                      ) : inventoryProducts.length === 0 ? (
+                        <tr><td colSpan={7} className="py-8 text-center text-slate-400">No inventory products found.</td></tr>
+                      ) : (
+                        inventoryProducts.map((p) => (
+                          <tr key={p.id} className="hover:bg-slate-50/70 transition">
+                            <td className="py-2.5 px-4 font-sans font-semibold text-slate-800">{p.name}</td>
+                            <td className="py-2.5 px-4 text-slate-500">{p.hsnCode}</td>
+                            <td className="py-2.5 px-4 text-blue-600 font-bold">{p.taxPercent}%</td>
+                            <td className="py-2.5 px-4 text-right font-bold text-slate-900">{p.stock} {p.unit}</td>
+                            <td className="py-2.5 px-4 text-right text-slate-600">₹{p.costPrice?.toFixed(2)}</td>
+                            <td className="py-2.5 px-4 text-right text-slate-800">₹{p.sellingPrice?.toFixed(2)}</td>
+                            <td className="py-2.5 px-4 text-right font-bold text-amber-700">₹{p.valuation?.toFixed(2)}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Stock Movements Ledger */}
+              <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
+                <div className="p-3 bg-slate-50 font-bold text-xs text-slate-700 border-b border-slate-200">
+                  Chronological Stock Movements Ledger (Deductions &amp; Returns Reversals)
+                </div>
+                <div className="overflow-x-auto max-h-72">
+                  <table className="w-full text-xs text-left font-mono">
+                    <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider text-[10px] font-bold border-b border-slate-200 sticky top-0">
+                      <tr>
+                        <th className="py-2 px-4">Date</th>
+                        <th className="py-2 px-4 font-sans">Product</th>
+                        <th className="py-2 px-4">Type</th>
+                        <th className="py-2 px-4 text-right">Quantity</th>
+                        <th className="py-2 px-4 text-right">Previous Stock</th>
+                        <th className="py-2 px-4 text-right">New Stock</th>
+                        <th className="py-2 px-4 font-sans">Reason / Milestone</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-[11px]">
+                      {inventoryMovements.map((m) => (
+                        <tr key={m.id} className="hover:bg-slate-50/70 transition">
+                          <td className="py-2 px-4 text-slate-500">{new Date(m.createdAt).toLocaleString("en-IN")}</td>
+                          <td className="py-2 px-4 font-sans font-semibold text-slate-800">{m.productName}</td>
+                          <td className="py-2 px-4">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              m.type === "RETURN"
+                                ? "bg-purple-50 text-purple-700"
+                                : m.type === "SALE"
+                                ? "bg-blue-50 text-blue-700"
+                                : "bg-slate-100 text-slate-700"
+                            }`}>
+                              {m.type}
+                            </span>
+                          </td>
+                          <td className="py-2 px-4 text-right font-bold text-slate-900">{m.quantity}</td>
+                          <td className="py-2 px-4 text-right text-slate-500">{m.previousStock}</td>
+                          <td className="py-2 px-4 text-right font-bold text-emerald-700">{m.newStock}</td>
+                          <td className="py-2 px-4 font-sans text-slate-600">{m.reason}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ══════════════════════════════════════════════════
+              MODULE 10: DISCREPANCIES & CORRECTIONS
+          ══════════════════════════════════════════════════ */}
+          {activeTab === "discrepancies" && (
+            <div className="space-y-4">
+              <div className="bg-white p-4 rounded-2xl border border-rose-200/90 shadow-xs flex items-center justify-between bg-rose-50/20">
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                    <Flag size={16} className="text-rose-600" />
+                    Audit Discrepancies &amp; Merchant Correction Requests
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Flag tax calculation errors, missing bills, or unmatched returns and track owner resolution.
+                  </p>
+                </div>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  icon={Flag}
+                  onClick={() => setFlagModalOpen(true)}
+                  className="bg-rose-600 hover:bg-rose-700 border-rose-600"
+                >
+                  Flag Discrepancy
+                </Button>
+              </div>
+
+              <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
+                <div className="divide-y divide-slate-100">
+                  {loadingDiscrepancies ? (
+                    <div className="p-12 text-center text-slate-400">Loading discrepancies...</div>
+                  ) : discrepanciesList.length === 0 ? (
+                    <div className="p-12 text-center text-slate-400 text-xs">
+                      No unresolved discrepancies found for this store. Clean audit record!
+                    </div>
+                  ) : (
+                    discrepanciesList.map((d) => (
+                      <div key={d.id} className="p-4 hover:bg-slate-50/70 transition flex items-center justify-between gap-4">
+                        <div className="space-y-1.5 max-w-3xl">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-slate-900 text-sm">{d.title}</span>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              d.status === "VERIFIED"
+                                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                : d.status === "RESOLVED"
+                                ? "bg-teal-50 text-teal-700 border border-teal-200"
+                                : "bg-rose-50 text-rose-700 border border-rose-200"
+                            }`}>
+                              {d.status}
+                            </span>
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 text-slate-700">
+                              {d.discrepancyType}
+                            </span>
+                            {d.referenceNumber && (
+                              <span className="font-mono text-xs text-blue-600 font-bold">Ref: {d.referenceNumber}</span>
+                            )}
+                          </div>
+                          <p className="text-xs text-slate-600">{d.description}</p>
+                          {d.correctionResponse && (
+                            <div className="p-2.5 rounded-xl bg-teal-50 border border-teal-200 text-xs text-teal-900">
+                              <strong>Store Owner Response:</strong> {d.correctionResponse}
+                            </div>
+                          )}
+                        </div>
+
+                        <div>
+                          {d.status === "RESOLVED" && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              icon={CheckCircle2}
+                              onClick={() => handleVerifyDiscrepancy(d.id)}
+                              className="text-emerald-700 border-emerald-300 hover:bg-emerald-50"
+                            >
+                              Verify Correction
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ══════════════════════════════════════════════════
+              MODULE 9: DOCUMENTS & EVIDENCE
+          ══════════════════════════════════════════════════ */}
+          {activeTab === "documents" && (
+            <div className="space-y-4">
+              <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                    <Paperclip size={16} className="text-indigo-600" />
+                    Supporting Evidence &amp; Tax Documents Repository
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Invoices, purchase bills, bank statements, credit notes, and tax challans linked to audits.
+                  </p>
+                </div>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  icon={Plus}
+                  onClick={() => setNewDocModalOpen(true)}
+                >
+                  Attach Document
+                </Button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {loadingDocuments ? (
+                  <div className="col-span-3 p-12 text-center text-slate-400">Loading documents...</div>
+                ) : documentsList.length === 0 ? (
+                  <div className="col-span-3 p-12 text-center text-slate-400 text-xs">
+                    No documents attached yet. Click "Attach Document" to link evidence.
+                  </div>
+                ) : (
+                  documentsList.map((doc) => (
+                    <div key={doc.id} className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-slate-900 text-xs">{doc.title}</span>
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 text-indigo-700">
+                          {doc.fileType}
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-slate-500 block">{doc.category}</span>
+                      <a
+                        href={doc.fileUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:underline"
+                      >
+                        <ExternalLink size={12} /> Open Document
+                      </a>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ══════════════════════════════════════════════════
+              MODULE 13: PERIOD CLOSING & SIGN-OFF
+          ══════════════════════════════════════════════════ */}
+          {activeTab === "closing" && (
+            <div className="space-y-4">
+              <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                    <FileCheck size={16} className="text-emerald-600" />
+                    Period Closing &amp; CA Handover Sign-Off
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Freeze finalized tax periods, verify unresolved discrepancies, and issue CA audit certification.
+                  </p>
+                </div>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  icon={Lock}
+                  onClick={() => setCloseModalOpen(true)}
+                  className="bg-emerald-600 hover:bg-emerald-700 border-emerald-600"
+                >
+                  Close Tax Period
+                </Button>
+              </div>
+
+              <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
+                <div className="divide-y divide-slate-100">
+                  {loadingClosings ? (
+                    <div className="p-12 text-center text-slate-400">Loading period closings...</div>
+                  ) : periodClosingsList.length === 0 ? (
+                    <div className="p-12 text-center text-slate-400 text-xs">
+                      No tax periods closed yet. Click "Close Tax Period" to reconcile a period.
+                    </div>
+                  ) : (
+                    periodClosingsList.map((p) => (
+                      <div key={p.id} className="p-4 hover:bg-slate-50/70 transition flex items-center justify-between gap-4">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-black text-slate-900 font-mono text-sm">Period: {p.period}</span>
+                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                              p.status === "SIGNED_OFF"
+                                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                : "bg-blue-50 text-blue-700 border border-blue-200"
+                            }`}>
+                              {p.status}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-4 text-xs font-mono text-slate-700">
+                            <span>Sales: ₹{Number(p.totalSales || 0).toFixed(2)}</span>
+                            <span>GST Collected: ₹{Number(p.totalGstCollected || 0).toFixed(2)}</span>
+                            <span>GST Adjusted: ₹{Number(p.totalGstAdjusted || 0).toFixed(2)}</span>
+                            <span className="font-bold text-blue-600">Net GST: ₹{Number(p.netGstPayable || 0).toFixed(2)}</span>
+                          </div>
+                          {p.signOffNotes && (
+                            <p className="text-xs text-slate-500 italic mt-1">"{p.signOffNotes}"</p>
+                          )}
+                        </div>
+
+                        <div>
+                          {p.status !== "SIGNED_OFF" && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              icon={CheckCircle2}
+                              onClick={() => handleSignOffPeriod(p.id)}
+                              className="text-emerald-700 border-emerald-300 hover:bg-emerald-50"
+                            >
+                              CA Sign-Off
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </>
+      )}
+
+      {/* ══════════════════════════════════════════════════
+          ACTION MODALS: NEW TASK, FLAG DISCREPANCY, ATTACH DOC, CLOSE PERIOD
+      ══════════════════════════════════════════════════ */}
+      {newTaskModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-md p-6 space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <h3 className="font-bold text-slate-900">Create Audit Task</h3>
+              <button onClick={() => setNewTaskModalOpen(false)}><X size={18} /></button>
+            </div>
+            <form onSubmit={handleCreateTask} className="space-y-3 text-xs">
+              <div>
+                <label className="font-bold block mb-1">Task Title *</label>
+                <input
+                  type="text"
+                  required
+                  value={taskForm.title}
+                  onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })}
+                  placeholder="e.g., Verify Credit Note CN-001 with Goods Return Note"
+                  className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-hidden"
+                />
+              </div>
+              <div>
+                <label className="font-bold block mb-1">Category</label>
+                <select
+                  value={taskForm.category}
+                  onChange={(e) => setTaskForm({ ...taskForm, category: e.target.value })}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-hidden"
+                >
+                  <option value="GENERAL">General Audit</option>
+                  <option value="SALES">Sales & Invoices</option>
+                  <option value="GST">GST & Tax Reversal</option>
+                  <option value="PURCHASES">Purchases & Suppliers</option>
+                  <option value="INVENTORY">Inventory Valuation</option>
+                </select>
+              </div>
+              <div>
+                <label className="font-bold block mb-1">Priority</label>
+                <select
+                  value={taskForm.priority}
+                  onChange={(e) => setTaskForm({ ...taskForm, priority: e.target.value })}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-hidden"
+                >
+                  <option value="LOW">Low</option>
+                  <option value="MEDIUM">Medium</option>
+                  <option value="HIGH">High</option>
+                  <option value="URGENT">Urgent</option>
+                </select>
+              </div>
+              <div>
+                <label className="font-bold block mb-1">Description / Notes</label>
+                <textarea
+                  rows={2}
+                  value={taskForm.description}
+                  onChange={(e) => setTaskForm({ ...taskForm, description: e.target.value })}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-hidden"
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="secondary" size="sm" type="button" onClick={() => setNewTaskModalOpen(false)}>Cancel</Button>
+                <Button variant="primary" size="sm" type="submit">Save Task</Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {flagModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-md p-6 space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <h3 className="font-bold text-rose-700 flex items-center gap-1.5">
+                <Flag size={16} /> Flag Audit Discrepancy
+              </h3>
+              <button onClick={() => setFlagModalOpen(false)}><X size={18} /></button>
+            </div>
+            <form onSubmit={handleFlagDiscrepancy} className="space-y-3 text-xs">
+              <div>
+                <label className="font-bold block mb-1">Discrepancy Issue Title *</label>
+                <input
+                  type="text"
+                  required
+                  value={discrepancyForm.title}
+                  onChange={(e) => setDiscrepancyForm({ ...discrepancyForm, title: e.target.value })}
+                  placeholder="e.g. Tax Rate Mismatch on Return CN-4402"
+                  className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-hidden"
+                />
+              </div>
+              <div>
+                <label className="font-bold block mb-1">Type</label>
+                <select
+                  value={discrepancyForm.discrepancyType}
+                  onChange={(e) => setDiscrepancyForm({ ...discrepancyForm, discrepancyType: e.target.value })}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-hidden"
+                >
+                  <option value="TAX_MISMATCH">Tax Rate / Amount Mismatch</option>
+                  <option value="MISSING_EVIDENCE">Missing Invoice / Bill Evidence</option>
+                  <option value="UNBALANCED_PAYMENT">Unbalanced Dues / Overpayment</option>
+                  <option value="UNMATCHED_RETURN">Unmatched Return / Over-return</option>
+                </select>
+              </div>
+              <div>
+                <label className="font-bold block mb-1">Reference Number</label>
+                <input
+                  type="text"
+                  value={discrepancyForm.referenceNumber}
+                  onChange={(e) => setDiscrepancyForm({ ...discrepancyForm, referenceNumber: e.target.value })}
+                  placeholder="e.g. INV-2026-001 or CN-889"
+                  className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-hidden"
+                />
+              </div>
+              <div>
+                <label className="font-bold block mb-1">Correction Requested from Business Owner *</label>
+                <textarea
+                  rows={2}
+                  required
+                  value={discrepancyForm.description}
+                  onChange={(e) => setDiscrepancyForm({ ...discrepancyForm, description: e.target.value })}
+                  placeholder="Explain the required correction clearly for the business owner"
+                  className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-hidden"
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="secondary" size="sm" type="button" onClick={() => setFlagModalOpen(false)}>Cancel</Button>
+                <Button variant="primary" size="sm" type="submit" className="bg-rose-600 hover:bg-rose-700 border-rose-600">Submit Flag</Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {newDocModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-md p-6 space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <h3 className="font-bold text-slate-900">Attach Evidence Document</h3>
+              <button onClick={() => setNewDocModalOpen(false)}><X size={18} /></button>
+            </div>
+            <form onSubmit={handleCreateDocument} className="space-y-3 text-xs">
+              <div>
+                <label className="font-bold block mb-1">Document Title *</label>
+                <input
+                  type="text"
+                  required
+                  value={docForm.title}
+                  onChange={(e) => setDocForm({ ...docForm, title: e.target.value })}
+                  placeholder="e.g. Bank Statement Sept 2026 or Vendor Tax Invoice"
+                  className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-hidden"
+                />
+              </div>
+              <div>
+                <label className="font-bold block mb-1">Document URL / Path *</label>
+                <input
+                  type="text"
+                  required
+                  value={docForm.fileUrl}
+                  onChange={(e) => setDocForm({ ...docForm, fileUrl: e.target.value })}
+                  placeholder="https://... or /uploads/..."
+                  className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-hidden"
+                />
+              </div>
+              <div>
+                <label className="font-bold block mb-1">Category</label>
+                <select
+                  value={docForm.category}
+                  onChange={(e) => setDocForm({ ...docForm, category: e.target.value })}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-hidden"
+                >
+                  <option value="BANK_STATEMENT">Bank Statement</option>
+                  <option value="PURCHASE_BILL">Purchase Bill</option>
+                  <option value="TAX_CHALLAN">Tax Challan / Receipt</option>
+                  <option value="SUPPORTING_EVIDENCE">Supporting Evidence</option>
+                </select>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="secondary" size="sm" type="button" onClick={() => setNewDocModalOpen(false)}>Cancel</Button>
+                <Button variant="primary" size="sm" type="submit">Attach</Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {closeModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-md p-6 space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <h3 className="font-bold text-emerald-800 flex items-center gap-1.5">
+                <Lock size={16} /> Close &amp; Freeze Tax Period
+              </h3>
+              <button onClick={() => setCloseModalOpen(false)}><X size={18} /></button>
+            </div>
+            <form onSubmit={handleClosePeriod} className="space-y-3 text-xs">
+              <div>
+                <label className="font-bold block mb-1">Period Identifier (YYYY-MM or FY) *</label>
+                <input
+                  type="text"
+                  required
+                  value={closingForm.period}
+                  onChange={(e) => setClosingForm({ ...closingForm, period: e.target.value })}
+                  placeholder="e.g. 2026-09 or 2026-Q3"
+                  className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-hidden font-mono"
+                />
+              </div>
+              <div>
+                <label className="font-bold block mb-1">Period Closing Notes</label>
+                <textarea
+                  rows={2}
+                  value={closingForm.signOffNotes}
+                  onChange={(e) => setClosingForm({ ...closingForm, signOffNotes: e.target.value })}
+                  placeholder="e.g. Reconciled output GST with returns credit notes"
+                  className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-hidden"
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="secondary" size="sm" type="button" onClick={() => setCloseModalOpen(false)}>Cancel</Button>
+                <Button variant="primary" size="sm" type="submit" className="bg-emerald-600 hover:bg-emerald-700 border-emerald-600">Freeze Period</Button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
       {/* ══════════════════════════════════════════════════

@@ -51,6 +51,112 @@ export const getStoreActivity = asyncHandler(async (req, res) => {
   return sendResponse(res, 200, result, 'Store invoice activity ledger retrieved successfully');
 });
 
+export const getPurchases = asyncHandler(async (req, res) => {
+  const { storeId, ...query } = req.query;
+  const result = await caPortalService.getStorePurchasesForCA(req.user, storeId, query);
+  return sendResponse(res, 200, result, 'Purchases retrieved successfully', result.meta);
+});
+
+export const getSuppliers = asyncHandler(async (req, res) => {
+  const { storeId } = req.query;
+  const result = await caPortalService.getStoreSuppliersForCA(req.user, storeId);
+  return sendResponse(res, 200, result, 'Suppliers retrieved successfully');
+});
+
+export const getPayments = asyncHandler(async (req, res) => {
+  const { storeId, ...query } = req.query;
+  const result = await caPortalService.getStorePaymentsForCA(req.user, storeId, query);
+  return sendResponse(res, 200, result, 'Payments retrieved successfully', result.meta);
+});
+
+export const getExpenses = asyncHandler(async (req, res) => {
+  const { storeId, ...query } = req.query;
+  const result = await caPortalService.getStoreExpensesForCA(req.user, storeId, query);
+  return sendResponse(res, 200, result, 'Expenses retrieved successfully', result.meta);
+});
+
+export const getInventory = asyncHandler(async (req, res) => {
+  const { storeId, ...query } = req.query;
+  const result = await caPortalService.getStoreInventoryForCA(req.user, storeId, query);
+  return sendResponse(res, 200, result, 'Inventory audit retrieved successfully', result.meta);
+});
+
+export const getTasks = asyncHandler(async (req, res) => {
+  const { storeId, ...query } = req.query;
+  const result = await caPortalService.getStoreTasksForCA(req.user, storeId, query);
+  return sendResponse(res, 200, result, 'Audit tasks retrieved successfully');
+});
+
+export const createTask = asyncHandler(async (req, res) => {
+  const { storeId } = req.query;
+  const task = await caPortalService.createTaskForCA(req.user, storeId || req.body.storeId, req.body);
+  return sendResponse(res, 201, { task }, 'Audit task created successfully');
+});
+
+export const updateTask = asyncHandler(async (req, res) => {
+  const { storeId } = req.query;
+  const task = await caPortalService.updateTaskForCA(req.user, storeId || req.body.storeId, req.params.id, req.body);
+  return sendResponse(res, 200, { task }, 'Audit task updated successfully');
+});
+
+export const deleteTask = asyncHandler(async (req, res) => {
+  const { storeId } = req.query;
+  const result = await caPortalService.deleteTaskForCA(req.user, storeId, req.params.id);
+  return sendResponse(res, 200, result, 'Audit task deleted successfully');
+});
+
+export const getDiscrepancies = asyncHandler(async (req, res) => {
+  const { storeId, ...query } = req.query;
+  const result = await caPortalService.getStoreDiscrepanciesForCA(req.user, storeId, query);
+  return sendResponse(res, 200, result, 'Discrepancies retrieved successfully');
+});
+
+export const flagDiscrepancy = asyncHandler(async (req, res) => {
+  const { storeId } = req.query;
+  const discrepancy = await caPortalService.flagDiscrepancyForCA(req.user, storeId || req.body.storeId, req.body);
+  return sendResponse(res, 201, { discrepancy }, 'Discrepancy flagged and correction requested');
+});
+
+export const resolveDiscrepancy = asyncHandler(async (req, res) => {
+  const discrepancy = await caPortalService.resolveDiscrepancy(req.user, req.params.id, req.body);
+  return sendResponse(res, 200, { discrepancy }, 'Discrepancy correction submitted successfully');
+});
+
+export const verifyDiscrepancy = asyncHandler(async (req, res) => {
+  const discrepancy = await caPortalService.verifyDiscrepancyForCA(req.user, req.params.id, req.body);
+  return sendResponse(res, 200, { discrepancy }, 'Discrepancy verified by CA successfully');
+});
+
+export const getDocuments = asyncHandler(async (req, res) => {
+  const { storeId, ...query } = req.query;
+  const result = await caPortalService.getStoreDocumentsForCA(req.user, storeId, query);
+  return sendResponse(res, 200, result, 'Audit documents retrieved successfully');
+});
+
+export const createDocument = asyncHandler(async (req, res) => {
+  const { storeId } = req.query;
+  const document = await caPortalService.createDocumentForCA(req.user, storeId || req.body.storeId, req.body);
+  return sendResponse(res, 201, { document }, 'Evidence document attached successfully');
+});
+
+export const getPeriodClosings = asyncHandler(async (req, res) => {
+  const { storeId } = req.query;
+  const result = await caPortalService.getStorePeriodClosingsForCA(req.user, storeId);
+  return sendResponse(res, 200, result, 'Period closings retrieved successfully');
+});
+
+export const closePeriod = asyncHandler(async (req, res) => {
+  const { storeId } = req.query;
+  const period = await caPortalService.closePeriodForCA(req.user, storeId || req.body.storeId, req.body);
+  return sendResponse(res, 200, { period }, 'Period closed successfully');
+});
+
+export const signOffPeriod = asyncHandler(async (req, res) => {
+  const { storeId } = req.query;
+  const period = await caPortalService.signOffPeriodForCA(req.user, storeId || req.body.storeId, req.params.id, req.body);
+  return sendResponse(res, 200, { period }, 'Period signed off by CA successfully');
+});
+
 export default {
   getAuthorizedStores,
   getInvoices,
@@ -60,5 +166,23 @@ export default {
   getInvoiceCreditNotes,
   getCreditNotes,
   getStoreActivity,
+  getPurchases,
+  getSuppliers,
+  getPayments,
+  getExpenses,
+  getInventory,
+  getTasks,
+  createTask,
+  updateTask,
+  deleteTask,
+  getDiscrepancies,
+  flagDiscrepancy,
+  resolveDiscrepancy,
+  verifyDiscrepancy,
+  getDocuments,
+  createDocument,
+  getPeriodClosings,
+  closePeriod,
+  signOffPeriod,
 };
 

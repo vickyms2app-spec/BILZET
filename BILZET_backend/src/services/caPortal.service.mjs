@@ -644,6 +644,697 @@ export const getStoreActivityForCA = async (caUser, storeId, query = {}) => {
   };
 };
 
+/**
+ * 4. Purchases and Supplier Audit
+ */
+export const getStorePurchasesForCA = async (caUser, storeId, query = {}) => {
+  const store = await verifyCAStoreAccess(caUser, storeId);
+  const { page, limit, skip } = getPaginationParams(query);
+
+  const where = {};
+  if (query.status && query.status !== 'ALL') {
+    where.status = query.status.toUpperCase();
+  }
+  if (query.paymentStatus && query.paymentStatus !== 'ALL') {
+    where.paymentStatus = query.paymentStatus.toUpperCase();
+  }
+
+  const [purchases, total] = await Promise.all([
+    prisma.purchase.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        supplier: true,
+        items: { include: { product: true } },
+        returns: true,
+      },
+    }),
+    prisma.purchase.count({ where }),
+  ]);
+
+  const formattedPurchases = purchases.map((p) => {
+    const subtotal = Number(p.subtotal || 0);
+    const taxTotal = Number(p.taxTotal || 0);
+    const grandTotal = Number(p.grandTotal || 0);
+    const paidAmount = Number(p.paidAmount || 0);
+    const balanceDue = Math.max(0, grandTotal - paidAmount);
+
+    return {
+      id: p.id,
+      invoiceNumber: p.invoiceNumber,
+      poNumber: p.poNumber,
+      supplierName: p.supplier?.name || 'Authorized Supplier',
+      supplierGstin: p.supplier?.gstin || null,
+      supplierPhone: p.supplier?.phone || null,
+      supplierBalance: Number(p.supplier?.balance || 0),
+      subtotal,
+      taxTotal,
+      grandTotal,
+      paidAmount,
+      balanceDue,
+      paymentStatus: p.paymentStatus,
+      paymentMethod: p.paymentMethod,
+      status: p.status,
+      purchaseDate: p.purchaseDate || p.createdAt,
+      itemCount: p.items?.length || 0,
+      items: (p.items || []).map((it) => ({
+        id: it.id,
+        productName: it.product?.name || 'Purchase Item',
+        quantity: it.quantity,
+        rate: Number(it.purchasePrice || 0),
+        taxRate: Number(it.gstRate || 0),
+        taxAmount: Number(it.taxAmount || 0),
+        total: Number(it.total || 0),
+      })),
+      returns: p.returns || [],
+    };
+  });
+
+  return {
+    store,
+    purchases: formattedPurchases,
+    meta: buildPaginationMeta(total, page, limit),
+  };
+};
+
+export const getStoreSuppliersForCA = async (caUser, storeId) => {
+  const store = await verifyCAStoreAccess(caUser, storeId);
+  const suppliers = await prisma.supplier.findMany({
+    orderBy: { name: 'asc' },
+    include: {
+      purchases: { select: { id: true, grandTotal: true, paidAmount: true } },
+    },
+  });
+
+  return {
+    store,
+    suppliers: suppliers.map((s) => ({
+      id: s.id,
+      name: s.name,
+      companyName: s.companyName,
+      phone: s.phone,
+      email: s.email,
+      gstin: s.gstin,
+      balance: Number(s.balance || 0),
+      purchaseCount: s.purchases?.length || 0,
+    })),
+  };
+};
+
+/**
+ * 5. Bank and Payment Reconciliation
+ */
+export const getStorePaymentsForCA = async (caUser, storeId, query = {}) => {
+  const store = await verifyCAStoreAccess(caUser, storeId);
+  const { page, limit, skip } = getPaginationParams(query);
+
+  const sales = await prisma.sale.findMany({
+    where: { businessId: storeId },
+    select: { id: true, invoiceNumber: true, customer: { select: { name: true } } },
+  });
+  const saleMap = new Map(sales.map((s) => [s.id, s]));
+  const saleIds = Array.from(saleMap.keys());
+
+  const where = {
+    saleId: { in: saleIds },
+  };
+  if (query.method && query.method !== 'ALL') {
+    where.method = query.method.toUpperCase();
+  }
+
+  const [payments, total] = await Promise.all([
+    prisma.payment.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        customer: { select: { id: true, name: true, phone: true } },
+      },
+    }),
+    prisma.payment.count({ where }),
+  ]);
+
+  let totalReconciled = 0;
+  const formattedPayments = payments.map((p) => {
+    const sale = saleMap.get(p.saleId);
+    const amount = Number(p.amount || 0);
+    totalReconciled += amount;
+
+    return {
+      id: p.id,
+      saleId: p.saleId,
+      invoiceNumber: sale?.invoiceNumber || 'Linked Bill',
+      customerName: p.customer?.name || sale?.customer?.name || 'Walk-in Retail Customer',
+      amount,
+      method: p.method,
+      transactionId: p.transactionId || null,
+      note: p.note,
+      createdAt: p.createdAt,
+      reconciliationStatus: p.transactionId ? 'MATCHED' : 'RECORDED',
+    };
+  });
+
+  return {
+    store,
+    payments: formattedPayments,
+    totalAmount: totalReconciled,
+    meta: buildPaginationMeta(total, page, limit),
+  };
+};
+
+/**
+ * 6. Expenses and Financial Review
+ */
+export const getStoreExpensesForCA = async (caUser, storeId, query = {}) => {
+  const store = await verifyCAStoreAccess(caUser, storeId);
+  const { page, limit, skip } = getPaginationParams(query);
+
+  const where = {};
+  if (query.category && query.category !== 'ALL') {
+    where.category = query.category;
+  }
+  const dateFilter = buildDateFilter(query);
+  if (dateFilter) {
+    where.createdAt = dateFilter;
+  }
+
+  const [expenses, total] = await Promise.all([
+    prisma.expense.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        recordedBy: { select: { id: true, name: true, email: true } },
+      },
+    }),
+    prisma.expense.count({ where }),
+  ]);
+
+  let totalExpenseAmount = 0;
+  const categoryBreakdown = {};
+
+  const formattedExpenses = expenses.map((e) => {
+    const amt = Number(e.amount || 0);
+    totalExpenseAmount += amt;
+    categoryBreakdown[e.category] = (categoryBreakdown[e.category] || 0) + amt;
+
+    return {
+      id: e.id,
+      title: e.title,
+      category: e.category,
+      amount: amt,
+      paymentMethod: e.paymentMethod,
+      date: e.date || e.createdAt,
+      note: e.note,
+      recordedBy: e.recordedBy?.name || 'Admin',
+    };
+  });
+
+  return {
+    store,
+    expenses: formattedExpenses,
+    totalAmount: Number(totalExpenseAmount.toFixed(2)),
+    categoryBreakdown,
+    meta: buildPaginationMeta(total, page, limit),
+  };
+};
+
+/**
+ * 8. Inventory Audit and Stock Movements
+ */
+export const getStoreInventoryForCA = async (caUser, storeId, query = {}) => {
+  const store = await verifyCAStoreAccess(caUser, storeId);
+  const { page, limit, skip } = getPaginationParams(query);
+
+  const where = { businessId: storeId };
+  if (query.search) {
+    where.name = { contains: String(query.search).trim(), mode: 'insensitive' };
+  }
+
+  const [products, total] = await Promise.all([
+    prisma.product.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy: { name: 'asc' },
+    }),
+    prisma.product.count({ where }),
+  ]);
+
+  let totalValuation = 0;
+  let lowStockCount = 0;
+
+  const formattedProducts = products.map((p) => {
+    const stock = Number(p.stock || 0);
+    const cost = Number(p.costPrice || p.price || 0);
+    const selling = Number(p.sellingPrice || p.price || 0);
+    const val = stock * cost;
+    totalValuation += val;
+
+    if (stock <= (p.minStockLevel || 5)) {
+      lowStockCount++;
+    }
+
+    return {
+      id: p.id,
+      name: p.name,
+      sku: p.sku,
+      barcode: p.barcode,
+      hsnCode: p.hsnCode || '1904',
+      stock,
+      unit: p.unit || 'pcs',
+      costPrice: cost,
+      sellingPrice: selling,
+      taxPercent: Number(p.taxPercent || p.gstRate || 0),
+      valuation: Number(val.toFixed(2)),
+      isLowStock: stock <= (p.minStockLevel || 5),
+    };
+  });
+
+  // Recent stock transactions / movements
+  const recentMovements = await prisma.stockTransaction.findMany({
+    take: 50,
+    orderBy: { createdAt: 'desc' },
+    include: {
+      product: { select: { id: true, name: true, sku: true } },
+    },
+  });
+
+  return {
+    store,
+    products: formattedProducts,
+    summary: {
+      totalProducts: total,
+      totalValuation: Number(totalValuation.toFixed(2)),
+      lowStockCount,
+    },
+    recentMovements: recentMovements.map((m) => ({
+      id: m.id,
+      productName: m.product?.name || 'Stock Item',
+      type: m.type,
+      quantity: m.quantity,
+      previousStock: m.previousStock,
+      newStock: m.newStock,
+      reason: m.reason,
+      createdAt: m.createdAt,
+    })),
+    meta: buildPaginationMeta(total, page, limit),
+  };
+};
+
+/**
+ * 2. Audit Workflow & Task Pipeline
+ */
+export const getStoreTasksForCA = async (caUser, storeId, query = {}) => {
+  const store = await verifyCAStoreAccess(caUser, storeId);
+  const where = { businessId: storeId };
+  if (query.status && query.status !== 'ALL') {
+    where.status = query.status.toUpperCase();
+  }
+  if (query.category && query.category !== 'ALL') {
+    where.category = query.category.toUpperCase();
+  }
+
+  const tasks = await prisma.auditTask.findMany({
+    where,
+    orderBy: { createdAt: 'desc' },
+  });
+
+  const counts = {
+    PENDING: 0,
+    IN_REVIEW: 0,
+    FLAGGED: 0,
+    CORRECTION_REQUESTED: 0,
+    RESOLVED: 0,
+    COMPLETED: 0,
+  };
+  tasks.forEach((t) => {
+    if (counts[t.status] !== undefined) counts[t.status]++;
+  });
+
+  return {
+    store,
+    tasks,
+    counts,
+    total: tasks.length,
+  };
+};
+
+export const createTaskForCA = async (caUser, storeId, data) => {
+  const store = await verifyCAStoreAccess(caUser, storeId);
+  if (!data.title) throw ApiError.badRequest('Task title is required');
+
+  const task = await prisma.auditTask.create({
+    data: {
+      businessId: storeId,
+      title: data.title,
+      description: data.description || null,
+      category: (data.category || 'GENERAL').toUpperCase(),
+      status: (data.status || 'PENDING').toUpperCase(),
+      priority: (data.priority || 'MEDIUM').toUpperCase(),
+      assignedToId: data.assignedToId || null,
+      createdById: caUser.id,
+      dueDate: data.dueDate ? new Date(data.dueDate) : null,
+      entityType: data.entityType || null,
+      entityId: data.entityId || null,
+    },
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      userId: caUser.id,
+      action: 'TASK_CREATED',
+      entity: 'AUDIT_TASK',
+      entityId: task.id,
+      changes: { title: task.title, category: task.category, storeId },
+    },
+  });
+
+  return task;
+};
+
+export const updateTaskForCA = async (caUser, storeId, taskId, data) => {
+  await verifyCAStoreAccess(caUser, storeId);
+  const existing = await prisma.auditTask.findUnique({ where: { id: taskId } });
+  if (!existing || existing.businessId !== storeId) {
+    throw ApiError.notFound('Audit task not found');
+  }
+
+  const updated = await prisma.auditTask.update({
+    where: { id: taskId },
+    data: {
+      title: data.title ?? existing.title,
+      description: data.description ?? existing.description,
+      status: data.status ? data.status.toUpperCase() : existing.status,
+      priority: data.priority ? data.priority.toUpperCase() : existing.priority,
+      resolutionNotes: data.resolutionNotes ?? existing.resolutionNotes,
+      dueDate: data.dueDate ? new Date(data.dueDate) : existing.dueDate,
+    },
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      userId: caUser.id,
+      action: 'TASK_UPDATED',
+      entity: 'AUDIT_TASK',
+      entityId: taskId,
+      changes: { before: existing, after: updated },
+    },
+  });
+
+  return updated;
+};
+
+export const deleteTaskForCA = async (caUser, storeId, taskId) => {
+  await verifyCAStoreAccess(caUser, storeId);
+  const existing = await prisma.auditTask.findUnique({ where: { id: taskId } });
+  if (!existing || existing.businessId !== storeId) {
+    throw ApiError.notFound('Audit task not found');
+  }
+
+  await prisma.auditTask.delete({ where: { id: taskId } });
+  return { success: true };
+};
+
+/**
+ * 10. Discrepancies & Corrections
+ */
+export const getStoreDiscrepanciesForCA = async (caUser, storeId, query = {}) => {
+  const store = await verifyCAStoreAccess(caUser, storeId);
+  const where = { businessId: storeId };
+  if (query.status && query.status !== 'ALL') {
+    where.status = query.status.toUpperCase();
+  }
+
+  const discrepancies = await prisma.auditDiscrepancy.findMany({
+    where,
+    orderBy: { createdAt: 'desc' },
+  });
+
+  return {
+    store,
+    discrepancies,
+    total: discrepancies.length,
+  };
+};
+
+export const flagDiscrepancyForCA = async (caUser, storeId, data) => {
+  const store = await verifyCAStoreAccess(caUser, storeId);
+  if (!data.title || !data.description) {
+    throw ApiError.badRequest('Title and description are required to flag a discrepancy');
+  }
+
+  const discrepancy = await prisma.auditDiscrepancy.create({
+    data: {
+      businessId: storeId,
+      taskId: data.taskId || null,
+      title: data.title,
+      description: data.description,
+      entityType: (data.entityType || 'INVOICE').toUpperCase(),
+      entityId: data.entityId || null,
+      referenceNumber: data.referenceNumber || null,
+      discrepancyType: (data.discrepancyType || 'TAX_MISMATCH').toUpperCase(),
+      amount: data.amount ? Number(data.amount) : null,
+      status: 'CORRECTION_REQUESTED',
+      flaggedById: caUser.id,
+      correctionRequested: data.correctionRequested || data.description,
+    },
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      userId: caUser.id,
+      action: 'DISCREPANCY_FLAGGED',
+      entity: 'DISCREPANCY',
+      entityId: discrepancy.id,
+      changes: {
+        title: discrepancy.title,
+        entityType: discrepancy.entityType,
+        referenceNumber: discrepancy.referenceNumber,
+        storeId,
+      },
+    },
+  });
+
+  return discrepancy;
+};
+
+export const resolveDiscrepancy = async (user, discrepancyId, data) => {
+  const disc = await prisma.auditDiscrepancy.findUnique({ where: { id: discrepancyId } });
+  if (!disc) throw ApiError.notFound('Discrepancy record not found');
+
+  const updated = await prisma.auditDiscrepancy.update({
+    where: { id: discrepancyId },
+    data: {
+      status: 'RESOLVED',
+      correctionResponse: data.correctionResponse || data.resolutionNotes || 'Correction submitted by store owner',
+    },
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      userId: user.id,
+      action: 'CORRECTION_RESOLVED',
+      entity: 'DISCREPANCY',
+      entityId: discrepancyId,
+      changes: { correctionResponse: updated.correctionResponse },
+    },
+  });
+
+  return updated;
+};
+
+export const verifyDiscrepancyForCA = async (caUser, discrepancyId, data = {}) => {
+  const disc = await prisma.auditDiscrepancy.findUnique({ where: { id: discrepancyId } });
+  if (!disc) throw ApiError.notFound('Discrepancy record not found');
+  await verifyCAStoreAccess(caUser, disc.businessId);
+
+  const updated = await prisma.auditDiscrepancy.update({
+    where: { id: discrepancyId },
+    data: {
+      status: 'VERIFIED',
+      verifiedAt: new Date(),
+    },
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      userId: caUser.id,
+      action: 'CORRECTION_VERIFIED',
+      entity: 'DISCREPANCY',
+      entityId: discrepancyId,
+      changes: { status: 'VERIFIED', verifiedAt: updated.verifiedAt },
+    },
+  });
+
+  return updated;
+};
+
+/**
+ * 9. Documents & Evidence
+ */
+export const getStoreDocumentsForCA = async (caUser, storeId, query = {}) => {
+  const store = await verifyCAStoreAccess(caUser, storeId);
+  const where = { businessId: storeId };
+  if (query.category && query.category !== 'ALL') {
+    where.category = query.category.toUpperCase();
+  }
+
+  const documents = await prisma.auditDocument.findMany({
+    where,
+    orderBy: { createdAt: 'desc' },
+  });
+
+  return {
+    store,
+    documents,
+    total: documents.length,
+  };
+};
+
+export const createDocumentForCA = async (caUser, storeId, docData) => {
+  const store = await verifyCAStoreAccess(caUser, storeId);
+  if (!docData.title || !docData.fileUrl) {
+    throw ApiError.badRequest('Document title and fileUrl are required');
+  }
+
+  const doc = await prisma.auditDocument.create({
+    data: {
+      businessId: storeId,
+      title: docData.title,
+      fileUrl: docData.fileUrl,
+      fileType: docData.fileType || 'PDF',
+      fileSize: docData.fileSize ? Number(docData.fileSize) : null,
+      category: (docData.category || 'SUPPORTING_EVIDENCE').toUpperCase(),
+      entityType: docData.entityType || null,
+      entityId: docData.entityId || null,
+      uploadedById: caUser.id,
+    },
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      userId: caUser.id,
+      action: 'DOCUMENT_ATTACHED',
+      entity: 'DOCUMENT',
+      entityId: doc.id,
+      changes: { title: doc.title, category: doc.category, storeId },
+    },
+  });
+
+  return doc;
+};
+
+/**
+ * 13. Period Closing & Handover
+ */
+export const getStorePeriodClosingsForCA = async (caUser, storeId) => {
+  const store = await verifyCAStoreAccess(caUser, storeId);
+  const periods = await prisma.periodClosing.findMany({
+    where: { businessId: storeId },
+    orderBy: { period: 'desc' },
+  });
+
+  return {
+    store,
+    periods,
+    total: periods.length,
+  };
+};
+
+export const closePeriodForCA = async (caUser, storeId, data) => {
+  const store = await verifyCAStoreAccess(caUser, storeId);
+  if (!data.period) throw ApiError.badRequest('Period identifier (e.g. 2026-09) is required');
+
+  const summary = await getFinancialSummaryForCA(caUser, storeId, {
+    month: data.month,
+    year: data.year,
+  });
+
+  const m = summary.metrics;
+  const existing = await prisma.periodClosing.findFirst({
+    where: { businessId: storeId, period: data.period },
+  });
+
+  let closing;
+  if (existing) {
+    closing = await prisma.periodClosing.update({
+      where: { id: existing.id },
+      data: {
+        status: 'CLOSED',
+        totalSales: m.totalSalesBeforeReturns,
+        totalGstCollected: m.gstCollectedOnSales,
+        totalGstAdjusted: m.gstAdjustmentsFromReturns,
+        netGstPayable: m.netGst,
+        signOffNotes: data.signOffNotes || 'Period accounts reconciled and closed',
+      },
+    });
+  } else {
+    closing = await prisma.periodClosing.create({
+      data: {
+        businessId: storeId,
+        period: data.period,
+        periodType: data.periodType || 'MONTHLY',
+        status: 'CLOSED',
+        totalSales: m.totalSalesBeforeReturns,
+        totalPurchases: 0,
+        totalGstCollected: m.gstCollectedOnSales,
+        totalGstAdjusted: m.gstAdjustmentsFromReturns,
+        netGstPayable: m.netGst,
+        discrepanciesCount: 0,
+        resolvedDiscrepancies: 0,
+        signOffNotes: data.signOffNotes || 'Period accounts reconciled and closed',
+      },
+    });
+  }
+
+  await prisma.auditLog.create({
+    data: {
+      userId: caUser.id,
+      action: 'PERIOD_CLOSED',
+      entity: 'PERIOD_CLOSING',
+      entityId: closing.id,
+      changes: { period: closing.period, netGstPayable: closing.netGstPayable, storeId },
+    },
+  });
+
+  return closing;
+};
+
+export const signOffPeriodForCA = async (caUser, storeId, periodId, data = {}) => {
+  await verifyCAStoreAccess(caUser, storeId);
+  const existing = await prisma.periodClosing.findUnique({ where: { id: periodId } });
+  if (!existing || existing.businessId !== storeId) {
+    throw ApiError.notFound('Period record not found');
+  }
+
+  const updated = await prisma.periodClosing.update({
+    where: { id: periodId },
+    data: {
+      status: 'SIGNED_OFF',
+      signedOffById: caUser.id,
+      signedOffAt: new Date(),
+      signOffNotes: data.signOffNotes || 'CA authorized audit review complete and signed off',
+    },
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      userId: caUser.id,
+      action: 'PERIOD_SIGNED_OFF',
+      entity: 'PERIOD_CLOSING',
+      entityId: periodId,
+      changes: { status: 'SIGNED_OFF', signedOffAt: updated.signedOffAt, signOffNotes: updated.signOffNotes },
+    },
+  });
+
+  return updated;
+};
+
 export default {
   getAuthorizedStoresForCA,
   verifyCAStoreAccess,
@@ -655,5 +1346,23 @@ export default {
   getInvoiceCreditNotesForCA,
   getStoreCreditNotesForCA,
   getStoreActivityForCA,
+  getStorePurchasesForCA,
+  getStoreSuppliersForCA,
+  getStorePaymentsForCA,
+  getStoreExpensesForCA,
+  getStoreInventoryForCA,
+  getStoreTasksForCA,
+  createTaskForCA,
+  updateTaskForCA,
+  deleteTaskForCA,
+  getStoreDiscrepanciesForCA,
+  flagDiscrepancyForCA,
+  resolveDiscrepancy,
+  verifyDiscrepancyForCA,
+  getStoreDocumentsForCA,
+  createDocumentForCA,
+  getStorePeriodClosingsForCA,
+  closePeriodForCA,
+  signOffPeriodForCA,
 };
 

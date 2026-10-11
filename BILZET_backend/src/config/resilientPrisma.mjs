@@ -459,6 +459,10 @@ export const memoryStore = {
   auditLog: [],
   payment: [],
   caStoreAccess: [],
+  auditTask: [],
+  auditDiscrepancy: [],
+  auditDocument: [],
+  periodClosing: [],
 };
 
 function matchesWhere(item, where) {

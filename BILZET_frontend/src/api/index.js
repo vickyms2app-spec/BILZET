@@ -295,6 +295,8 @@ export const caConnectApi = {
   getInvoices: (p) => http.get("/ca-connect/invoices", { params: p }).then(unwrap),
   getFinancialSummary: (p) => http.get("/ca-connect/financial-summary", { params: p }).then(unwrap),
   getCreditNotes: (p) => http.get("/ca-connect/credit-notes", { params: p }).then(unwrap),
+  getDiscrepancies: (p) => http.get("/ca-connect/discrepancies", { params: p }).then(unwrap),
+  resolveDiscrepancy: (id, data) => http.patch(`/ca-connect/discrepancies/${id}/resolve`, data).then(unwrap),
 };
 
 export const referralApi = {
@@ -330,5 +332,31 @@ export const caPortalApi = {
   getFinancialSummary: (params) => http.get("/ca-portal/financial-summary", { params }).then(unwrap),
   getCreditNotes: (params) => http.get("/ca-portal/credit-notes", { params }).then(unwrap),
   getInvoiceCreditNotes: (id) => http.get(`/ca-portal/invoices/${id}/credit-notes`).then(unwrap),
+  // Module 4: Purchases & Suppliers
+  getPurchases: (params) => http.get("/ca-portal/purchases", { params }).then(unwrap),
+  getSuppliers: (params) => http.get("/ca-portal/suppliers", { params }).then(unwrap),
+  // Module 5: Payments & Bank Reconciliation
+  getPayments: (params) => http.get("/ca-portal/payments", { params }).then(unwrap),
+  // Module 6: Expenses
+  getExpenses: (params) => http.get("/ca-portal/expenses", { params }).then(unwrap),
+  // Module 8: Inventory & Stock Movements
+  getInventory: (params) => http.get("/ca-portal/inventory", { params }).then(unwrap),
+  // Module 2: Tasks Pipeline
+  getTasks: (params) => http.get("/ca-portal/tasks", { params }).then(unwrap),
+  createTask: (data, params) => http.post("/ca-portal/tasks", data, { params }).then(unwrap),
+  updateTask: (id, data, params) => http.patch(`/ca-portal/tasks/${id}`, data, { params }).then(unwrap),
+  deleteTask: (id, params) => http.delete(`/ca-portal/tasks/${id}`, { params }).then(unwrap),
+  // Module 10: Discrepancies & Corrections
+  getDiscrepancies: (params) => http.get("/ca-portal/discrepancies", { params }).then(unwrap),
+  flagDiscrepancy: (data, params) => http.post("/ca-portal/discrepancies", data, { params }).then(unwrap),
+  resolveDiscrepancy: (id, data) => http.patch(`/ca-connect/discrepancies/${id}/resolve`, data).then(unwrap),
+  verifyDiscrepancy: (id, data, params) => http.patch(`/ca-portal/discrepancies/${id}/verify`, data, { params }).then(unwrap),
+  // Module 9: Documents & Evidence
+  getDocuments: (params) => http.get("/ca-portal/documents", { params }).then(unwrap),
+  createDocument: (data, params) => http.post("/ca-portal/documents", data, { params }).then(unwrap),
+  // Module 13: Period Closing & Sign-off
+  getPeriodClosings: (params) => http.get("/ca-portal/period-closings", { params }).then(unwrap),
+  closePeriod: (data, params) => http.post("/ca-portal/period-closings", data, { params }).then(unwrap),
+  signOffPeriod: (id, data, params) => http.post(`/ca-portal/period-closings/${id}/sign-off`, data, { params }).then(unwrap),
 };
 

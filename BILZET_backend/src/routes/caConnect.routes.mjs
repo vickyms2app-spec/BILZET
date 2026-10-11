@@ -24,6 +24,22 @@ router.get('/activity', caPortalController.getStoreActivity);
 router.get('/credit-notes', caPortalController.getCreditNotes);
 router.get('/financial-summary', caPortalController.getFinancialSummary);
 
+// Purchases, Payments, Expenses, Inventory
+router.get('/purchases', caPortalController.getPurchases);
+router.get('/payments', caPortalController.getPayments);
+router.get('/expenses', caPortalController.getExpenses);
+router.get('/inventory', caPortalController.getInventory);
+
+// Tasks & Discrepancies
+router.get('/tasks', caPortalController.getTasks);
+router.get('/discrepancies', caPortalController.getDiscrepancies);
+router.post('/discrepancies/:id/resolve', caPortalController.resolveDiscrepancy);
+router.patch('/discrepancies/:id/resolve', caPortalController.resolveDiscrepancy);
+
+// Documents & Period Closings
+router.get('/documents', caPortalController.getDocuments);
+router.get('/period-closings', caPortalController.getPeriodClosings);
+
 // Operational CA invitation endpoints guarded by requirePremiumPlan for store merchants
 router.use(requirePremiumPlan);
 
