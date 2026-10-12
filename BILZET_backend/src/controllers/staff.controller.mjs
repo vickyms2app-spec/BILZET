@@ -249,6 +249,8 @@ export const deleteStaff = asyncHandler(async (req, res) => {
       name: staff.name,
       status: 'INACTIVE',
       isDeleted: true,
+      isDeactivated: true,
+      historyPreserved: true,
     },
     `Employee ${staff.name} successfully removed and access revoked. Historical records preserved.`
   );

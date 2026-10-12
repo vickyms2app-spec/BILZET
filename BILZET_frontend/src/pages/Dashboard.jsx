@@ -377,27 +377,28 @@ export default function Dashboard() {
       {/* ════════════════════════════════════════════════════════════
           1. DASHBOARD HEADER & QUICK LAUNCH ACTIONS
       ════════════════════════════════════════════════════════════ */}
-      <div className="bg-white p-5 sm:p-6 rounded-xl border border-slate-200/90 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      {/* Top Banner: Greeting, Shop Info, Quick Action Buttons */}
+      <div className="bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-xl border border-slate-200/90 dark:border-slate-800 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         {/* Left Column: Greeting and Business Details */}
         <div className="space-y-1.5">
-          <h1 className="text-xl sm:text-2xl font-bold text-[#0A1628] tracking-tight">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
             {greeting}, {userName}!
           </h1>
 
-          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 font-normal">
-            <span className="flex items-center gap-1.5 font-semibold text-slate-800">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400 font-normal">
+            <span className="flex items-center gap-1.5 font-semibold text-slate-800 dark:text-slate-200">
               <Store size={14} className="text-slate-400" />
               <span>{storeDisplayName}</span>
             </span>
-            <span className="h-3 w-px bg-slate-200" aria-hidden="true" />
+            <span className="h-3 w-px bg-slate-200 dark:bg-slate-700" aria-hidden="true" />
             <span className="flex items-center gap-1">
               <span>GSTIN:</span>
-              <span className="font-mono text-slate-700 font-medium">
+              <span className="font-mono text-slate-700 dark:text-slate-300 font-medium">
                 {shopSettings.gstin || "33ABCDE1234F1Z5"}
               </span>
             </span>
-            <span className="h-3 w-px bg-slate-200" aria-hidden="true" />
-            <span className="flex items-center gap-1.5 text-slate-500">
+            <span className="h-3 w-px bg-slate-200 dark:bg-slate-700" aria-hidden="true" />
+            <span className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
               <Calendar size={13} className="text-slate-400" />
               <span>{todayFormatted}</span>
             </span>
@@ -409,7 +410,7 @@ export default function Dashboard() {
           <button
             onClick={() => refreshAllData(true)}
             disabled={isRefreshing}
-            className="p-2 text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition shadow-xs cursor-pointer disabled:opacity-50"
+            className="p-2 text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg transition shadow-xs cursor-pointer disabled:opacity-50"
             title="Refresh"
             aria-label="Refresh Dashboard Data"
           >
@@ -418,7 +419,7 @@ export default function Dashboard() {
 
           <button
             onClick={() => setShowAddCustomerModal(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-semibold rounded-lg transition shadow-xs cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-semibold rounded-lg transition shadow-xs cursor-pointer"
           >
             <UserPlus size={14} className="text-slate-400" />
             <span>+ Customer</span>
@@ -426,7 +427,7 @@ export default function Dashboard() {
 
           <button
             onClick={() => setShowAddProductModal(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-semibold rounded-lg transition shadow-xs cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-semibold rounded-lg transition shadow-xs cursor-pointer"
           >
             <Package size={14} className="text-slate-400" />
             <span>+ Product</span>
