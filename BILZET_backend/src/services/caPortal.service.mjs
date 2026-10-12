@@ -17,9 +17,10 @@ export const getAuthorizedStoresForCA = async (caUser) => {
   if (!caUser) throw ApiError.unauthorized('Authentication required');
 
   const isSuperAdmin = caUser.role === 'SUPER_ADMIN' || caUser.isSuperAdmin;
-  const isAdmin = caUser.role === 'ADMIN' || caUser.role === 'OWNER';
+  const isOwnerOrAdmin = caUser.role === 'ADMIN' || caUser.role === 'OWNER' || caUser.isOwner;
 
-  if (isSuperAdmin || (isAdmin && !caUser.businessId)) {
+  // SUPER_ADMIN or platform-level admin (no businessId) → return ALL businesses
+  if (isSuperAdmin || (isOwnerOrAdmin && !caUser.businessId)) {
     const allStores = await prisma.business.findMany({
       orderBy: { name: 'asc' },
     });
@@ -34,6 +35,27 @@ export const getAuthorizedStoresForCA = async (caUser) => {
       isAuthorized: true,
     }));
   }
+
+  // ADMIN or OWNER with a specific businessId → return their own store directly
+  // (no need to check CAStoreAccess for business owners)
+  if (isOwnerOrAdmin && caUser.businessId) {
+    const ownStore = await prisma.business.findUnique({
+      where: { id: caUser.businessId },
+    });
+    if (!ownStore) return [];
+    return [{
+      id: ownStore.id,
+      name: ownStore.name,
+      gstin: ownStore.gstin || '',
+      phone: ownStore.phone || '',
+      email: ownStore.email || '',
+      address: ownStore.address || '',
+      state: ownStore.state || 'Tamil Nadu',
+      isAuthorized: true,
+    }];
+  }
+
+  // CA user → check direct businessId + explicit CAStoreAccess + staff invitations
 
   // 1. Direct business assignment on User record
   const directBusinessIds = caUser.businessId ? [caUser.businessId] : [];

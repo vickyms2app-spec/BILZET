@@ -11,7 +11,7 @@ const router = Router();
 // Hiding navigation alone is insufficient — all API requests are validated here.
 // ══════════════════════════════════════════════════════════════
 router.use(verifyAuth);
-router.use(authorizeRoles('CA', 'SUPER_ADMIN'));
+router.use(authorizeRoles('CA', 'SUPER_ADMIN', 'ADMIN', 'OWNER'));
 
 router.get('/stores', caPortalController.getAuthorizedStores);
 router.get('/invoices', caPortalController.getInvoices);
