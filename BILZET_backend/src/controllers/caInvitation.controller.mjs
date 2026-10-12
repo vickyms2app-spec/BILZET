@@ -10,12 +10,18 @@ import { asyncHandler } from '../utils/asyncHandler.mjs';
 export const createInvitation = asyncHandler(async (req, res) => {
   const businessId = req.body.businessId || req.query.storeId || req.user.businessId;
   const result = await caInvitationService.createInvitation(req.user, businessId, req.body);
-  return sendResponse(res, 201, result, 'Invitation successfully sent to Chartered Accountant.');
+  const msg = result.emailSent
+    ? 'Invitation successfully sent to Chartered Accountant.'
+    : result.warning || 'Invitation created with secure single-use link.';
+  return sendResponse(res, 201, result, msg);
 });
 
 export const resendInvitation = asyncHandler(async (req, res) => {
   const result = await caInvitationService.resendInvitation(req.user, req.params.id);
-  return sendResponse(res, 200, result, 'Invitation successfully resent.');
+  const msg = result.emailSent
+    ? 'Invitation email successfully resent.'
+    : result.warning || 'Invitation refreshed with secure single-use link.';
+  return sendResponse(res, 200, result, msg);
 });
 
 export const revokeInvitation = asyncHandler(async (req, res) => {

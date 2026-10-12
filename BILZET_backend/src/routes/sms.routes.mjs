@@ -6,6 +6,8 @@ const router = Router();
 
 router.use(authMiddleware);
 
+router.get('/status', smsController.getProviderStatus);
+router.post('/send-test', smsController.sendTestSms);
 router.get('/', smsController.getCampaigns);
 router.post('/', smsController.createCampaign);
 

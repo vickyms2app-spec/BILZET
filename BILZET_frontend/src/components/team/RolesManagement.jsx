@@ -16,12 +16,14 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
-import { rolesApi, subscriptionUsageApi } from "../../api";
+import { rolesApi, subscriptionApi } from "../../api";
 import { usePermissions } from "../../hooks/usePermissions";
+import { useAuth } from "../../store/auth";
 
 export default function RolesManagement() {
   const navigate = useNavigate();
   const { isOwner, isSuperAdmin } = usePermissions();
+  const authUser = useAuth((s) => s.user);
 
   const [roles, setRoles] = useState([]);
   const [catalog, setCatalog] = useState({ permissions: [], grouped: {}, modules: [] });
@@ -50,12 +52,24 @@ export default function RolesManagement() {
     if (usage?.planTier && usage.planTier !== "FREE") {
       return usage.planTier.toUpperCase();
     }
+    if (authUser?.subscription?.planTier && authUser.subscription.planTier !== "FREE") {
+      return authUser.subscription.planTier.toUpperCase();
+    }
+    try {
+      const savedData = localStorage.getItem("bilzet_subscription_data");
+      if (savedData) {
+        const parsed = JSON.parse(savedData);
+        if (parsed.status === "EXPIRED" || parsed.status === "CANCELLED") return "FREE";
+        if (parsed.planTier && parsed.planTier !== "FREE") return parsed.planTier.toUpperCase();
+        if (parsed.currentPlan && parsed.currentPlan.toUpperCase() !== "FREE") return parsed.currentPlan.toUpperCase();
+      }
+    } catch (_) {}
     try {
       const saved = localStorage.getItem("bilzet_subscription");
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed.status === "Expired" || parsed.status === "Cancelled") return "FREE";
-        if (parsed.currentPlan) return parsed.currentPlan.toUpperCase();
+        if (parsed.currentPlan && parsed.currentPlan.toUpperCase() !== "FREE") return parsed.currentPlan.toUpperCase();
       }
     } catch (_) {}
     return (usage?.planTier || "FREE").toUpperCase();
@@ -67,9 +81,9 @@ export default function RolesManagement() {
     setLoading(true);
     try {
       const [rolesRes, catalogRes, usageRes] = await Promise.all([
-        rolesApi.list(),
-        rolesApi.permissionsCatalog(),
-        subscriptionUsageApi.get().catch(() => null),
+        rolesApi.list().catch(() => ({ roles: [] })),
+        rolesApi.permissionsCatalog().catch(() => null),
+        subscriptionApi.getUsage().catch(() => null),
       ]);
 
       setRoles(rolesRes.roles || []);

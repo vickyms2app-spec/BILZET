@@ -1077,6 +1077,17 @@ function resolveIncludes(modelName, item, include) {
     }
   }
 
+  if (modelName === 'subscription') {
+    if (include.user) {
+      const u = (memoryStore.user || []).find((usr) => usr.id === clone.userId);
+      clone.user = u ? applySelect('user', u, include.user.select || include.user) : null;
+    }
+    if (include.business) {
+      const b = (memoryStore.business || []).find((bus) => bus.id === clone.businessId || bus.ownerId === clone.userId);
+      clone.business = b ? applySelect('business', b, include.business.select || include.business) : null;
+    }
+  }
+
   return clone;
 }
 
@@ -1113,8 +1124,10 @@ function createModelHandler(modelName) {
         const orderKey = Object.keys(args.orderBy)[0];
         const dir = args.orderBy[orderKey] === 'asc' ? 1 : -1;
         result.sort((a, b) => {
-          if (a[orderKey] < b[orderKey]) return -1 * dir;
-          if (a[orderKey] > b[orderKey]) return 1 * dir;
+          const valA = a[orderKey] instanceof Date ? a[orderKey].getTime() : a[orderKey];
+          const valB = b[orderKey] instanceof Date ? b[orderKey].getTime() : b[orderKey];
+          if (valA < valB) return -1 * dir;
+          if (valA > valB) return 1 * dir;
           return 0;
         });
       }
@@ -1136,7 +1149,19 @@ function createModelHandler(modelName) {
 
     async findFirst(args = {}) {
       const list = memoryStore[modelName] || [];
-      const item = list.find((it) => matchesWhere(it, args.where)) || null;
+      let filtered = list.filter((it) => matchesWhere(it, args.where));
+      if (args.orderBy) {
+        const orderKey = Object.keys(args.orderBy)[0];
+        const dir = args.orderBy[orderKey] === 'asc' ? 1 : -1;
+        filtered.sort((a, b) => {
+          const valA = a[orderKey] instanceof Date ? a[orderKey].getTime() : a[orderKey];
+          const valB = b[orderKey] instanceof Date ? b[orderKey].getTime() : b[orderKey];
+          if (valA < valB) return -1 * dir;
+          if (valA > valB) return 1 * dir;
+          return 0;
+        });
+      }
+      const item = filtered[0] || null;
       if (!item) return null;
       if (args.select) return applySelect(modelName, item, args.select);
       if (args.include) return resolveIncludes(modelName, item, args.include);

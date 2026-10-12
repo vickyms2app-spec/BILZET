@@ -23,30 +23,89 @@ import {
 } from "lucide-react";
 import Button, { CompactIconButton } from "../components/common/Button";
 import { subscriptionApi } from "../api";
+import { useAuth } from "../store/auth";
 
 export default function Plans() {
   const [searchParams] = useSearchParams();
   const targetTier = (searchParams.get("tier") || "").toUpperCase();
+  const authUser = useAuth((s) => s.user);
+  const updateSubscription = useAuth((s) => s.updateSubscription);
 
-  // Subscription state (persisted in localStorage and synchronized with backend API)
+  // Authoritative subscription state initialization
   const [subData, setSubData] = useState(() => {
-    const saved = localStorage.getItem("bilzet_subscription");
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (_) {}
+    let plan = "Free";
+    let status = "Active";
+    let validUntil = "365 Days Validity";
+    let payments = [];
+    let extraBills = 0;
+
+    // 1. Prioritize authenticated user store subscription
+    if (authUser?.subscription?.planTier) {
+      const tier = String(authUser.subscription.planTier).toUpperCase();
+      if (tier !== "FREE") {
+        plan = tier.charAt(0) + tier.slice(1).toLowerCase();
+        status = authUser.subscription.status || "Active";
+        if (authUser.subscription.expiresAt) {
+          validUntil = new Date(authUser.subscription.expiresAt).toLocaleDateString("en-GB", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          });
+        }
+      }
     }
+
+    // 2. Check persistent bilzet_subscription_data
+    try {
+      const savedData = localStorage.getItem("bilzet_subscription_data");
+      if (savedData) {
+        const parsedData = JSON.parse(savedData);
+        const pTier = String(parsedData.planTier || parsedData.currentPlan || "").toUpperCase();
+        if (pTier && pTier !== "FREE") {
+          plan = pTier.charAt(0) + pTier.slice(1).toLowerCase();
+          if (parsedData.status) status = parsedData.status;
+          if (parsedData.expiresAt) {
+            validUntil = new Date(parsedData.expiresAt).toLocaleDateString("en-GB", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            });
+          }
+        }
+      }
+    } catch (_) {}
+
+    // 3. Fallback to bilzet_subscription
+    try {
+      const saved = localStorage.getItem("bilzet_subscription");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.currentPlan && plan === "Free") {
+          const pTier = String(parsed.currentPlan).toUpperCase();
+          if (pTier !== "FREE") {
+            plan = pTier.charAt(0) + pTier.slice(1).toLowerCase();
+          }
+        }
+        if (parsed.status) status = parsed.status;
+        if (parsed.validUntil) validUntil = parsed.validUntil;
+        if (parsed.payments) payments = parsed.payments;
+        if (parsed.extraBills) extraBills = parsed.extraBills;
+      }
+    } catch (_) {}
+
     return {
-      currentPlan: "Free",
-      validUntil: "14 Sept 2027",
+      currentPlan: plan,
+      validUntil,
       usedBills: 1,
-      totalBills: 100,
-      extraBills: 0,
-      status: "Active",
+      totalBills: plan.toUpperCase() === "FREE" ? 100 : "Unlimited",
+      extraBills,
+      status,
       validity: "1 year validity",
-      payments: [],
+      payments,
     };
   });
+
+  const [loadingStatus, setLoadingStatus] = useState(true);
 
   const [checkoutModal, setCheckoutModal] = useState({
     open: false,
@@ -56,52 +115,104 @@ export default function Plans() {
   const [paymentProcessing, setPaymentProcessing] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
 
-  // Sync active subscription status with backend on load
+  // Sync active subscription status with backend on load and listen for updates
   useEffect(() => {
     let mounted = true;
-    subscriptionApi
-      .getStatus()
-      .then((res) => {
-        if (!mounted || !res) return;
-        if (res.planTier) {
-          const tierCapitalized =
-            res.planTier.charAt(0).toUpperCase() + res.planTier.slice(1).toLowerCase();
-          setSubData((prev) => {
-            const updated = {
-              ...prev,
-              currentPlan: tierCapitalized,
-              status: res.status || "Active",
-              validUntil: res.expiresAt
-                ? new Date(res.expiresAt).toLocaleDateString("en-GB", {
-                    day: "numeric",
-                    month: "short",
-                    year: "numeric",
-                  })
-                : prev.validUntil,
-              totalBills: res.planTier === "FREE" ? prev.totalBills : "Unlimited",
-            };
-            localStorage.setItem("bilzet_subscription", JSON.stringify(updated));
-            localStorage.setItem(
-              "bilzet_subscription_data",
-              JSON.stringify({ currentPlan: tierCapitalized, status: updated.status })
-            );
-            return updated;
-          });
+
+    const syncStatus = () => {
+      subscriptionApi
+        .getStatus()
+        .then((res) => {
+          if (!mounted || !res) return;
+          if (res.planTier) {
+            const rawTier = String(res.planTier).toUpperCase();
+            const tierCapitalized = rawTier.charAt(0) + rawTier.slice(1).toLowerCase();
+
+            setSubData((prev) => {
+              // If local state has a confirmed active paid plan and API returns Free due to transient race, preserve paid plan
+              const prevIsPaid = String(prev.currentPlan).toUpperCase() !== "FREE";
+              const newIsFree = rawTier === "FREE";
+              if (prevIsPaid && newIsFree && !res.isExpired && res.status !== "CANCELLED") {
+                return prev;
+              }
+
+              const updated = {
+                ...prev,
+                currentPlan: tierCapitalized,
+                status: res.status || "Active",
+                validUntil: res.expiresAt
+                  ? new Date(res.expiresAt).toLocaleDateString("en-GB", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })
+                  : prev.validUntil,
+                totalBills: rawTier === "FREE" ? 100 : "Unlimited",
+              };
+
+              localStorage.setItem("bilzet_subscription", JSON.stringify(updated));
+              localStorage.setItem(
+                "bilzet_subscription_data",
+                JSON.stringify({
+                  currentPlan: tierCapitalized,
+                  planTier: rawTier,
+                  status: updated.status,
+                  expiresAt: res.expiresAt,
+                  planName: res.planName,
+                })
+              );
+
+              if (updateSubscription) {
+                updateSubscription(res);
+              }
+
+              return updated;
+            });
+          }
+        })
+        .catch(() => {})
+        .finally(() => {
+          if (mounted) setLoadingStatus(false);
+        });
+    };
+
+    syncStatus();
+
+    // Cross-tab and cross-component broadcast listener
+    const handleSubscriptionUpdate = (e) => {
+      if (e?.detail) {
+        const newTier = String(e.detail.planTier || "").toUpperCase();
+        if (newTier) {
+          const cap = newTier.charAt(0) + newTier.slice(1).toLowerCase();
+          setSubData((prev) => ({
+            ...prev,
+            currentPlan: cap,
+            status: e.detail.status || "Active",
+            totalBills: newTier === "FREE" ? 100 : "Unlimited",
+          }));
         }
-      })
-      .catch(() => {});
+      }
+    };
+
+    window.addEventListener("bilzet:subscription_updated", handleSubscriptionUpdate);
 
     return () => {
       mounted = false;
+      window.removeEventListener("bilzet:subscription_updated", handleSubscriptionUpdate);
     };
-  }, []);
+  }, [updateSubscription]);
 
   const saveSubData = (updated) => {
     setSubData(updated);
+    const tierUpper = String(updated.currentPlan || "FREE").toUpperCase();
     localStorage.setItem("bilzet_subscription", JSON.stringify(updated));
     localStorage.setItem(
       "bilzet_subscription_data",
-      JSON.stringify({ currentPlan: updated.currentPlan, status: updated.status || "Active" })
+      JSON.stringify({
+        currentPlan: updated.currentPlan,
+        planTier: tierUpper,
+        status: updated.status || "Active",
+      })
     );
   };
 
@@ -214,6 +325,7 @@ export default function Plans() {
   };
 
   const confirmPayment = async () => {
+    if (paymentProcessing) return;
     setPaymentProcessing(true);
     try {
       const paymentRef = `PAY-${Date.now().toString().slice(-6)}`;
@@ -222,14 +334,20 @@ export default function Plans() {
         ? (subData.currentPlan || "FREE").toUpperCase()
         : targetPlanName.toUpperCase();
 
+      let upgradeResult = null;
       if (!checkoutModal.extraBills) {
-        // Persist upgrade to backend DB
-        await subscriptionApi.upgrade({
+        // Authoritatively verify and persist upgrade to backend DB
+        upgradeResult = await subscriptionApi.verifyPayment({
           planTier: targetPlanTier,
           amount: checkoutModal.plan.amount,
           billingCycle: "ANNUAL",
           paymentReference: paymentRef,
+          paymentMethod: "UPI",
         });
+
+        if (updateSubscription && upgradeResult) {
+          updateSubscription(upgradeResult);
+        }
       }
 
       setPaymentProcessing(false);
@@ -257,9 +375,18 @@ export default function Plans() {
           };
           saveSubData(updated);
         } else {
+          const nextExpiry = upgradeResult?.expiresAt
+            ? new Date(upgradeResult.expiresAt).toLocaleDateString("en-GB", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+              })
+            : subData.validUntil;
+
           const updated = {
             ...subData,
             currentPlan: targetPlanName,
+            validUntil: nextExpiry,
             totalBills: "Unlimited",
             payments: [
               {

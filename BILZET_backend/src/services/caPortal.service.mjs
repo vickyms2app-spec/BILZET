@@ -97,28 +97,29 @@ export const getAuthorizedStoresForCA = async (caUser) => {
  * Throws 403 Forbidden if not authorized.
  */
 export const verifyCAStoreAccess = async (caUser, storeId) => {
-  if (!storeId) {
+  const effectiveStoreId = storeId || caUser?.businessId;
+  if (!effectiveStoreId) {
     throw ApiError.badRequest('Store ID is required');
   }
 
   if (caUser.role === 'SUPER_ADMIN' || caUser.isSuperAdmin) {
-    return { id: storeId };
+    return { id: effectiveStoreId };
   }
 
-  if ((caUser.role === 'ADMIN' || caUser.role === 'OWNER') && (!caUser.businessId || caUser.businessId === storeId)) {
-    return { id: storeId };
+  if ((caUser.role === 'ADMIN' || caUser.role === 'OWNER' || caUser.isOwner) && (!caUser.businessId || caUser.businessId === effectiveStoreId)) {
+    return { id: effectiveStoreId };
   }
 
   const authorizedStores = await getAuthorizedStoresForCA(caUser);
-  const isAuthorized = authorizedStores.some((s) => s.id === storeId);
+  const isAuthorized = authorizedStores.some((s) => s.id === effectiveStoreId);
 
   if (!isAuthorized) {
     throw ApiError.forbidden(
-      `Access denied: Chartered Accountant is not authorized to access store records for store '${storeId}'`
+      `Access denied: Chartered Accountant is not authorized to access store records for store '${effectiveStoreId}'`
     );
   }
 
-  return authorizedStores.find((s) => s.id === storeId);
+  return authorizedStores.find((s) => s.id === effectiveStoreId);
 };
 
 /**

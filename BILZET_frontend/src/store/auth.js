@@ -52,6 +52,23 @@ export const useAuth = create((set) => ({
 
       const res = await Promise.race([mePromise, timeoutPromise]);
       if (res && res.user) {
+        if (res.user.subscription) {
+          const tier = String(res.user.subscription.planTier || res.user.currentPlan || "FREE").toUpperCase();
+          const cap = tier.charAt(0) + tier.slice(1).toLowerCase();
+          try {
+            localStorage.setItem(
+              "bilzet_subscription_data",
+              JSON.stringify({
+                currentPlan: cap,
+                planTier: tier,
+                status: res.user.subscription.status || "ACTIVE",
+                expiresAt: res.user.subscription.expiresAt,
+                isActive: res.user.subscription.isActive !== false,
+                planName: res.user.subscription.planName,
+              })
+            );
+          } catch (_) {}
+        }
         set({ user: res.user, loading: false });
       }
     } catch (err) {
@@ -65,6 +82,37 @@ export const useAuth = create((set) => ({
         set({ loading: false });
       }
     }
+  },
+
+  updateSubscription(newSub) {
+    if (!newSub) return;
+    const tierUpper = String(newSub.planTier || newSub.currentPlan || "FREE").toUpperCase();
+    const tierCap = tierUpper.charAt(0) + tierUpper.slice(1).toLowerCase();
+
+    set((state) => {
+      if (!state.user) return state;
+      return {
+        user: {
+          ...state.user,
+          subscription: newSub,
+          currentPlan: tierUpper,
+        },
+      };
+    });
+
+    try {
+      localStorage.setItem(
+        "bilzet_subscription_data",
+        JSON.stringify({
+          currentPlan: tierCap,
+          planTier: tierUpper,
+          status: newSub.status || "ACTIVE",
+          expiresAt: newSub.expiresAt,
+          isActive: newSub.isActive !== false,
+          planName: newSub.planName,
+        })
+      );
+    } catch (_) {}
   },
 
   async login(payload) {
@@ -118,3 +166,5 @@ export const useAuth = create((set) => ({
     }
   },
 }));
+
+export const useAuthStore = useAuth;

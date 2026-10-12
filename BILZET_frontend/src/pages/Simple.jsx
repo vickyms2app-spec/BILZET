@@ -10,6 +10,9 @@ export default function Simple({ title, api, fields, readOnly = false, note }) {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
 
+  const [submitting, setSubmitting] = useState(false);
+  const [modalErr, setModalErr] = useState("");
+
   const load = async () => {
     try {
       setLoading(true);
@@ -29,6 +32,9 @@ export default function Simple({ title, api, fields, readOnly = false, note }) {
 
   async function save(e) {
     e.preventDefault();
+    if (submitting) return;
+    setSubmitting(true);
+    setModalErr("");
     const f = new FormData(e.currentTarget);
     const p = {};
     fields.forEach(([k]) => {
@@ -40,7 +46,9 @@ export default function Simple({ title, api, fields, readOnly = false, note }) {
       setOpen(false);
       load();
     } catch (e) {
-      setErr(apiError(e));
+      setModalErr(apiError(e));
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -263,6 +271,12 @@ export default function Simple({ title, api, fields, readOnly = false, note }) {
               </button>
             </div>
 
+            {modalErr && (
+              <div className="rounded-xl bg-rose-50 border border-rose-200/80 p-3 text-xs text-rose-700 font-medium">
+                {modalErr}
+              </div>
+            )}
+
             <form onSubmit={save} className="space-y-3.5 text-xs">
               {fields.map(([k, l]) => (
                 <div key={k}>
@@ -283,6 +297,7 @@ export default function Simple({ title, api, fields, readOnly = false, note }) {
               <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2.5">
                 <button
                   type="button"
+                  disabled={submitting}
                   onClick={() => setOpen(false)}
                   className="btn-secondary"
                 >
@@ -290,9 +305,10 @@ export default function Simple({ title, api, fields, readOnly = false, note }) {
                 </button>
                 <button
                   type="submit"
-                  className="btn-primary"
+                  disabled={submitting}
+                  className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Create {title.replace(/s$/, "")}
+                  {submitting ? "Creating…" : `Create ${title.replace(/s$/, "")}`}
                 </button>
               </div>
             </form>

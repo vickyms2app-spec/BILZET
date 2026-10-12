@@ -416,6 +416,33 @@ export default function Admin() {
             </div>
           </div>
 
+          {/* CA Connect & Auditor Governance Bridge */}
+          <div className="bg-white rounded-2xl border border-slate-200/90 p-5 sm:p-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center shrink-0">
+                <FileText size={20} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h4 className="text-sm font-bold text-slate-900">CA Connect &amp; Auditor Governance</h4>
+                  <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full">
+                    Compliance Active
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Synchronize audit logs, grant module-level access to Chartered Accountants, and review discrepancies.
+                </p>
+              </div>
+            </div>
+            <Link
+              to="/ca-connect"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition shadow-xs shrink-0 self-start sm:self-auto"
+            >
+              <span>Manage CA Access &amp; Audit Logs</span>
+              <ArrowUpRight size={14} />
+            </Link>
+          </div>
+
           {/* PostgreSQL NeonDB Infrastructure Telemetry */}
           <div className="bg-white rounded-2xl border border-slate-200/90 p-5 sm:p-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3">

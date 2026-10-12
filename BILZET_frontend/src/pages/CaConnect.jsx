@@ -65,9 +65,22 @@ export default function CaConnect() {
     let status = "Active";
     let isExpired = false;
 
+    if (user?.subscription?.planTier) {
+      plan = user.subscription.planTier;
+      status = user.subscription.status || "Active";
+      isExpired = !!user.subscription.isExpired;
+    }
+
     try {
+      const savedData = localStorage.getItem("bilzet_subscription_data");
+      if (savedData) {
+        const parsedData = JSON.parse(savedData);
+        if (parsedData.planTier && parsedData.planTier !== "FREE") plan = parsedData.planTier;
+        else if (parsedData.currentPlan && parsedData.currentPlan.toUpperCase() !== "FREE") plan = parsedData.currentPlan;
+        if (parsedData.status) status = parsedData.status;
+      }
       const saved = localStorage.getItem("bilzet_subscription");
-      if (saved) {
+      if (saved && plan === "Free") {
         const parsed = JSON.parse(saved);
         if (parsed.currentPlan) plan = parsed.currentPlan;
         if (parsed.status) status = parsed.status;
@@ -77,12 +90,6 @@ export default function CaConnect() {
             isExpired = true;
           }
         }
-      }
-      const savedData = localStorage.getItem("bilzet_subscription_data");
-      if (savedData) {
-        const parsedData = JSON.parse(savedData);
-        if (parsedData.currentPlan) plan = parsedData.currentPlan;
-        if (parsedData.status) status = parsedData.status;
       }
     } catch (_) {}
 
@@ -151,8 +158,23 @@ export default function CaConnect() {
     };
 
     verifySubscription();
+
+    const handleSubUpdate = (e) => {
+      if (e?.detail) {
+        const tier = e.detail.planTier || e.detail.currentPlan || "Free";
+        setSubscription({
+          plan: tier,
+          status: e.detail.status || "Active",
+          isExpired: !!e.detail.isExpired,
+          isUnlocked: String(tier).toUpperCase() === "PREMIUM" || String(tier).toUpperCase() === "ENTERPRISE",
+        });
+      }
+    };
+    window.addEventListener("bilzet:subscription_updated", handleSubUpdate);
+
     return () => {
       isMounted = false;
+      window.removeEventListener("bilzet:subscription_updated", handleSubUpdate);
     };
   }, []);
 
@@ -297,16 +319,22 @@ export default function CaConnect() {
     }
   };
 
-  // Handle Resend Invitation
   const handleResendInvite = async (invitationId) => {
     setActionLoadingId(invitationId);
     setActionMessage(null);
     try {
       const res = await caInvitationApi.resend(invitationId);
-      setActionMessage({
-        type: "success",
-        text: `Fresh invitation email dispatched to ${res?.invitation?.invitedEmail || "CA"}. New token active.`,
-      });
+      if (res?.emailSent) {
+        setActionMessage({
+          type: "success",
+          text: `Fresh invitation email dispatched to ${res?.invitation?.email || res?.invitation?.invitedEmail || "CA"}. New token active.`,
+        });
+      } else {
+        setActionMessage({
+          type: "warning",
+          text: res?.warning || "Invitation refreshed with active token, but automatic email delivery was not sent (SMTP not configured).",
+        });
+      }
       loadInvitations();
     } catch (err) {
       setActionMessage({
@@ -1350,21 +1378,39 @@ export default function CaConnect() {
               {/* Success Result View */}
               {inviteSuccessData ? (
                 <div className="space-y-5 animate-fade-in">
-                  <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 size={20} className="text-emerald-600 shrink-0" />
-                      <h4 className="font-bold text-sm">Invitation Successfully Created!</h4>
+                  {inviteSuccessData.emailSent ? (
+                    <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 size={20} className="text-emerald-600 shrink-0" />
+                        <h4 className="font-bold text-sm">Invitation Email Dispatched!</h4>
+                      </div>
+                      <p className="text-xs text-emerald-800 leading-relaxed">
+                        A verified invitation email has been sent to{" "}
+                        <strong>{inviteSuccessData.invitation?.email || inviteSuccessData.invitation?.invitedEmail}</strong>.
+                        The secure link is active for{" "}
+                        {Math.max(1, Math.round(
+                          (new Date(inviteSuccessData.invitation?.expiresAt) - new Date()) / (1000 * 60 * 60 * 24)
+                        ))}{" "}
+                        days.
+                      </p>
                     </div>
-                    <p className="text-xs text-emerald-800 leading-relaxed">
-                      A professional invitation email has been dispatched to{" "}
-                      <strong>{inviteSuccessData.invitation?.invitedEmail}</strong>.
-                      The secure link is valid for{" "}
-                      {Math.round(
-                        (new Date(inviteSuccessData.invitation?.expiresAt) - new Date()) / (1000 * 60 * 60 * 24)
-                      )}{" "}
-                      days.
-                    </p>
-                  </div>
+                  ) : (
+                    <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle size={20} className="text-amber-600 shrink-0" />
+                        <h4 className="font-bold text-sm">Invitation Generated (SMTP Pending)</h4>
+                      </div>
+                      <p className="text-xs text-amber-800 leading-relaxed">
+                        The invitation token has been created for{" "}
+                        <strong>{inviteSuccessData.invitation?.email || inviteSuccessData.invitation?.invitedEmail}</strong>,
+                        but automatic email delivery was not sent because the SMTP email provider is not configured.
+                        <br />
+                        <strong className="font-semibold text-amber-900">
+                          Copy the direct single-use invitation link below and share it directly with your Chartered Accountant.
+                        </strong>
+                      </p>
+                    </div>
+                  )}
 
                   {/* Copy Link Section */}
                   <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">

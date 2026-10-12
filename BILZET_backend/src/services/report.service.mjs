@@ -245,8 +245,14 @@ export const getGstReport = async (query = {}, businessId = null) => {
 
   const sales = await prisma.sale.findMany({
     where,
-    orderBy: { createdAt: 'desc' },
-    include: { customer: true, items: true },
+    include: {
+      customer: true,
+      items: {
+        include: {
+          product: true,
+        },
+      },
+    },
   });
 
   let totalTaxable = 0;

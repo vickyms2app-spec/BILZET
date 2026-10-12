@@ -48,6 +48,7 @@ import {
   productsApi,
   customersApi,
   salesApi,
+  caConnectApi,
 } from "../api";
 import { mockDashboardData } from "../api/mockData";
 import { useAuth } from "../store/auth";
@@ -83,6 +84,7 @@ export default function Dashboard() {
   const [availableProducts, setAvailableProducts] = useState([]);
   const [availableCustomers, setAvailableCustomers] = useState([]);
   const [recentSales, setRecentSales] = useState([]);
+  const [discrepancies, setDiscrepancies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -132,12 +134,13 @@ export default function Dashboard() {
   const refreshAllData = async (manual = false) => {
     if (manual) setIsRefreshing(true);
     try {
-      const [dashRes, prodsRes, custsRes, settRes, salesRes] = await Promise.allSettled([
+      const [dashRes, prodsRes, custsRes, settRes, salesRes, discRes] = await Promise.allSettled([
         dashboardApi.get(),
         productsApi.list({ limit: 50 }),
         customersApi.list({ limit: 50 }),
         settingsApi.get(),
         salesApi.list({ limit: 8 }),
+        caConnectApi.getDiscrepancies().catch(() => null),
       ]);
 
       if (dashRes.status === "fulfilled" && dashRes.value) {
@@ -166,6 +169,12 @@ export default function Dashboard() {
           salesRes.value?.data ||
           [];
         setRecentSales(Array.isArray(sList) ? sList : []);
+      }
+      if (discRes.status === "fulfilled" && discRes.value?.discrepancies) {
+        const openDisc = (discRes.value.discrepancies || []).filter(
+          (d) => !["RESOLVED", "CLOSED", "APPROVED"].includes((d.status || "").toUpperCase())
+        );
+        setDiscrepancies(openDisc);
       }
       if (settRes.status === "fulfilled" && settRes.value) {
         try {
@@ -197,7 +206,9 @@ export default function Dashboard() {
         type === "RETURN_PROCESSED" ||
         type === "INVOICE_VOIDED" ||
         type === "STOCK_ADJUSTED" ||
-        type === "INVOICE_CORRECTION_APPLIED"
+        type === "INVOICE_CORRECTION_APPLIED" ||
+        type === "CA_DISCREPANCY_FLAGGED" ||
+        type === "CA_DISCREPANCY_RESOLVED"
       ) {
         refreshAllData();
       }
@@ -430,6 +441,37 @@ export default function Dashboard() {
           </button>
         </div>
       </div>
+
+      {/* Chartered Accountant Discrepancy Alert Bridge */}
+      {discrepancies.length > 0 && (
+        <div className="bg-gradient-to-r from-amber-500/10 via-rose-500/10 to-transparent border border-amber-500/30 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs animate-in fade-in">
+          <div className="flex items-start sm:items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-600 border border-amber-500/30 flex items-center justify-center shrink-0">
+              <AlertTriangle size={20} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-slate-900">
+                  CA Audit Discrepancies Flagged
+                </h3>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-500 text-white shadow-2xs">
+                  {discrepancies.length} Action Needed
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 mt-0.5">
+                Your Chartered Accountant has flagged discrepancies on billing entries or tax registers requiring merchant review.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => nav("/ca-connect?tab=discrepancies")}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs shadow-xs transition shrink-0 self-start sm:self-auto cursor-pointer"
+          >
+            <span>Review &amp; Resolve</span>
+            <ArrowRight size={14} />
+          </button>
+        </div>
+      )}
 
       {/* ════════════════════════════════════════════════════════════
           2. TOP FINANCIAL KPI SUMMARY (4 EQUAL CARDS)

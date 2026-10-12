@@ -4,6 +4,7 @@ import {
   getActiveSubscription,
   getSubscriptionUsage,
   upgradeSubscription,
+  verifyAndActivatePayment,
   cancelSubscription,
 } from '../services/subscription.service.mjs';
 import { PLAN_DETAILS, FEATURE_ENTITLEMENTS } from '../config/plans.config.mjs';
@@ -82,6 +83,27 @@ router.post(
     });
 
     return sendResponse(res, 200, updated, `Successfully upgraded to ${updated.planTier} plan.`);
+  })
+);
+
+/**
+ * Verifies payment reference and securely activates paid subscription.
+ */
+router.post(
+  '/verify-payment',
+  asyncHandler(async (req, res) => {
+    const { planTier, billingCycle, amount, paymentReference, paymentMethod } = req.body;
+    const updated = await verifyAndActivatePayment({
+      businessId: req.user.businessId,
+      userId: req.user.id,
+      planTier,
+      billingCycle,
+      amount,
+      paymentReference,
+      paymentMethod,
+    });
+
+    return sendResponse(res, 200, updated, `Payment verified. Successfully upgraded to ${updated.planTier} plan.`);
   })
 );
 

@@ -4,6 +4,7 @@ import prisma from '../config/prisma.mjs';
 import { ApiError } from '../utils/ApiError.mjs';
 import { env } from '../config/env.mjs';
 import { getEffectivePermissions } from './permission.service.mjs';
+import { getActiveSubscription } from './subscription.service.mjs';
 
 const ADMIN_EMAILS = [
   'vickyms2app@gmail.com',
@@ -100,6 +101,33 @@ const sanitizeUser = (user) => {
   };
 };
 
+export const enrichUserWithSubscription = async (user) => {
+  if (!user) return null;
+  const sanitized = sanitizeUser(user);
+  try {
+    const subInfo = await getActiveSubscription(user.businessId, user.id);
+    return {
+      ...sanitized,
+      subscription: subInfo,
+      currentPlan: subInfo?.planTier || 'FREE',
+    };
+  } catch (err) {
+    return {
+      ...sanitized,
+      subscription: {
+        planTier: 'FREE',
+        actualPlanTier: 'FREE',
+        planName: 'Free Starter',
+        status: 'ACTIVE',
+        isActive: true,
+        isExpired: false,
+        expiresAt: null,
+      },
+      currentPlan: 'FREE',
+    };
+  }
+};
+
 export const register = async (userData, context = {}) => {
   const { name, email, phone, password, role } = userData;
   const normalizedEmail = String(email || '').trim().toLowerCase();
@@ -169,7 +197,7 @@ export const register = async (userData, context = {}) => {
   const tokens = generateTokens(user);
 
   return {
-    user: sanitizeUser(user),
+    user: await enrichUserWithSubscription(user),
     ...tokens,
   };
 };
@@ -246,9 +274,11 @@ export const login = async (email, password, context = {}) => {
     permSet.forEach((k) => { effectivePermissions[k] = true; });
   } catch (_) {}
 
+  const userWithSub = await enrichUserWithSubscription(user);
+
   return {
     user: {
-      ...sanitizeUser(user),
+      ...userWithSub,
       effectivePermissions,
     },
     ...tokens,
@@ -361,7 +391,7 @@ export const googleLogin = async (credential, context = {}) => {
     const tokens = generateTokens(user);
 
     return {
-      user: sanitizeUser(user),
+      user: await enrichUserWithSubscription(user),
       ...tokens,
     };
   } catch (err) {
@@ -387,8 +417,9 @@ export const getCurrentUser = async (userId) => {
         permSet.forEach((k) => { effectivePermissions[k] = true; });
       } catch (_) {}
 
+      const userWithSub = await enrichUserWithSubscription(user);
       return {
-        ...sanitizeUser(user),
+        ...userWithSub,
         effectivePermissions,
       };
     }
@@ -460,9 +491,10 @@ export const clerkSync = async ({ clerkId, email, name, avatar, phone }) => {
     } catch (_) {}
 
     const tokens = generateTokens(user);
+    const userWithSub = await enrichUserWithSubscription(user);
     return {
       user: {
-        ...sanitizeUser(user),
+        ...userWithSub,
         isNewUser,
         hasShopConfig,
       },
@@ -482,8 +514,9 @@ export const clerkSync = async ({ clerkId, email, name, avatar, phone }) => {
       isActive: true,
     };
     const tokens = generateTokens(fallbackUser);
+    const userWithSub = await enrichUserWithSubscription(fallbackUser);
     return {
-      user: fallbackUser,
+      user: userWithSub,
       ...tokens,
     };
   }

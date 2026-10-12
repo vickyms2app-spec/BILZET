@@ -21,7 +21,8 @@ export const getLatestEmail = () => emailOutbox[emailOutbox.length - 1] || null;
 export const isEmailConfigured = () => {
   const host = process.env.SMTP_HOST || env.SMTP_HOST;
   const user = process.env.SMTP_USER || env.SMTP_USER;
-  return Boolean(host && user);
+  const pass = process.env.SMTP_PASS || env.SMTP_PASS;
+  return Boolean(host && user && pass);
 };
 
 /**
@@ -36,12 +37,13 @@ const getTransporter = () => {
   const port = parseInt(process.env.SMTP_PORT || env.SMTP_PORT || '587', 10);
   const user = process.env.SMTP_USER || env.SMTP_USER;
   const pass = process.env.SMTP_PASS || env.SMTP_PASS;
+  const secure = process.env.SMTP_SECURE === 'true' || port === 465;
 
   if (host && user && pass) {
     transporter = nodemailer.createTransport({
       host,
       port,
-      secure: port === 465,
+      secure,
       auth: { user, pass },
       pool: true,
       maxConnections: 5,

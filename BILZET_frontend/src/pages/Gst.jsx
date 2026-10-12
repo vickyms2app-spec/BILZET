@@ -11,9 +11,12 @@ import {
   ChevronDown,
   ChevronUp,
   RefreshCw,
-  Search
+  Search,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import { reportsApi, settingsApi } from "../api";
+import { downloadGstr1Json, generateGstr1Pdf } from "../utils/gstr1Helper";
 
 export default function Gst() {
   const [loading, setLoading] = useState(true);
@@ -28,6 +31,9 @@ export default function Gst() {
   const [showTable, setShowTable] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("ALL"); // ALL, B2B, B2C
+  const [exportingJson, setExportingJson] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
+  const [exportFeedback, setExportFeedback] = useState(null);
 
   const loadData = async () => {
     try {
@@ -65,58 +71,48 @@ export default function Gst() {
 
   // Export GSTR-1 as JSON
   const handleDownloadGstr1Json = () => {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(
-      JSON.stringify(
-        {
-          gstin: shopSettings?.gstin || "UNREGISTERED",
-          fp: new Date().toISOString().slice(0, 7).replace("-", ""),
-          b2b: gstData.invoices
-            .filter((inv) => inv.customer?.gstin)
-            .map((inv) => ({
-              ctin: inv.customer.gstin,
-              inv: [
-                {
-                  inum: inv.invoiceNumber,
-                  idt: new Date(inv.createdAt).toISOString().slice(0, 10),
-                  val: Number(inv.grandTotal || 0),
-                  pos: shopSettings?.stateCode || "33",
-                  rchrg: "N",
-                  inv_typ: "R",
-                  itms: (inv.items || []).map((it, idx) => ({
-                    num: idx + 1,
-                    itm_det: {
-                      txval: Number(it.subtotal || 0),
-                      rt: Number(it.taxRate || 18),
-                      camt: Number(it.taxTotal || 0) / 2,
-                      samt: Number(it.taxTotal || 0) / 2,
-                      csamt: 0,
-                    },
-                  })),
-                },
-              ],
-            })),
-          b2cs: gstData.invoices
-            .filter((inv) => !inv.customer?.gstin)
-            .map((inv) => ({
-              sply_ty: "INTER",
-              pos: shopSettings?.stateCode || "33",
-              typ: "OE",
-              txval: Number(inv.subtotal || 0),
-              rt: 18,
-              camt: Number(inv.taxTotal || 0) / 2,
-              samt: Number(inv.taxTotal || 0) / 2,
-            })),
-        },
-        null,
-        2
-      )
-    );
-    const downloadAnchor = document.createElement("a");
-    downloadAnchor.setAttribute("href", dataStr);
-    downloadAnchor.setAttribute("download", `GSTR1_${shopSettings?.gstin || "BILZET"}_${new Date().toISOString().slice(0, 7)}.json`);
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
+    try {
+      setExportingJson(true);
+      setExportFeedback(null);
+      const res = downloadGstr1Json({
+        invoices: gstData.invoices,
+        shopSettings,
+      });
+      setExportFeedback({
+        type: "success",
+        text: `GSTR-1 JSON export generated successfully (${res.metrics.totalInvoices} invoices, taxable: ₹${res.metrics.totalTaxable.toLocaleString("en-IN")}). Saved as ${res.filename}.`,
+      });
+    } catch (err) {
+      setExportFeedback({
+        type: "error",
+        text: err?.message || "Failed to generate GSTR-1 JSON export",
+      });
+    } finally {
+      setExportingJson(false);
+    }
+  };
+
+  // Export GSTR-1 as PDF
+  const handleDownloadGstr1Pdf = () => {
+    try {
+      setExportingPdf(true);
+      setExportFeedback(null);
+      const res = generateGstr1Pdf({
+        invoices: gstData.invoices,
+        shopSettings,
+      });
+      setExportFeedback({
+        type: "success",
+        text: `Official Form GSTR-1 Summary PDF report generated successfully (${res.metrics.totalInvoices} invoices, grand total: ₹${res.metrics.grandTotal.toLocaleString("en-IN")}). Saved as ${res.filename}.`,
+      });
+    } catch (err) {
+      setExportFeedback({
+        type: "error",
+        text: err?.message || "Failed to generate GSTR-1 PDF report",
+      });
+    } finally {
+      setExportingPdf(false);
+    }
   };
 
   // Export HSN Report CSV
@@ -212,6 +208,32 @@ export default function Gst() {
         </div>
       </div>
 
+      {/* Export Feedback Notification */}
+      {exportFeedback && (
+        <div
+          className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 text-xs animate-in fade-in ${
+            exportFeedback.type === "success"
+              ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+              : "bg-rose-50 border-rose-200 text-rose-800"
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            {exportFeedback.type === "success" ? (
+              <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+            ) : (
+              <XCircle size={16} className="text-rose-600 shrink-0" />
+            )}
+            <p className="font-medium">{exportFeedback.text}</p>
+          </div>
+          <button
+            onClick={() => setExportFeedback(null)}
+            className="text-[11px] font-bold text-slate-500 hover:text-slate-800 cursor-pointer"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {/* Overview Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="card p-4 border border-slate-200/80">
@@ -247,16 +269,27 @@ export default function Gst() {
             </div>
             <h3 className="font-bold text-slate-900">GSTR-1 Draft Pack</h3>
             <p className="text-xs text-slate-500 font-normal mt-1.5 leading-relaxed">
-              Sales, B2B invoices, and B2C retail orders formatted for direct JSON upload to the GST portal.
+              Sales, B2B invoices, B2C retail orders, and HSN schedule formatted for GST portal JSON and official summary PDF.
             </p>
           </div>
-          <button
-            onClick={handleDownloadGstr1Json}
-            className="mt-5 btn-secondary text-xs font-semibold w-full justify-between"
-          >
-            <span>Download GSTR-1 JSON</span>
-            <Download size={13} />
-          </button>
+          <div className="mt-5 space-y-2">
+            <button
+              onClick={handleDownloadGstr1Json}
+              disabled={exportingJson}
+              className="btn-secondary text-xs font-semibold w-full justify-between cursor-pointer disabled:opacity-50"
+            >
+              <span>{exportingJson ? "Generating JSON..." : "Export GSTR-1 JSON"}</span>
+              {exportingJson ? <RefreshCw size={13} className="animate-spin" /> : <Download size={13} />}
+            </button>
+            <button
+              onClick={handleDownloadGstr1Pdf}
+              disabled={exportingPdf}
+              className="btn-primary text-xs font-semibold w-full justify-between cursor-pointer bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
+            >
+              <span>{exportingPdf ? "Generating PDF..." : "Export GSTR-1 PDF"}</span>
+              {exportingPdf ? <RefreshCw size={13} className="animate-spin" /> : <FileText size={13} />}
+            </button>
+          </div>
         </div>
 
         {/* GSTR-3B */}

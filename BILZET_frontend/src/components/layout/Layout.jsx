@@ -256,6 +256,10 @@ export default function Layout({ children }) {
     }
   }, [isDark]);
 
+  useEffect(() => {
+    setMobileDrawer(false);
+  }, [location.pathname]);
+
   // Notifications State & Popover
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -790,9 +794,19 @@ export default function Layout({ children }) {
               ))}
             </nav>
 
-            {/* Admin Console & Vault at bottom of Mobile Drawer */}
-            {isAuthorizedAdmin && (
-              <div className="pt-3 border-t border-white/[0.08] shrink-0">
+            {/* User Profile Summary & Actions at bottom of Mobile Drawer */}
+            <div className="pt-3 border-t border-white/[0.08] shrink-0 space-y-2">
+              <div className="flex items-center gap-3 px-2 py-1.5 rounded-xl bg-white/[0.04]">
+                <div className="w-9 h-9 rounded-xl bg-blue-600 text-white font-bold text-xs flex items-center justify-center shrink-0">
+                  {userInitials}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold text-white truncate">{displayName}</p>
+                  <p className="text-[10px] text-slate-400 truncate">{displayRole}</p>
+                </div>
+              </div>
+
+              {isAuthorizedAdmin && (
                 <NavLink
                   to="/admin"
                   onClick={() => setMobileDrawer(false)}
@@ -805,10 +819,22 @@ export default function Layout({ children }) {
                   }
                 >
                   <Shield size={16} />
-                  <span>Admin Console & Vault</span>
+                  <span>Admin Console &amp; Vault</span>
                 </NavLink>
-              </div>
-            )}
+              )}
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileDrawer(false);
+                  handleLogout();
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition cursor-pointer min-h-[44px]"
+              >
+                <LogOut size={16} />
+                <span>Log Out</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

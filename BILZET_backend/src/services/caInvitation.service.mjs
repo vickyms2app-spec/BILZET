@@ -150,9 +150,12 @@ export const createInvitation = async (inviterUser, businessId, data = {}) => {
   const baseUrl = process.env.FRONTEND_URL || env.FRONTEND_URL || 'http://localhost:5173';
   const inviteLink = `${baseUrl.replace(/\/$/, '')}/ca-connect/accept-invitation?token=${rawToken}`;
 
+  let emailSent = false;
+  let emailError = null;
+
   // Send invitation email
   try {
-    const emailResult = await emailService.sendCaInvitationEmail({
+    await emailService.sendCaInvitationEmail({
       to: rawEmail,
       caName: invitation.name,
       businessName: business.name,
@@ -167,10 +170,12 @@ export const createInvitation = async (inviterUser, businessId, data = {}) => {
       where: { id: invitation.id },
       data: {
         deliveryStatus: 'DELIVERED',
+        deliveryError: null,
       },
     });
 
     invitation.deliveryStatus = 'DELIVERED';
+    emailSent = true;
   } catch (err) {
     await prisma.caInvitation.update({
       where: { id: invitation.id },
@@ -181,8 +186,7 @@ export const createInvitation = async (inviterUser, businessId, data = {}) => {
     });
     invitation.deliveryStatus = 'FAILED';
     invitation.deliveryError = err.message;
-
-    throw ApiError.internal(`Invitation created, but email delivery failed: ${err.message}`);
+    emailError = err.message;
   }
 
   // Broadcast real-time event to Store channel
@@ -192,6 +196,7 @@ export const createInvitation = async (inviterUser, businessId, data = {}) => {
     name: invitation.name,
     expiresAt,
     deliveryStatus: invitation.deliveryStatus,
+    emailSent,
   });
 
   // Log audit trail
@@ -208,6 +213,7 @@ export const createInvitation = async (inviterUser, businessId, data = {}) => {
           name: invitation.name,
           expiresAt: expiresAt.toISOString(),
           permissions,
+          deliveryStatus: invitation.deliveryStatus,
         },
       },
     });
@@ -215,7 +221,12 @@ export const createInvitation = async (inviterUser, businessId, data = {}) => {
 
   return {
     invitation,
-    inviteLink, // Returned to allow Admin instant copy link
+    inviteLink,
+    emailSent,
+    emailError,
+    warning: emailSent
+      ? null
+      : `Invitation record saved with secure token, but automatic email delivery was not sent: ${emailError}. You can copy the invitation link below to share it directly with your CA.`,
   };
 };
 
@@ -261,6 +272,9 @@ export const resendInvitation = async (inviterUser, invitationId) => {
   const baseUrl = process.env.FRONTEND_URL || env.FRONTEND_URL || 'http://localhost:5173';
   const inviteLink = `${baseUrl.replace(/\/$/, '')}/ca-connect/accept-invitation?token=${rawToken}`;
 
+  let emailSent = false;
+  let emailError = null;
+
   try {
     await emailService.sendCaInvitationEmail({
       to: updated.email,
@@ -275,9 +289,10 @@ export const resendInvitation = async (inviterUser, invitationId) => {
 
     await prisma.caInvitation.update({
       where: { id: invitationId },
-      data: { deliveryStatus: 'DELIVERED' },
+      data: { deliveryStatus: 'DELIVERED', deliveryError: null },
     });
     updated.deliveryStatus = 'DELIVERED';
+    emailSent = true;
   } catch (err) {
     await prisma.caInvitation.update({
       where: { id: invitationId },
@@ -288,18 +303,24 @@ export const resendInvitation = async (inviterUser, invitationId) => {
     });
     updated.deliveryStatus = 'FAILED';
     updated.deliveryError = err.message;
-    throw ApiError.internal(`Resend failed during email delivery: ${err.message}`);
+    emailError = err.message;
   }
 
   realtimeService.broadcastEvent(updated.businessId, 'CA_INVITATION_RESENT', {
     invitationId: updated.id,
     email: updated.email,
     expiresAt,
+    emailSent,
   });
 
   return {
     invitation: updated,
     inviteLink,
+    emailSent,
+    emailError,
+    warning: emailSent
+      ? null
+      : `Invitation refreshed with new token, but automatic email delivery failed: ${emailError}. You can share the active invite link directly.`,
   };
 };
 

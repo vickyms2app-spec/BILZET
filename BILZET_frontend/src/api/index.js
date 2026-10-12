@@ -170,6 +170,16 @@ export const onlineOrdersApi = {
 export const smsApi = {
   list: () => withFallback(http.get("/sms-campaigns").then(unwrap), { campaigns: [] }),
   create: (p) => http.post("/sms-campaigns", p).then(unwrap),
+  status: () =>
+    withFallback(http.get("/sms-campaigns/status").then(unwrap), {
+      provider: {
+        status: "SANDBOX",
+        provider: "Standard SMS Engine",
+        creditsRemaining: 1000,
+        costPerSms: 0.25,
+      },
+    }),
+  sendTest: (p) => http.post("/sms-campaigns/send-test", p).then(unwrap),
 };
 
 export const auditLogsApi = {
@@ -238,28 +248,151 @@ export const usersApi = {
 export const teamApi = usersApi;
 
 export const subscriptionApi = {
-  getStatus: () =>
-    withFallback(http.get("/subscription/status").then(unwrap), {
-      planTier: "FREE",
-      actualPlanTier: "FREE",
-      planName: "Free Starter",
-      status: "ACTIVE",
-      isActive: true,
-      isExpired: false,
-      currentPlan: "FREE",
-    }),
+  getStatus: async () => {
+    try {
+      const res = await http.get("/subscription/status").then(unwrap);
+      if (res && res.planTier) {
+        const tierUpper = String(res.planTier).toUpperCase();
+        const tierCap = tierUpper.charAt(0) + tierUpper.slice(1).toLowerCase();
+        try {
+          localStorage.setItem(
+            "bilzet_subscription_data",
+            JSON.stringify({
+              currentPlan: tierCap,
+              planTier: tierUpper,
+              status: res.status || "ACTIVE",
+              expiresAt: res.expiresAt,
+              isActive: res.isActive !== false,
+              planName: res.planName,
+            })
+          );
+        } catch (_) {}
+      }
+      return res;
+    } catch (err) {
+      console.warn("[subscriptionApi.getStatus] API fetch warning:", err?.message || err);
+      // Retain existing paid subscription state if available — NEVER blindly reset to FREE on transient error
+      try {
+        const saved =
+          localStorage.getItem("bilzet_subscription_data") ||
+          localStorage.getItem("bilzet_subscription");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          const rawPlan = parsed.planTier || parsed.currentPlan;
+          if (rawPlan && String(rawPlan).toUpperCase() !== "FREE") {
+            const tierUpper = String(rawPlan).toUpperCase();
+            return {
+              planTier: tierUpper,
+              actualPlanTier: tierUpper,
+              planName: parsed.planName || `${tierUpper} Plan`,
+              status: parsed.status || "ACTIVE",
+              isActive: true,
+              isExpired: false,
+              expiresAt: parsed.expiresAt || parsed.validUntil || null,
+              currentPlan: tierUpper,
+            };
+          }
+        }
+      } catch (_) {}
+
+      return {
+        planTier: "FREE",
+        actualPlanTier: "FREE",
+        planName: "Free Starter",
+        status: "ACTIVE",
+        isActive: true,
+        isExpired: false,
+        currentPlan: "FREE",
+      };
+    }
+  },
   getPlans: () => http.get("/subscription/plans").then(unwrap),
-  getUsage: () =>
-    withFallback(http.get("/subscription/usage").then(unwrap), {
-      planTier: "FREE",
-      planName: "Free Starter",
-      usedSeats: 0,
-      maxSeats: 1,
-      remainingSeats: 0,
-      canAddUser: false,
-    }),
-  upgrade: (p) => http.post("/subscription/upgrade", p).then(unwrap),
-  cancel: () => http.post("/subscription/cancel").then(unwrap),
+  getUsage: async () => {
+    try {
+      return await http.get("/subscription/usage").then(unwrap);
+    } catch (err) {
+      // Check cached subscription tier first before assuming 0 seats
+      try {
+        const saved =
+          localStorage.getItem("bilzet_subscription_data") ||
+          localStorage.getItem("bilzet_subscription");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          const rawPlan = String(parsed.planTier || parsed.currentPlan || "FREE").toUpperCase();
+          if (rawPlan === "PREMIUM") {
+            return { planTier: "PREMIUM", planName: "Premium Enterprise", usedSeats: 0, maxSeats: 15, remainingSeats: 15, canAddUser: true };
+          }
+          if (rawPlan === "PRO") {
+            return { planTier: "PRO", planName: "Pro Business", usedSeats: 0, maxSeats: 5, remainingSeats: 5, canAddUser: true };
+          }
+        }
+      } catch (_) {}
+
+      return {
+        planTier: "FREE",
+        planName: "Free Starter",
+        usedSeats: 0,
+        maxSeats: 0,
+        remainingSeats: 0,
+        canAddUser: false,
+      };
+    }
+  },
+  upgrade: async (p) => {
+    const res = await http.post("/subscription/upgrade", p).then(unwrap);
+    if (res && res.planTier) {
+      const tierUpper = String(res.planTier).toUpperCase();
+      const tierCap = tierUpper.charAt(0) + tierUpper.slice(1).toLowerCase();
+      try {
+        localStorage.setItem(
+          "bilzet_subscription_data",
+          JSON.stringify({
+            currentPlan: tierCap,
+            planTier: tierUpper,
+            status: res.status || "ACTIVE",
+            expiresAt: res.expiresAt,
+            isActive: res.isActive !== false,
+            planName: res.planName,
+          })
+        );
+        window.dispatchEvent(new CustomEvent("bilzet:subscription_updated", { detail: res }));
+      } catch (_) {}
+    }
+    return res;
+  },
+  verifyPayment: async (p) => {
+    const res = await http.post("/subscription/verify-payment", p).then(unwrap);
+    if (res && res.planTier) {
+      const tierUpper = String(res.planTier).toUpperCase();
+      const tierCap = tierUpper.charAt(0) + tierUpper.slice(1).toLowerCase();
+      try {
+        localStorage.setItem(
+          "bilzet_subscription_data",
+          JSON.stringify({
+            currentPlan: tierCap,
+            planTier: tierUpper,
+            status: res.status || "ACTIVE",
+            expiresAt: res.expiresAt,
+            isActive: res.isActive !== false,
+            planName: res.planName,
+          })
+        );
+        window.dispatchEvent(new CustomEvent("bilzet:subscription_updated", { detail: res }));
+      } catch (_) {}
+    }
+    return res;
+  },
+  cancel: async () => {
+    const res = await http.post("/subscription/cancel").then(unwrap);
+    try {
+      localStorage.setItem(
+        "bilzet_subscription_data",
+        JSON.stringify({ currentPlan: "Free", planTier: "FREE", status: "CANCELLED" })
+      );
+      window.dispatchEvent(new CustomEvent("bilzet:subscription_updated", { detail: res }));
+    } catch (_) {}
+    return res;
+  },
 };
 
 export const rolesApi = {

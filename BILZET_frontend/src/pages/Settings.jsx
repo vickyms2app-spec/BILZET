@@ -87,13 +87,17 @@ export default function Settings({ defaultTab: initialTab }) {
   }, [searchParams]);
 
   // Subscription state: verify from backend, fall back to localStorage
+  const authUser = useAuth((s) => s.user);
   const [activePlan, setActivePlan] = useState(() => {
+    if (authUser?.subscription?.planTier && String(authUser.subscription.planTier).toUpperCase() !== "FREE") {
+      return String(authUser.subscription.planTier).toUpperCase();
+    }
     try {
       const sub = JSON.parse(localStorage.getItem("bilzet_subscription_data") || "{}");
-      return (sub.currentPlan || "Free").toUpperCase();
-    } catch (_) {
-      return "FREE";
-    }
+      if (sub.planTier && String(sub.planTier).toUpperCase() !== "FREE") return String(sub.planTier).toUpperCase();
+      if (sub.currentPlan && String(sub.currentPlan).toUpperCase() !== "FREE") return String(sub.currentPlan).toUpperCase();
+    } catch (_) {}
+    return "FREE";
   });
 
   const tierRank = { FREE: 1, PRO: 2, PREMIUM: 3, ENTERPRISE: 4 };

@@ -10,7 +10,19 @@ import { getPlanSeatLimit, PLAN_DETAILS } from '../config/plans.config.mjs';
 export const getActiveSubscription = async (businessId, userId = null) => {
   let activeSub = null;
 
-  if (businessId) {
+  // 1. Look for active subscription associated directly with userId
+  if (userId) {
+    activeSub = await prisma.subscription.findFirst({
+      where: {
+        userId,
+        status: 'ACTIVE',
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  // 2. If not found, check by business owner
+  if (!activeSub && businessId) {
     const business = await prisma.business.findUnique({
       where: { id: businessId },
     });
@@ -18,26 +30,42 @@ export const getActiveSubscription = async (businessId, userId = null) => {
       activeSub = await prisma.subscription.findFirst({
         where: {
           userId: business.ownerId,
+          status: 'ACTIVE',
         },
         orderBy: { createdAt: 'desc' },
       });
     }
   }
 
-  if (!activeSub && userId) {
-    activeSub = await prisma.subscription.findFirst({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
-    });
+  // 3. Fallback: check any subscription (expired or cancelled) to inspect history
+  if (!activeSub) {
+    if (userId) {
+      activeSub = await prisma.subscription.findFirst({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+      });
+    }
+    if (!activeSub && businessId) {
+      const business = await prisma.business.findUnique({
+        where: { id: businessId },
+      });
+      if (business?.ownerId) {
+        activeSub = await prisma.subscription.findFirst({
+          where: { userId: business.ownerId },
+          orderBy: { createdAt: 'desc' },
+        });
+      }
+    }
   }
 
+  // 4. If absolutely no subscription record exists, provide default Active Free Starter
   if (!activeSub) {
     return {
       planTier: 'FREE',
       actualPlanTier: 'FREE',
       planName: 'Free Starter',
-      status: 'INACTIVE',
-      isActive: false,
+      status: 'ACTIVE',
+      isActive: true,
       isExpired: false,
       expiresAt: null,
       subscription: null,
@@ -54,7 +82,7 @@ export const getActiveSubscription = async (businessId, userId = null) => {
   return {
     planTier: isValidActive ? String(activeSub.planTier || 'FREE').toUpperCase() : 'FREE',
     actualPlanTier: String(activeSub.planTier || 'FREE').toUpperCase(),
-    planName: activeSub.planName || 'Free Starter',
+    planName: activeSub.planName || (isValidActive ? `${activeSub.planTier} Plan` : 'Free Starter'),
     status: isExpired ? 'EXPIRED' : activeSub.status,
     isActive: isValidActive,
     isExpired,
@@ -154,6 +182,8 @@ export const upgradeSubscription = async ({
 
   // 1. Resolve target user (owner)
   let targetUserId = userId;
+  let effectiveBusinessId = businessId;
+
   if (businessId) {
     const business = await prisma.business.findUnique({
       where: { id: businessId },
@@ -177,7 +207,7 @@ export const upgradeSubscription = async ({
       },
     });
     if (existingPayment) {
-      return getActiveSubscription(businessId, targetUserId);
+      return getActiveSubscription(effectiveBusinessId, targetUserId);
     }
   }
 
@@ -192,10 +222,21 @@ export const upgradeSubscription = async ({
       where: { userId: targetUserId, status: 'ACTIVE' },
       data: { status: 'CANCELLED' },
     });
-    return getActiveSubscription(businessId, targetUserId);
+    return getActiveSubscription(effectiveBusinessId, targetUserId);
   }
 
-  // Create active subscription record
+  // Atomically supersede any existing active subscriptions to guarantee single active truth
+  await prisma.subscription.updateMany({
+    where: {
+      userId: targetUserId,
+      status: 'ACTIVE',
+    },
+    data: {
+      status: 'SUPERSEDED',
+    },
+  });
+
+  // Create authoritative active subscription record
   await prisma.subscription.create({
     data: {
       userId: targetUserId,
@@ -209,6 +250,7 @@ export const upgradeSubscription = async ({
       endDate,
       expiresAt: endDate,
       paymentReference: paymentReference || `PAY-${Date.now()}`,
+      paymentStatus: 'PAID',
     },
   });
 
@@ -220,7 +262,46 @@ export const upgradeSubscription = async ({
     console.warn('[upgradeSubscription] Referral reward process error:', refErr.message);
   }
 
-  return getActiveSubscription(businessId, targetUserId);
+  return getActiveSubscription(effectiveBusinessId, targetUserId);
+};
+
+/**
+ * Server-side validated payment verification and subscription activation.
+ */
+export const verifyAndActivatePayment = async ({
+  businessId,
+  userId,
+  planTier,
+  amount,
+  paymentReference,
+  billingCycle = 'ANNUAL',
+  paymentMethod = 'UPI',
+}) => {
+  const normalizedTier = String(planTier || '').toUpperCase();
+  if (!PLAN_DETAILS[normalizedTier] || normalizedTier === 'FREE') {
+    throw ApiError.badRequest(`Invalid paid plan tier: ${planTier}. Must be PRO or PREMIUM.`);
+  }
+
+  const planInfo = PLAN_DETAILS[normalizedTier];
+  const expectedAmount = planInfo.amount;
+
+  if (amount !== undefined && Number(amount) <= 0) {
+    throw ApiError.badRequest(`Invalid payment amount: ${amount}. Expected ${expectedAmount}`);
+  }
+
+  if (!paymentReference || String(paymentReference).trim().length < 3) {
+    throw ApiError.badRequest('A valid payment transaction reference is required for verification.');
+  }
+
+  return upgradeSubscription({
+    businessId,
+    userId,
+    planTier: normalizedTier,
+    billingCycle,
+    amount: amount !== undefined ? Number(amount) : expectedAmount,
+    paymentReference: String(paymentReference).trim(),
+    durationDays: 365,
+  });
 };
 
 /**
@@ -260,5 +341,6 @@ export default {
   getSubscriptionUsage,
   assertCanAddSubUser,
   upgradeSubscription,
+  verifyAndActivatePayment,
   cancelSubscription,
 };

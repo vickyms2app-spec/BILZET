@@ -1,6 +1,7 @@
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendResponse } from '../utils/apiResponse.mjs';
 import authService from '../services/auth.service.mjs';
+import { getActiveSubscription } from '../services/subscription.service.mjs';
 
 export const register = asyncHandler(async (req, res) => {
   const result = await authService.register(req.body, { req });
@@ -14,10 +15,13 @@ export const login = asyncHandler(async (req, res) => {
 });
 
 export const getMe = asyncHandler(async (req, res) => {
-  if (req.user) {
-    return sendResponse(res, 200, { user: req.user }, 'Current user profile fetched successfully');
-  }
-  const user = await authService.getCurrentUser(req.user?._id || req.user?.id);
+  const targetUser = req.user || (await authService.getCurrentUser(req.user?._id || req.user?.id));
+  const subInfo = await getActiveSubscription(targetUser?.businessId, targetUser?.id || targetUser?._id);
+  const user = {
+    ...targetUser,
+    subscription: subInfo,
+    currentPlan: subInfo?.planTier || 'FREE',
+  };
   return sendResponse(res, 200, { user }, 'Current user profile fetched successfully');
 });
 

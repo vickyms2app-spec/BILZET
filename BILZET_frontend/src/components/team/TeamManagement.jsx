@@ -30,7 +30,7 @@ import {
   Printer,
   FileSpreadsheet,
 } from "lucide-react";
-import { teamApi, rolesApi, subscriptionUsageApi } from "../../api";
+import { teamApi, rolesApi, subscriptionApi } from "../../api";
 import { usePermissions } from "../../hooks/usePermissions";
 import { useAuth } from "../../store/auth";
 import Button from "../common/Button";
@@ -143,6 +143,7 @@ export default function TeamManagement() {
   const [expandedModules, setExpandedModules] = useState({});
 
   // Effective Subscription Tier Evaluation
+  const authUser = useAuth((s) => s.user);
   const effectiveTier = (() => {
     if (usage?.isExpired || usage?.status === "EXPIRED" || usage?.status === "CANCELLED") {
       return "FREE";
@@ -150,12 +151,24 @@ export default function TeamManagement() {
     if (usage?.planTier && usage.planTier !== "FREE") {
       return usage.planTier.toUpperCase();
     }
+    if (authUser?.subscription?.planTier && authUser.subscription.planTier !== "FREE") {
+      return authUser.subscription.planTier.toUpperCase();
+    }
+    try {
+      const savedData = localStorage.getItem("bilzet_subscription_data");
+      if (savedData) {
+        const parsed = JSON.parse(savedData);
+        if (parsed.status === "EXPIRED" || parsed.status === "CANCELLED") return "FREE";
+        if (parsed.planTier && parsed.planTier !== "FREE") return parsed.planTier.toUpperCase();
+        if (parsed.currentPlan && parsed.currentPlan.toUpperCase() !== "FREE") return parsed.currentPlan.toUpperCase();
+      }
+    } catch (_) {}
     try {
       const saved = localStorage.getItem("bilzet_subscription");
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed.status === "Expired" || parsed.status === "Cancelled") return "FREE";
-        if (parsed.currentPlan) return parsed.currentPlan.toUpperCase();
+        if (parsed.currentPlan && parsed.currentPlan.toUpperCase() !== "FREE") return parsed.currentPlan.toUpperCase();
       }
     } catch (_) {}
     return (usage?.planTier || "FREE").toUpperCase();
@@ -202,14 +215,18 @@ export default function TeamManagement() {
     setLoading(true);
     try {
       const [usersRes, rolesRes, usageRes] = await Promise.all([
-        teamApi.list(),
-        rolesApi.list(),
-        subscriptionUsageApi.get(),
+        teamApi.list().catch(() => ({ users: [] })),
+        rolesApi.list().catch(() => ({ roles: [] })),
+        subscriptionApi.getUsage().catch(() => null),
       ]);
 
       setUsers(usersRes.users || []);
       setRoles(rolesRes.roles || []);
-      if (usageRes) setUsage(usageRes);
+      if (usageRes) {
+        setUsage(usageRes);
+      } else if (usersRes.usage) {
+        setUsage(usersRes.usage);
+      }
     } catch (err) {
       console.warn("Failed to load team data:", err);
     } finally {

@@ -42,6 +42,17 @@ export default function SmsMarketing() {
   const [scheduledDate, setScheduledDate] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [notification, setNotification] = useState(null);
+  const [validationErrors, setValidationErrors] = useState({});
+  const [providerInfo, setProviderInfo] = useState({
+    configured: false,
+    provider: "Standard SMS Gateway",
+    status: "SANDBOX",
+    creditsRemaining: 1000,
+    costPerSms: 0.25,
+  });
+  const [testPhone, setTestPhone] = useState("");
+  const [testSending, setTestSending] = useState(false);
+  const [testFeedback, setTestFeedback] = useState(null);
 
   const notify = (type, text) => {
     setNotification({ type, text });
@@ -51,15 +62,20 @@ export default function SmsMarketing() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [cRes, custRes] = await Promise.all([
+      const [cRes, custRes, provRes] = await Promise.all([
         smsApi.list().catch(() => ({ campaigns: [] })),
         customersApi.list({ limit: 100 }).catch(() => ({ customers: [] })),
+        smsApi.status().catch(() => null),
       ]);
       const campList = cRes?.campaigns || cRes?.data?.campaigns || [];
       setCampaigns(Array.isArray(campList) ? campList : []);
 
       const custList = custRes?.data?.customers || custRes?.customers || (Array.isArray(custRes) ? custRes : []);
       setCustomers(custList);
+
+      if (provRes?.provider) {
+        setProviderInfo(provRes.provider);
+      }
     } catch (err) {
       console.error("Failed to load SMS data:", err);
     } finally {
@@ -120,35 +136,97 @@ export default function SmsMarketing() {
 
   const currentSegment = segments.find((s) => s.id === targetAudience) || segments[0];
 
+  // Dynamic calculations
+  const charCount = messageTemplate.length;
+  const creditsPerMessage = Math.max(1, Math.ceil(charCount / 160));
+  const totalCreditsNeeded = creditsPerMessage * currentSegment.count;
+  const costPerCredit = providerInfo?.costPerSms || 0.25;
+  const estimatedCost = (totalCreditsNeeded * costPerCredit).toFixed(2);
+
   const handleInsertTag = (tag) => {
     setMessageTemplate((prev) => prev + " " + tag);
+    setValidationErrors((prev) => ({ ...prev, message: undefined }));
+  };
+
+  const handleSendTestSms = async () => {
+    const cleanPhone = (testPhone || "").trim().replace(/[^0-9]/g, "");
+    if (cleanPhone.length < 10) {
+      setTestFeedback({ type: "error", text: "Please enter a valid 10-digit mobile number." });
+      return;
+    }
+    if (!messageTemplate.trim()) {
+      setTestFeedback({ type: "error", text: "Message content cannot be empty." });
+      return;
+    }
+    try {
+      setTestSending(true);
+      setTestFeedback(null);
+      const rendered = messageTemplate
+        .replace(/{customer_name}/g, "Rahul Sharma")
+        .replace(/{shop_name}/g, "Garden Greens Mart")
+        .replace(/{balance}/g, "₹1,250");
+      const res = await smsApi.sendTest({ phone: cleanPhone, message: rendered });
+      setTestFeedback({
+        type: "success",
+        text: `Test SMS delivered to +91-${cleanPhone.slice(-10)}! (${res?.result?.mode || "GATEWAY OK"}).`,
+      });
+    } catch (err) {
+      setTestFeedback({
+        type: "error",
+        text: err.response?.data?.error || err.message || "Failed to dispatch test SMS.",
+      });
+    } finally {
+      setTestSending(false);
+    }
   };
 
   const handleSendCampaign = async (e) => {
     e.preventDefault();
-    if (!campaignName.trim() || !messageTemplate.trim()) {
-      notify("error", "Please provide a valid campaign name and message content.");
+
+    const errors = {};
+    if (!campaignName.trim()) {
+      errors.name = "Campaign name is required.";
+    }
+    if (!messageTemplate.trim()) {
+      errors.message = "Message template content is required.";
+    }
+    if (scheduledDate) {
+      const sDate = new Date(scheduledDate);
+      if (isNaN(sDate.getTime()) || sDate < new Date()) {
+        errors.date = "Scheduled time must be in the future.";
+      }
+    }
+
+    setValidationErrors(errors);
+
+    if (Object.keys(errors).length > 0) {
+      notify("error", "Please fix the highlighted errors before submitting.");
       return;
     }
 
     setSubmitting(true);
     try {
-      await smsApi.create({
-        title: campaignName,
-        name: campaignName,
-        message: messageTemplate,
+      const res = await smsApi.create({
+        title: campaignName.trim(),
+        name: campaignName.trim(),
+        message: messageTemplate.trim(),
         targetGroup: targetAudience,
         targetAudience,
         recipientCount: currentSegment.count,
         scheduledAt: scheduledDate || null,
       });
 
-      notify("success", `Campaign "${campaignName}" dispatched successfully to ${currentSegment.count} recipients!`);
+      const isScheduled = Boolean(scheduledDate && new Date(scheduledDate) > new Date());
+      notify(
+        "success",
+        `Campaign "${campaignName}" ${isScheduled ? "scheduled" : "dispatched"} successfully to ${currentSegment.count} recipients! (~${totalCreditsNeeded} credits reserved).`
+      );
       setCampaignName("");
       setMessageTemplate(
-        "Dear {customer_name}, visit our store today to claim your special savings voucher! Valid till Sunday."
+        "Dear {customer_name}, thank you for choosing Garden Greens Mart! Get flat 10% off on your next purchase this week. Visit us today!"
       );
       setScheduledDate("");
+      setValidationErrors({});
       loadData();
       setActiveTab("overview");
     } catch (err) {
@@ -188,10 +266,23 @@ export default function SmsMarketing() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3 self-start sm:self-center">
+        <div className="flex flex-wrap items-center gap-3 self-start sm:self-center">
           <div className="px-3.5 py-2 rounded-xl bg-violet-50/70 border border-violet-100 text-xs flex items-center gap-2">
-            <span className="text-slate-500 font-medium">SMS Credits:</span>
-            <strong className="text-violet-700 font-extrabold font-mono">2,450 Available</strong>
+            <span
+              className={`w-2 h-2 rounded-full ${
+                providerInfo?.status === "CONNECTED"
+                  ? "bg-emerald-500 animate-pulse"
+                  : providerInfo?.status === "SANDBOX"
+                  ? "bg-violet-500"
+                  : "bg-amber-500"
+              }`}
+            />
+            <span className="text-slate-500 font-medium">
+              {providerInfo?.provider || "SMS Gateway"}:
+            </span>
+            <strong className="text-violet-700 font-extrabold font-mono">
+              {Number(providerInfo?.creditsRemaining ?? 1000).toLocaleString("en-IN")} Credits
+            </strong>
           </div>
           <Button
             variant="primary"
@@ -437,11 +528,50 @@ export default function SmsMarketing() {
       {activeTab === "create" && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs space-y-5">
-            <div className="border-b border-slate-100 pb-3">
-              <h2 className="font-bold text-slate-900 text-sm">Campaign Composer</h2>
-              <p className="text-xs text-slate-500">
-                Compose customized promotional or transactional SMS messages for your customer segments
-              </p>
+            <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+              <div>
+                <h2 className="font-bold text-slate-900 text-sm">Campaign Composer</h2>
+                <p className="text-xs text-slate-500">
+                  Compose customized promotional or transactional SMS messages for your customer segments
+                </p>
+              </div>
+              <span
+                className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                  providerInfo?.status === "CONNECTED"
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                    : "bg-violet-50 text-violet-700 border-violet-200"
+                }`}
+              >
+                {providerInfo?.provider || "SMS Gateway"} ({providerInfo?.status || "READY"})
+              </span>
+            </div>
+
+            {/* Dynamic Calculations KPI Bar */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3.5 rounded-xl bg-slate-50 border border-slate-200/80">
+              <div>
+                <p className="text-[10px] uppercase font-bold text-slate-500">Recipients</p>
+                <p className="text-sm font-extrabold text-slate-900 mt-0.5">
+                  {currentSegment.count} <span className="text-[10px] font-normal text-slate-500">contacts</span>
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase font-bold text-slate-500">SMS Length</p>
+                <p className="text-sm font-extrabold text-slate-900 mt-0.5">
+                  {charCount} chars <span className="text-[10px] font-normal text-slate-500">({creditsPerMessage} credit/msg)</span>
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase font-bold text-violet-600">Credits Required</p>
+                <p className="text-sm font-extrabold text-violet-700 mt-0.5">
+                  {totalCreditsNeeded} <span className="text-[10px] font-normal text-violet-500">credits</span>
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase font-bold text-slate-500">Estimated Cost</p>
+                <p className="text-sm font-extrabold text-slate-900 mt-0.5">
+                  ₹{estimatedCost} <span className="text-[10px] font-normal text-slate-500">(@ ₹{costPerCredit}/SMS)</span>
+                </p>
+              </div>
             </div>
 
             <form onSubmit={handleSendCampaign} className="space-y-4 text-xs">
@@ -451,12 +581,23 @@ export default function SmsMarketing() {
                 </label>
                 <input
                   type="text"
-                  required
                   placeholder="e.g. Weekend Mega Savings Blast, Festive Greetings"
                   value={campaignName}
-                  onChange={(e) => setCampaignName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 outline-none"
+                  onChange={(e) => {
+                    setCampaignName(e.target.value);
+                    if (validationErrors.name) setValidationErrors((prev) => ({ ...prev, name: undefined }));
+                  }}
+                  className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold outline-none focus:ring-2 ${
+                    validationErrors.name
+                      ? "border-rose-400 focus:ring-rose-200 bg-rose-50/20"
+                      : "border-slate-200 focus:ring-violet-500/20 focus:border-violet-500"
+                  }`}
                 />
+                {validationErrors.name && (
+                  <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                    <XCircle size={12} /> {validationErrors.name}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -469,7 +610,7 @@ export default function SmsMarketing() {
                       key={s.id}
                       type="button"
                       onClick={() => setTargetAudience(s.id)}
-                      className={`p-3 rounded-xl border text-left transition ${
+                      className={`p-3 rounded-xl border text-left transition cursor-pointer ${
                         targetAudience === s.id
                           ? "bg-violet-50 border-violet-400 text-violet-900 shadow-xs"
                           : "bg-slate-50/70 border-slate-200 text-slate-600 hover:bg-slate-100"
@@ -499,7 +640,7 @@ export default function SmsMarketing() {
                         key={tag}
                         type="button"
                         onClick={() => handleInsertTag(tag)}
-                        className="px-2 py-0.5 rounded-md bg-slate-100 hover:bg-violet-100 hover:text-violet-700 font-mono text-[10px] text-slate-700 transition"
+                        className="px-2 py-0.5 rounded-md bg-slate-100 hover:bg-violet-100 hover:text-violet-700 font-mono text-[10px] text-slate-700 transition cursor-pointer"
                       >
                         + {tag}
                       </button>
@@ -509,16 +650,27 @@ export default function SmsMarketing() {
 
                 <textarea
                   rows="4"
-                  required
                   value={messageTemplate}
-                  onChange={(e) => setMessageTemplate(e.target.value)}
-                  className="w-full p-3.5 rounded-xl border border-slate-200 font-sans text-xs focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 outline-none"
+                  onChange={(e) => {
+                    setMessageTemplate(e.target.value);
+                    if (validationErrors.message) setValidationErrors((prev) => ({ ...prev, message: undefined }));
+                  }}
+                  className={`w-full p-3.5 rounded-xl border font-sans text-xs outline-none focus:ring-2 ${
+                    validationErrors.message
+                      ? "border-rose-400 focus:ring-rose-200 bg-rose-50/20"
+                      : "border-slate-200 focus:ring-violet-500/20 focus:border-violet-500"
+                  }`}
                 />
+                {validationErrors.message && (
+                  <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                    <XCircle size={12} /> {validationErrors.message}
+                  </p>
+                )}
 
                 <div className="flex flex-wrap justify-between items-center text-[11px] text-slate-500 mt-1.5 gap-2">
                   <span>
-                    Character count: <strong>{messageTemplate.length}</strong> (
-                    {Math.ceil(messageTemplate.length / 160) || 1} SMS unit per contact)
+                    Character count: <strong>{charCount}</strong> (
+                    {creditsPerMessage} SMS unit{creditsPerMessage > 1 ? "s" : ""} per contact)
                   </span>
                   <span className="font-bold text-violet-700 bg-violet-50 px-2 py-0.5 rounded-md border border-violet-100">
                     Estimated Recipients: ~{currentSegment.count} contacts
@@ -533,9 +685,55 @@ export default function SmsMarketing() {
                 <input
                   type="datetime-local"
                   value={scheduledDate}
-                  onChange={(e) => setScheduledDate(e.target.value)}
-                  className="w-full sm:w-72 px-3 py-2 border border-slate-200 rounded-xl text-xs text-slate-700 outline-none"
+                  onChange={(e) => {
+                    setScheduledDate(e.target.value);
+                    if (validationErrors.date) setValidationErrors((prev) => ({ ...prev, date: undefined }));
+                  }}
+                  className={`w-full sm:w-72 px-3 py-2 border rounded-xl text-xs text-slate-700 outline-none ${
+                    validationErrors.date ? "border-rose-400 bg-rose-50/20" : "border-slate-200"
+                  }`}
                 />
+                {validationErrors.date && (
+                  <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                    <XCircle size={12} /> {validationErrors.date}
+                  </p>
+                )}
+              </div>
+
+              {/* Send Test SMS Section */}
+              <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-800 text-xs">Verify Delivery: Send Test SMS</span>
+                  <span className="text-[10px] text-slate-500">Test message formatting before broadcasting</span>
+                </div>
+                <div className="flex flex-wrap sm:flex-nowrap gap-2">
+                  <input
+                    type="tel"
+                    placeholder="Enter 10-digit mobile number (e.g. 9840123456)"
+                    value={testPhone}
+                    onChange={(e) => setTestPhone(e.target.value)}
+                    className="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-xs outline-none bg-white focus:border-violet-500 focus:ring-1 focus:ring-violet-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSendTestSms}
+                    disabled={testSending}
+                    className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50 transition"
+                  >
+                    {testSending ? <RefreshCw size={13} className="animate-spin" /> : <Send size={13} />}
+                    <span>{testSending ? "Dispatching..." : "Send Test SMS"}</span>
+                  </button>
+                </div>
+                {testFeedback && (
+                  <p
+                    className={`text-[11px] font-semibold flex items-center gap-1.5 ${
+                      testFeedback.type === "success" ? "text-emerald-700" : "text-rose-600"
+                    }`}
+                  >
+                    {testFeedback.type === "success" ? <CheckCircle2 size={13} /> : <XCircle size={13} />}
+                    {testFeedback.text}
+                  </p>
+                )}
               </div>
 
               <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
@@ -555,7 +753,7 @@ export default function SmsMarketing() {
                   loading={submitting}
                   disabled={submitting}
                 >
-                  {scheduledDate ? "Schedule Campaign" : "Send Campaign Now"}
+                  {scheduledDate ? "Create & Schedule Campaign" : "Create & Launch Campaign"}
                 </Button>
               </div>
             </form>
