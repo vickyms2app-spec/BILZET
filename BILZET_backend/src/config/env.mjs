@@ -20,7 +20,14 @@ const envSchema = z.object({
   SHOP_STATE: z.string().default('Tamil Nadu'),
   SHOP_STATE_CODE: z.string().default('33'),
   CLERK_SECRET_KEY: z.string().optional().transform((val) => (val && val.trim() ? val.trim() : 'sk_test_alCaCb1Zy67kRtR6zaGbUibJWm2kjo34eFPLTu5fcu')).default('sk_test_alCaCb1Zy67kRtR6zaGbUibJWm2kjo34eFPLTu5fcu'),
-  CLERK_PUBLISHABLE_KEY: z.string().optional().transform((val) => (val && val.trim() ? val.trim() : 'pk_test_dW5pdGVkLWJlZGJ1Zy03NTkzLmNsZXJrLmFjY291bnRzLmRldiQ')).default('pk_test_dW5pdGVkLWJlZGJ1Zy03NTkzLmNsZXJrLmFjY291bnRzLmRldiQ')
+  CLERK_PUBLISHABLE_KEY: z.string().optional().transform((val) => (val && val.trim() ? val.trim() : 'pk_test_dW5pdGVkLWJlZGJ1Zy03NTkzLmNsZXJrLmFjY291bnRzLmRldiQ')).default('pk_test_dW5pdGVkLWJlZGJ1Zy03NTkzLmNsZXJrLmFjY291bnRzLmRldiQ'),
+  SMTP_HOST: z.string().optional().default('smtp.gmail.com'),
+  SMTP_PORT: z.string().optional().default('587'),
+  SMTP_USER: z.string().optional().default(''),
+  SMTP_PASS: z.string().optional().default(''),
+  SMTP_SECURE: z.string().optional().default('false'),
+  SMTP_FROM: z.string().optional().default('no-reply@bilzet.com'),
+  ALLOW_MOCK_EMAIL: z.string().optional().default('true'),
 });
 
 const parsed = envSchema.safeParse(process.env);

@@ -152,6 +152,10 @@ export const inviteAccountant = asyncHandler(async (req, res) => {
     accountant: result.invitation,
     invitation: result.invitation,
     inviteLink: result.inviteLink,
+    emailSent: result.emailSent,
+    emailError: result.emailError,
+    warning: result.warning,
+    deliveryStatus: result.invitation?.deliveryStatus || (result.emailSent ? 'DELIVERED' : 'PENDING'),
   }, `Invitation successfully sent to ${email.trim()}`);
 });
 

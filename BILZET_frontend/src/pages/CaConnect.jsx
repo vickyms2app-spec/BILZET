@@ -1377,77 +1377,112 @@ export default function CaConnect() {
             <div className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
               {/* Success Result View */}
               {inviteSuccessData ? (
-                <div className="space-y-5 animate-fade-in">
-                  {inviteSuccessData.emailSent ? (
-                    <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 space-y-2">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle2 size={20} className="text-emerald-600 shrink-0" />
-                        <h4 className="font-bold text-sm">Invitation Email Dispatched!</h4>
-                      </div>
-                      <p className="text-xs text-emerald-800 leading-relaxed">
-                        A verified invitation email has been sent to{" "}
-                        <strong>{inviteSuccessData.invitation?.email || inviteSuccessData.invitation?.invitedEmail}</strong>.
-                        The secure link is active for{" "}
-                        {Math.max(1, Math.round(
-                          (new Date(inviteSuccessData.invitation?.expiresAt) - new Date()) / (1000 * 60 * 60 * 24)
-                        ))}{" "}
-                        days.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 space-y-2">
-                      <div className="flex items-center gap-2">
-                        <AlertTriangle size={20} className="text-amber-600 shrink-0" />
-                        <h4 className="font-bold text-sm">Invitation Generated (SMTP Pending)</h4>
-                      </div>
-                      <p className="text-xs text-amber-800 leading-relaxed">
-                        The invitation token has been created for{" "}
-                        <strong>{inviteSuccessData.invitation?.email || inviteSuccessData.invitation?.invitedEmail}</strong>,
-                        but automatic email delivery was not sent because the SMTP email provider is not configured.
-                        <br />
-                        <strong className="font-semibold text-amber-900">
-                          Copy the direct single-use invitation link below and share it directly with your Chartered Accountant.
-                        </strong>
-                      </p>
-                    </div>
-                  )}
+                (() => {
+                  const targetEmail = inviteSuccessData.invitation?.email || inviteSuccessData.invitation?.invitedEmail || "";
+                  const caName = inviteSuccessData.invitation?.name || "Chartered Accountant";
+                  const inviteUrl = inviteSuccessData.inviteLink || "";
+                  const isDelivered = Boolean(inviteSuccessData.emailSent || inviteSuccessData.invitation?.deliveryStatus === "DELIVERED");
+                  const mailSubject = encodeURIComponent("BILZET CA Connect — Workspace Invitation");
+                  const mailBody = encodeURIComponent(
+                    `Hello ${caName},\n\nYou have been invited to access the CA Connect workspace on BILZET to review invoices, audit sales/purchases, and reconcile GST.\n\nPlease click the link below to accept the invitation and connect:\n${inviteUrl}\n\nThis secure invitation link is active for 7 days.\n\nRegards,\nBILZET Business Team`
+                  );
+                  const mailtoHref = `mailto:${targetEmail}?subject=${mailSubject}&body=${mailBody}`;
+                  const whatsappHref = `https://api.whatsapp.com/send?text=${encodeURIComponent(
+                    `Hello ${caName}, here is your secure link to connect to our BILZET CA Connect workspace: ${inviteUrl}`
+                  )}`;
 
-                  {/* Copy Link Section */}
-                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
-                    <label className="text-xs font-bold text-slate-700 block">
-                      Direct Single-Use Invitation Link:
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        readOnly
-                        value={inviteSuccessData.inviteLink || ""}
-                        className="w-full px-3 py-2 text-xs font-mono bg-white border border-slate-200 rounded-xl text-slate-700 outline-none select-all"
-                      />
-                      <Button
-                        size="sm"
-                        variant={copiedLink ? "secondary" : "primary"}
-                        icon={copiedLink ? Check : Copy}
-                        onClick={() => handleCopyLink(inviteSuccessData.inviteLink)}
-                        className="shrink-0"
-                      >
-                        {copiedLink ? "Copied!" : "Copy"}
-                      </Button>
-                    </div>
-                    <p className="text-[11px] text-slate-500">
-                      You can also share this link directly with your CA. It requires email verification matching the recipient.
-                    </p>
-                  </div>
+                  return (
+                    <div className="space-y-5 animate-fade-in">
+                      {isDelivered ? (
+                        <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle2 size={20} className="text-emerald-600 shrink-0" />
+                            <h4 className="font-bold text-sm">Invitation Dispatched Successfully!</h4>
+                          </div>
+                          <p className="text-xs text-emerald-800 leading-relaxed">
+                            A verified invitation has been generated and dispatched for{" "}
+                            <strong>{targetEmail}</strong>.
+                            The secure access token is cryptographically protected and valid for{" "}
+                            {Math.max(1, Math.round(
+                              (new Date(inviteSuccessData.invitation?.expiresAt || Date.now() + 7 * 86400000) - new Date()) / (1000 * 60 * 60 * 24)
+                            ))}{" "}
+                            days.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="p-4 rounded-2xl bg-blue-50 border border-blue-200 text-blue-900 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle2 size={20} className="text-blue-600 shrink-0" />
+                            <h4 className="font-bold text-sm">Invitation Created with Secure Token</h4>
+                          </div>
+                          <p className="text-xs text-blue-800 leading-relaxed">
+                            The invitation has been successfully created for <strong>{targetEmail}</strong>.
+                            You can share the secure single-use access link directly via Email, WhatsApp, or by copying the link below.
+                          </p>
+                        </div>
+                      )}
 
-                  <div className="flex justify-end gap-2 pt-2">
-                    <Button
-                      variant="primary"
-                      onClick={() => setShowInviteModal(false)}
-                    >
-                      Done
-                    </Button>
-                  </div>
-                </div>
+                      {/* Copy Link Section */}
+                      <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                        <label className="text-xs font-bold text-slate-700 block">
+                          Direct Single-Use Invitation Link:
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            readOnly
+                            value={inviteUrl}
+                            className="w-full px-3 py-2 text-xs font-mono bg-white border border-slate-200 rounded-xl text-slate-700 outline-none select-all"
+                          />
+                          <Button
+                            size="sm"
+                            variant={copiedLink ? "secondary" : "primary"}
+                            icon={copiedLink ? Check : Copy}
+                            onClick={() => handleCopyLink(inviteUrl)}
+                            className="shrink-0"
+                          >
+                            {copiedLink ? "Copied!" : "Copy"}
+                          </Button>
+                        </div>
+
+                        {/* Direct Share Options */}
+                        <div className="flex flex-wrap items-center gap-2 pt-1">
+                          <a
+                            href={mailtoHref}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition"
+                          >
+                            <Mail size={13} className="text-blue-600" />
+                            Open in Email App
+                          </a>
+                          <a
+                            href={whatsappHref}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 border border-emerald-200 text-emerald-800 hover:bg-emerald-100 transition"
+                          >
+                            <MessageSquare size={13} className="text-emerald-600" />
+                            Share on WhatsApp
+                          </a>
+                        </div>
+                        <p className="text-[11px] text-slate-500">
+                          Recipients can immediately accept and synchronize with your store records with authorized read/audit privileges.
+                        </p>
+                      </div>
+
+                      <div className="flex justify-end gap-2 pt-2">
+                        <Button
+                          variant="primary"
+                          onClick={() => {
+                            setShowInviteModal(false);
+                            setInviteSuccessData(null);
+                          }}
+                        >
+                          Done
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })()
               ) : (
                 /* Form View */
                 <form onSubmit={handleSendInvite} className="space-y-4">
