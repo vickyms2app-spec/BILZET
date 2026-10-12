@@ -272,4 +272,11 @@ class RealtimeService {
 }
 
 export const realtimeService = new RealtimeService();
+export const broadcastEvent = (businessIdOrObj, eventType, data, meta) => {
+  if (typeof businessIdOrObj === 'object' && businessIdOrObj !== null && !eventType) {
+    const { type, payload, ...rest } = businessIdOrObj;
+    return realtimeService.broadcastEvent('default', type || 'EVENT', payload || {}, rest);
+  }
+  return realtimeService.broadcastEvent(businessIdOrObj, eventType, data, meta);
+};
 export default realtimeService;
