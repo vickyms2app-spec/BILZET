@@ -703,7 +703,6 @@ function matchesWhere(item, where) {
     if (key === 'businessId' && typeof value === 'string') {
       if (item.businessId === value) continue;
       if (!item.businessId && (value === 'busi-01' || value === 'busi-default')) continue;
-      if (item.businessId === 'busi-01') continue;
       return false;
     }
 

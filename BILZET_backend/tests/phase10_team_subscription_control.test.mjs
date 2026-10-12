@@ -53,6 +53,13 @@ describe('PHASE 10: TEAM & SUBUSERS SUBSCRIPTION CONTROL', () => {
   let customRoleId;
 
   before(async () => {
+    const testBizIds = [freeBizId, proBizId, premBizId, expBizId];
+    const testUserIds = [freeOwnerId, proOwnerId, premOwnerId, expOwnerId, 'user-p10-exp-member1'];
+    await prisma.user.deleteMany({ where: { businessId: { in: testBizIds } } }).catch(() => {});
+    await prisma.subscription.deleteMany({ where: { userId: { in: testUserIds } } }).catch(() => {});
+    await prisma.role.deleteMany({ where: { businessId: { in: testBizIds } } }).catch(() => {});
+    await prisma.business.deleteMany({ where: { id: { in: testBizIds } } }).catch(() => {});
+
     // 1. FREE BUSINESS & OWNER
     await prisma.business.create({
       data: { id: freeBizId, name: 'Free Tier Mart', ownerId: freeOwnerId },

@@ -63,10 +63,27 @@ export const getConnectedAccountants = asyncHandler(async (req, res) => {
     }),
   ]);
 
-  // Merge connected CAs with legacy staff records (avoid duplicates)
+  // Merge connected CAs with active pending invitations and legacy staff records
   const allAccountants = [...connectedCas];
+  for (const inv of invitations) {
+    if (inv.status === 'REVOKED' || inv.status === 'EXPIRED') continue;
+    if (!allAccountants.some((a) => a.id === inv.id || (a.email && a.email.toLowerCase() === inv.email?.toLowerCase()))) {
+      allAccountants.push({
+        id: inv.id,
+        connectionId: inv.id,
+        name: inv.name || inv.email,
+        email: inv.email,
+        phone: inv.phone || '',
+        role: 'Chartered Accountant',
+        permissions: inv.permissions || ['sales_audit', 'purchase_audit', 'tax_audit'],
+        status: inv.status || 'PENDING',
+        connectedAt: inv.createdAt,
+        expiresAt: inv.expiresAt,
+      });
+    }
+  }
   for (const st of staff) {
-    if (!allAccountants.some((a) => a.email && a.email.toLowerCase() === st.email?.toLowerCase())) {
+    if (!allAccountants.some((a) => a.id === st.id || (a.email && a.email.toLowerCase() === st.email?.toLowerCase()))) {
       allAccountants.push({
         id: st.id,
         connectionId: st.id,
@@ -108,6 +125,29 @@ export const inviteAccountant = asyncHandler(async (req, res) => {
     expiresInDays,
   });
 
+  // Also synchronize staff entry for backward compatibility
+  try {
+    await prisma.staff.upsert({
+      where: { id: result.invitation.id },
+      update: {
+        name: name || email,
+        email: email.trim(),
+        role: 'Accountant',
+        department: 'Finance & Taxation',
+        status: 'PENDING',
+      },
+      create: {
+        id: result.invitation.id,
+        businessId,
+        name: name || email,
+        email: email.trim(),
+        role: 'Accountant',
+        department: 'Finance & Taxation',
+        status: 'PENDING',
+      },
+    });
+  } catch (_) {}
+
   return sendResponse(res, 201, {
     accountant: result.invitation,
     invitation: result.invitation,
@@ -125,7 +165,11 @@ export const revokeAccountant = asyncHandler(async (req, res) => {
   // Check if it's an invitation first
   const invitation = await prisma.caInvitation.findUnique({ where: { id } }).catch(() => null);
   if (invitation) {
+    if (invitation.businessId !== businessId && req.user.role !== 'SUPER_ADMIN') {
+      throw ApiError.notFound('Accountant or invitation record not found.');
+    }
     const revoked = await caInvitationService.revokeInvitation(req.user, id);
+    await prisma.staff.deleteMany({ where: { id } }).catch(() => {});
     return sendResponse(res, 200, { invitation: revoked }, 'Invitation successfully revoked.');
   }
 
@@ -135,6 +179,9 @@ export const revokeAccountant = asyncHandler(async (req, res) => {
   }).catch(() => null);
 
   if (access) {
+    if (access.businessId !== businessId && req.user.role !== 'SUPER_ADMIN') {
+      throw ApiError.notFound('Accountant or invitation record not found.');
+    }
     await caInvitationService.revokeCaAccess(req.user, businessId, access.caUserId);
     return sendResponse(res, 200, { id }, 'Accountant connection revoked successfully.');
   }
