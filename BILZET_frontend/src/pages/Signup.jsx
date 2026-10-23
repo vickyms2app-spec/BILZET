@@ -56,45 +56,13 @@ function BrandHeader({ className = "", logoHeight = "h-10" }) {
   );
 }
 
-// 36 Indian States and Union Territories for GST Compliance
-const INDIAN_STATES = [
-  "Tamil Nadu",
-  "Andhra Pradesh",
-  "Arunachal Pradesh",
-  "Assam",
-  "Bihar",
-  "Chandigarh",
-  "Chhattisgarh",
-  "Dadra and Nagar Haveli and Daman and Diu",
-  "Delhi",
-  "Goa",
-  "Gujarat",
-  "Haryana",
-  "Himachal Pradesh",
-  "Jammu and Kashmir",
-  "Jharkhand",
-  "Karnataka",
-  "Kerala",
-  "Ladakh",
-  "Lakshadweep",
-  "Madhya Pradesh",
-  "Maharashtra",
-  "Manipur",
-  "Meghalaya",
-  "Mizoram",
-  "Nagaland",
-  "Odisha",
-  "Puducherry",
-  "Punjab",
-  "Rajasthan",
-  "Sikkim",
-  "Telangana",
-  "Tripura",
-  "Uttar Pradesh",
-  "Uttarakhand",
-  "West Bengal",
-  "Andaman and Nicobar Islands",
-];
+import {
+  getCountries,
+  getStatesForCountry,
+  isValidStateForCountry,
+  getCountryPhoneCode,
+  getDefaultStateForCountry,
+} from "../utils/countryStateData";
 
 // Native SVG Flag of India for cross-platform fidelity (prevents OS emoji fallback like "IN")
 function IndiaFlag({ className = "w-5 h-3.5" }) {
@@ -146,6 +114,17 @@ export default function Signup() {
   const [country, setCountry] = useState("India");
   const [state, setState] = useState("Tamil Nadu");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+
+  // Handle Country selection change - resets dependent State and syncs dial code
+  const handleCountryChange = (newCountry) => {
+    setCountry(newCountry);
+    // Requirement 2: Whenever the selected country changes, immediately clear the previously selected state
+    setState("");
+    const dialCode = getCountryPhoneCode(newCountry);
+    if (dialCode) {
+      setCountryCode(dialCode);
+    }
+  };
 
   // Referral code from URL
   const [referralCode, setReferralCode] = useState(initialRefCode);
@@ -238,6 +217,15 @@ export default function Signup() {
     }
     if (password.length < 6) {
       return setError("Password must be at least 6 characters long.");
+    }
+    if (!country || !country.trim()) {
+      return setError("Please select your country.");
+    }
+    if (!state || !state.trim()) {
+      return setError(`Please select a valid state or region for ${country}.`);
+    }
+    if (!isValidStateForCountry(country, state)) {
+      return setError(`Selected state is not valid for ${country}. Please select a valid state.`);
     }
     if (!agreedToTerms) {
       return setError("Please agree to the Terms of Service and Privacy Policy to continue.");
@@ -780,14 +768,14 @@ export default function Signup() {
                 <select
                   id="signup-country"
                   value={country}
-                  onChange={(e) => setCountry(e.target.value)}
+                  onChange={(e) => handleCountryChange(e.target.value)}
                   className="w-full h-[42px] pl-8.5 pr-7 rounded-[9px] border border-[#DCE5F0] bg-white text-[13px] font-semibold text-[#111827] focus:outline-none focus:border-[#0878F9] focus:ring-2 focus:ring-[#0878F9]/15 transition-all appearance-none cursor-pointer font-macos"
                 >
-                  <option value="India">India</option>
-                  <option value="United Arab Emirates">UAE</option>
-                  <option value="United States">United States</option>
-                  <option value="Singapore">Singapore</option>
-                  <option value="United Kingdom">United Kingdom</option>
+                  {getCountries().map((c) => (
+                    <option key={c.name} value={c.name}>
+                      {c.label || c.name}
+                    </option>
+                  ))}
                 </select>
                 <div className="absolute inset-y-0 right-0 pr-2.5 flex items-center pointer-events-none text-[#64748B]">
                   <ChevronDown size={13} />
@@ -805,7 +793,10 @@ export default function Signup() {
                   onChange={(e) => setState(e.target.value)}
                   className="w-full h-[42px] pl-8.5 pr-7 rounded-[9px] border border-[#DCE5F0] bg-white text-[13px] font-semibold text-[#111827] focus:outline-none focus:border-[#0878F9] focus:ring-2 focus:ring-[#0878F9]/15 transition-all appearance-none cursor-pointer font-macos"
                 >
-                  {INDIAN_STATES.map((st) => (
+                  <option value="" disabled>
+                    {getStatesForCountry(country).length > 0 ? "Select State / Region" : "No regions available"}
+                  </option>
+                  {getStatesForCountry(country).map((st) => (
                     <option key={st} value={st}>
                       {st}
                     </option>

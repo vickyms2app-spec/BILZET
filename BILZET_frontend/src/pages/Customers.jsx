@@ -14,6 +14,9 @@ import {
   X,
   Check,
   Search,
+  Globe,
+  ChevronDown,
+  Pencil,
 } from "lucide-react";
 import { customersApi } from "../api";
 import Modal from "../components/common/Modal";
@@ -21,6 +24,12 @@ import SearchBar from "../components/common/SearchBar";
 import Button from "../components/common/Button";
 import { useRealtimeSync } from "../hooks/useRealtimeSync";
 import { handleSmartFormKeyDown } from "../utils/keyboardNavigation";
+import {
+  getCountries,
+  getStatesForCountry,
+  isValidStateForCountry,
+  getDefaultStateForCountry,
+} from "../utils/countryStateData";
 
 export default function Customers() {
   const navigate = useNavigate();
@@ -28,6 +37,7 @@ export default function Customers() {
   const [search, setSearch] = useState("");
   const [filterDueOnly, setFilterDueOnly] = useState("all"); // 'all' | 'due' | 'settled'
   const [openAddModal, setOpenAddModal] = useState(false);
+  const [openEditModal, setOpenEditModal] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [customerPurchases, setCustomerPurchases] = useState([]);
   const [loadingPurchases, setLoadingPurchases] = useState(false);
@@ -36,6 +46,20 @@ export default function Customers() {
     name: "",
     phone: "",
     email: "",
+    country: "India",
+    state: "Tamil Nadu",
+    address: "",
+    gstin: "",
+    balance: 0,
+  });
+
+  const [editCust, setEditCust] = useState({
+    id: "",
+    name: "",
+    phone: "",
+    email: "",
+    country: "India",
+    state: "Tamil Nadu",
     address: "",
     gstin: "",
     balance: 0,
@@ -44,6 +68,45 @@ export default function Customers() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const addCustomerFormRef = useRef(null);
+
+  const handleOpenEdit = (c) => {
+    if (!c) return;
+    const custCountry = c.country || "India";
+    let custState = c.state || "";
+    // Requirement 3: If populated from saved customer data, validate that the saved state belongs to the selected country
+    if (custState && !isValidStateForCountry(custCountry, custState)) {
+      custState = "";
+    }
+    setEditCust({
+      id: c.id || c._id,
+      name: c.name || "",
+      phone: c.phone || "",
+      email: c.email || "",
+      country: custCountry,
+      state: custState,
+      address: c.address || "",
+      gstin: c.gstin || "",
+      balance: c.balance || 0,
+    });
+    setErrorMsg("");
+    setOpenEditModal(true);
+  };
+
+  const handleNewCustCountryChange = (newCountry) => {
+    setNewCust((prev) => ({
+      ...prev,
+      country: newCountry,
+      state: "", // Requirement 2: clear previously selected state immediately
+    }));
+  };
+
+  const handleEditCustCountryChange = (newCountry) => {
+    setEditCust((prev) => ({
+      ...prev,
+      country: newCountry,
+      state: "", // Requirement 2: clear previously selected state immediately
+    }));
+  };
 
   const loadCustomers = () => {
     customersApi
@@ -97,7 +160,9 @@ export default function Customers() {
       c.name?.toLowerCase().includes(search.toLowerCase()) ||
       c.phone?.includes(search) ||
       c.email?.toLowerCase().includes(search.toLowerCase()) ||
-      c.address?.toLowerCase().includes(search.toLowerCase());
+      c.address?.toLowerCase().includes(search.toLowerCase()) ||
+      c.state?.toLowerCase().includes(search.toLowerCase()) ||
+      c.country?.toLowerCase().includes(search.toLowerCase());
 
     if (!matchesSearch) return false;
 
@@ -109,6 +174,10 @@ export default function Customers() {
   const handleAddCustomer = async (e) => {
     e.preventDefault();
     if (!newCust.name.trim()) return;
+    if (newCust.state && !isValidStateForCountry(newCust.country, newCust.state)) {
+      setErrorMsg(`Selected state "${newCust.state}" is not valid for ${newCust.country}`);
+      return;
+    }
     setLoading(true);
     setErrorMsg("");
     try {
@@ -116,12 +185,23 @@ export default function Customers() {
         name: newCust.name.trim(),
         phone: newCust.phone.trim() || undefined,
         email: newCust.email.trim() || undefined,
+        country: newCust.country,
+        state: newCust.state || undefined,
         address: newCust.address.trim() || undefined,
         gstin: newCust.gstin.trim() || undefined,
         balance: Number(newCust.balance || 0),
       };
       await customersApi.create(payload);
-      setNewCust({ name: "", phone: "", email: "", address: "", gstin: "", balance: 0 });
+      setNewCust({
+        name: "",
+        phone: "",
+        email: "",
+        country: "India",
+        state: "Tamil Nadu",
+        address: "",
+        gstin: "",
+        balance: 0,
+      });
       setOpenAddModal(false);
       loadCustomers();
     } catch (err) {
@@ -130,6 +210,49 @@ export default function Customers() {
           err.response?.data?.message ||
           err.message ||
           "Failed to create customer"
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateCustomer = async (e) => {
+    e.preventDefault();
+    if (!editCust.name.trim()) return;
+    if (editCust.state && !isValidStateForCountry(editCust.country, editCust.state)) {
+      setErrorMsg(`Selected state "${editCust.state}" is not valid for ${editCust.country}`);
+      return;
+    }
+    setLoading(true);
+    setErrorMsg("");
+    try {
+      const payload = {
+        name: editCust.name.trim(),
+        phone: editCust.phone.trim() || undefined,
+        email: editCust.email.trim() || undefined,
+        country: editCust.country,
+        state: editCust.state || undefined,
+        address: editCust.address.trim() || undefined,
+        gstin: editCust.gstin.trim() || undefined,
+        balance: Number(editCust.balance || 0),
+      };
+      const res = await customersApi.update(editCust.id, payload);
+      const updated = res?.customer || res?.data?.customer;
+      if (
+        updated &&
+        selectedCustomer &&
+        (selectedCustomer.id === editCust.id || selectedCustomer._id === editCust.id)
+      ) {
+        setSelectedCustomer((prev) => ({ ...prev, ...updated }));
+      }
+      setOpenEditModal(false);
+      loadCustomers();
+    } catch (err) {
+      setErrorMsg(
+        err.response?.data?.error ||
+          err.response?.data?.message ||
+          err.message ||
+          "Failed to update customer"
       );
     } finally {
       setLoading(false);
@@ -469,14 +592,25 @@ export default function Customers() {
                         className="py-3 px-3.5 text-center"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <button
-                          type="button"
-                          onClick={() => setSelectedCustomer(c)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-lg text-[#007AFF] hover:bg-[#EBF5FF] transition cursor-pointer"
-                        >
-                          <span>Details</span>
-                          <span aria-hidden="true">&rarr;</span>
-                        </button>
+                        <div className="inline-flex items-center gap-1.5 justify-center">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEdit(c)}
+                            title="Edit Customer"
+                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-lg text-[#6E6E73] hover:text-[#007AFF] hover:bg-[#EBF5FF] transition cursor-pointer"
+                          >
+                            <Pencil size={12} />
+                            <span>Edit</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedCustomer(c)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-lg text-[#007AFF] hover:bg-[#EBF5FF] transition cursor-pointer"
+                          >
+                            <span>Details</span>
+                            <span aria-hidden="true">&rarr;</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -521,14 +655,24 @@ export default function Customers() {
                 </div>
               )}
 
-              <Button
-                variant="neutral"
-                size="sm"
-                icon={X}
-                onClick={() => setSelectedCustomer(null)}
-              >
-                Close
-              </Button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleOpenEdit(selectedCustomer)}
+                  className="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 border border-[#E5E5EA] text-[#1D1D1F] font-semibold text-xs transition inline-flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                >
+                  <Pencil size={13} className="text-[#007AFF]" />
+                  <span>Edit</span>
+                </button>
+                <Button
+                  variant="neutral"
+                  size="sm"
+                  icon={X}
+                  onClick={() => setSelectedCustomer(null)}
+                >
+                  Close
+                </Button>
+              </div>
             </div>
           }
         >
@@ -568,6 +712,20 @@ export default function Customers() {
                       Mail
                     </a>
                   )}
+                </div>
+              </div>
+
+              <div className="space-y-1 sm:col-span-2 pt-2 border-t border-[#E5E5EA]">
+                <span className="text-[10px] font-medium text-[#6E6E73] uppercase tracking-wider block">
+                  Region & State
+                </span>
+                <div className="flex items-center gap-2 text-[#1D1D1F] font-medium">
+                  <Globe size={13} className="text-[#6E6E73] shrink-0" />
+                  <span>
+                    {selectedCustomer.state
+                      ? `${selectedCustomer.state}, ${selectedCustomer.country || "India"}`
+                      : selectedCustomer.country || "India"}
+                  </span>
                 </div>
               </div>
 
@@ -799,6 +957,54 @@ export default function Customers() {
             />
           </div>
 
+          {/* Country & State Dependent Selector */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-[#1D1D1F] mb-1.5">Country</label>
+              <div className="relative">
+                <select
+                  id="customer-country"
+                  value={newCust.country}
+                  onChange={(e) => handleNewCustCountryChange(e.target.value)}
+                  className="w-full px-3 py-2 border border-[#E5E5EA] rounded-xl text-xs outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/15 transition text-[#1D1D1F] bg-white cursor-pointer appearance-none pr-7"
+                >
+                  {getCountries().map((c) => (
+                    <option key={c.name} value={c.name}>
+                      {c.label || c.name}
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute inset-y-0 right-0 pr-2.5 flex items-center pointer-events-none text-[#6E6E73]">
+                  <ChevronDown size={13} />
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-[#1D1D1F] mb-1.5">State / Region</label>
+              <div className="relative">
+                <select
+                  id="customer-state"
+                  value={newCust.state}
+                  onChange={(e) => setNewCust({ ...newCust, state: e.target.value })}
+                  className="w-full px-3 py-2 border border-[#E5E5EA] rounded-xl text-xs outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/15 transition text-[#1D1D1F] bg-white cursor-pointer appearance-none pr-7"
+                >
+                  <option value="" disabled>
+                    {getStatesForCountry(newCust.country).length > 0 ? "Select State / Region" : "No regions available"}
+                  </option>
+                  {getStatesForCountry(newCust.country).map((st) => (
+                    <option key={st} value={st}>
+                      {st}
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute inset-y-0 right-0 pr-2.5 flex items-center pointer-events-none text-[#6E6E73]">
+                  <ChevronDown size={13} />
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div>
             <label className="block text-xs font-medium text-[#1D1D1F] mb-1.5">Physical Address</label>
             <input
@@ -815,6 +1021,166 @@ export default function Customers() {
               placeholder="33AAAAA0000A1Z5"
               value={newCust.gstin}
               onChange={(e) => setNewCust({ ...newCust, gstin: e.target.value.toUpperCase() })}
+              className="w-full px-3 py-2 border border-[#E5E5EA] rounded-xl text-xs outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/15 font-mono transition text-[#1D1D1F] bg-white uppercase placeholder-[#6E6E73]/60"
+            />
+          </div>
+        </form>
+      </Modal>
+
+      {/* ══════════════════════════════════════════════════
+          EDIT CUSTOMER MODAL
+      ══════════════════════════════════════════════════ */}
+      <Modal
+        isOpen={openEditModal}
+        onClose={() => setOpenEditModal(false)}
+        title="Edit Customer"
+        subtitle="Update customer profile, address, and state/region"
+        icon={Users}
+        iconColor="text-[#007AFF] bg-[#F5F5F7] border-[#E5E5EA]"
+        maxWidth="max-w-md"
+        footer={
+          <>
+            <Button
+              variant="neutral"
+              size="sm"
+              icon={X}
+              onClick={() => setOpenEditModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              form="edit-customer-form"
+              variant="primary"
+              size="sm"
+              icon={Check}
+              loading={loading}
+            >
+              Save Changes
+            </Button>
+          </>
+        }
+      >
+        <form
+          id="edit-customer-form"
+          onSubmit={handleUpdateCustomer}
+          className="space-y-4 text-xs font-sans"
+        >
+          {errorMsg && (
+            <div className="p-3 bg-[#FFF2F2] border border-[#FFD0D0] text-[#D70015] text-xs rounded-xl">
+              {errorMsg}
+            </div>
+          )}
+          <div>
+            <label className="block text-xs font-medium text-[#1D1D1F] mb-1.5">
+              Customer Name <span className="text-[#D70015]">*</span>
+            </label>
+            <input
+              required
+              placeholder="e.g. Ramesh Hardware"
+              value={editCust.name}
+              onChange={(e) => setEditCust({ ...editCust, name: e.target.value })}
+              className="w-full px-3 py-2 border border-[#E5E5EA] rounded-xl text-xs outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/15 transition text-[#1D1D1F] bg-white placeholder-[#6E6E73]/60"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-[#1D1D1F] mb-1.5">Mobile Number</label>
+              <input
+                placeholder="10-digit mobile"
+                value={editCust.phone}
+                onChange={(e) => setEditCust({ ...editCust, phone: e.target.value })}
+                className="w-full px-3 py-2 border border-[#E5E5EA] rounded-xl text-xs outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/15 transition text-[#1D1D1F] bg-white placeholder-[#6E6E73]/60"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-[#1D1D1F] mb-1.5">Opening Due (₹)</label>
+              <input
+                type="number"
+                placeholder="0"
+                value={editCust.balance}
+                onChange={(e) => setEditCust({ ...editCust, balance: e.target.value })}
+                className="w-full px-3 py-2 border border-[#E5E5EA] rounded-xl text-xs outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/15 transition tabular-nums text-[#1D1D1F] bg-white placeholder-[#6E6E73]/60"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-[#1D1D1F] mb-1.5">Email Address</label>
+            <input
+              type="email"
+              placeholder="customer@domain.com"
+              value={editCust.email}
+              onChange={(e) => setEditCust({ ...editCust, email: e.target.value })}
+              className="w-full px-3 py-2 border border-[#E5E5EA] rounded-xl text-xs outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/15 transition text-[#1D1D1F] bg-white placeholder-[#6E6E73]/60"
+            />
+          </div>
+
+          {/* Country & State Dependent Selector */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-[#1D1D1F] mb-1.5">Country</label>
+              <div className="relative">
+                <select
+                  id="edit-customer-country"
+                  value={editCust.country}
+                  onChange={(e) => handleEditCustCountryChange(e.target.value)}
+                  className="w-full px-3 py-2 border border-[#E5E5EA] rounded-xl text-xs outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/15 transition text-[#1D1D1F] bg-white cursor-pointer appearance-none pr-7"
+                >
+                  {getCountries().map((c) => (
+                    <option key={c.name} value={c.name}>
+                      {c.label || c.name}
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute inset-y-0 right-0 pr-2.5 flex items-center pointer-events-none text-[#6E6E73]">
+                  <ChevronDown size={13} />
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-[#1D1D1F] mb-1.5">State / Region</label>
+              <div className="relative">
+                <select
+                  id="edit-customer-state"
+                  value={editCust.state}
+                  onChange={(e) => setEditCust({ ...editCust, state: e.target.value })}
+                  className="w-full px-3 py-2 border border-[#E5E5EA] rounded-xl text-xs outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/15 transition text-[#1D1D1F] bg-white cursor-pointer appearance-none pr-7"
+                >
+                  <option value="" disabled>
+                    {getStatesForCountry(editCust.country).length > 0 ? "Select State / Region" : "No regions available"}
+                  </option>
+                  {getStatesForCountry(editCust.country).map((st) => (
+                    <option key={st} value={st}>
+                      {st}
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute inset-y-0 right-0 pr-2.5 flex items-center pointer-events-none text-[#6E6E73]">
+                  <ChevronDown size={13} />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-[#1D1D1F] mb-1.5">Physical Address</label>
+            <input
+              placeholder="Shop/Street, City, Pin Code"
+              value={editCust.address}
+              onChange={(e) => setEditCust({ ...editCust, address: e.target.value })}
+              className="w-full px-3 py-2 border border-[#E5E5EA] rounded-xl text-xs outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/15 transition text-[#1D1D1F] bg-white placeholder-[#6E6E73]/60"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-[#1D1D1F] mb-1.5">GSTIN (Optional)</label>
+            <input
+              placeholder="33AAAAA0000A1Z5"
+              value={editCust.gstin}
+              onChange={(e) => setEditCust({ ...editCust, gstin: e.target.value.toUpperCase() })}
               className="w-full px-3 py-2 border border-[#E5E5EA] rounded-xl text-xs outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/15 font-mono transition text-[#1D1D1F] bg-white uppercase placeholder-[#6E6E73]/60"
             />
           </div>

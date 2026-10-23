@@ -4,12 +4,14 @@ import { ApiError } from '../utils/ApiError.mjs';
 import prisma from '../config/prisma.mjs';
 import { getPaginationParams, buildPaginationMeta } from '../utils/pagination.mjs';
 import realtimeService from '../services/realtime.service.mjs';
+import { isValidStateForCountry } from '../utils/countryStateData.mjs';
 
 const mapCustomer = (c) => {
   if (!c) return null;
   return {
     ...c,
     _id: c.id,
+    country: c.country || "India",
     creditLimit: Number(c.creditLimit),
     balance: Number(c.balance),
     currentCredit: Number(c.balance),
@@ -24,6 +26,7 @@ let inMemoryCustomers = [
     phone: "9876543210",
     email: "ramesh@example.com",
     address: "Shop 12, Market Rd",
+    country: "India",
     gstin: "33AAAAA0000A1Z5",
     state: "Tamil Nadu",
     creditLimit: 50000,
@@ -188,10 +191,16 @@ export const getCustomerById = asyncHandler(async (req, res) => {
 });
 
 export const createCustomer = asyncHandler(async (req, res) => {
-  const { name, phone, email, address, gstin, state, creditLimit = 0, balance = 0 } = req.body;
+  const { name, phone, email, address, country, gstin, state, creditLimit = 0, balance = 0 } = req.body;
 
   const cleanPhone = phone && String(phone).trim() ? String(phone).trim() : null;
   const cleanEmail = email && String(email).trim() ? String(email).trim() : null;
+  const cleanCountry = country && String(country).trim() ? String(country).trim() : "India";
+  const cleanState = state && String(state).trim() ? String(state).trim() : null;
+
+  if (cleanCountry && cleanState && !isValidStateForCountry(cleanCountry, cleanState)) {
+    throw ApiError.badRequest(`Selected state '${cleanState}' does not belong to country '${cleanCountry}'`);
+  }
 
   try {
     if (cleanPhone) {
@@ -208,7 +217,7 @@ export const createCustomer = asyncHandler(async (req, res) => {
         email: cleanEmail,
         address: address && String(address).trim() ? String(address).trim() : null,
         gstin: gstin && String(gstin).trim() ? String(gstin).trim() : null,
-        state: state && String(state).trim() ? String(state).trim() : null,
+        state: cleanState,
         creditLimit: Number(creditLimit || 0),
         balance: Number(balance || 0),
         businessId: req.user?.businessId || null,
@@ -218,11 +227,11 @@ export const createCustomer = asyncHandler(async (req, res) => {
     try {
       const targetBusinessId = customer.businessId || req.user?.businessId || 'default';
       realtimeService.broadcastBusinessEvent(targetBusinessId, 'CUSTOMER_CREATED', {
-        customer: mapCustomer(customer),
+        customer: { ...mapCustomer(customer), country: cleanCountry },
       }, { userId: req.user?.id, action: 'CUSTOMER_CREATED' });
     } catch (_) {}
 
-    return sendResponse(res, 201, { customer: mapCustomer(customer) }, 'Customer created successfully');
+    return sendResponse(res, 201, { customer: { ...mapCustomer(customer), country: cleanCountry } }, 'Customer created successfully');
   } catch (err) {
     if (err instanceof ApiError) throw err;
     console.warn('[CustomerController] Database fallback create:', err?.message || err);
@@ -233,8 +242,9 @@ export const createCustomer = asyncHandler(async (req, res) => {
       phone: cleanPhone,
       email: cleanEmail,
       address: address ? String(address).trim() : null,
+      country: cleanCountry,
       gstin: gstin ? String(gstin).trim() : null,
-      state: state ? String(state).trim() : null,
+      state: cleanState,
       creditLimit: Number(creditLimit || 0),
       balance: Number(balance || 0),
       businessId: req.user?.businessId || null,
@@ -259,7 +269,7 @@ export const createCustomer = asyncHandler(async (req, res) => {
 
 export const updateCustomer = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { name, phone, email, address, gstin, state, creditLimit, balance, isActive } = req.body;
+  const { name, phone, email, address, country, gstin, state, creditLimit, balance, isActive } = req.body;
 
   let existingCustomer = null;
   try {
@@ -279,6 +289,13 @@ export const updateCustomer = asyncHandler(async (req, res) => {
     }
   }
 
+  const targetCountry = country !== undefined ? (country && String(country).trim() ? String(country).trim() : "India") : (existingCustomer.country || "India");
+  const targetState = state !== undefined ? (state && String(state).trim() ? String(state).trim() : null) : existingCustomer.state;
+
+  if (targetCountry && targetState && !isValidStateForCountry(targetCountry, targetState)) {
+    throw ApiError.badRequest(`Selected state '${targetState}' does not belong to country '${targetCountry}'`);
+  }
+
   const cleanPhone = phone !== undefined ? (phone && String(phone).trim() ? String(phone).trim() : null) : undefined;
   const cleanEmail = email !== undefined ? (email && String(email).trim() ? String(email).trim() : null) : undefined;
 
@@ -291,29 +308,52 @@ export const updateCustomer = asyncHandler(async (req, res) => {
     }
   }
 
-  const customer = await prisma.customer.update({
-    where: { id },
-    data: {
-      ...(name && { name: name.trim() }),
-      ...(cleanPhone !== undefined && { phone: cleanPhone }),
-      ...(cleanEmail !== undefined && { email: cleanEmail }),
-      ...(address !== undefined && { address: address ? String(address).trim() : null }),
-      ...(gstin !== undefined && { gstin: gstin ? String(gstin).trim() : null }),
-      ...(state !== undefined && { state: state ? String(state).trim() : null }),
-      ...(creditLimit !== undefined && { creditLimit: Number(creditLimit) }),
-      ...(balance !== undefined && { balance: Number(balance) }),
-      ...(isActive !== undefined && { isActive }),
-    },
-  });
-
   try {
-    const targetBusinessId = customer.businessId || req.user?.businessId || 'default';
-    realtimeService.broadcastBusinessEvent(targetBusinessId, 'CUSTOMER_UPDATED', {
-      customer: mapCustomer(customer),
-    }, { userId: req.user?.id, action: 'CUSTOMER_UPDATED' });
-  } catch (_) {}
+    const customer = await prisma.customer.update({
+      where: { id },
+      data: {
+        ...(name && { name: name.trim() }),
+        ...(cleanPhone !== undefined && { phone: cleanPhone }),
+        ...(cleanEmail !== undefined && { email: cleanEmail }),
+        ...(address !== undefined && { address: address ? String(address).trim() : null }),
+        ...(gstin !== undefined && { gstin: gstin ? String(gstin).trim() : null }),
+        ...(state !== undefined && { state: targetState }),
+        ...(creditLimit !== undefined && { creditLimit: Number(creditLimit) }),
+        ...(balance !== undefined && { balance: Number(balance) }),
+        ...(isActive !== undefined && { isActive }),
+      },
+    });
 
-  return sendResponse(res, 200, { customer: mapCustomer(customer) }, 'Customer updated successfully');
+    try {
+      const targetBusinessId = customer.businessId || req.user?.businessId || 'default';
+      realtimeService.broadcastBusinessEvent(targetBusinessId, 'CUSTOMER_UPDATED', {
+        customer: { ...mapCustomer(customer), country: targetCountry },
+      }, { userId: req.user?.id, action: 'CUSTOMER_UPDATED' });
+    } catch (_) {}
+
+    return sendResponse(res, 200, { customer: { ...mapCustomer(customer), country: targetCountry } }, 'Customer updated successfully');
+  } catch (err) {
+    if (err instanceof ApiError) throw err;
+    const idx = inMemoryCustomers.findIndex(c => c.id === id);
+    if (idx !== -1) {
+      inMemoryCustomers[idx] = {
+        ...inMemoryCustomers[idx],
+        ...(name && { name: name.trim() }),
+        ...(cleanPhone !== undefined && { phone: cleanPhone }),
+        ...(cleanEmail !== undefined && { email: cleanEmail }),
+        ...(address !== undefined && { address: address ? String(address).trim() : null }),
+        ...(country !== undefined && { country: targetCountry }),
+        ...(gstin !== undefined && { gstin: gstin ? String(gstin).trim() : null }),
+        ...(state !== undefined && { state: targetState }),
+        ...(creditLimit !== undefined && { creditLimit: Number(creditLimit) }),
+        ...(balance !== undefined && { balance: Number(balance) }),
+        ...(isActive !== undefined && { isActive }),
+        updatedAt: new Date(),
+      };
+      return sendResponse(res, 200, { customer: mapCustomer(inMemoryCustomers[idx]) }, 'Customer updated successfully');
+    }
+    throw err;
+  }
 });
 
 export const getCustomerPurchases = asyncHandler(async (req, res) => {
