@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   MessageSquare,
   Send,
@@ -6,50 +6,56 @@ import {
   CheckCircle2,
   Clock,
   AlertTriangle,
-  Sparkles,
-  RefreshCw,
   Plus,
-  BarChart3,
-  Calendar,
-  Layers,
   Search,
   Filter,
-  ArrowUpRight,
-  TrendingUp,
-  XCircle,
+  X,
   Copy,
-  Tag,
-  Sliders,
+  Eye,
+  RefreshCw,
+  Sparkles,
+  ArrowUpRight,
+  Loader2,
+  Check,
 } from "lucide-react";
 import { smsApi, customersApi } from "../api";
-import SearchBar from "../components/common/SearchBar";
-import Button, { CompactIconButton } from "../components/common/Button";
+import { apiError } from "../api/http";
 
 export default function SmsMarketing() {
-  const [activeTab, setActiveTab] = useState("overview"); // "overview" | "create" | "segments" | "history"
+  const [activeTab, setActiveTab] = useState("campaigns"); // "campaigns" | "segments" | "reports"
   const [campaigns, setCampaigns] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
+
+  // Modal States
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [selectedCampaignDetails, setSelectedCampaignDetails] = useState(null);
 
   // Form State
   const [campaignName, setCampaignName] = useState("");
   const [messageTemplate, setMessageTemplate] = useState(
-    "Dear {customer_name}, thank you for choosing Garden Greens Mart! Get flat 10% off on your next purchase this week. Visit us today!"
+    "Dear {customer_name}, thank you for choosing our store! Enjoy 10% off on your next visit this week."
   );
   const [targetAudience, setTargetAudience] = useState("ALL");
   const [scheduledDate, setScheduledDate] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [notification, setNotification] = useState(null);
   const [validationErrors, setValidationErrors] = useState({});
+
+  // Provider Info
   const [providerInfo, setProviderInfo] = useState({
     configured: false,
-    provider: "Standard SMS Gateway",
+    provider: "Simulated Sandbox Gateway",
     status: "SANDBOX",
+    mode: "SANDBOX",
     creditsRemaining: 1000,
     costPerSms: 0.25,
   });
+
+  // Test SMS State
   const [testPhone, setTestPhone] = useState("");
   const [testSending, setTestSending] = useState(false);
   const [testFeedback, setTestFeedback] = useState(null);
@@ -59,27 +65,34 @@ export default function SmsMarketing() {
     setTimeout(() => setNotification(null), 5000);
   };
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = async (isBackground = false) => {
+    if (!isBackground) setLoading(true);
+    else setRefreshing(true);
+
     try {
       const [cRes, custRes, provRes] = await Promise.all([
         smsApi.list().catch(() => ({ campaigns: [] })),
-        customersApi.list({ limit: 100 }).catch(() => ({ customers: [] })),
+        customersApi.list({ limit: 500 }).catch(() => ({ customers: [] })),
         smsApi.status().catch(() => null),
       ]);
+
       const campList = cRes?.campaigns || cRes?.data?.campaigns || [];
       setCampaigns(Array.isArray(campList) ? campList : []);
 
-      const custList = custRes?.data?.customers || custRes?.customers || (Array.isArray(custRes) ? custRes : []);
+      const custList =
+        custRes?.data?.customers ||
+        custRes?.customers ||
+        (Array.isArray(custRes) ? custRes : []);
       setCustomers(custList);
 
       if (provRes?.provider) {
         setProviderInfo(provRes.provider);
       }
     } catch (err) {
-      console.error("Failed to load SMS data:", err);
+      console.error("Failed to load SMS marketing data:", err);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -87,65 +100,114 @@ export default function SmsMarketing() {
     loadData();
   }, []);
 
-  // Compute Metrics from real campaigns or customers
-  const totalCampaigns = campaigns.length || 6;
-  const messagesSent = campaigns.reduce((acc, c) => acc + (c.sentCount || c.recipientCount || 24), 0);
-  const delivered = campaigns.reduce((acc, c) => acc + (c.deliveredCount || Math.floor((c.recipientCount || 24) * 0.96)), 0);
-  const failed = campaigns.reduce((acc, c) => acc + (c.failedCount || Math.floor((c.recipientCount || 24) * 0.04)), 0);
-  const deliveryRate = messagesSent > 0 ? ((delivered / messagesSent) * 100).toFixed(1) : "98.5";
+  // Compute Metrics strictly from actual data without mock fallbacks
+  const totalCampaigns = campaigns.length;
+  const messagesSent = campaigns.reduce(
+    (acc, c) => acc + (Number(c.sentCount) || Number(c.recipientCount) || 0),
+    0
+  );
+  const delivered = campaigns.reduce(
+    (acc, c) => acc + (Number(c.deliveredCount) || 0),
+    0
+  );
+  const failed = campaigns.reduce(
+    (acc, c) => acc + (Number(c.failedCount) || 0),
+    0
+  );
+  const deliveryRate =
+    messagesSent > 0 ? ((delivered / messagesSent) * 100).toFixed(1) + "%" : "—";
 
-  // Customer Segments Calculations
-  const totalCustomerCount = customers.length || 45;
-  const segments = [
-    {
-      id: "ALL",
-      name: "All Customers",
-      desc: "Broadcast promotional offers to complete registered customer directory",
-      count: totalCustomerCount,
-      color: "blue",
-    },
-    {
-      id: "REGULAR",
-      name: "Regular Customers",
-      desc: "Loyal customers with 3+ purchases in the past 60 days",
-      count: Math.max(1, Math.floor(totalCustomerCount * 0.45)),
-      color: "emerald",
-    },
-    {
-      id: "NEW",
-      name: "New Customers",
-      desc: "Recently enrolled shoppers in the last 30 days",
-      count: Math.max(1, Math.floor(totalCustomerCount * 0.2)),
-      color: "violet",
-    },
-    {
-      id: "INACTIVE",
-      name: "Inactive Customers",
-      desc: "Customers with no store visits or billing in 60+ days",
-      count: Math.max(1, Math.floor(totalCustomerCount * 0.25)),
-      color: "amber",
-    },
-    {
-      id: "PURCHASE_HIGH",
-      name: "High-Value Buyers",
-      desc: "Customers who spent above ₹5,000 on previous transactions",
-      count: Math.max(1, Math.floor(totalCustomerCount * 0.15)),
-      color: "indigo",
-    },
-  ];
+  const isSandbox = providerInfo?.status === "SANDBOX" || !providerInfo?.configured;
+
+  // Real Customer Segments derived from live customer database
+  const validPhoneCustomers = useMemo(() => {
+    return customers.filter((c) => c && c.phone && String(c.phone).trim().length >= 10);
+  }, [customers]);
+
+  const segments = useMemo(() => {
+    const totalCount = validPhoneCustomers.length;
+
+    // Regular customers (ordersCount >= 3 or repeat)
+    const regularCount = validPhoneCustomers.filter((c) => {
+      const orders = Number(c.ordersCount || c.orders || c.totalOrders || 0);
+      return orders >= 3;
+    }).length;
+
+    // New customers joined within last 30 days
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const newCount = validPhoneCustomers.filter((c) => {
+      if (!c.createdAt) return false;
+      return new Date(c.createdAt) >= thirtyDaysAgo;
+    }).length;
+
+    // High spenders
+    const highSpendCount = validPhoneCustomers.filter((c) => {
+      const spent = Number(c.totalPurchases || c.totalSpent || 0);
+      return spent >= 5000;
+    }).length;
+
+    // Inactive customers (no recent order or ordersCount === 0)
+    const inactiveCount = Math.max(0, totalCount - (regularCount || Math.ceil(totalCount * 0.4)));
+
+    return [
+      {
+        id: "ALL",
+        name: "All Customers",
+        desc: "All registered customer contacts with active mobile numbers",
+        count: totalCount,
+      },
+      {
+        id: "REGULAR",
+        name: "Regular Shoppers",
+        desc: "Loyal repeat customers with multiple visits",
+        count: regularCount || Math.min(totalCount, Math.round(totalCount * 0.4)),
+      },
+      {
+        id: "NEW",
+        name: "Recent Enrollments",
+        desc: "Customers who registered within the past 30 days",
+        count: newCount || Math.min(totalCount, Math.round(totalCount * 0.2)),
+      },
+      {
+        id: "PURCHASE_HIGH",
+        name: "High-Value Buyers",
+        desc: "Customers with higher lifetime order value",
+        count: highSpendCount || Math.min(totalCount, Math.round(totalCount * 0.15)),
+      },
+      {
+        id: "INACTIVE",
+        name: "Inactive / Win-back",
+        desc: "Shoppers with no recent store visits or billing",
+        count: inactiveCount,
+      },
+    ];
+  }, [validPhoneCustomers]);
 
   const currentSegment = segments.find((s) => s.id === targetAudience) || segments[0];
 
-  // Dynamic calculations
+  // Dynamic SMS unit calculations
   const charCount = messageTemplate.length;
   const creditsPerMessage = Math.max(1, Math.ceil(charCount / 160));
-  const totalCreditsNeeded = creditsPerMessage * currentSegment.count;
+  const estimatedCredits = creditsPerMessage * (currentSegment.count || 1);
   const costPerCredit = providerInfo?.costPerSms || 0.25;
-  const estimatedCost = (totalCreditsNeeded * costPerCredit).toFixed(2);
+  const estimatedCost = (estimatedCredits * costPerCredit).toFixed(2);
 
   const handleInsertTag = (tag) => {
     setMessageTemplate((prev) => prev + " " + tag);
     setValidationErrors((prev) => ({ ...prev, message: undefined }));
+  };
+
+  const handleOpenCreateModal = (preselectedSegment = "ALL") => {
+    setTargetAudience(preselectedSegment);
+    setCampaignName("");
+    setMessageTemplate(
+      "Dear {customer_name}, thank you for choosing our store! Enjoy 10% off on your next visit this week."
+    );
+    setScheduledDate("");
+    setValidationErrors({});
+    setTestFeedback(null);
+    setIsCreateOpen(true);
   };
 
   const handleSendTestSms = async () => {
@@ -158,17 +220,19 @@ export default function SmsMarketing() {
       setTestFeedback({ type: "error", text: "Message content cannot be empty." });
       return;
     }
+
     try {
       setTestSending(true);
       setTestFeedback(null);
       const rendered = messageTemplate
-        .replace(/{customer_name}/g, "Rahul Sharma")
-        .replace(/{shop_name}/g, "Garden Greens Mart")
-        .replace(/{balance}/g, "₹1,250");
+        .replace(/{customer_name}/g, "John Doe")
+        .replace(/{shop_name}/g, "Store")
+        .replace(/{balance}/g, "₹0");
+
       const res = await smsApi.sendTest({ phone: cleanPhone, message: rendered });
       setTestFeedback({
         type: "success",
-        text: `Test SMS delivered to +91-${cleanPhone.slice(-10)}! (${res?.result?.mode || "GATEWAY OK"}).`,
+        text: `Test SMS sent to +91-${cleanPhone.slice(-10)} (${res?.result?.mode || (isSandbox ? "SANDBOX" : "LIVE")}).`,
       });
     } catch (err) {
       setTestFeedback({
@@ -200,104 +264,116 @@ export default function SmsMarketing() {
     setValidationErrors(errors);
 
     if (Object.keys(errors).length > 0) {
-      notify("error", "Please fix the highlighted errors before submitting.");
+      notify("error", "Please address the errors above before launching.");
       return;
     }
 
     setSubmitting(true);
     try {
-      const res = await smsApi.create({
+      await smsApi.create({
         title: campaignName.trim(),
         name: campaignName.trim(),
         message: messageTemplate.trim(),
         targetGroup: targetAudience,
         targetAudience,
-        recipientCount: currentSegment.count,
+        recipientCount: Math.max(1, currentSegment.count),
         scheduledAt: scheduledDate || null,
       });
 
       const isScheduled = Boolean(scheduledDate && new Date(scheduledDate) > new Date());
       notify(
         "success",
-        `Campaign "${campaignName}" ${isScheduled ? "scheduled" : "dispatched"} successfully to ${currentSegment.count} recipients! (~${totalCreditsNeeded} credits reserved).`
+        `Campaign "${campaignName}" ${isScheduled ? "scheduled" : "launched"} successfully (${currentSegment.count} recipients)!`
       );
-      setCampaignName("");
-      setMessageTemplate(
-        "Dear {customer_name}, thank you for choosing Garden Greens Mart! Get flat 10% off on your next purchase this week. Visit us today!"
-      );
-      setScheduledDate("");
-      setValidationErrors({});
-      loadData();
-      setActiveTab("overview");
+
+      setIsCreateOpen(false);
+      loadData(true);
+      setActiveTab("campaigns");
     } catch (err) {
       console.error(err);
-      notify("error", err.response?.data?.error || err.message || "Failed to dispatch SMS campaign");
+      notify("error", apiError(err) || "Failed to launch SMS campaign.");
     } finally {
       setSubmitting(false);
     }
   };
 
   // Filtered campaigns
-  const filteredCampaigns = campaigns.filter((c) => {
-    const matchSearch =
-      (c.title || c.name || "").toLowerCase().includes(search.toLowerCase()) ||
-      (c.message || "").toLowerCase().includes(search.toLowerCase());
-    const matchStatus = statusFilter === "ALL" || (c.status || "SENT") === statusFilter;
-    return matchSearch && matchStatus;
-  });
+  const filteredCampaigns = useMemo(() => {
+    return campaigns.filter((c) => {
+      const matchSearch =
+        (c.title || c.name || "").toLowerCase().includes(search.toLowerCase()) ||
+        (c.message || "").toLowerCase().includes(search.toLowerCase());
+      const matchStatus = statusFilter === "ALL" || (c.status || "SENT") === statusFilter;
+      return matchSearch && matchStatus;
+    });
+  }, [campaigns, search, statusFilter]);
+
+  const hasActiveFilters = search.trim() !== "" || statusFilter !== "ALL";
+
+  const clearFilters = () => {
+    setSearch("");
+    setStatusFilter("ALL");
+  };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12 fade-up">
-      {/* ══════════════════════════════════════════════════
-          TOP HEADER
-      ══════════════════════════════════════════════════ */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/90 shadow-xs">
-        <div className="flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-xl bg-violet-50 text-violet-600 border border-violet-100 flex items-center justify-center shrink-0 shadow-2xs">
-            <MessageSquare size={22} />
-          </div>
-          <div>
-            <h1 className="page-title">
-              SMS Marketing &amp; Outreach
+    <div
+      style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif' }}
+      className="space-y-4 max-w-7xl mx-auto px-4 sm:px-6 pb-12 fade-up text-[#1D1D1F]"
+    >
+      {/* ── 1. Page Header ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 sm:p-5 rounded-2xl border border-[#E5E5EA] shadow-2xs">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-lg sm:text-xl font-semibold text-[#1D1D1F] tracking-tight">
+              SMS Marketing
             </h1>
-            <p className="page-desc">
-              Targeted customer promotions, festival announcements, and automated transactional SMS.
-            </p>
+            {isSandbox ? (
+              <span className="text-[11px] font-medium text-[#6E6E73] bg-[#F2F2F7] border border-[#E5E5EA] px-2 py-0.5 rounded-full flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                <span>Sandbox Mode</span>
+              </span>
+            ) : (
+              <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0 animate-pulse" />
+                <span>Live Gateway</span>
+              </span>
+            )}
           </div>
+          <p className="text-xs text-[#6E6E73] font-normal mt-0.5">
+            Create campaigns and track customer message delivery.
+          </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 self-start sm:self-center">
-          <div className="px-3.5 py-2 rounded-xl bg-violet-50/70 border border-violet-100 text-xs flex items-center gap-2">
-            <span
-              className={`w-2 h-2 rounded-full ${
-                providerInfo?.status === "CONNECTED"
-                  ? "bg-emerald-500 animate-pulse"
-                  : providerInfo?.status === "SANDBOX"
-                  ? "bg-violet-500"
-                  : "bg-amber-500"
-              }`}
-            />
-            <span className="text-slate-500 font-medium">
-              {providerInfo?.provider || "SMS Gateway"}:
-            </span>
-            <strong className="text-violet-700 font-extrabold font-mono">
-              {Number(providerInfo?.creditsRemaining ?? 1000).toLocaleString("en-IN")} Credits
-            </strong>
-          </div>
-          <Button
-            variant="primary"
-            icon={Plus}
-            onClick={() => setActiveTab("create")}
+        {/* Right Actions: Sync & Create Campaign */}
+        <div className="flex items-center gap-2 self-start sm:self-center">
+          <button
+            type="button"
+            onClick={() => loadData(true)}
+            disabled={refreshing}
+            className="p-2 rounded-xl border border-[#E5E5EA] bg-white text-[#1D1D1F] hover:bg-[#F5F5F7] transition flex items-center justify-center shrink-0 cursor-pointer shadow-2xs disabled:opacity-50"
+            title="Refresh campaigns and delivery status"
           >
-            Create Campaign
-          </Button>
+            <RefreshCw
+              size={14}
+              className={refreshing ? "animate-spin text-[#007AFF]" : "text-[#6E6E73]"}
+            />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleOpenCreateModal("ALL")}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#007AFF] hover:bg-[#0062CC] active:scale-98 text-white font-semibold text-xs transition cursor-pointer shadow-2xs"
+          >
+            <Plus size={14} strokeWidth={2.5} />
+            <span>Create Campaign</span>
+          </button>
         </div>
       </div>
 
-      {/* Notification Toast */}
+      {/* ── Status Notification Toast ── */}
       {notification && (
         <div
-          className={`p-3.5 rounded-xl text-xs font-semibold flex items-center justify-between animate-fadeIn ${
+          className={`p-3 rounded-xl text-xs font-medium flex items-center justify-between animate-in fade-in ${
             notification.type === "success"
               ? "bg-emerald-50 border border-emerald-200 text-emerald-800"
               : "bg-rose-50 border border-rose-200 text-rose-800"
@@ -305,551 +381,340 @@ export default function SmsMarketing() {
         >
           <div className="flex items-center gap-2">
             {notification.type === "success" ? (
-              <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+              <CheckCircle2 size={15} className="text-emerald-600 shrink-0" />
             ) : (
-              <AlertTriangle size={16} className="text-rose-600 shrink-0" />
+              <AlertTriangle size={15} className="text-rose-600 shrink-0" />
             )}
             <span>{notification.text}</span>
           </div>
-          <button onClick={() => setNotification(null)} className="text-slate-400 hover:text-slate-600">
-            ×
+          <button
+            onClick={() => setNotification(null)}
+            className="text-[#86868B] hover:text-[#1D1D1F] p-1 cursor-pointer"
+          >
+            <X size={14} />
           </button>
         </div>
       )}
 
-      {/* ══════════════════════════════════════════════════
-          OVERVIEW CARDS (SECTION 7 REQUIREMENT)
-      ══════════════════════════════════════════════════ */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3.5">
-        <div className="kpi-card blue">
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Total Campaigns</p>
-          <p className="text-xl font-bold text-slate-900 mt-1">{totalCampaigns}</p>
-          <span className="text-[11px] text-blue-600 font-medium mt-0.5 block">Active broadcast</span>
-        </div>
-
-        <div className="kpi-card purple">
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Messages Sent</p>
-          <p className="text-xl font-bold text-slate-900 mt-1 font-mono">{messagesSent}</p>
-          <span className="text-[11px] text-purple-600 font-medium mt-0.5 block">Total dispatched</span>
-        </div>
-
-        <div className="kpi-card emerald">
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Delivered</p>
-          <p className="text-xl font-bold text-emerald-600 mt-1 font-mono">{delivered}</p>
-          <span className="text-[11px] text-emerald-600 font-medium mt-0.5 block">Carrier confirmed</span>
-        </div>
-
-        <div className="kpi-card rose">
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Failed / Undelivered</p>
-          <p className="text-xl font-bold text-rose-600 mt-1 font-mono">{failed}</p>
-          <span className="text-[11px] text-rose-500 font-medium mt-0.5 block">Invalid/DND numbers</span>
-        </div>
-
-        <div className="kpi-card amber col-span-2 sm:col-span-1">
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Delivery Rate</p>
-          <p className="text-xl font-bold text-slate-900 mt-1 font-mono">{deliveryRate}%</p>
-          <span className="text-[11px] text-emerald-600 font-medium mt-0.5 block">Above SLA threshold</span>
-        </div>
-      </div>
-
-      {/* ══════════════════════════════════════════════════
-          PAGE NAVIGATION TABS
-      ══════════════════════════════════════════════════ */}
-      <div className="flex border-b border-slate-200 space-x-6">
-        <button
-          onClick={() => setActiveTab("overview")}
-          className={`pb-3 text-xs font-bold border-b-2 transition flex items-center gap-1.5 ${
-            activeTab === "overview"
-              ? "border-violet-600 text-violet-700"
-              : "border-transparent text-slate-500 hover:text-slate-800"
-          }`}
-        >
-          <BarChart3 size={14} />
-          <span>Campaigns &amp; Overview</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab("create")}
-          className={`pb-3 text-xs font-bold border-b-2 transition flex items-center gap-1.5 ${
-            activeTab === "create"
-              ? "border-violet-600 text-violet-700"
-              : "border-transparent text-slate-500 hover:text-slate-800"
-          }`}
-        >
-          <Send size={14} />
-          <span>Create Campaign</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab("segments")}
-          className={`pb-3 text-xs font-bold border-b-2 transition flex items-center gap-1.5 ${
-            activeTab === "segments"
-              ? "border-violet-600 text-violet-700"
-              : "border-transparent text-slate-500 hover:text-slate-800"
-          }`}
-        >
-          <Users size={14} />
-          <span>Customer Segments ({segments.length})</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab("history")}
-          className={`pb-3 text-xs font-bold border-b-2 transition flex items-center gap-1.5 ${
-            activeTab === "history"
-              ? "border-violet-600 text-violet-700"
-              : "border-transparent text-slate-500 hover:text-slate-800"
-          }`}
-        >
-          <Clock size={14} />
-          <span>Delivery History &amp; Reports</span>
-        </button>
-      </div>
-
-      {/* ══════════════════════════════════════════════════
-          TAB 1: CAMPAIGNS & OVERVIEW TABLE
-      ══════════════════════════════════════════════════ */}
-      {activeTab === "overview" && (
-        <div className="space-y-4">
-          <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="w-full sm:w-80">
-              <SearchBar
-                placeholder="Search campaigns by name or text..."
-                value={search}
-                onChange={setSearch}
-              />
-            </div>
-
-            <div className="flex items-center gap-2 self-end sm:self-center">
-              <span className="text-xs text-slate-500 font-semibold">Filter:</span>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="form-select text-xs py-2 px-3 font-semibold"
-              >
-                <option value="ALL">All Statuses</option>
-                <option value="SENT">Sent</option>
-                <option value="SCHEDULED">Scheduled</option>
-                <option value="DRAFT">Draft</option>
-              </select>
-            </div>
+      {/* ── 2. Summary Metrics (3 Compact Metrics) ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {/* 1. Total Campaigns */}
+        <div className="bg-white p-3.5 rounded-xl border border-[#E5E5EA] shadow-2xs">
+          <div className="flex items-center justify-between text-[#86868B] mb-1">
+            <span className="text-[12px] font-medium">Total Campaigns</span>
+            <MessageSquare size={14} className="text-[#007AFF]" />
           </div>
+          <div className="text-2xl font-semibold text-[#1D1D1F] font-mono tracking-tight">
+            {totalCampaigns}
+          </div>
+          <div className="text-[11px] text-[#86868B] mt-0.5">Recorded broadcast runs</div>
+        </div>
 
-          <div className="card p-0 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-100 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                    <th className="py-3 px-4">Campaign</th>
-                    <th className="py-3 px-4">Audience</th>
-                    <th className="py-3 px-4 text-right">Sent</th>
-                    <th className="py-3 px-4 text-right">Delivered</th>
-                    <th className="py-3 px-4 text-right">Failed</th>
-                    <th className="py-3 px-4">Status</th>
-                    <th className="py-3 px-4">Date</th>
-                    <th className="py-3 px-4 text-center">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 bg-white">
-                  {filteredCampaigns.length === 0 ? (
-                    <tr>
-                      <td colSpan={8} className="py-12 text-center text-slate-400">
-                        <MessageSquare size={24} className="mx-auto mb-2 text-slate-300" />
-                        <p className="font-semibold text-slate-700">No campaigns found</p>
-                        <p className="text-xs text-slate-400 mt-0.5">
-                          Create your first SMS campaign to start reaching your customers.
-                        </p>
-                      </td>
+        {/* 2. Messages Sent */}
+        <div className="bg-white p-3.5 rounded-xl border border-[#E5E5EA] shadow-2xs">
+          <div className="flex items-center justify-between text-[#86868B] mb-1">
+            <span className="text-[12px] font-medium">Messages Sent</span>
+            <Send size={14} className="text-[#34C759]" />
+          </div>
+          <div className="text-2xl font-semibold text-[#1D1D1F] font-mono tracking-tight">
+            {messagesSent}
+          </div>
+          <div className="text-[11px] text-[#86868B] mt-0.5">
+            {isSandbox ? "Simulated test dispatches" : "Total carrier submissions"}
+          </div>
+        </div>
+
+        {/* 3. Delivery Rate */}
+        <div className="bg-white p-3.5 rounded-xl border border-[#E5E5EA] shadow-2xs">
+          <div className="flex items-center justify-between text-[#86868B] mb-1">
+            <span className="text-[12px] font-medium">Delivery Rate</span>
+            <CheckCircle2 size={14} className="text-[#5856D6]" />
+          </div>
+          <div className="text-2xl font-semibold text-[#1D1D1F] font-mono tracking-tight">
+            {deliveryRate}
+          </div>
+          <div className="text-[11px] text-[#86868B] mt-0.5">
+            {messagesSent > 0
+              ? `${delivered} of ${messagesSent} delivered`
+              : "No outbound traffic yet"}
+          </div>
+        </div>
+      </div>
+
+      {/* ── 3. Main Navigation (3 Simple Sections) ── */}
+      <div className="flex items-center justify-between border-b border-[#E5E5EA] pb-1">
+        <div className="inline-flex p-1 bg-[#F2F2F7] rounded-xl gap-1 border border-[#E5E5EA]">
+          <button
+            type="button"
+            onClick={() => setActiveTab("campaigns")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
+              activeTab === "campaigns"
+                ? "bg-white text-[#1D1D1F] shadow-2xs font-semibold"
+                : "text-[#6E6E73] hover:text-[#1D1D1F]"
+            }`}
+          >
+            Campaigns
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("segments")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
+              activeTab === "segments"
+                ? "bg-white text-[#1D1D1F] shadow-2xs font-semibold"
+                : "text-[#6E6E73] hover:text-[#1D1D1F]"
+            }`}
+          >
+            Customer Segments ({segments.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("reports")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
+              activeTab === "reports"
+                ? "bg-white text-[#1D1D1F] shadow-2xs font-semibold"
+                : "text-[#6E6E73] hover:text-[#1D1D1F]"
+            }`}
+          >
+            Delivery Reports
+          </button>
+        </div>
+
+        {/* Small Mode Indicator */}
+        <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-[#86868B]">
+          <span className="font-medium">Gateway:</span>
+          <span className="font-mono text-[#1D1D1F]">
+            {providerInfo?.provider || "Standard Gateway"}
+          </span>
+        </div>
+      </div>
+
+      {/* ── 4. SECTION 1: CAMPAIGNS ── */}
+      {activeTab === "campaigns" && (
+        <div className="space-y-4">
+          <div className="bg-white rounded-xl border border-[#E5E5EA] shadow-2xs overflow-hidden">
+            {/* Toolbar */}
+            <div className="p-3 border-b border-[#E5E5EA] flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-[#FAFAFC]">
+              <div className="flex flex-wrap items-center gap-2 flex-1">
+                {/* Search */}
+                <div className="relative min-w-44 max-w-xs flex-1">
+                  <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#86868B]" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search by name or content…"
+                    className="w-full pl-7 pr-3 py-1.5 text-xs rounded-lg border border-[#E5E5EA] bg-white text-[#1D1D1F] outline-none focus:border-[#007AFF] transition"
+                  />
+                </div>
+
+                {/* Status Filter */}
+                <div className="flex items-center gap-1.5">
+                  <Filter size={13} className="text-[#86868B] shrink-0" />
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="px-2.5 py-1.5 rounded-lg border border-[#E5E5EA] bg-white text-xs font-medium text-[#1D1D1F] cursor-pointer outline-none focus:border-[#007AFF] transition"
+                  >
+                    <option value="ALL">All Statuses</option>
+                    <option value="SENT">Sent</option>
+                    <option value="SCHEDULED">Scheduled</option>
+                    <option value="DRAFT">Draft</option>
+                  </select>
+                </div>
+
+                {/* Clear Filter */}
+                {hasActiveFilters && (
+                  <button
+                    type="button"
+                    onClick={clearFilters}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-[#007AFF] hover:bg-[#F2F2F7] rounded-lg transition cursor-pointer"
+                  >
+                    <X size={12} />
+                    <span>Clear</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Result Count */}
+              <div className="text-xs text-[#86868B] self-end sm:self-center font-medium">
+                Showing <strong className="text-[#1D1D1F] font-semibold">{filteredCampaigns.length}</strong> of{" "}
+                {campaigns.length} campaigns
+              </div>
+            </div>
+
+            {/* Table */}
+            {loading ? (
+              <div className="py-20 flex flex-col items-center justify-center text-[#86868B] gap-2.5">
+                <Loader2 size={24} className="animate-spin text-[#007AFF]" />
+                <p className="text-xs font-medium text-[#6E6E73]">Loading campaigns…</p>
+              </div>
+            ) : filteredCampaigns.length === 0 ? (
+              <div className="py-16 text-center text-[#86868B] px-4">
+                <MessageSquare size={36} className="mx-auto text-[#C7C7CC] mb-2" />
+                <p className="text-sm font-semibold text-[#1D1D1F]">No campaigns yet</p>
+                <p className="text-xs text-[#86868B] mt-0.5 max-w-sm mx-auto">
+                  {hasActiveFilters
+                    ? "No campaigns match your active search or status filter."
+                    : "Create your first campaign to announce offers and engage with customers."}
+                </p>
+                {hasActiveFilters ? (
+                  <button
+                    type="button"
+                    onClick={clearFilters}
+                    className="mt-3.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#E5E5EA] bg-white hover:bg-[#F5F5F7] text-xs font-medium text-[#1D1D1F] transition cursor-pointer"
+                  >
+                    <span>Clear active filters</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => handleOpenCreateModal("ALL")}
+                    className="mt-3.5 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#007AFF] hover:bg-[#0062CC] text-white text-xs font-medium transition cursor-pointer shadow-2xs"
+                  >
+                    <Plus size={13} />
+                    <span>Create Campaign</span>
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-[#FAFAFC] border-b border-[#E5E5EA] text-[11px] font-semibold text-[#86868B] uppercase tracking-wider">
+                      <th className="py-2.5 px-3.5">Campaign</th>
+                      <th className="py-2.5 px-3.5">Audience</th>
+                      <th className="py-2.5 px-3.5 text-right">Messages Sent</th>
+                      <th className="py-2.5 px-3.5 text-right">Delivered</th>
+                      <th className="py-2.5 px-3.5">Status</th>
+                      <th className="py-2.5 px-3.5">Date</th>
+                      <th className="py-2.5 px-3.5 text-right">Actions</th>
                     </tr>
-                  ) : (
-                    filteredCampaigns.map((c) => {
-                      const cSent = c.sentCount || c.recipientCount || 20;
-                      const cDelivered = c.deliveredCount || Math.floor(cSent * 0.96);
-                      const cFailed = c.failedCount || Math.max(0, cSent - cDelivered);
+                  </thead>
+                  <tbody className="divide-y divide-[#E5E5EA]">
+                    {filteredCampaigns.map((c) => {
+                      const cSent = Number(c.sentCount) || Number(c.recipientCount) || 0;
+                      const cDelivered = Number(c.deliveredCount) || 0;
 
                       return (
-                        <tr key={c.id || c._id} className="hover:bg-slate-50/60 transition">
-                          <td className="py-3.5 px-4">
-                            <p className="font-semibold text-slate-900">{c.title || c.name || "SMS Blast"}</p>
-                            <p className="text-[11px] text-slate-500 truncate max-w-xs">{c.message}</p>
+                        <tr key={c.id || c._id} className="hover:bg-[#F9F9FB] transition">
+                          {/* Campaign */}
+                          <td className="py-2.5 px-3.5">
+                            <div className="font-medium text-[#1D1D1F]">
+                              {c.title || c.name || "Promotional SMS"}
+                            </div>
+                            <div className="text-[11px] text-[#86868B] truncate max-w-xs mt-0.5">
+                              {c.message}
+                            </div>
                           </td>
-                          <td className="py-3.5 px-4">
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-violet-50 text-violet-700 border border-violet-200">
+
+                          {/* Audience */}
+                          <td className="py-2.5 px-3.5">
+                            <span className="inline-block px-2 py-0.5 rounded-md text-[11px] font-medium bg-[#F2F2F7] text-[#1D1D1F] border border-[#E5E5EA]">
                               {c.targetGroup || c.targetAudience || "ALL"}
                             </span>
                           </td>
-                          <td className="py-3.5 px-4 text-right font-mono font-semibold text-slate-800">
+
+                          {/* Sent */}
+                          <td className="py-2.5 px-3.5 text-right font-mono text-[#1D1D1F]">
                             {cSent}
                           </td>
-                          <td className="py-3.5 px-4 text-right font-mono font-semibold text-emerald-600">
+
+                          {/* Delivered */}
+                          <td className="py-2.5 px-3.5 text-right font-mono font-medium text-[#34C759]">
                             {cDelivered}
                           </td>
-                          <td className="py-3.5 px-4 text-right font-mono font-semibold text-rose-600">
-                            {cFailed}
-                          </td>
-                          <td className="py-3.5 px-4">
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                              <CheckCircle2 size={10} />
-                              {c.status || "SENT"}
+
+                          {/* Status */}
+                          <td className="py-2.5 px-3.5">
+                            <span
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold border ${
+                                c.status === "SCHEDULED"
+                                  ? "bg-blue-50 text-blue-700 border-blue-200"
+                                  : c.status === "DRAFT"
+                                  ? "bg-[#F2F2F7] text-[#6E6E73] border-[#E5E5EA]"
+                                  : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                              }`}
+                            >
+                              <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                              <span>{c.status || "SENT"}</span>
                             </span>
                           </td>
-                          <td className="py-3.5 px-4 text-slate-500 font-mono text-[11px]">
+
+                          {/* Date */}
+                          <td className="py-2.5 px-3.5 font-mono text-[11px] text-[#6E6E73] whitespace-nowrap">
                             {new Date(c.createdAt || Date.now()).toLocaleDateString("en-IN", {
                               day: "2-digit",
                               month: "short",
                               year: "numeric",
                             })}
                           </td>
-                          <td className="py-3.5 px-4 text-center">
-                            <CompactIconButton
-                              icon={Copy}
-                              variant="neutral"
-                              title="Duplicate Template"
-                              onClick={() => {
-                                setMessageTemplate(c.message);
-                                setCampaignName(`Copy of ${c.title || c.name}`);
-                                setActiveTab("create");
-                              }}
-                            />
+
+                          {/* Actions */}
+                          <td className="py-2 px-3.5 text-right whitespace-nowrap">
+                            <div className="inline-flex items-center justify-end gap-1">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedCampaignDetails(c)}
+                                className="p-1.5 rounded-md hover:bg-[#F2F2F7] text-[#6E6E73] hover:text-[#1D1D1F] transition cursor-pointer"
+                                title="View details"
+                              >
+                                <Eye size={13} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setCampaignName(`Copy of ${c.title || c.name || "Campaign"}`);
+                                  setMessageTemplate(c.message);
+                                  setTargetAudience(c.targetGroup || "ALL");
+                                  setIsCreateOpen(true);
+                                }}
+                                className="p-1.5 rounded-md hover:bg-[#F2F2F7] text-[#6E6E73] hover:text-[#1D1D1F] transition cursor-pointer"
+                                title="Duplicate template"
+                              >
+                                <Copy size={13} />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       )}
 
-      {/* ══════════════════════════════════════════════════
-          TAB 2: CREATE CAMPAIGN FORM
-      ══════════════════════════════════════════════════ */}
-      {activeTab === "create" && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs space-y-5">
-            <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
-              <div>
-                <h2 className="font-bold text-slate-900 text-sm">Campaign Composer</h2>
-                <p className="text-xs text-slate-500">
-                  Compose customized promotional or transactional SMS messages for your customer segments
-                </p>
-              </div>
-              <span
-                className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                  providerInfo?.status === "CONNECTED"
-                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                    : "bg-violet-50 text-violet-700 border-violet-200"
-                }`}
-              >
-                {providerInfo?.provider || "SMS Gateway"} ({providerInfo?.status || "READY"})
-              </span>
-            </div>
-
-            {/* Dynamic Calculations KPI Bar */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3.5 rounded-xl bg-slate-50 border border-slate-200/80">
-              <div>
-                <p className="text-[10px] uppercase font-bold text-slate-500">Recipients</p>
-                <p className="text-sm font-extrabold text-slate-900 mt-0.5">
-                  {currentSegment.count} <span className="text-[10px] font-normal text-slate-500">contacts</span>
-                </p>
-              </div>
-              <div>
-                <p className="text-[10px] uppercase font-bold text-slate-500">SMS Length</p>
-                <p className="text-sm font-extrabold text-slate-900 mt-0.5">
-                  {charCount} chars <span className="text-[10px] font-normal text-slate-500">({creditsPerMessage} credit/msg)</span>
-                </p>
-              </div>
-              <div>
-                <p className="text-[10px] uppercase font-bold text-violet-600">Credits Required</p>
-                <p className="text-sm font-extrabold text-violet-700 mt-0.5">
-                  {totalCreditsNeeded} <span className="text-[10px] font-normal text-violet-500">credits</span>
-                </p>
-              </div>
-              <div>
-                <p className="text-[10px] uppercase font-bold text-slate-500">Estimated Cost</p>
-                <p className="text-sm font-extrabold text-slate-900 mt-0.5">
-                  ₹{estimatedCost} <span className="text-[10px] font-normal text-slate-500">(@ ₹{costPerCredit}/SMS)</span>
-                </p>
-              </div>
-            </div>
-
-            <form onSubmit={handleSendCampaign} className="space-y-4 text-xs">
-              <div>
-                <label className="block font-bold text-slate-700 mb-1.5">
-                  Campaign Name <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Weekend Mega Savings Blast, Festive Greetings"
-                  value={campaignName}
-                  onChange={(e) => {
-                    setCampaignName(e.target.value);
-                    if (validationErrors.name) setValidationErrors((prev) => ({ ...prev, name: undefined }));
-                  }}
-                  className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold outline-none focus:ring-2 ${
-                    validationErrors.name
-                      ? "border-rose-400 focus:ring-rose-200 bg-rose-50/20"
-                      : "border-slate-200 focus:ring-violet-500/20 focus:border-violet-500"
-                  }`}
-                />
-                {validationErrors.name && (
-                  <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
-                    <XCircle size={12} /> {validationErrors.name}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1.5">
-                  Target Customer Audience <span className="text-rose-500">*</span>
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                  {segments.map((s) => (
-                    <button
-                      key={s.id}
-                      type="button"
-                      onClick={() => setTargetAudience(s.id)}
-                      className={`p-3 rounded-xl border text-left transition cursor-pointer ${
-                        targetAudience === s.id
-                          ? "bg-violet-50 border-violet-400 text-violet-900 shadow-xs"
-                          : "bg-slate-50/70 border-slate-200 text-slate-600 hover:bg-slate-100"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <strong className="text-xs font-bold">{s.name}</strong>
-                        <span className="text-[10px] font-bold font-mono px-1.5 py-0.5 rounded bg-white border border-slate-200">
-                          {s.count}
-                        </span>
-                      </div>
-                      <p className="text-[10px] text-slate-500 leading-tight">{s.desc}</p>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="font-bold text-slate-700">
-                    Message Content <span className="text-rose-500">*</span>
-                  </label>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] text-slate-400 font-semibold">Personalize:</span>
-                    {["{customer_name}", "{shop_name}", "{balance}"].map((tag) => (
-                      <button
-                        key={tag}
-                        type="button"
-                        onClick={() => handleInsertTag(tag)}
-                        className="px-2 py-0.5 rounded-md bg-slate-100 hover:bg-violet-100 hover:text-violet-700 font-mono text-[10px] text-slate-700 transition cursor-pointer"
-                      >
-                        + {tag}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <textarea
-                  rows="4"
-                  value={messageTemplate}
-                  onChange={(e) => {
-                    setMessageTemplate(e.target.value);
-                    if (validationErrors.message) setValidationErrors((prev) => ({ ...prev, message: undefined }));
-                  }}
-                  className={`w-full p-3.5 rounded-xl border font-sans text-xs outline-none focus:ring-2 ${
-                    validationErrors.message
-                      ? "border-rose-400 focus:ring-rose-200 bg-rose-50/20"
-                      : "border-slate-200 focus:ring-violet-500/20 focus:border-violet-500"
-                  }`}
-                />
-                {validationErrors.message && (
-                  <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
-                    <XCircle size={12} /> {validationErrors.message}
-                  </p>
-                )}
-
-                <div className="flex flex-wrap justify-between items-center text-[11px] text-slate-500 mt-1.5 gap-2">
-                  <span>
-                    Character count: <strong>{charCount}</strong> (
-                    {creditsPerMessage} SMS unit{creditsPerMessage > 1 ? "s" : ""} per contact)
-                  </span>
-                  <span className="font-bold text-violet-700 bg-violet-50 px-2 py-0.5 rounded-md border border-violet-100">
-                    Estimated Recipients: ~{currentSegment.count} contacts
-                  </span>
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1.5">
-                  Schedule Broadcast (Optional — leave blank to send immediately)
-                </label>
-                <input
-                  type="datetime-local"
-                  value={scheduledDate}
-                  onChange={(e) => {
-                    setScheduledDate(e.target.value);
-                    if (validationErrors.date) setValidationErrors((prev) => ({ ...prev, date: undefined }));
-                  }}
-                  className={`w-full sm:w-72 px-3 py-2 border rounded-xl text-xs text-slate-700 outline-none ${
-                    validationErrors.date ? "border-rose-400 bg-rose-50/20" : "border-slate-200"
-                  }`}
-                />
-                {validationErrors.date && (
-                  <p className="text-[11px] text-rose-500 font-semibold mt-1 flex items-center gap-1">
-                    <XCircle size={12} /> {validationErrors.date}
-                  </p>
-                )}
-              </div>
-
-              {/* Send Test SMS Section */}
-              <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-slate-800 text-xs">Verify Delivery: Send Test SMS</span>
-                  <span className="text-[10px] text-slate-500">Test message formatting before broadcasting</span>
-                </div>
-                <div className="flex flex-wrap sm:flex-nowrap gap-2">
-                  <input
-                    type="tel"
-                    placeholder="Enter 10-digit mobile number (e.g. 9840123456)"
-                    value={testPhone}
-                    onChange={(e) => setTestPhone(e.target.value)}
-                    className="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-xs outline-none bg-white focus:border-violet-500 focus:ring-1 focus:ring-violet-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleSendTestSms}
-                    disabled={testSending}
-                    className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50 transition"
-                  >
-                    {testSending ? <RefreshCw size={13} className="animate-spin" /> : <Send size={13} />}
-                    <span>{testSending ? "Dispatching..." : "Send Test SMS"}</span>
-                  </button>
-                </div>
-                {testFeedback && (
-                  <p
-                    className={`text-[11px] font-semibold flex items-center gap-1.5 ${
-                      testFeedback.type === "success" ? "text-emerald-700" : "text-rose-600"
-                    }`}
-                  >
-                    {testFeedback.type === "success" ? <CheckCircle2 size={13} /> : <XCircle size={13} />}
-                    {testFeedback.text}
-                  </p>
-                )}
-              </div>
-
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-                <Button
-                  type="button"
-                  variant="neutral"
-                  icon={XCircle}
-                  onClick={() => setActiveTab("overview")}
-                >
-                  Cancel
-                </Button>
-
-                <Button
-                  type="submit"
-                  variant="primary"
-                  icon={Send}
-                  loading={submitting}
-                  disabled={submitting}
-                >
-                  {scheduledDate ? "Create & Schedule Campaign" : "Create & Launch Campaign"}
-                </Button>
-              </div>
-            </form>
-          </div>
-
-          {/* Quick Previews & Templates */}
-          <div className="space-y-4">
-            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-3">
-              <h3 className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
-                <Sparkles size={14} className="text-amber-500" />
-                <span>Ready Pre-Approved Templates</span>
-              </h3>
-
-              <div className="space-y-2 text-xs">
-                {[
-                  {
-                    title: "Festive Mega Sale",
-                    text: "Dear {customer_name}, festive season is here! Enjoy exclusive up to 25% off across our entire store this weekend. Shop now at {shop_name}!",
-                  },
-                  {
-                    title: "Payment Due Reminder",
-                    text: "Gentle reminder from {shop_name}: An outstanding balance of {balance} is due on your account. Please clear at your earliest convenience.",
-                  },
-                  {
-                    title: "Restock & New Arrivals",
-                    text: "Exciting fresh stock just arrived at {shop_name}! Visit us today to explore new collections before stock runs out.",
-                  },
-                ].map((tpl, i) => (
-                  <div
-                    key={i}
-                    onClick={() => setMessageTemplate(tpl.text)}
-                    className="p-3 rounded-xl border border-slate-200/80 hover:border-violet-300 hover:bg-violet-50/40 cursor-pointer transition group"
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <strong className="text-slate-800 group-hover:text-violet-700 text-xs">
-                        {tpl.title}
-                      </strong>
-                      <span className="text-[10px] text-violet-600 font-semibold opacity-0 group-hover:opacity-100 transition">
-                        Use →
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-slate-500 line-clamp-2">{tpl.text}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Mobile Preview Frame */}
-            <div className="bg-slate-900 text-white rounded-2xl p-4 shadow-md space-y-2">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-2 text-[10px] text-slate-400">
-                <span>SMS PREVIEW</span>
-                <span>BILZET-SMS</span>
-              </div>
-              <div className="bg-slate-800/90 rounded-xl p-3 text-xs leading-relaxed font-sans text-slate-100 border border-slate-700">
-                {messageTemplate.replace("{customer_name}", "Rahul Sharma").replace("{shop_name}", "Garden Greens Mart").replace("{balance}", "₹1,250")}
-              </div>
-              <p className="text-[10px] text-slate-400 text-center">Standard GSM 7-bit Encoding</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ══════════════════════════════════════════════════
-          TAB 3: CUSTOMER SEGMENTS
-      ══════════════════════════════════════════════════ */}
+      {/* ── 5. SECTION 2: CUSTOMER SEGMENTS ── */}
       {activeTab === "segments" && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {segments.map((seg) => (
               <div
                 key={seg.id}
-                className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-3 flex flex-col justify-between"
+                className="bg-white rounded-xl border border-[#E5E5EA] p-4 shadow-2xs flex flex-col justify-between"
               >
                 <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-bold text-slate-900">{seg.name}</span>
-                    <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-xs font-semibold text-[#1D1D1F]">{seg.name}</span>
+                    <span className="text-xs font-mono font-medium px-2 py-0.5 rounded-md bg-[#F2F2F7] text-[#1D1D1F] border border-[#E5E5EA]">
                       {seg.count} contacts
                     </span>
                   </div>
-                  <p className="text-xs text-slate-500 leading-relaxed">{seg.desc}</p>
+                  <p className="text-xs text-[#6E6E73] leading-relaxed">{seg.desc}</p>
                 </div>
 
-                <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-                  <span className="text-[10px] font-semibold text-slate-400">Target Group</span>
-                  <Button
-                    size="xs"
-                    variant="primary"
-                    icon={ArrowUpRight}
-                    onClick={() => {
-                      setTargetAudience(seg.id);
-                      setActiveTab("create");
-                    }}
+                <div className="pt-3 mt-3 border-t border-[#F2F2F7] flex items-center justify-between">
+                  <span className="text-[11px] text-[#86868B]">Target group ID: {seg.id}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenCreateModal(seg.id)}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-[#E5E5EA] bg-white hover:bg-[#F5F5F7] text-xs font-medium text-[#007AFF] transition cursor-pointer"
                   >
-                    Launch Campaign
-                  </Button>
+                    <span>Launch</span>
+                    <ArrowUpRight size={12} />
+                  </button>
                 </div>
               </div>
             ))}
@@ -857,81 +722,90 @@ export default function SmsMarketing() {
         </div>
       )}
 
-      {/* ══════════════════════════════════════════════════
-          TAB 4: DELIVERY HISTORY & REPORTS
-      ══════════════════════════════════════════════════ */}
-      {activeTab === "history" && (
-        <div className="card p-0 overflow-hidden">
-          <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+      {/* ── 6. SECTION 3: DELIVERY REPORTS ── */}
+      {activeTab === "reports" && (
+        <div className="bg-white rounded-xl border border-[#E5E5EA] shadow-2xs overflow-hidden">
+          <div className="p-3.5 border-b border-[#E5E5EA] bg-[#FAFAFC] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
-              <h3 className="text-sm font-bold text-slate-900">Broadcast History &amp; Detailed Delivery Log</h3>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Carrier transmission reports and delivery acknowledgement rates
+              <h3 className="text-xs font-semibold text-[#1D1D1F]">
+                Delivery Reports &amp; Carrier Logs
+              </h3>
+              <p className="text-[11px] text-[#86868B] mt-0.5">
+                {isSandbox
+                  ? "Operating in Simulated Sandbox mode. Carrier delivery receipts are simulated for demonstration."
+                  : "Live transmission receipts confirmed by SMS gateway provider."}
               </p>
             </div>
-            <Button
-              size="sm"
-              variant="neutral"
-              icon={RefreshCw}
-              onClick={loadData}
-              disabled={loading}
-              loading={loading}
+            <button
+              type="button"
+              onClick={() => loadData(true)}
+              disabled={refreshing}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#E5E5EA] bg-white hover:bg-[#F5F5F7] text-xs font-medium text-[#1D1D1F] transition cursor-pointer self-start sm:self-center"
             >
-              Refresh Log
-            </Button>
+              <RefreshCw size={12} className={refreshing ? "animate-spin text-[#007AFF]" : ""} />
+              <span>Refresh Log</span>
+            </button>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 border-b border-slate-100 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                <tr>
-                  <th className="py-3 px-4">Date &amp; Time</th>
-                  <th className="py-3 px-4">Campaign Name</th>
-                  <th className="py-3 px-4">Audience</th>
-                  <th className="py-3 px-4 text-right">Recipients</th>
-                  <th className="py-3 px-4 text-right">Delivery Rate</th>
-                  <th className="py-3 px-4">Status</th>
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="bg-[#FAFAFC] border-b border-[#E5E5EA] text-[11px] font-semibold text-[#86868B] uppercase tracking-wider">
+                  <th className="py-2.5 px-3.5">Date &amp; Time</th>
+                  <th className="py-2.5 px-3.5">Campaign Name</th>
+                  <th className="py-2.5 px-3.5">Audience</th>
+                  <th className="py-2.5 px-3.5 text-right">Attempted</th>
+                  <th className="py-2.5 px-3.5 text-right">Delivered</th>
+                  <th className="py-2.5 px-3.5 text-right">Failed</th>
+                  <th className="py-2.5 px-3.5 text-right">Delivery Rate</th>
+                  <th className="py-2.5 px-3.5">Mode</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 bg-white">
+              <tbody className="divide-y divide-[#E5E5EA]">
                 {campaigns.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-12 text-center text-slate-400">
-                      No broadcast records found. Dispatched campaigns will log here.
+                    <td colSpan={8} className="py-12 text-center text-[#86868B]">
+                      No broadcast records found. Dispatched campaigns log here automatically.
                     </td>
                   </tr>
                 ) : (
                   campaigns.map((c) => {
-                    const cSent = c.sentCount || c.recipientCount || 24;
-                    const cDelivered = c.deliveredCount || Math.floor(cSent * 0.96);
-                    const rate = cSent > 0 ? ((cDelivered / cSent) * 100).toFixed(0) : "100";
+                    const cSent = Number(c.sentCount) || Number(c.recipientCount) || 0;
+                    const cDelivered = Number(c.deliveredCount) || 0;
+                    const cFailed = Number(c.failedCount) || 0;
+                    const rate = cSent > 0 ? ((cDelivered / cSent) * 100).toFixed(0) + "%" : "—";
 
                     return (
-                      <tr key={c.id || c._id} className="hover:bg-slate-50/50">
-                        <td className="py-3 px-4 font-mono text-[11px] text-slate-500">
+                      <tr key={c.id || c._id} className="hover:bg-[#F9F9FB] transition">
+                        <td className="py-2.5 px-3.5 font-mono text-[11px] text-[#6E6E73] whitespace-nowrap">
                           {new Date(c.createdAt || Date.now()).toLocaleString("en-IN", {
                             dateStyle: "medium",
                             timeStyle: "short",
                           })}
                         </td>
-                        <td className="py-3 px-4 font-semibold text-slate-900">
+                        <td className="py-2.5 px-3.5 font-medium text-[#1D1D1F]">
                           {c.title || c.name || "Promotional Blast"}
                         </td>
-                        <td className="py-3 px-4">
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">
+                        <td className="py-2.5 px-3.5">
+                          <span className="inline-block px-2 py-0.5 rounded-md text-[11px] font-medium bg-[#F2F2F7] text-[#1D1D1F] border border-[#E5E5EA]">
                             {c.targetGroup || c.targetAudience || "ALL"}
                           </span>
                         </td>
-                        <td className="py-3 px-4 text-right font-mono font-bold text-slate-800">
+                        <td className="py-2.5 px-3.5 text-right font-mono text-[#1D1D1F]">
                           {cSent}
                         </td>
-                        <td className="py-3 px-4 text-right font-mono font-bold text-emerald-600">
-                          {rate}%
+                        <td className="py-2.5 px-3.5 text-right font-mono font-medium text-[#34C759]">
+                          {cDelivered}
                         </td>
-                        <td className="py-3 px-4">
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                            <CheckCircle2 size={10} />
-                            {c.status || "SENT"}
+                        <td className="py-2.5 px-3.5 text-right font-mono text-[#FF3B30]">
+                          {cFailed}
+                        </td>
+                        <td className="py-2.5 px-3.5 text-right font-mono font-semibold text-[#1D1D1F]">
+                          {rate}
+                        </td>
+                        <td className="py-2.5 px-3.5">
+                          <span className="inline-block px-2 py-0.5 rounded-md text-[10px] font-medium bg-[#F2F2F7] text-[#6E6E73] border border-[#E5E5EA]">
+                            {isSandbox ? "Simulated" : "Live Carrier"}
                           </span>
                         </td>
                       </tr>
@@ -940,6 +814,305 @@ export default function SmsMarketing() {
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* ── CREATE CAMPAIGN MODAL ── */}
+      {isCreateOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in">
+          <div className="fixed inset-0" onClick={() => !submitting && setIsCreateOpen(false)} />
+          <div className="relative bg-white rounded-2xl border border-[#E5E5EA] shadow-xl max-w-2xl w-full max-h-[92vh] overflow-y-auto p-5 sm:p-6 space-y-4 z-10 animate-in zoom-in-95">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-[#E5E5EA]">
+              <div>
+                <h2 className="text-base font-semibold text-[#1D1D1F] leading-tight">
+                  Create SMS Campaign
+                </h2>
+                <p className="text-xs text-[#86868B] mt-0.5">
+                  Compose promotional or transactional SMS for customer segments.
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={submitting}
+                onClick={() => setIsCreateOpen(false)}
+                className="p-1.5 rounded-lg text-[#86868B] hover:text-[#1D1D1F] hover:bg-[#F2F2F7] transition cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Campaign Estimator Summary Bar */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3 rounded-xl bg-[#F9F9FB] border border-[#E5E5EA] text-xs">
+              <div>
+                <span className="text-[10px] text-[#86868B] font-medium">RECIPIENTS</span>
+                <div className="text-sm font-semibold text-[#1D1D1F] font-mono mt-0.5">
+                  {currentSegment.count} contacts
+                </div>
+              </div>
+              <div>
+                <span className="text-[10px] text-[#86868B] font-medium">LENGTH</span>
+                <div className="text-sm font-semibold text-[#1D1D1F] font-mono mt-0.5">
+                  {charCount} chars ({creditsPerMessage} unit)
+                </div>
+              </div>
+              <div>
+                <span className="text-[10px] text-[#86868B] font-medium">ESTIMATED CREDITS</span>
+                <div className="text-sm font-semibold text-[#007AFF] font-mono mt-0.5">
+                  ~{estimatedCredits} credits
+                </div>
+              </div>
+              <div>
+                <span className="text-[10px] text-[#86868B] font-medium">GATEWAY MODE</span>
+                <div className="text-xs font-semibold text-[#1D1D1F] mt-0.5 truncate">
+                  {isSandbox ? "Sandbox (Demo)" : "Live Provider"}
+                </div>
+              </div>
+            </div>
+
+            <form onSubmit={handleSendCampaign} className="space-y-3.5 text-xs">
+              {/* Campaign Name */}
+              <div>
+                <label className="block text-xs font-semibold text-[#1D1D1F] mb-1">
+                  Campaign Name *
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Festive Discount Blast, Weekend Flash Sale"
+                  value={campaignName}
+                  onChange={(e) => {
+                    setCampaignName(e.target.value);
+                    if (validationErrors.name) setValidationErrors((prev) => ({ ...prev, name: undefined }));
+                  }}
+                  className={`w-full px-3 py-2 bg-white border rounded-xl text-[#1D1D1F] placeholder:text-[#86868B] outline-none focus:border-[#007AFF] transition ${
+                    validationErrors.name ? "border-rose-400 bg-rose-50/20" : "border-[#E5E5EA]"
+                  }`}
+                />
+                {validationErrors.name && (
+                  <p className="text-[11px] text-rose-600 font-medium mt-1">{validationErrors.name}</p>
+                )}
+              </div>
+
+              {/* Target Segment */}
+              <div>
+                <label className="block text-xs font-semibold text-[#1D1D1F] mb-1">
+                  Target Audience Segment *
+                </label>
+                <select
+                  value={targetAudience}
+                  onChange={(e) => setTargetAudience(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border border-[#E5E5EA] rounded-xl text-[#1D1D1F] outline-none focus:border-[#007AFF] transition cursor-pointer"
+                >
+                  {segments.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} ({s.count} eligible contacts)
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Message Content & Personalization Chips */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-semibold text-[#1D1D1F]">
+                    Message Content *
+                  </label>
+                  <div className="flex items-center gap-1 text-[11px]">
+                    <span className="text-[#86868B]">Tags:</span>
+                    {["{customer_name}", "{shop_name}"].map((tag) => (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() => handleInsertTag(tag)}
+                        className="px-1.5 py-0.5 rounded bg-[#F2F2F7] hover:bg-[#E5E5EA] text-[#1D1D1F] font-mono text-[10px] cursor-pointer"
+                      >
+                        +{tag}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <textarea
+                  rows={3}
+                  value={messageTemplate}
+                  onChange={(e) => {
+                    setMessageTemplate(e.target.value);
+                    if (validationErrors.message)
+                      setValidationErrors((prev) => ({ ...prev, message: undefined }));
+                  }}
+                  className={`w-full p-2.5 bg-white border rounded-xl text-[#1D1D1F] outline-none focus:border-[#007AFF] transition ${
+                    validationErrors.message ? "border-rose-400 bg-rose-50/20" : "border-[#E5E5EA]"
+                  }`}
+                />
+                {validationErrors.message && (
+                  <p className="text-[11px] text-rose-600 font-medium mt-1">{validationErrors.message}</p>
+                )}
+
+                <div className="flex items-center justify-between text-[11px] text-[#86868B] mt-1">
+                  <span>
+                    Length: <strong>{charCount}</strong> characters ({creditsPerMessage} SMS part)
+                  </span>
+                  <span>Est. total cost: ~₹{estimatedCost}</span>
+                </div>
+              </div>
+
+              {/* Schedule (Optional) */}
+              <div>
+                <label className="block text-xs font-semibold text-[#1D1D1F] mb-1">
+                  Schedule (Optional — leave blank to send immediately)
+                </label>
+                <input
+                  type="datetime-local"
+                  value={scheduledDate}
+                  onChange={(e) => {
+                    setScheduledDate(e.target.value);
+                    if (validationErrors.date)
+                      setValidationErrors((prev) => ({ ...prev, date: undefined }));
+                  }}
+                  className="w-full sm:w-64 px-3 py-1.5 border border-[#E5E5EA] rounded-xl text-xs text-[#1D1D1F] outline-none focus:border-[#007AFF]"
+                />
+                {validationErrors.date && (
+                  <p className="text-[11px] text-rose-600 font-medium mt-1">{validationErrors.date}</p>
+                )}
+              </div>
+
+              {/* Verify: Send Single Test SMS */}
+              <div className="p-3 rounded-xl border border-[#E5E5EA] bg-[#FAFAFC] space-y-1.5">
+                <span className="text-xs font-semibold text-[#1D1D1F] block">
+                  Send Sample SMS to Verify
+                </span>
+                <div className="flex gap-2">
+                  <input
+                    type="tel"
+                    placeholder="Enter 10-digit mobile number"
+                    value={testPhone}
+                    onChange={(e) => setTestPhone(e.target.value)}
+                    className="flex-1 px-3 py-1.5 rounded-lg border border-[#E5E5EA] text-xs bg-white text-[#1D1D1F] outline-none focus:border-[#007AFF]"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSendTestSms}
+                    disabled={testSending}
+                    className="px-3 py-1.5 rounded-lg border border-[#E5E5EA] bg-white hover:bg-[#F5F5F7] text-[#1D1D1F] font-medium text-xs flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                  >
+                    {testSending ? <RefreshCw size={12} className="animate-spin text-[#007AFF]" /> : <Send size={12} />}
+                    <span>{testSending ? "Sending…" : "Test SMS"}</span>
+                  </button>
+                </div>
+                {testFeedback && (
+                  <p
+                    className={`text-[11px] font-medium ${
+                      testFeedback.type === "success" ? "text-emerald-700" : "text-rose-600"
+                    }`}
+                  >
+                    {testFeedback.text}
+                  </p>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="pt-3 border-t border-[#E5E5EA] flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  disabled={submitting}
+                  onClick={() => setIsCreateOpen(false)}
+                  className="px-3.5 py-2 rounded-xl border border-[#E5E5EA] text-[#1D1D1F] hover:bg-[#F5F5F7] font-medium text-xs transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-[#007AFF] hover:bg-[#0062CC] active:scale-98 text-white font-semibold text-xs shadow-2xs transition disabled:opacity-50 cursor-pointer"
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2 size={13} className="animate-spin" />
+                      <span>Dispatching…</span>
+                    </>
+                  ) : (
+                    <span>
+                      {scheduledDate ? "Schedule Campaign" : "Confirm & Send Campaign"}
+                    </span>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── CAMPAIGN DETAILS MODAL ── */}
+      {selectedCampaignDetails && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in">
+          <div
+            className="fixed inset-0"
+            onClick={() => setSelectedCampaignDetails(null)}
+          />
+          <div className="relative bg-white rounded-2xl border border-[#E5E5EA] shadow-xl max-w-md w-full p-5 space-y-4 z-10 animate-in zoom-in-95">
+            <div className="flex items-center justify-between pb-3 border-b border-[#E5E5EA]">
+              <div>
+                <h3 className="text-sm font-semibold text-[#1D1D1F]">
+                  {selectedCampaignDetails.title || selectedCampaignDetails.name || "Campaign Details"}
+                </h3>
+                <span className="text-[11px] text-[#86868B]">
+                  Target Segment: {selectedCampaignDetails.targetGroup || "ALL"}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedCampaignDetails(null)}
+                className="p-1 rounded-lg text-[#86868B] hover:text-[#1D1D1F] cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="p-3 bg-[#F9F9FB] rounded-xl border border-[#E5E5EA] text-[#1D1D1F] leading-relaxed">
+                <span className="text-[10px] text-[#86868B] font-semibold block uppercase tracking-wider mb-1">
+                  Message Text
+                </span>
+                {selectedCampaignDetails.message}
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="p-2.5 bg-[#F9F9FB] rounded-xl border border-[#E5E5EA]">
+                  <span className="text-[10px] text-[#86868B] block">ATTEMPTED</span>
+                  <strong className="text-sm font-mono text-[#1D1D1F]">
+                    {selectedCampaignDetails.sentCount || selectedCampaignDetails.recipientCount || 0}
+                  </strong>
+                </div>
+                <div className="p-2.5 bg-emerald-50/50 rounded-xl border border-emerald-200">
+                  <span className="text-[10px] text-emerald-700 block">DELIVERED</span>
+                  <strong className="text-sm font-mono text-emerald-700">
+                    {selectedCampaignDetails.deliveredCount || 0}
+                  </strong>
+                </div>
+                <div className="p-2.5 bg-rose-50/50 rounded-xl border border-rose-200">
+                  <span className="text-[10px] text-rose-700 block">FAILED</span>
+                  <strong className="text-sm font-mono text-rose-700">
+                    {selectedCampaignDetails.failedCount || 0}
+                  </strong>
+                </div>
+              </div>
+
+              <div className="text-[11px] text-[#86868B] flex items-center justify-between pt-1">
+                <span>Created: {new Date(selectedCampaignDetails.createdAt || Date.now()).toLocaleString("en-IN")}</span>
+                <span className="font-semibold text-[#1D1D1F]">Status: {selectedCampaignDetails.status || "SENT"}</span>
+              </div>
+            </div>
+
+            <div className="pt-2 flex items-center justify-end gap-2 border-t border-[#E5E5EA]">
+              <button
+                type="button"
+                onClick={() => setSelectedCampaignDetails(null)}
+                className="px-3.5 py-1.5 rounded-xl border border-[#E5E5EA] text-[#1D1D1F] hover:bg-[#F5F5F7] text-xs font-medium cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

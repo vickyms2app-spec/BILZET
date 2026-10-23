@@ -15,13 +15,19 @@ export const useStore = create((set, get) => ({
     try {
       const res = await storesApi.list();
       const list = res?.stores || [];
-      const currentId = res?.currentStoreId || localStorage.getItem("bilzet_active_store_id");
+      const cachedId = localStorage.getItem("bilzet_active_store_id");
+      const currentId = res?.currentStoreId || cachedId;
 
       let active = list.find((s) => s.id === currentId) || res?.currentStore || list[0] || null;
 
       if (active) {
         localStorage.setItem("bilzet_active_store_id", active.id);
         localStorage.setItem("bilzet_active_store", JSON.stringify(active));
+      } else {
+        // No valid store found — clear any stale cached store ID so it stops
+        // being sent as x-business-id on every request and flooding backend logs.
+        localStorage.removeItem("bilzet_active_store_id");
+        localStorage.removeItem("bilzet_active_store");
       }
 
       set({
@@ -107,18 +113,37 @@ export const useStore = create((set, get) => ({
   createStore: async (storeData) => {
     set({ switching: true });
     try {
-      await storesApi.create(storeData);
+      const res = await storesApi.create(storeData);
+      const newStore = res?.store;
+
+      if (res?.token) {
+        localStorage.setItem("bilzet_access_token", res.token);
+        localStorage.setItem("token", res.token);
+      }
+
+      if (newStore?.id) {
+        localStorage.setItem("bilzet_active_store_id", newStore.id);
+        localStorage.setItem("bilzet_active_store", JSON.stringify(newStore));
+      }
+
       const updated = await get().fetchStores();
       set({
         switching: false,
-        toast: { message: "Store branch created successfully.", type: "success" },
+        toast: { message: `Store "${newStore?.name || 'Store'}" created successfully.`, type: "success" },
       });
+
+      if (newStore?.id) {
+        window.dispatchEvent(
+          new CustomEvent("bilzet:store-changed", { detail: { storeId: newStore.id, store: newStore } })
+        );
+      }
+
       setTimeout(() => set({ toast: null }), 3000);
       return updated;
     } catch (err) {
       set({
         switching: false,
-        toast: { message: "Unable to create store. Please try again.", type: "error" },
+        toast: { message: err?.response?.data?.message || err?.message || "Unable to create store. Please try again.", type: "error" },
       });
       setTimeout(() => set({ toast: null }), 3500);
       throw err;

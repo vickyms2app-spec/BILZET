@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../store/auth";
 import Layout from "../components/layout/Layout";
 import NotFound from "../pages/NotFound";
 import Login from "../pages/Login";
+import Signup from "../pages/Signup";
 import Dashboard from "../pages/Dashboard";
 import Billing from "../pages/Billing";
 import Products from "../pages/Products";
@@ -16,6 +17,7 @@ import Reports from "../pages/Reports";
 import Settings from "../pages/Settings";
 import Admin from "../pages/Admin";
 import Invoices from "../pages/Invoices";
+import Quotations from "../pages/Quotations";
 import Gst from "../pages/Gst";
 import CaConnect from "../pages/CaConnect";
 import CaPortal from "../pages/CaPortal";
@@ -23,6 +25,9 @@ import AcceptCaInvitation from "../pages/AcceptCaInvitation";
 import Referral from "../pages/Referral";
 import Plans from "../pages/Plans";
 import Support from "../pages/Support";
+import Onboarding from "../pages/Onboarding";
+import RegisterShop from "../pages/RegisterShop";
+import JoinTeam from "../pages/JoinTeam";
 import { ClerkSsoCallback } from "../components/auth/ClerkAuth";
 import { isAdminEmail, isAdminUser, isSuperAdminUser } from "../utils/security";
 import { usePermissions } from "../hooks/usePermissions";
@@ -101,8 +106,8 @@ function ClerkProtectedWrapper({ children, roles, permission }) {
   const { isLoaded: isClerkLoaded, isSignedIn } = useClerkAuth();
   const { hasPermission } = usePermissions();
 
-  // Do NOT redirect while Clerk is loading, or while user is signed in to Clerk and syncing with DB
-  if (!isClerkLoaded || (isSignedIn && !user) || authLoading) {
+  // If we don't have a local user session yet, wait for Clerk to load or auth loading to complete
+  if ((!user && !isClerkLoaded) || (isSignedIn && !user) || authLoading) {
     return <AuthLoadingScreen />;
   }
 
@@ -152,6 +157,40 @@ function AdminEmailGuard({ children }) {
   return children;
 }
 
+function RedirectToAcceptInvitation() {
+  const location = useLocation();
+  return <Navigate to={`/accept-invitation${location.search}`} replace />;
+}
+
+function CaPortalGuard() {
+  const { user } = useAuth();
+  if (user && (user.role === "ADMIN" || user.role === "OWNER") && !user.isSuperAdmin) {
+    return <Navigate to="/ca-connect" replace />;
+  }
+  return <CaPortal />;
+}
+
+function RegisterShopGuard() {
+  const { user } = useAuth();
+  if (
+    user &&
+    (user.role === "STAFF" ||
+      user.role === "CASHIER" ||
+      user.role === "CA" ||
+      user.role === "ACCOUNTANT")
+  ) {
+    return <Navigate to={getWorkspaceRedirectPath(user)} replace />;
+  }
+  return <RegisterShop />;
+}
+
+function AuthenticatedOnly({ children }) {
+  const { user, loading } = useAuth();
+  if (loading) return <AuthLoadingScreen />;
+  if (!user) return <Navigate to="/sign-in" replace />;
+  return children;
+}
+
 const Protected = hasClerk ? ClerkProtectedWrapper : StandardProtectedWrapper;
 
 export default function AppRoutes() {
@@ -160,13 +199,45 @@ export default function AppRoutes() {
       {/* Public Authentication routes */}
       <Route path="/sign-in/*" element={<Login initialMode="login" />} />
       <Route path="/sign-in" element={<Login initialMode="login" />} />
-      <Route path="/sign-up/*" element={<Login initialMode="register" />} />
-      <Route path="/sign-up" element={<Login initialMode="register" />} />
+      <Route path="/sign-up/*" element={<Signup />} />
+      <Route path="/sign-up" element={<Signup />} />
       <Route path="/login" element={<Navigate to="/sign-in" replace />} />
       <Route path="/register" element={<Navigate to="/sign-up" replace />} />
       <Route path="/sso-callback" element={<ClerkSsoCallback />} />
       <Route path="/sso-callback/*" element={<ClerkSsoCallback />} />
       <Route path="/" element={<RootRedirect />} />
+      <Route
+        path="/onboarding"
+        element={
+          <AuthenticatedOnly>
+            <Onboarding />
+          </AuthenticatedOnly>
+        }
+      />
+      <Route
+        path="/register-shop"
+        element={
+          <AuthenticatedOnly>
+            <RegisterShopGuard />
+          </AuthenticatedOnly>
+        }
+      />
+      <Route
+        path="/join-team"
+        element={
+          <AuthenticatedOnly>
+            <JoinTeam />
+          </AuthenticatedOnly>
+        }
+      />
+      <Route
+        path="/join-our-team"
+        element={
+          <AuthenticatedOnly>
+            <JoinTeam />
+          </AuthenticatedOnly>
+        }
+      />
       <Route
         path="/dashboard"
         element={
@@ -180,6 +251,14 @@ export default function AppRoutes() {
         element={
           <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER", "MANAGER", "STAFF", "CASHIER"]}>
             <Billing />
+          </Protected>
+        }
+      />
+      <Route
+        path="/quotations"
+        element={
+          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER", "MANAGER", "STAFF", "CASHIER"]}>
+            <Quotations />
           </Protected>
         }
       />
@@ -223,9 +302,9 @@ export default function AppRoutes() {
           </Protected>
         }
       />
-      {/* CA Invitation Acceptance Routes (Publicly accessible with single-use token verification) */}
-      <Route path="/ca-connect/accept-invitation" element={<AcceptCaInvitation />} />
-      <Route path="/ca-portal/accept-invitation" element={<AcceptCaInvitation />} />
+      {/* CA Invitation Acceptance Routes (Canonical path: /accept-invitation) */}
+      <Route path="/ca-connect/accept-invitation" element={<RedirectToAcceptInvitation />} />
+      <Route path="/ca-portal/accept-invitation" element={<RedirectToAcceptInvitation />} />
       <Route path="/accept-invitation" element={<AcceptCaInvitation />} />
 
       <Route
@@ -239,18 +318,26 @@ export default function AppRoutes() {
       <Route
         path="/ca-portal"
         element={
-          <Protected roles={["CA", "SUPER_ADMIN", "ADMIN", "OWNER"]}>
-            <CaPortal />
+          <Protected roles={["CA", "ACCOUNTANT", "SUPER_ADMIN", "ADMIN", "OWNER"]}>
+            <CaPortalGuard />
           </Protected>
         }
       />
       <Route
         path="/ca-portal/:subTab"
         element={
-          <Protected roles={["CA", "SUPER_ADMIN", "ADMIN", "OWNER"]}>
-            <CaPortal />
+          <Protected roles={["CA", "ACCOUNTANT", "SUPER_ADMIN", "ADMIN", "OWNER"]}>
+            <CaPortalGuard />
           </Protected>
         }
+      />
+      <Route
+        path="/ca-referral"
+        element={<Navigate to="/ca-portal/referral" replace />}
+      />
+      <Route
+        path="/exceptions"
+        element={<Navigate to="/ca-portal/exceptions" replace />}
       />
       <Route
         path="/referral"
@@ -353,6 +440,78 @@ export default function AppRoutes() {
         element={
           <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER", "MANAGER"]}>
             <Settings defaultTab="team" />
+          </Protected>
+        }
+      />
+      <Route
+        path="/staff-management"
+        element={
+          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER", "MANAGER"]}>
+            <Settings defaultTab="team" />
+          </Protected>
+        }
+      />
+      <Route
+        path="/team-management"
+        element={
+          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER", "MANAGER"]}>
+            <Settings defaultTab="team" />
+          </Protected>
+        }
+      />
+      <Route
+        path="/sub-users"
+        element={
+          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER", "MANAGER"]}>
+            <Settings defaultTab="team" />
+          </Protected>
+        }
+      />
+      <Route
+        path="/team-sub-users"
+        element={
+          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER", "MANAGER"]}>
+            <Settings defaultTab="team" />
+          </Protected>
+        }
+      />
+      <Route
+        path="/team/users"
+        element={
+          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER", "MANAGER"]}>
+            <Settings defaultTab="team" />
+          </Protected>
+        }
+      />
+      <Route
+        path="/team/sub-users"
+        element={
+          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER", "MANAGER"]}>
+            <Settings defaultTab="team" />
+          </Protected>
+        }
+      />
+      <Route
+        path="/settings/team"
+        element={
+          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER", "MANAGER"]}>
+            <Settings defaultTab="team" />
+          </Protected>
+        }
+      />
+      <Route
+        path="/settings/users"
+        element={
+          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER", "MANAGER"]}>
+            <Settings defaultTab="team" />
+          </Protected>
+        }
+      />
+      <Route
+        path="/settings/roles"
+        element={
+          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER"]}>
+            <Settings defaultTab="roles" />
           </Protected>
         }
       />
@@ -533,6 +692,8 @@ export default function AppRoutes() {
       <Route path="/app-admin/users" element={<Navigate to="/admin?tab=users" replace />} />
       <Route path="/app-admin/subscriptions" element={<Navigate to="/admin?tab=overview" replace />} />
       <Route path="/app-admin/customers" element={<Navigate to="/customers" replace />} />
+      <Route path="/app-admin/referrals" element={<Navigate to="/admin?tab=referrals" replace />} />
+      <Route path="/admin/referrals" element={<Navigate to="/admin?tab=referrals" replace />} />
       <Route path="/app-admin/settings" element={<Navigate to="/admin?tab=vault" replace />} />
       <Route path="/app-admin/*" element={<Navigate to="/admin" replace />} />
 

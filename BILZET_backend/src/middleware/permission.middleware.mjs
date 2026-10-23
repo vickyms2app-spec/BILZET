@@ -20,12 +20,12 @@ export const requirePermission = (permissionKey) => {
       }
 
       // 1. Platform Super Admin bypasses tenant permission gates
-      if (user.role === 'SUPER_ADMIN') {
+      if (user.role === 'SUPER_ADMIN' || Boolean(user.isSuperAdmin)) {
         return next();
       }
 
-      // 2. Business Owner has full authority over their tenant
-      if (user.isOwner) {
+      // 2. Business Owner or Administrator has full authority over their tenant
+      if (user.isOwner || user.role === 'ADMIN' || user.role === 'OWNER') {
         return next();
       }
 
@@ -58,7 +58,15 @@ export const requireAnyPermission = (...permissionKeys) => {
       const user = req.user;
       if (!user) return next(ApiError.unauthorized('Authentication required'));
       if (!user.isActive) return next(ApiError.forbidden('Your account is deactivated.'));
-      if (user.role === 'SUPER_ADMIN' || user.isOwner) return next();
+      if (
+        user.role === 'SUPER_ADMIN' ||
+        Boolean(user.isSuperAdmin) ||
+        user.isOwner ||
+        user.role === 'ADMIN' ||
+        user.role === 'OWNER'
+      ) {
+        return next();
+      }
 
       const effectivePermissions = await getEffectivePermissions(user.id);
       const hasAny = permissionKeys.some((k) => effectivePermissions.has(k));
@@ -86,7 +94,15 @@ export const requireAnyPermission = (...permissionKeys) => {
 export const requireBusinessOwner = (req, res, next) => {
   const user = req.user;
   if (!user) return next(ApiError.unauthorized('Authentication required'));
-  if (user.role === 'SUPER_ADMIN' || user.isOwner) return next();
+  if (
+    user.role === 'SUPER_ADMIN' ||
+    Boolean(user.isSuperAdmin) ||
+    user.isOwner ||
+    user.role === 'ADMIN' ||
+    user.role === 'OWNER'
+  ) {
+    return next();
+  }
 
   return next(
     ApiError.forbidden('Only the primary business owner can perform this operation.')

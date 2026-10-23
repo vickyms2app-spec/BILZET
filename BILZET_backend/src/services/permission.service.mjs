@@ -37,13 +37,13 @@ export const getEffectivePermissions = async (userId) => {
   }
 
   // 1. Platform Super Admin has unrestricted access to all permissions
-  if (user.role === 'SUPER_ADMIN') {
+  if (user.role === 'SUPER_ADMIN' || Boolean(user.isSuperAdmin)) {
     const allPerms = await prisma.permission.findMany({ select: { key: true } });
     return new Set(allPerms.map((p) => p.key));
   }
 
-  // 2. Business Owner has full access to all tenant operations
-  if (user.isOwner) {
+  // 2. Business Owner or Administrator has full access to all tenant operations
+  if (user.isOwner || user.role === 'ADMIN' || user.role === 'OWNER') {
     const allPerms = await prisma.permission.findMany({ select: { key: true } });
     return new Set(allPerms.map((p) => p.key));
   }

@@ -16,4 +16,11 @@ router.post('/switch', storeController.switchStore);
 // Create a new store / branch (Admin only)
 router.post('/', storeController.createStore);
 
+// Register a new shop during onboarding (Validates owner role and creates business)
+router.post('/register-shop', storeController.registerShop);
+router.post('/register', storeController.registerShop);
+
+// Determine verified onboarding status from database
+router.get('/onboarding-status', storeController.getOnboardingStatus);
+
 export default router;

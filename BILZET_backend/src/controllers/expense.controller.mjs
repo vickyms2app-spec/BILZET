@@ -5,6 +5,7 @@ import prisma from '../config/prisma.mjs';
 import { recordAudit } from '../middleware/audit.middleware.mjs';
 import { AUDIT_ACTIONS } from '../utils/constants.mjs';
 import { getPaginationParams, buildPaginationMeta } from '../utils/pagination.mjs';
+import realtimeService from '../services/realtime.service.mjs';
 
 const normalizePaymentMethod = (method) => {
   if (!method) return 'CASH';
@@ -159,6 +160,13 @@ export const createExpense = asyncHandler(async (req, res) => {
     description: `Expense '${expense.title}' recorded for ₹${parsedAmount}`,
     req,
   }).catch(() => {});
+
+  try {
+    const targetBusinessId = effectiveBusinessId || 'default';
+    realtimeService.broadcastBusinessEvent(targetBusinessId, 'EXPENSE_CREATED', {
+      expense: mapExpense(expense),
+    }, { userId: effectiveUserId, action: 'EXPENSE_CREATED' });
+  } catch (_) {}
 
   return sendResponse(res, 201, { expense: mapExpense(expense) }, 'Expense created successfully');
 });

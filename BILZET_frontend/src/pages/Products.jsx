@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { productsApi, categoriesApi } from "../api";
 import {
   Plus,
@@ -24,6 +24,14 @@ import { apiError } from "../api/http";
 import Modal from "../components/common/Modal";
 import SearchBar from "../components/common/SearchBar";
 import Button, { CompactIconButton } from "../components/common/Button";
+import { useRealtimeSync } from "../hooks/useRealtimeSync";
+import { handleSmartFormKeyDown } from "../utils/keyboardNavigation";
+import {
+  GST_RATES,
+  isDecimalUnit,
+  formatCurrencyINR,
+  calculateProductPriceBreakdown,
+} from "../utils/taxCalculation";
 
 export default function Products() {
   // Navigation tabs: 'products' | 'categories'
@@ -38,15 +46,84 @@ export default function Products() {
   const [editProduct, setEditProduct] = useState(null);
   const [productErr, setProductErr] = useState("");
   const [productSuccess, setProductSuccess] = useState("");
+  const [productPriceMode, setProductPriceMode] = useState("INCLUSIVE");
+  const [modalSellingPrice, setModalSellingPrice] = useState(0);
+  const [modalGstRate, setModalGstRate] = useState(18);
+  const [modalUnit, setModalUnit] = useState("piece");
+  const [modalStock, setModalStock] = useState(0);
+  const [modalCategoryId, setModalCategoryId] = useState("");
+  const [hasManualGstOverride, setHasManualGstOverride] = useState(false);
+
+  // Live preview breakdown using shared tax calculation service
+  const previewBreakdown = useMemo(() => {
+    return calculateProductPriceBreakdown({
+      sellingPrice: modalSellingPrice,
+      gstRate: modalGstRate,
+      pricingMethod: productPriceMode,
+    });
+  }, [modalSellingPrice, modalGstRate, productPriceMode]);
+
+  // Sync modal state when opening for edit or new product
+  useEffect(() => {
+    if (openProductModal) {
+      if (editProduct) {
+        setProductPriceMode(
+          editProduct.isTaxInclusive || editProduct.pricingMethod === "INCLUSIVE"
+            ? "INCLUSIVE"
+            : "EXCLUSIVE"
+        );
+        setModalSellingPrice(Number(editProduct.sellingPrice || 0));
+        setModalGstRate(Number(editProduct.gstRate !== undefined ? editProduct.gstRate : 18));
+        setModalUnit(editProduct.unit || "piece");
+        setModalStock(Number(editProduct.stock || editProduct.currentStock || 0));
+        setModalCategoryId(
+          editProduct.categoryId ||
+          editProduct.category?._id ||
+          editProduct.category?.id ||
+          editProduct.category ||
+          ""
+        );
+        setHasManualGstOverride(true); // Preserve product-specific saved tax rate on edit
+      } else {
+        setProductPriceMode("INCLUSIVE");
+        setModalSellingPrice(0);
+        setModalUnit("piece");
+        setModalStock(0);
+        setModalCategoryId("");
+        setModalGstRate(18);
+        setHasManualGstOverride(false);
+      }
+    }
+  }, [openProductModal, editProduct]);
 
   // Category Index State
   const [categorySearch, setCategorySearch] = useState("");
   const [categorySortBy, setCategorySortBy] = useState("name"); // 'name' | 'products' | 'newest'
   const [openCategoryModal, setOpenCategoryModal] = useState(false);
   const [editCategory, setEditCategory] = useState(null);
+  const [categoryModalGstRate, setCategoryModalGstRate] = useState(18);
   const [categoryErr, setCategoryErr] = useState("");
   const [categorySuccess, setCategorySuccess] = useState("");
   const [categoryLoading, setCategoryLoading] = useState(false);
+  const productFormRef = useRef(null);
+  const categoryFormRef = useRef(null);
+
+  // Sync category modal state when opening for edit or new category
+  useEffect(() => {
+    if (openCategoryModal) {
+      if (editCategory) {
+        setCategoryModalGstRate(
+          Number(
+            editCategory.defaultGstRate !== undefined && editCategory.defaultGstRate !== null
+              ? editCategory.defaultGstRate
+              : 18
+          )
+        );
+      } else {
+        setCategoryModalGstRate(18);
+      }
+    }
+  }, [openCategoryModal, editCategory]);
 
   // Active Store Display
   const [activeStoreName, setActiveStoreName] = useState(() => {
@@ -113,6 +190,15 @@ export default function Products() {
     };
   }, [search, selectedCategory]);
 
+  // Real-time synchronization
+  useRealtimeSync(
+    ["PRODUCT_CREATED", "PRODUCT_UPDATED", "STOCK_ADJUSTED", "PURCHASE_CREATED"],
+    () => {
+      loadProducts();
+      loadCategories();
+    }
+  );
+
   // Product Save (Create / Edit)
   async function saveProduct(e) {
     e.preventDefault();
@@ -120,6 +206,41 @@ export default function Products() {
     setProductSuccess("");
     const f = new FormData(e.currentTarget);
     const catVal = f.get("category") || f.get("categoryId") || undefined;
+    const unitVal = f.get("unit") || modalUnit || "piece";
+
+    const stockRaw = f.get("stock");
+    const stockVal = stockRaw !== null && stockRaw !== undefined && stockRaw !== ""
+      ? Number(stockRaw)
+      : Number(modalStock || 0);
+
+    // Quantity validation (Requirement 1)
+    if (stockVal < 0) {
+      setProductErr("Quantity (Opening Stock) cannot be negative.");
+      return;
+    }
+    if (!isDecimalUnit(unitVal) && !Number.isInteger(stockVal)) {
+      setProductErr(`Unit "${unitVal}" requires a whole number quantity (e.g. 10).`);
+      return;
+    }
+
+    const sellingPriceVal = Number(f.get("sellingPrice") ?? modalSellingPrice ?? 0);
+    if (sellingPriceVal < 0) {
+      setProductErr("Selling price cannot be negative.");
+      return;
+    }
+
+    const purchasePriceVal = Number(f.get("purchasePrice") || 0);
+    if (purchasePriceVal < 0) {
+      setProductErr("Purchase price cannot be negative.");
+      return;
+    }
+
+    const gstRateVal = Number(f.get("gstRate") ?? modalGstRate ?? 0);
+    if (gstRateVal < 0 || gstRateVal > 100) {
+      setProductErr("GST rate must be between 0% and 100%.");
+      return;
+    }
+
     const p = {
       name: f.get("name")?.trim(),
       sku: f.get("sku")?.trim().toUpperCase(),
@@ -127,12 +248,14 @@ export default function Products() {
       category: catVal,
       categoryId: catVal,
       brand: f.get("brand")?.trim() || undefined,
-      unit: f.get("unit") || "piece",
-      purchasePrice: +f.get("purchasePrice") || 0,
-      sellingPrice: +f.get("sellingPrice") || 0,
-      gstRate: +f.get("gstRate") || 0,
-      stock: +f.get("stock") || 0,
-      minimumStock: +f.get("minimumStock") || 5,
+      unit: unitVal,
+      purchasePrice: purchasePriceVal,
+      sellingPrice: sellingPriceVal,
+      gstRate: gstRateVal,
+      isTaxInclusive: productPriceMode === "INCLUSIVE",
+      pricingMethod: productPriceMode,
+      stock: stockVal,
+      minimumStock: Number(f.get("minimumStock") || 5),
       isActive: true,
     };
     try {
@@ -183,9 +306,16 @@ export default function Products() {
     const catName = f.get("name")?.trim();
     const catDesc = f.get("description")?.trim();
     const isActive = f.get("isActive") === "on";
+    const rawGstRate = f.get("defaultGstRate") ?? categoryModalGstRate;
+    const defaultGstRate = Number(rawGstRate);
 
     if (!catName) {
       setCategoryErr("Category name is required.");
+      return;
+    }
+
+    if (!GST_RATES.includes(defaultGstRate)) {
+      setCategoryErr(`Default GST rate must be one of: ${GST_RATES.join("%, ")}%.`);
       return;
     }
 
@@ -195,16 +325,18 @@ export default function Products() {
         await categoriesApi.update(catId, {
           name: catName,
           description: catDesc,
+          defaultGstRate,
           isActive,
         });
-        setCategorySuccess(`Category renamed to "${catName}" and updated across catalog.`);
+        setCategorySuccess(`Category renamed to "${catName}" with ${defaultGstRate}% default GST.`);
       } else {
         await categoriesApi.create({
           name: catName,
           description: catDesc,
+          defaultGstRate,
           isActive,
         });
-        setCategorySuccess(`Category "${catName}" created successfully.`);
+        setCategorySuccess(`Category "${catName}" created with ${defaultGstRate}% default GST.`);
       }
 
       // Notify app that categories have updated (propagating names to products)
@@ -778,6 +910,7 @@ export default function Products() {
                       <th className="px-4 py-3 w-16">#</th>
                       <th className="px-4 py-3">Category Name</th>
                       <th className="px-4 py-3">Description</th>
+                      <th className="px-4 py-3">Default GST Rate</th>
                       <th className="px-4 py-3 text-center">Associated Products</th>
                       <th className="px-4 py-3">Status</th>
                       <th className="px-4 py-3 text-right">Actions</th>
@@ -807,6 +940,11 @@ export default function Products() {
                           </td>
                           <td className="px-4 py-3 text-slate-500 max-w-xs truncate">
                             {c.description || "—"}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200 text-[11px] font-semibold">
+                              {c.defaultGstRate !== undefined && c.defaultGstRate !== null ? c.defaultGstRate : 18}% GST
+                            </span>
                           </td>
                           <td className="px-4 py-3 text-center">
                             <span
@@ -894,24 +1032,40 @@ export default function Products() {
               variant="primary"
               size="sm"
               icon={Save}
+              onClick={() => {
+                productFormRef.current?.requestSubmit?.();
+              }}
             >
               {editProduct ? "Save Changes" : "Create Product"}
             </Button>
           </>
         }
       >
-        <form id="product-form" onSubmit={saveProduct} className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
+        <form
+          id="product-form"
+          ref={productFormRef}
+          onKeyDown={(e) => handleSmartFormKeyDown(e, productFormRef.current)}
+          onSubmit={saveProduct}
+          className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs max-h-[75vh] overflow-y-auto pr-1"
+        >
+          {productErr && (
+            <div className="sm:col-span-2 p-2.5 rounded-lg bg-rose-50 text-rose-700 border border-rose-200 text-xs font-medium">
+              {productErr}
+            </div>
+          )}
+          {/* ── ROW 1: Product Name ── */}
           <div className="sm:col-span-2">
             <label className="block font-semibold text-slate-700 mb-1">Product Name *</label>
             <input
               name="name"
               required
               defaultValue={editProduct?.name}
-              placeholder="e.g. Office Chair"
+              placeholder="e.g. Basmati Rice 5kg / Office Chair"
               className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 font-medium text-slate-800"
             />
           </div>
 
+          {/* ── ROW 2: SKU Code | Barcode ── */}
           <div>
             <label className="block font-semibold text-slate-700 mb-1">SKU Code *</label>
             <input
@@ -919,7 +1073,7 @@ export default function Products() {
               required
               defaultValue={editProduct?.sku}
               placeholder="e.g. OFC-1001"
-              className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 font-mono text-slate-800"
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 font-mono text-slate-800 uppercase"
             />
           </div>
 
@@ -928,29 +1082,47 @@ export default function Products() {
             <input
               name="barcode"
               defaultValue={editProduct?.barcode}
-              placeholder="e.g. 8901030383822"
+              placeholder="e.g. 8901030383822 (auto-generated if empty)"
               className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 font-mono text-slate-800"
             />
           </div>
 
+          {/* ── ROW 3: Category | Brand ── */}
           <div>
-            <label className="block font-semibold text-slate-700 mb-1">Category *</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block font-semibold text-slate-700">Category *</label>
+              {modalCategoryId && (
+                <span className="text-[10px] font-semibold text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-100">
+                  {cats.find((c) => (c.id || c._id) === modalCategoryId)?.defaultGstRate ?? 18}% default
+                </span>
+              )}
+            </div>
             <select
               name="category"
               required
-              defaultValue={
-                editProduct?.categoryId ||
-                editProduct?.category?._id ||
-                editProduct?.category?.id ||
-                editProduct?.category ||
-                ""
-              }
-              className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 bg-white text-slate-800"
+              value={modalCategoryId}
+              onChange={(e) => {
+                const newCatId = e.target.value;
+                setModalCategoryId(newCatId);
+                const cat = cats.find((c) => (c.id || c._id) === newCatId);
+                if (cat) {
+                  const catRate = Number(
+                    cat.defaultGstRate !== undefined && cat.defaultGstRate !== null
+                      ? cat.defaultGstRate
+                      : 18
+                  );
+                  // Auto-populate GST rate for new product if user hasn't manually entered a specific override
+                  if (!editProduct && !hasManualGstOverride) {
+                    setModalGstRate(catRate);
+                  }
+                }
+              }}
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 bg-white text-slate-800 font-medium"
             >
               <option value="">Select Category</option>
               {cats.map((c) => (
                 <option key={c.id || c._id} value={c.id || c._id}>
-                  {c.name}
+                  {c.name} ({c.defaultGstRate !== undefined && c.defaultGstRate !== null ? c.defaultGstRate : 18}% GST)
                 </option>
               ))}
             </select>
@@ -966,18 +1138,28 @@ export default function Products() {
             />
           </div>
 
+          {/* ── ROW 4: Unit | Purchase Price ── */}
           <div>
-            <label className="block font-semibold text-slate-700 mb-1">Unit</label>
+            <label className="block font-semibold text-slate-700 mb-1">Unit *</label>
             <select
               name="unit"
-              defaultValue={editProduct?.unit || "piece"}
-              className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 bg-white text-slate-800"
+              value={modalUnit}
+              onChange={(e) => setModalUnit(e.target.value)}
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 bg-white text-slate-800 font-medium"
             >
-              <option value="piece">piece</option>
-              <option value="kg">kg</option>
-              <option value="litre">litre</option>
-              <option value="box">box</option>
-              <option value="pack">pack</option>
+              <option value="piece">Piece (Pcs)</option>
+              <option value="nos">Nos (Numbers)</option>
+              <option value="kg">Kg (Kilograms)</option>
+              <option value="gram">Gram (G)</option>
+              <option value="litre">Litre (Ltr)</option>
+              <option value="ml">Millilitre (ml)</option>
+              <option value="metre">Metre (M)</option>
+              <option value="box">Box (Boxes)</option>
+              <option value="pack">Pack (Pkt)</option>
+              <option value="dozen">Dozen (Dzn)</option>
+              <option value="roll">Roll (Rll)</option>
+              <option value="set">Set (Sets)</option>
+              <option value="bundle">Bundle (Bndl)</option>
             </select>
           </div>
 
@@ -987,28 +1169,129 @@ export default function Products() {
               name="purchasePrice"
               type="number"
               step="0.01"
+              min="0"
               required
               defaultValue={editProduct?.purchasePrice || 0}
-              className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 font-semibold text-slate-800"
+              placeholder="0.00"
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 font-semibold font-mono text-slate-800"
             />
           </div>
 
+          {/* ── ROW 5: Quantity or Opening Stock | Minimum Alert Stock (Requirement 1) ── */}
           <div>
-            <label className="block font-semibold text-slate-700 mb-1">Selling Price (₹) *</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block font-semibold text-slate-700">
+                {editProduct ? "Quantity (Current Stock)" : "Quantity (Opening Stock) *"}
+              </label>
+              <span className="text-[10px] font-semibold text-blue-600 uppercase tracking-wide px-1.5 py-0.5 rounded bg-blue-50 border border-blue-100">
+                {modalUnit}
+              </span>
+            </div>
+            <input
+              name="stock"
+              type="number"
+              step={isDecimalUnit(modalUnit) ? "any" : "1"}
+              min="0"
+              required
+              value={modalStock}
+              onChange={(e) => setModalStock(e.target.value)}
+              disabled={!!editProduct}
+              placeholder={isDecimalUnit(modalUnit) ? "e.g. 10.5" : "e.g. 20"}
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 font-medium font-mono text-slate-800 disabled:bg-slate-100 disabled:text-slate-400"
+            />
+            <p className="text-[10px] text-slate-400 mt-1">
+              {editProduct
+                ? "Initial stock recorded at creation. Adjust via Stock Overview."
+                : isDecimalUnit(modalUnit)
+                ? "Decimal quantities supported for this unit (e.g. 2.500)"
+                : "Whole numbers only for this unit (e.g. 10)"}
+            </p>
+          </div>
+
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1">Minimum Alert Stock</label>
+            <input
+              name="minimumStock"
+              type="number"
+              step={isDecimalUnit(modalUnit) ? "any" : "1"}
+              min="0"
+              defaultValue={editProduct?.minimumStock !== undefined ? editProduct.minimumStock : 5}
+              placeholder="5"
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 font-medium font-mono text-slate-800"
+            />
+            <p className="text-[10px] text-slate-400 mt-1">
+              Threshold for low-stock notification alerts
+            </p>
+          </div>
+
+          {/* ── ROW 6: Selling Price | GST Rate (Requirements 2, 3 & 4) ── */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block font-semibold text-slate-700">Selling Price (₹) *</label>
+              <span
+                className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                  productPriceMode === "INCLUSIVE"
+                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                    : "bg-blue-50 text-blue-700 border border-blue-200"
+                }`}
+              >
+                {productPriceMode === "INCLUSIVE" ? "GST Inclusive (MRP)" : "GST Exclusive (+Tax)"}
+              </span>
+            </div>
             <input
               name="sellingPrice"
               type="number"
               step="0.01"
+              min="0"
               required
-              defaultValue={editProduct?.sellingPrice || 0}
-              className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 font-semibold text-blue-600"
+              value={modalSellingPrice}
+              onChange={(e) => setModalSellingPrice(e.target.value)}
+              placeholder="0.00"
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 font-bold font-mono text-blue-600"
             />
+            <p className="text-[10px] text-slate-400 mt-1">
+              {productPriceMode === "INCLUSIVE"
+                ? "Final price customer pays (tax included)"
+                : "Taxable base price before GST is added"}
+            </p>
           </div>
 
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="font-semibold text-slate-700">GST Rate (%)</label>
-              <span className="text-[10px] text-blue-600 font-bold">Standard brackets</span>
+              <label className="font-semibold text-slate-700">GST Rate (%) *</label>
+              <div className="flex items-center gap-1.5">
+                {modalCategoryId && (
+                  (() => {
+                    const selectedCat = cats.find((c) => (c.id || c._id) === modalCategoryId);
+                    const catRate = Number(
+                      selectedCat?.defaultGstRate !== undefined && selectedCat?.defaultGstRate !== null
+                        ? selectedCat.defaultGstRate
+                        : 18
+                    );
+                    if (Number(modalGstRate) !== catRate) {
+                      return (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setModalGstRate(catRate);
+                            setHasManualGstOverride(false);
+                          }}
+                          className="text-[10px] text-purple-700 bg-purple-50 hover:bg-purple-100 px-1.5 py-0.5 rounded border border-purple-200 font-medium transition cursor-pointer"
+                          title="Click to reset to category default rate"
+                        >
+                          Use Cat ({catRate}%)
+                        </button>
+                      );
+                    }
+                    return (
+                      <span className="text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 font-medium">
+                        Category Default ({catRate}%)
+                      </span>
+                    );
+                  })()
+                )}
+                <span className="text-[10px] text-blue-600 font-bold">Standard Brackets</span>
+              </div>
             </div>
             <input
               id="product-gst-input"
@@ -1017,20 +1300,29 @@ export default function Products() {
               min="0"
               max="100"
               step="0.01"
-              defaultValue={editProduct?.gstRate || 0}
+              value={modalGstRate}
+              onChange={(e) => {
+                setModalGstRate(e.target.value);
+                setHasManualGstOverride(true);
+              }}
               className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 font-bold font-mono text-slate-800"
               placeholder="e.g. 18, 12, 5"
             />
+            {/* Quick-select GST rates: 0%, 3%, 5%, 12%, 18%, 28% */}
             <div className="flex flex-wrap gap-1 mt-1.5">
-              {[0, 5, 12, 18, 28].map((rate) => (
+              {GST_RATES.map((rate) => (
                 <button
                   key={rate}
                   type="button"
                   onClick={() => {
-                    const el = document.getElementById("product-gst-input");
-                    if (el) el.value = rate;
+                    setModalGstRate(rate);
+                    setHasManualGstOverride(true);
                   }}
-                  className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-600 transition border border-slate-200/60"
+                  className={`px-2 py-0.5 rounded text-[10px] font-bold transition border cursor-pointer ${
+                    Number(modalGstRate) === rate
+                      ? "bg-blue-600 text-white border-blue-600 shadow-2xs"
+                      : "bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-700 border-slate-200"
+                  }`}
                 >
                   {rate}%
                 </button>
@@ -1038,27 +1330,106 @@ export default function Products() {
             </div>
           </div>
 
-          <div>
-            <label className="block font-semibold text-slate-700 mb-1">
-              {editProduct ? "Current Stock (Adjust via Stock Overview)" : "Opening Stock"}
-            </label>
-            <input
-              name="stock"
-              type="number"
-              defaultValue={editProduct?.stock || 0}
-              disabled={!!editProduct}
-              className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 font-medium disabled:bg-slate-100 disabled:text-slate-400"
-            />
+          {/* ── ROW 7: Selling Price Includes GST? — GST Inclusive / GST Exclusive (Requirement 2) ── */}
+          <div className="sm:col-span-2 p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-xs text-slate-900 block">
+                Selling Price Includes GST? *
+              </span>
+              <span className="text-[11px] text-slate-500">
+                Determines how tax is calculated in POS &amp; Invoices
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {/* Option A: GST Inclusive */}
+              <label
+                onClick={() => setProductPriceMode("INCLUSIVE")}
+                className={`p-3 rounded-xl border transition cursor-pointer flex flex-col gap-1 ${
+                  productPriceMode === "INCLUSIVE"
+                    ? "bg-white border-blue-500 ring-2 ring-blue-500/10 shadow-xs"
+                    : "bg-white/80 border-slate-200 hover:border-slate-300"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="pricingMethod"
+                    value="INCLUSIVE"
+                    checked={productPriceMode === "INCLUSIVE"}
+                    onChange={() => setProductPriceMode("INCLUSIVE")}
+                    className="w-4 h-4 text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer"
+                  />
+                  <span className="font-bold text-xs text-slate-900">
+                    GST Inclusive
+                  </span>
+                </div>
+                <span className="text-[10px] text-slate-500 pl-6 leading-tight">
+                  The entered selling price already includes GST. Tax is extracted backwards for billing.
+                </span>
+              </label>
+
+              {/* Option B: GST Exclusive */}
+              <label
+                onClick={() => setProductPriceMode("EXCLUSIVE")}
+                className={`p-3 rounded-xl border transition cursor-pointer flex flex-col gap-1 ${
+                  productPriceMode === "EXCLUSIVE"
+                    ? "bg-white border-blue-500 ring-2 ring-blue-500/10 shadow-xs"
+                    : "bg-white/80 border-slate-200 hover:border-slate-300"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="pricingMethod"
+                    value="EXCLUSIVE"
+                    checked={productPriceMode === "EXCLUSIVE"}
+                    onChange={() => setProductPriceMode("EXCLUSIVE")}
+                    className="w-4 h-4 text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer"
+                  />
+                  <span className="font-bold text-xs text-slate-900">
+                    GST Exclusive
+                  </span>
+                </div>
+                <span className="text-[10px] text-slate-500 pl-6 leading-tight">
+                  GST will be calculated and added to the entered selling price during billing.
+                </span>
+              </label>
+            </div>
           </div>
 
-          <div>
-            <label className="block font-semibold text-slate-700 mb-1">Minimum Alert Stock</label>
-            <input
-              name="minimumStock"
-              type="number"
-              defaultValue={editProduct?.minimumStock || 5}
-              className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 font-medium text-slate-800"
-            />
+          {/* ── ROW 8: Taxable Value | GST Amount | Final Selling Price preview (Requirement 3) ── */}
+          <div className="sm:col-span-2 p-3 rounded-xl bg-slate-50 border border-slate-200">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-semibold text-slate-700">
+                Tax Breakdown &amp; Final Price Preview
+              </span>
+              <span className="text-[10px] font-mono text-slate-500">
+                Mode: {productPriceMode === "INCLUSIVE" ? "Inclusive (MRP)" : "Exclusive (+Tax)"}
+              </span>
+            </div>
+            <div className="p-2.5 rounded-lg bg-white border border-slate-200/90 text-[11px] grid grid-cols-3 gap-2 text-center">
+              <div>
+                <span className="text-[10px] text-slate-400 block font-medium">Taxable Value</span>
+                <span className="font-bold text-slate-800 font-mono">
+                  {formatCurrencyINR(previewBreakdown.taxableValue)}
+                </span>
+              </div>
+              <div className="border-x border-slate-100">
+                <span className="text-[10px] text-slate-400 block font-medium">
+                  GST Amount ({modalGstRate}%)
+                </span>
+                <span className="font-bold text-blue-600 font-mono">
+                  +{formatCurrencyINR(previewBreakdown.gstAmount)}
+                </span>
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 block font-medium">Final Selling Price</span>
+                <span className="font-bold text-emerald-700 font-mono">
+                  {formatCurrencyINR(previewBreakdown.finalSellingPrice)}
+                </span>
+              </div>
+            </div>
           </div>
         </form>
       </Modal>
@@ -1094,13 +1465,27 @@ export default function Products() {
               variant="primary"
               size="sm"
               icon={Save}
+              onClick={() => {
+                categoryFormRef.current?.requestSubmit?.();
+              }}
             >
               {editCategory ? "Save Changes" : "Create Category"}
             </Button>
           </>
         }
       >
-        <form id="category-form" onSubmit={saveCategory} className="space-y-4 text-xs">
+        <form
+          id="category-form"
+          ref={categoryFormRef}
+          onKeyDown={(e) => handleSmartFormKeyDown(e, categoryFormRef.current)}
+          onSubmit={saveCategory}
+          className="space-y-4 text-xs"
+        >
+          {categoryErr && (
+            <div className="p-2.5 rounded-lg bg-rose-50 text-rose-700 border border-rose-200 text-xs font-medium">
+              {categoryErr}
+            </div>
+          )}
           <div>
             <label className="block font-semibold text-slate-700 mb-1">Category Name *</label>
             <input
@@ -1121,6 +1506,51 @@ export default function Products() {
               placeholder="e.g. Desks, chairs, cabinets, and ergonomic furniture items"
               className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 text-slate-800"
             />
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label htmlFor="cat-default-gst" className="block font-semibold text-slate-700">
+                Default GST Tax Rate (%) *
+              </label>
+              <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">
+                Category Default
+              </span>
+            </div>
+            <select
+              id="cat-default-gst"
+              name="defaultGstRate"
+              value={categoryModalGstRate}
+              onChange={(e) => setCategoryModalGstRate(Number(e.target.value))}
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 bg-white font-semibold text-slate-800"
+            >
+              <option value={0}>0% (Nil / Exempted Goods)</option>
+              <option value={3}>3% (Precious Metals / Jewelry)</option>
+              <option value={5}>5% (Essential Goods & Groceries)</option>
+              <option value={12}>12% (Processed Goods & Standard Items)</option>
+              <option value={18}>18% (Standard Rate - Most Products)</option>
+              <option value={28}>28% (Luxury & Demerit Goods)</option>
+            </select>
+            {/* Quick selectable rate chips */}
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {GST_RATES.map((rate) => (
+                <button
+                  key={rate}
+                  type="button"
+                  onClick={() => setCategoryModalGstRate(rate)}
+                  className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition border cursor-pointer ${
+                    Number(categoryModalGstRate) === rate
+                      ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+                      : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                  }`}
+                >
+                  {rate}%
+                </button>
+              ))}
+            </div>
+            <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">
+              Applied by default when creating products in this category. You can override it for individual products.
+            </p>
           </div>
 
           <div className="flex items-center gap-2 pt-1">

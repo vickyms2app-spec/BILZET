@@ -40,6 +40,7 @@ import {
   CalendarCheck2,
 } from "lucide-react";
 import { staffApi, settingsApi } from "../api";
+import RoleInvitationManager from "../components/team/RoleInvitationManager";
 import { apiError } from "../api/http";
 import { useAuth } from "../store/auth";
 import { useSecurityStore } from "../store/securityStore";
@@ -65,6 +66,29 @@ const DEFAULT_ATTENDANCE_SETTINGS = {
   lateDeductionRule: "3_TO_HALF_DAY", // 3 late = 0.5 day salary
 };
 
+// Predefined palette of soft, professional colors for deterministic avatar assignment
+const STAFF_AVATAR_PALETTES = [
+  { bg: "#EBF5FF", text: "#007AFF", border: "#D0E2FF" }, // Blue
+  { bg: "#F3E8FF", text: "#7C3AED", border: "#E9D5FF" }, // Purple
+  { bg: "#E6FFFA", text: "#0D9488", border: "#B2F5EA" }, // Teal
+  { bg: "#EDF8F0", text: "#248A3D", border: "#CCE8D4" }, // Green
+  { bg: "#FFF4E5", text: "#C25E00", border: "#FFE2B8" }, // Orange
+  { bg: "#FDF2F8", text: "#DB2777", border: "#FCE7F3" }, // Pink
+  { bg: "#EEF2FF", text: "#4F46E5", border: "#E0E7FF" }, // Indigo
+  { bg: "#FFF1F2", text: "#E11D48", border: "#FECDD3" }, // Rose
+];
+
+const getStaffAvatarPalette = (idOrName) => {
+  const str = String(idOrName || "staff");
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0;
+  }
+  const index = Math.abs(hash) % STAFF_AVATAR_PALETTES.length;
+  return STAFF_AVATAR_PALETTES[index];
+};
+
 export default function StaffManagement({ defaultTab = "directory" }) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -73,6 +97,7 @@ export default function StaffManagement({ defaultTab = "directory" }) {
   const getInitialTab = () => {
     if (location.pathname.includes("attendance")) return "attendance";
     if (location.pathname.includes("payroll")) return "payroll";
+    if (location.pathname.includes("invitations") || location.search.includes("invitations")) return "invitations";
     return defaultTab;
   };
 
@@ -84,8 +109,10 @@ export default function StaffManagement({ defaultTab = "directory" }) {
       setActiveTab("attendance");
     } else if (location.pathname.includes("payroll")) {
       setActiveTab("payroll");
+    } else if (location.pathname.includes("invitations") || location.search.includes("invitations")) {
+      setActiveTab("invitations");
     }
-  }, [location.pathname]);
+  }, [location.pathname, location.search]);
 
   const [staffList, setStaffList] = useState([]);
   const [attendances, setAttendances] = useState([]);
@@ -101,8 +128,10 @@ export default function StaffManagement({ defaultTab = "directory" }) {
   const canEditStaff = isAuthorizedAdmin || hasPermission("staff.edit");
   const canCreateStaff = isAuthorizedAdmin || hasPermission("staff.create");
   const canViewSalaries = isAuthorizedAdmin || adminRevealed;
+  const canManageAttendance = isAuthorizedAdmin || hasPermission("attendance.manage") || hasPermission("staff.attendance");
   const [showSalaries, setShowSalaries] = useState(false);
   const revealSalaries = canViewSalaries && (showSalaries || adminRevealed);
+  const [showMoreStats, setShowMoreStats] = useState(false);
 
   // Active Store Display
   const [activeStoreName, setActiveStoreName] = useState(() => {
@@ -178,6 +207,10 @@ export default function StaffManagement({ defaultTab = "directory" }) {
 
   // Daily attendance draft edits: map staffId -> { status, checkIn, checkOut, hours, notes }
   const [dailyDrafts, setDailyDrafts] = useState({});
+
+  const hasUnsavedChanges = useMemo(() => {
+    return Object.values(dailyDrafts).some((d) => d && !d.isSaved);
+  }, [dailyDrafts]);
 
   // Forms
   const [staffForm, setStaffForm] = useState({
@@ -394,6 +427,7 @@ export default function StaffManagement({ defaultTab = "directory" }) {
           ...cur,
           status: newStatus,
           hours: hours,
+          isSaved: false,
         },
       };
     });
@@ -408,6 +442,7 @@ export default function StaffManagement({ defaultTab = "directory" }) {
         [staffId]: {
           ...cur,
           [field]: value,
+          isSaved: false,
         },
       };
     });
@@ -797,108 +832,117 @@ export default function StaffManagement({ defaultTab = "directory" }) {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto fade-up pb-12 font-sans">
+    <div
+      style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif' }}
+      className="space-y-4 max-w-7xl mx-auto fade-up pb-12 text-[#1D1D1F]"
+    >
       {/* ── Page Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-[8px] border border-slate-200 shadow-2xs">
-        <div className="flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-[7px] bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center shrink-0">
-            <CalendarCheck2 size={22} />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 sm:p-5 rounded-2xl border border-[#E5E5EA] shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-lg sm:text-xl font-semibold text-[#1D1D1F] tracking-tight">
+              Staff &amp; Payroll
+            </h1>
+            <span className="text-[11px] font-semibold text-[#007AFF] bg-[#EBF5FF] border border-[#D0E2FF] px-2 py-0.5 rounded-full flex items-center gap-1 uppercase tracking-wider">
+              <Building2 size={11} />
+              <span>{activeStoreName}</span>
+            </span>
           </div>
-          <div>
-            <div className="flex items-center gap-2.5">
-              <h1 className="page-title text-xl font-bold text-slate-900">
-                Staff &amp; Payroll
-              </h1>
-              <span className="badge badge-info uppercase tracking-wider flex items-center gap-1">
-                <Building2 size={11} />
-                <span>{activeStoreName}</span>
-              </span>
-            </div>
-            <p className="page-desc text-xs text-slate-500">
-              Manage daily employee attendance, shift schedules, overtime, leave policies, and automated payroll disbursements.
-            </p>
-          </div>
+          <p className="text-xs text-[#6E6E73] font-normal mt-0.5">
+            Manage employees, attendance and payroll in one place.
+          </p>
         </div>
 
-        {/* Top Header Rectangular Action Buttons */}
+        {/* Section-Specific Action Buttons */}
         <div className="flex flex-wrap items-center gap-2 self-start sm:self-center">
-          {canViewSalaries && (
-            <Button
-              variant="secondary"
-              size="sm"
-              icon={revealSalaries ? EyeOff : Eye}
-              onClick={() => setShowSalaries(!showSalaries)}
-              title="Toggle admin confidential salary visibility"
-            >
-              {revealSalaries ? "Mask Salaries" : "Reveal Salaries"}
-            </Button>
-          )}
-
-          {canCreateStaff && (
-            <Button
-              variant="secondary"
-              size="sm"
-              icon={Plus}
+          {activeTab === "directory" && canCreateStaff && (
+            <button
+              type="button"
               onClick={() => setShowAddModal(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#007AFF] hover:bg-[#0062CC] text-white transition cursor-pointer shadow-[0_1px_2px_rgba(0,122,255,0.25)]"
             >
-              Add Staff
-            </Button>
+              <Plus size={14} strokeWidth={2.5} />
+              <span>Add Staff</span>
+            </button>
           )}
 
-          <Button
-            variant="outline"
-            size="sm"
-            icon={SettingsIcon}
-            onClick={() => setShowSettingsModal(true)}
-          >
-            Attendance Settings
-          </Button>
+          {activeTab === "attendance" && (
+            <button
+              type="button"
+              onClick={() => setShowSettingsModal(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium border border-[#E5E5EA] bg-white text-[#1D1D1F] hover:bg-[#F5F5F7] rounded-xl transition cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.02)]"
+            >
+              <SettingsIcon size={14} className="text-[#6E6E73]" />
+              <span>Attendance Settings</span>
+            </button>
+          )}
 
-          <Button
-            variant="primary"
-            size="sm"
-            icon={DollarSign}
-            onClick={() => {
-              setActiveTab("payroll");
-              setShowPayrollModal(true);
-            }}
-          >
-            Process Payroll
-          </Button>
+          {activeTab === "payroll" && (
+            <>
+              {canViewSalaries && (
+                <button
+                  type="button"
+                  onClick={() => setShowSalaries(!showSalaries)}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium border border-[#E5E5EA] bg-white text-[#1D1D1F] hover:bg-[#F5F5F7] rounded-xl transition cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.02)]"
+                  title="Toggle confidential salary visibility"
+                >
+                  {revealSalaries ? <EyeOff size={14} className="text-[#6E6E73]" /> : <Eye size={14} className="text-[#6E6E73]" />}
+                  <span>{revealSalaries ? "Mask Salaries" : "Reveal Salaries"}</span>
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setShowPayrollModal(true)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#007AFF] hover:bg-[#0062CC] text-white transition cursor-pointer shadow-[0_1px_2px_rgba(0,122,255,0.25)]"
+              >
+                <DollarSign size={14} />
+                <span>Process Payroll</span>
+              </button>
+            </>
+          )}
         </div>
       </div>
 
       {/* Notifications */}
       {message.text && (
         <div
-          className={`p-3.5 rounded-[7px] text-xs font-semibold flex items-center gap-2.5 transition-all ${
+          className={`p-3 rounded-xl border text-xs font-medium flex items-center justify-between transition ${
             message.type === "success"
-              ? "bg-emerald-50 border border-emerald-200 text-emerald-800"
-              : "bg-rose-50 border border-rose-200 text-rose-800"
+              ? "bg-[#EDF8F0] text-[#248A3D] border-[#CCE8D4]"
+              : "bg-[#FFF1F2] text-[#D70015] border-[#FECDD3]"
           }`}
         >
-          {message.type === "success" ? (
-            <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
-          ) : (
-            <AlertTriangle size={16} className="text-rose-600 shrink-0" />
-          )}
-          <span>{message.text}</span>
+          <div className="flex items-center gap-2">
+            {message.type === "success" ? (
+              <CheckCircle2 size={15} className="text-[#248A3D] shrink-0" />
+            ) : (
+              <AlertTriangle size={15} className="text-[#D70015] shrink-0" />
+            )}
+            <span>{message.text}</span>
+          </div>
+          <button
+            onClick={() => setMessage({ text: "", type: "" })}
+            className="text-[#6E6E73] hover:text-[#1D1D1F] p-1 cursor-pointer"
+          >
+            <X size={14} />
+          </button>
         </div>
       )}
 
       {/* ── Main Module Navigation Tabs ── */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-3 rounded-[8px] border border-slate-200 shadow-2xs">
-        <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-[7px] border border-slate-200 w-full sm:w-auto">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-[#E5E5EA] shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+        <div className="flex items-center gap-1 p-1 bg-[#F5F5F7] rounded-xl border border-[#E5E5EA] w-full sm:w-auto overflow-x-auto">
           <button
             type="button"
             onClick={() => {
               setActiveTab("directory");
               navigate("/staff");
             }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-[6px] text-xs font-semibold transition cursor-pointer ${
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
               activeTab === "directory"
-                ? "bg-white text-blue-700 shadow-xs border border-slate-200"
-                : "text-slate-600 hover:text-slate-900"
+                ? "bg-white text-[#007AFF] shadow-xs border border-[#E5E5EA]"
+                : "text-[#6E6E73] hover:text-[#1D1D1F]"
             }`}
           >
             <Users size={14} />
@@ -911,14 +955,14 @@ export default function StaffManagement({ defaultTab = "directory" }) {
               setActiveTab("attendance");
               navigate("/staff/attendance");
             }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-[6px] text-xs font-semibold transition cursor-pointer ${
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
               activeTab === "attendance"
-                ? "bg-white text-blue-700 shadow-xs border border-slate-200"
-                : "text-slate-600 hover:text-slate-900"
+                ? "bg-white text-[#007AFF] shadow-xs border border-[#E5E5EA]"
+                : "text-[#6E6E73] hover:text-[#1D1D1F]"
             }`}
           >
             <CalendarCheck2 size={14} />
-            <span>Staff Attendance</span>
+            <span>Attendance</span>
           </button>
 
           <button
@@ -927,25 +971,43 @@ export default function StaffManagement({ defaultTab = "directory" }) {
               setActiveTab("payroll");
               navigate("/staff/payroll");
             }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-[6px] text-xs font-semibold transition cursor-pointer ${
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
               activeTab === "payroll"
-                ? "bg-white text-blue-700 shadow-xs border border-slate-200"
-                : "text-slate-600 hover:text-slate-900"
+                ? "bg-white text-[#007AFF] shadow-xs border border-[#E5E5EA]"
+                : "text-[#6E6E73] hover:text-[#1D1D1F]"
             }`}
           >
             <DollarSign size={14} />
-            <span>Payroll Records ({payrolls.length})</span>
+            <span>Payroll ({payrolls.length})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab("invitations");
+              navigate("/staff?tab=invitations");
+            }}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+              activeTab === "invitations"
+                ? "bg-white text-[#007AFF] shadow-xs border border-[#E5E5EA]"
+                : "text-[#6E6E73] hover:text-[#1D1D1F]"
+            }`}
+          >
+            <Mail size={14} />
+            <span>Invitations &amp; Roles</span>
           </button>
         </div>
 
-        {/* Global Search Bar */}
-        <div className="w-full sm:w-72">
-          <SearchBar
-            value={search}
-            onChange={setSearch}
-            placeholder="Search employee, ID, or role..."
-          />
-        </div>
+        {/* Global Search Bar (Only shown on directory roster) */}
+        {activeTab === "directory" && (
+          <div className="w-full sm:w-72">
+            <SearchBar
+              value={search}
+              onChange={setSearch}
+              placeholder="Search employee, ID, or role…"
+            />
+          </div>
+        )}
       </div>
 
       {/* ── Content View ── */}
@@ -961,15 +1023,15 @@ export default function StaffManagement({ defaultTab = "directory" }) {
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <h2 className="text-sm font-bold text-slate-800">
+              <h2 className="text-sm font-semibold text-[#1D1D1F]">
                 Staff Roster ({staffList.length})
               </h2>
               <div className="flex items-center gap-1.5 text-xs">
-                <label className="text-slate-500 font-medium">Status:</label>
+                <span className="text-[#86868B] font-medium">Status:</span>
                 <select
                   value={staffStatusFilter}
                   onChange={(e) => setStaffStatusFilter(e.target.value)}
-                  className="px-2.5 py-1 rounded-lg border border-slate-200 text-slate-700 bg-white text-xs outline-none"
+                  className="px-2.5 py-1 rounded-lg border border-[#E5E5EA] text-[#1D1D1F] bg-white text-xs outline-none cursor-pointer focus:border-[#007AFF]"
                 >
                   <option value="ALL">All ({staffList.length})</option>
                   <option value="ACTIVE">Active ({staffList.filter((s) => (s.status || "ACTIVE") === "ACTIVE").length})</option>
@@ -977,19 +1039,9 @@ export default function StaffManagement({ defaultTab = "directory" }) {
                 </select>
               </div>
             </div>
-            {canCreateStaff && (
-              <Button
-                variant="primary"
-                size="sm"
-                icon={Plus}
-                onClick={() => setShowAddModal(true)}
-              >
-                Add Staff Member
-              </Button>
-            )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
             {staffList
               .filter((s) => {
                 if (staffStatusFilter !== "ALL" && (s.status || "ACTIVE") !== staffStatusFilter) {
@@ -1003,478 +1055,432 @@ export default function StaffManagement({ defaultTab = "directory" }) {
                   (s.staffId && s.staffId.toLowerCase().includes(q))
                 );
               })
-              .map((staff) => (
-                <div
-                  key={staff.id}
-                  className="bg-white rounded-[8px] border border-slate-200 p-5 shadow-2xs hover:border-slate-300 transition flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="flex items-start justify-between gap-3 mb-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-[6px] bg-blue-50 text-blue-700 font-bold flex items-center justify-center text-sm border border-blue-100">
-                          {staff.name.charAt(0).toUpperCase()}
-                        </div>
-                        <div>
-                          <h3 className="font-bold text-slate-800 text-sm">{staff.name}</h3>
-                          <div className="flex items-center gap-1.5 mt-0.5">
-                            <span className="text-[11px] font-mono font-medium text-slate-500">
-                              {staff.staffId || "EMP-001"}
-                            </span>
-                            <span className="text-slate-300">•</span>
-                            <span className="text-[11px] font-medium text-slate-600">
-                              {staff.department || "Operations"}
-                            </span>
+              .map((staff) => {
+                const palette = getStaffAvatarPalette(staff.id || staff.name);
+
+                return (
+                  <div
+                    key={staff.id}
+                    className="bg-white rounded-xl border border-[#E5E5EA] p-4 shadow-2xs hover:border-[#D1D1D6] transition flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="flex items-start justify-between gap-3 mb-3">
+                        <div className="flex items-center gap-2.5">
+                          <div
+                            style={{
+                              backgroundColor: palette.bg,
+                              color: palette.text,
+                              borderColor: palette.border,
+                            }}
+                            className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold border shrink-0"
+                          >
+                            {staff.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-[#1D1D1F] text-sm leading-tight">
+                              {staff.name}
+                            </h3>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <span className="text-[11px] font-mono font-medium text-[#86868B]">
+                                {staff.staffId || "EMP-001"}
+                              </span>
+                              <span className="text-[#C7C7CC]">•</span>
+                              <span className="text-[11px] font-medium text-[#6E6E73]">
+                                {staff.department || "Operations"}
+                              </span>
+                            </div>
                           </div>
                         </div>
+
+                        <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                          <span className="inline-block px-2 py-0.5 rounded-md text-[10px] font-semibold bg-[#F2F2F7] text-[#1D1D1F] border border-[#E5E5EA]">
+                            {staff.role}
+                          </span>
+                          <span
+                            className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-semibold border ${
+                              staff.status === "ACTIVE"
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                : "bg-amber-50 text-amber-700 border-amber-200"
+                            }`}
+                          >
+                            {staff.status || "ACTIVE"}
+                          </span>
+                        </div>
                       </div>
+
+                      <div className="space-y-1.5 py-2.5 border-y border-[#F2F2F7] text-xs text-[#6E6E73]">
+                        {staff.phone && (
+                          <div className="flex items-center gap-2">
+                            <Phone size={13} className="text-[#86868B] shrink-0" />
+                            <span>{staff.phone}</span>
+                          </div>
+                        )}
+                        {staff.email && (
+                          <div className="flex items-center gap-2">
+                            <Mail size={13} className="text-[#86868B] shrink-0" />
+                            <span className="truncate">{staff.email}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2">
+                          <Briefcase size={13} className="text-[#86868B] shrink-0" />
+                          <span>
+                            Joined:{" "}
+                            {staff.joiningDate
+                              ? new Date(staff.joiningDate).toLocaleDateString()
+                              : "Active"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-3.5 pt-2.5 flex items-center justify-between gap-2 flex-wrap">
+                      <div className="text-[11px] text-[#86868B]">
+                        Salary:{" "}
+                        <strong className={`font-mono ${revealSalaries ? "text-[#1D1D1F]" : "text-[#86868B]"}`}>
+                          {maskSalary(staff.salary, revealSalaries, "/mo")}
+                        </strong>
+                      </div>
+
                       <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                        <span className="inline-block px-2 py-0.5 rounded-[5px] text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
-                          {staff.role}
-                        </span>
-                        <span
-                          className={`inline-block px-2 py-0.5 rounded-[5px] text-[10px] font-bold border ${
-                            staff.status === "ACTIVE"
-                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                              : "bg-amber-50 text-amber-700 border-amber-200"
-                          }`}
+                        <button
+                          type="button"
+                          onClick={() => setDetailsStaff(staff)}
+                          className="px-2.5 py-1 rounded-lg text-xs font-medium border border-[#E5E5EA] bg-white hover:bg-[#F5F5F7] text-[#1D1D1F] transition cursor-pointer"
+                          title="View dossier"
                         >
-                          {staff.status || "ACTIVE"}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2 py-3 border-y border-slate-100 text-xs text-slate-600">
-                      {staff.phone && (
-                        <div className="flex items-center gap-2">
-                          <Phone size={13} className="text-slate-400 shrink-0" />
-                          <span>{staff.phone}</span>
-                        </div>
-                      )}
-                      {staff.email && (
-                        <div className="flex items-center gap-2">
-                          <Mail size={13} className="text-slate-400 shrink-0" />
-                          <span className="truncate">{staff.email}</span>
-                        </div>
-                      )}
-                      <div className="flex items-center gap-2">
-                        <Briefcase size={13} className="text-slate-400 shrink-0" />
-                        <span>
-                          Joined:{" "}
-                          {staff.joiningDate
-                            ? new Date(staff.joiningDate).toLocaleDateString()
-                            : "Active"}
-                        </span>
+                          Details
+                        </button>
+                        {canEditStaff && (
+                          <button
+                            type="button"
+                            onClick={() => openEditModal(staff)}
+                            className="px-2.5 py-1 rounded-lg text-xs font-medium border border-[#E5E5EA] bg-white hover:bg-[#F5F5F7] text-[#1D1D1F] transition cursor-pointer"
+                            title="Edit employee"
+                          >
+                            Edit
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setHistoryStaff(staff)}
+                          className="px-2.5 py-1 rounded-lg text-xs font-medium border border-[#E5E5EA] bg-white hover:bg-[#F5F5F7] text-[#1D1D1F] transition cursor-pointer"
+                          title="View attendance"
+                        >
+                          Attendance
+                        </button>
+                        {canDeleteStaff && (
+                          <button
+                            type="button"
+                            onClick={() => setDeleteTarget(staff)}
+                            className="px-2.5 py-1 rounded-lg text-xs font-medium border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 transition cursor-pointer"
+                            title="Delete employee"
+                          >
+                            Delete
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
-
-                  <div className="mt-4 pt-3 flex items-center justify-between gap-2 flex-wrap">
-                    <div className="text-[11px] text-slate-500">
-                      Salary:{" "}
-                      <strong className={`font-mono ${revealSalaries ? "text-slate-900" : "text-slate-400"}`}>
-                        {maskSalary(staff.salary, revealSalaries, "/mo")}
-                      </strong>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                      <Button
-                        variant="neutral"
-                        size="xs"
-                        icon={Eye}
-                        onClick={() => setDetailsStaff(staff)}
-                        title="View employee dossier"
-                      >
-                        Details
-                      </Button>
-                      {canEditStaff && (
-                        <Button
-                          variant="secondary"
-                          size="xs"
-                          icon={Edit2}
-                          onClick={() => openEditModal(staff)}
-                          title="Edit employee details"
-                        >
-                          Edit
-                        </Button>
-                      )}
-                      <Button
-                        variant="secondary"
-                        size="xs"
-                        icon={CalendarCheck2}
-                        onClick={() => setHistoryStaff(staff)}
-                        title="View attendance records"
-                      >
-                        Attendance
-                      </Button>
-                      {canDeleteStaff && (
-                        <Button
-                          variant="danger"
-                          size="xs"
-                          icon={Trash2}
-                          onClick={() => setDeleteTarget(staff)}
-                          title="Delete or deactivate employee"
-                        >
-                          Delete
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
           </div>
         </div>
       ) : activeTab === "attendance" ? (
         /* ══════════════════════════════════════════════════════
            TAB 2: COMPLETE STAFF ATTENDANCE MODULE
         ══════════════════════════════════════════════════════ */
-        <div className="space-y-6">
-          {/* Sub-view Navigation Bar: Dashboard | Calendar | Monthly Report */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-3 rounded-[8px] border border-slate-200 shadow-2xs">
-            <div className="flex items-center gap-1.5">
-              <Button
-                variant={attendanceView === "dashboard" ? "primary" : "secondary"}
-                size="sm"
-                icon={TrendingUp}
+        <div className="space-y-4">
+          {/* Sub-view Segmented Control: Daily Attendance | Calendar | Monthly Report */}
+          <div className="flex items-center justify-between gap-3 border-b border-[#E5E5EA] pb-3">
+            <div className="inline-flex p-1 bg-[#F2F2F7] rounded-xl gap-1 border border-[#E5E5EA]">
+              <button
+                type="button"
                 onClick={() => setAttendanceView("dashboard")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
+                  attendanceView === "dashboard"
+                    ? "bg-white text-[#1D1D1F] shadow-2xs font-semibold"
+                    : "text-[#6E6E73] hover:text-[#1D1D1F]"
+                }`}
               >
-                Daily Attendance &amp; KPIs
-              </Button>
-
-              <Button
-                variant={attendanceView === "calendar" ? "primary" : "secondary"}
-                size="sm"
-                icon={Calendar}
+                Daily Attendance
+              </button>
+              <button
+                type="button"
                 onClick={() => setAttendanceView("calendar")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
+                  attendanceView === "calendar"
+                    ? "bg-white text-[#1D1D1F] shadow-2xs font-semibold"
+                    : "text-[#6E6E73] hover:text-[#1D1D1F]"
+                }`}
               >
-                Attendance Calendar
-              </Button>
-
-              <Button
-                variant={attendanceView === "report" ? "primary" : "secondary"}
-                size="sm"
-                icon={FileSpreadsheet}
+                Calendar
+              </button>
+              <button
+                type="button"
                 onClick={() => setAttendanceView("report")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
+                  attendanceView === "report"
+                    ? "bg-white text-[#1D1D1F] shadow-2xs font-semibold"
+                    : "text-[#6E6E73] hover:text-[#1D1D1F]"
+                }`}
               >
                 Monthly Report
-              </Button>
-            </div>
-
-            <div className="flex items-center gap-2 self-end sm:self-center">
-              <Button
-                variant="outline"
-                size="sm"
-                icon={SettingsIcon}
-                onClick={() => setShowSettingsModal(true)}
-              >
-                Attendance Policy
-              </Button>
+              </button>
             </div>
           </div>
 
           {attendanceView === "dashboard" && (
             <>
-              {/* ──────────────────────────────────────────────────────────
-                  1. ATTENDANCE DASHBOARD SUMMARY CARDS (7 REQUIRED CARDS)
-              ────────────────────────────────────────────────────────── */}
-              <div>
-                {/* ── Attendance Quick Action Cards (Section 6 & 9) ── */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-                  <IconCircleAction
-                    variant="primary"
-                    icon={Plus}
-                    title="Add Staff"
-                    description="Register new employee to roster"
-                    onClick={() => setShowAddModal(true)}
-                  />
-                  <IconCircleAction
-                    variant="success"
-                    icon={Check}
-                    title="Mark Present"
-                    description="Staff is present today"
-                    onClick={() => {
-                      const updated = { ...dailyDrafts };
-                      staffList.forEach((s) => {
-                        updated[s.id] = {
-                          ...(updated[s.id] || {}),
-                          status: "PRESENT",
-                          hours: 8.0,
-                        };
-                      });
-                      setDailyDrafts(updated);
-                      notify("success", "Marked all staff as Present in draft!");
-                    }}
-                  />
-                  <IconCircleAction
-                    variant="danger"
-                    icon={X}
-                    title="Mark Absent"
-                    description="Unpaid shift absence"
-                    onClick={() => {
-                      const updated = { ...dailyDrafts };
-                      staffList.forEach((s) => {
-                        if (!updated[s.id] || updated[s.id].status === "PRESENT") {
-                          updated[s.id] = {
-                            ...(updated[s.id] || {}),
-                            status: "ABSENT",
-                            hours: 0,
-                          };
-                        }
-                      });
-                      setDailyDrafts(updated);
-                      notify("info", "Set absent status in draft!");
-                    }}
-                  />
-                  <IconCircleAction
-                    variant="warning"
-                    icon={Clock}
-                    title="Mark Half Day"
-                    description="Half shift (< 4h working)"
-                    onClick={() => {
-                      const updated = { ...dailyDrafts };
-                      staffList.forEach((s) => {
-                        if (updated[s.id]?.status === "LATE") {
-                          updated[s.id] = {
-                            ...updated[s.id],
-                            status: "HALF_DAY",
-                            hours: 4.0,
-                          };
-                        }
-                      });
-                      setDailyDrafts(updated);
-                      notify("info", "Marked late shifts as Half Day!");
-                    }}
-                  />
+              {/* Date Navigation & Summary Row */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3.5 rounded-xl border border-[#E5E5EA] shadow-2xs">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-[#6E6E73]">Date:</span>
+                  <span className="text-xs font-semibold text-[#1D1D1F]">
+                    {new Date(selectedDate + "T00:00:00").toLocaleDateString("en-US", {
+                      weekday: "short",
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                  </span>
                 </div>
 
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                    Shift Attendance Summary ({new Date(selectedDate + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })})
-                  </h2>
-                  <div className="flex items-center gap-2">
-                    <CompactIconButton
-                      variant="neutral"
-                      size="sm"
-                      icon={ChevronLeft}
-                      onClick={() => {
-                        const d = new Date(selectedDate);
-                        d.setDate(d.getDate() - 1);
-                        setSelectedDate(d.toISOString().split("T")[0]);
-                      }}
-                      title="Previous Day"
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const d = new Date(selectedDate);
+                      d.setDate(d.getDate() - 1);
+                      setSelectedDate(d.toISOString().split("T")[0]);
+                    }}
+                    className="p-1.5 rounded-lg border border-[#E5E5EA] bg-white hover:bg-[#F5F5F7] text-[#1D1D1F] transition cursor-pointer"
+                    title="Previous Day"
+                  >
+                    <ChevronLeft size={14} />
+                  </button>
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    className="px-2.5 py-1 text-xs font-medium rounded-lg border border-[#E5E5EA] bg-white text-[#1D1D1F] cursor-pointer outline-none focus:border-[#007AFF]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const d = new Date(selectedDate);
+                      d.setDate(d.getDate() + 1);
+                      setSelectedDate(d.toISOString().split("T")[0]);
+                    }}
+                    className="p-1.5 rounded-lg border border-[#E5E5EA] bg-white hover:bg-[#F5F5F7] text-[#1D1D1F] transition cursor-pointer"
+                    title="Next Day"
+                  >
+                    <ChevronRight size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDate(new Date().toISOString().split("T")[0])}
+                    className="px-2.5 py-1 text-xs font-medium rounded-lg border border-[#E5E5EA] bg-white hover:bg-[#F5F5F7] text-[#1D1D1F] transition cursor-pointer"
+                  >
+                    Today
+                  </button>
+
+                  <div className="h-4 w-px bg-[#E5E5EA] mx-1" />
+
+                  <button
+                    type="button"
+                    onClick={() => setShowMoreStats(!showMoreStats)}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg text-[#007AFF] hover:bg-[#F2F2F7] transition cursor-pointer"
+                  >
+                    <span>{showMoreStats ? "Less Stats" : "More Statistics"}</span>
+                    <ChevronRight
+                      size={13}
+                      className={`transition-transform duration-200 ${showMoreStats ? "rotate-90" : ""}`}
                     />
-                    <input
-                      type="date"
-                      value={selectedDate}
-                      onChange={(e) => setSelectedDate(e.target.value)}
-                      className="px-3 py-1.5 text-xs font-semibold rounded-full border border-slate-300 bg-white cursor-pointer"
-                    />
-                    <CompactIconButton
-                      variant="neutral"
-                      size="sm"
-                      icon={ChevronRight}
-                      onClick={() => {
-                        const d = new Date(selectedDate);
-                        d.setDate(d.getDate() + 1);
-                        setSelectedDate(d.toISOString().split("T")[0]);
-                      }}
-                      title="Next Day"
-                    />
-                    <Button
-                      variant="secondary"
-                      size="xs"
-                      onClick={() => setSelectedDate(new Date().toISOString().split("T")[0])}
-                    >
-                      Today
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
-                  {/* 1. Total Staff */}
-                  <div className="bg-white rounded-[8px] border border-slate-200 p-3.5 shadow-2xs flex flex-col justify-between">
-                    <div className="flex items-center justify-between text-slate-500 mb-1">
-                      <span className="text-[11px] font-semibold">Total Staff</span>
-                      <Users size={15} className="text-blue-600" />
-                    </div>
-                    <div className="text-xl font-bold text-slate-900 font-mono">
-                      {dashboardKpis.totalStaff}
-                    </div>
-                    <div className="text-[10px] text-slate-400 mt-1">Registered roster</div>
-                  </div>
-
-                  {/* 2. Present Today */}
-                  <div className="bg-white rounded-[8px] border border-emerald-200 p-3.5 shadow-2xs flex flex-col justify-between bg-emerald-50/20">
-                    <div className="flex items-center justify-between text-emerald-700 mb-1">
-                      <span className="text-[11px] font-semibold">Present Today</span>
-                      <CheckCircle2 size={15} className="text-emerald-600" />
-                    </div>
-                    <div className="text-xl font-bold text-emerald-700 font-mono">
-                      {dashboardKpis.present}
-                    </div>
-                    <div className="text-[10px] text-emerald-600 mt-1 font-medium">Full day shift</div>
-                  </div>
-
-                  {/* 3. Absent Today */}
-                  <div className="bg-white rounded-[8px] border border-rose-200 p-3.5 shadow-2xs flex flex-col justify-between bg-rose-50/20">
-                    <div className="flex items-center justify-between text-rose-700 mb-1">
-                      <span className="text-[11px] font-semibold">Absent Today</span>
-                      <XCircle size={15} className="text-rose-600" />
-                    </div>
-                    <div className="text-xl font-bold text-rose-700 font-mono">
-                      {dashboardKpis.absent}
-                    </div>
-                    <div className="text-[10px] text-rose-600 mt-1 font-medium">Unpaid absence</div>
-                  </div>
-
-                  {/* 4. Late Today */}
-                  <div className="bg-white rounded-[8px] border border-amber-200 p-3.5 shadow-2xs flex flex-col justify-between bg-amber-50/20">
-                    <div className="flex items-center justify-between text-amber-700 mb-1">
-                      <span className="text-[11px] font-semibold">Late Today</span>
-                      <Clock size={15} className="text-amber-600" />
-                    </div>
-                    <div className="text-xl font-bold text-amber-700 font-mono">
-                      {dashboardKpis.late}
-                    </div>
-                    <div className="text-[10px] text-amber-600 mt-1 font-medium">After {attendanceSettings.lateThreshold}</div>
-                  </div>
-
-                  {/* 5. On Leave */}
-                  <div className="bg-white rounded-[8px] border border-blue-200 p-3.5 shadow-2xs flex flex-col justify-between bg-blue-50/20">
-                    <div className="flex items-center justify-between text-blue-700 mb-1">
-                      <span className="text-[11px] font-semibold">On Leave</span>
-                      <Calendar size={15} className="text-blue-600" />
-                    </div>
-                    <div className="text-xl font-bold text-blue-700 font-mono">
-                      {dashboardKpis.leave}
-                    </div>
-                    <div className="text-[10px] text-blue-600 mt-1 font-medium">Approved leaves</div>
-                  </div>
-
-                  {/* 6. Half Day */}
-                  <div className="bg-white rounded-[8px] border border-yellow-200 p-3.5 shadow-2xs flex flex-col justify-between bg-yellow-50/20">
-                    <div className="flex items-center justify-between text-yellow-800 mb-1">
-                      <span className="text-[11px] font-semibold">Half Day</span>
-                      <AlertCircle size={15} className="text-yellow-600" />
-                    </div>
-                    <div className="text-xl font-bold text-yellow-800 font-mono">
-                      {dashboardKpis.halfDay}
-                    </div>
-                    <div className="text-[10px] text-yellow-700 mt-1 font-medium">&lt; {attendanceSettings.halfDayThreshold}h shift</div>
-                  </div>
-
-                  {/* 7. Attendance Percentage */}
-                  <div className="bg-white rounded-[8px] border border-indigo-200 p-3.5 shadow-2xs flex flex-col justify-between bg-indigo-50/20">
-                    <div className="flex items-center justify-between text-indigo-700 mb-1">
-                      <span className="text-[11px] font-semibold">Attendance %</span>
-                      <TrendingUp size={15} className="text-indigo-600" />
-                    </div>
-                    <div className="text-xl font-bold text-indigo-700 font-mono">
-                      {dashboardKpis.percentage}%
-                    </div>
-                    <div className="text-[10px] text-indigo-600 mt-1 font-medium">Turnout rate</div>
-                  </div>
+                  </button>
                 </div>
               </div>
 
-              {/* ──────────────────────────────────────────────────────────
-                  2. DAILY ATTENDANCE MANAGEMENT TABLE & CONTROLS
-              ────────────────────────────────────────────────────────── */}
-              <div className="bg-white rounded-[8px] border border-slate-200 shadow-2xs overflow-hidden">
-                {/* Table Filter & Action Toolbar */}
-                <div className="p-4 border-b border-slate-200 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 bg-slate-50/50">
-                  <div className="flex flex-wrap items-center gap-2.5">
-                    {/* Department Filter */}
-                    <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
-                      <Filter size={13} />
-                      <span>Dept:</span>
-                      <select
-                        value={filterDepartment}
-                        onChange={(e) => setFilterDepartment(e.target.value)}
-                        className="px-2.5 py-1.5 rounded-[6px] border border-slate-300 bg-white text-xs font-medium cursor-pointer"
-                      >
-                        <option value="ALL">All Departments</option>
-                        {departmentsList.map((d) => (
-                          <option key={d} value={d}>
-                            {d}
-                          </option>
-                        ))}
-                      </select>
+              {/* 3 Primary Attendance Metrics */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {/* 1. Total Staff */}
+                <div className="bg-white rounded-xl border border-[#E5E5EA] p-3.5 shadow-2xs">
+                  <div className="flex items-center justify-between text-[#86868B] mb-1">
+                    <span className="text-[12px] font-medium">Total Staff</span>
+                    <Users size={15} className="text-[#007AFF]" />
+                  </div>
+                  <div className="text-2xl font-semibold text-[#1D1D1F] font-mono tracking-tight">
+                    {dashboardKpis.totalStaff}
+                  </div>
+                  <div className="text-[11px] text-[#86868B] mt-0.5">Registered on roster</div>
+                </div>
+
+                {/* 2. Present Today */}
+                <div className="bg-white rounded-xl border border-[#E5E5EA] p-3.5 shadow-2xs">
+                  <div className="flex items-center justify-between text-[#86868B] mb-1">
+                    <span className="text-[12px] font-medium">Present Today</span>
+                    <CheckCircle2 size={15} className="text-[#34C759]" />
+                  </div>
+                  <div className="text-2xl font-semibold text-[#34C759] font-mono tracking-tight">
+                    {dashboardKpis.present}
+                  </div>
+                  <div className="text-[11px] text-[#86868B] mt-0.5">Marked present</div>
+                </div>
+
+                {/* 3. Absent Today */}
+                <div className="bg-white rounded-xl border border-[#E5E5EA] p-3.5 shadow-2xs">
+                  <div className="flex items-center justify-between text-[#86868B] mb-1">
+                    <span className="text-[12px] font-medium">Absent Today</span>
+                    <XCircle size={15} className="text-[#FF3B30]" />
+                  </div>
+                  <div className="text-2xl font-semibold text-[#FF3B30] font-mono tracking-tight">
+                    {dashboardKpis.absent}
+                  </div>
+                  <div className="text-[11px] text-[#86868B] mt-0.5">Unrecorded or absent</div>
+                </div>
+              </div>
+
+              {/* Collapsible Secondary Attendance Metrics */}
+              {showMoreStats && (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3 bg-[#F9F9FB] rounded-xl border border-[#E5E5EA] animate-in fade-in slide-in-from-top-1 duration-150">
+                  <div className="bg-white rounded-lg border border-[#E5E5EA] p-3">
+                    <div className="text-[11px] font-medium text-[#86868B]">Late Today</div>
+                    <div className="text-lg font-semibold text-[#FF9500] font-mono mt-0.5">
+                      {dashboardKpis.late}
                     </div>
+                    <div className="text-[10px] text-[#86868B] mt-0.5">After {attendanceSettings.lateThreshold}</div>
+                  </div>
+                  <div className="bg-white rounded-lg border border-[#E5E5EA] p-3">
+                    <div className="text-[11px] font-medium text-[#86868B]">Half Day</div>
+                    <div className="text-lg font-semibold text-[#D97706] font-mono mt-0.5">
+                      {dashboardKpis.halfDay}
+                    </div>
+                    <div className="text-[10px] text-[#86868B] mt-0.5">&lt; {attendanceSettings.halfDayThreshold}h shift</div>
+                  </div>
+                  <div className="bg-white rounded-lg border border-[#E5E5EA] p-3">
+                    <div className="text-[11px] font-medium text-[#86868B]">On Leave</div>
+                    <div className="text-lg font-semibold text-[#007AFF] font-mono mt-0.5">
+                      {dashboardKpis.leave}
+                    </div>
+                    <div className="text-[10px] text-[#86868B] mt-0.5">Approved leaves</div>
+                  </div>
+                  <div className="bg-white rounded-lg border border-[#E5E5EA] p-3">
+                    <div className="text-[11px] font-medium text-[#86868B]">Attendance Rate</div>
+                    <div className="text-lg font-semibold text-[#5856D6] font-mono mt-0.5">
+                      {dashboardKpis.percentage}%
+                    </div>
+                    <div className="text-[10px] text-[#86868B] mt-0.5">Turnout rate</div>
+                  </div>
+                </div>
+              )}
+
+              {/* Attendance Table & Toolbar */}
+              <div className="bg-white rounded-xl border border-[#E5E5EA] shadow-2xs overflow-hidden">
+                {/* Compact Toolbar */}
+                <div className="p-3 border-b border-[#E5E5EA] flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-[#FAFAFC]">
+                  <div className="flex flex-wrap items-center gap-2 flex-1">
+                    {/* Search */}
+                    <div className="relative min-w-44 max-w-xs flex-1">
+                      <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#86868B]" />
+                      <input
+                        type="text"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        placeholder="Filter employee or ID…"
+                        className="w-full pl-7 pr-3 py-1.5 text-xs rounded-lg border border-[#E5E5EA] bg-white text-[#1D1D1F] outline-none focus:border-[#007AFF]"
+                      />
+                    </div>
+
+                    {/* Department Filter */}
+                    <select
+                      value={filterDepartment}
+                      onChange={(e) => setFilterDepartment(e.target.value)}
+                      className="px-2.5 py-1.5 rounded-lg border border-[#E5E5EA] bg-white text-xs font-medium text-[#1D1D1F] cursor-pointer outline-none focus:border-[#007AFF]"
+                    >
+                      <option value="ALL">All Departments</option>
+                      {departmentsList.map((d) => (
+                        <option key={d} value={d}>
+                          {d}
+                        </option>
+                      ))}
+                    </select>
 
                     {/* Status Filter */}
-                    <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
-                      <span>Status:</span>
-                      <select
-                        value={filterStatus}
-                        onChange={(e) => setFilterStatus(e.target.value)}
-                        className="px-2.5 py-1.5 rounded-[6px] border border-slate-300 bg-white text-xs font-medium cursor-pointer"
-                      >
-                        <option value="ALL">All Statuses</option>
-                        <option value="PRESENT">Present</option>
-                        <option value="ABSENT">Absent</option>
-                        <option value="LATE">Late</option>
-                        <option value="HALF_DAY">Half Day</option>
-                        <option value="LEAVE">On Leave</option>
-                      </select>
-                    </div>
+                    <select
+                      value={filterStatus}
+                      onChange={(e) => setFilterStatus(e.target.value)}
+                      className="px-2.5 py-1.5 rounded-lg border border-[#E5E5EA] bg-white text-xs font-medium text-[#1D1D1F] cursor-pointer outline-none focus:border-[#007AFF]"
+                    >
+                      <option value="ALL">All Statuses</option>
+                      <option value="PRESENT">Present</option>
+                      <option value="ABSENT">Absent</option>
+                      <option value="LATE">Late</option>
+                      <option value="HALF_DAY">Half Day</option>
+                      <option value="LEAVE">On Leave</option>
+                    </select>
                   </div>
 
-                  {/* Bulk Actions */}
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button
-                      variant="success"
-                      size="sm"
-                      icon={Check}
-                      onClick={() => {
-                        const updated = { ...dailyDrafts };
-                        staffList.forEach((s) => {
-                          updated[s.id] = {
-                            ...(updated[s.id] || {}),
-                            status: "PRESENT",
-                            hours: 8.0,
-                          };
-                        });
-                        setDailyDrafts(updated);
-                        notify("success", "Marked all staff as Present in draft!");
-                      }}
-                    >
-                      Mark All Present
-                    </Button>
+                  {/* Actions */}
+                  <div className="flex items-center gap-2 self-end sm:self-center">
+                    {canManageAttendance && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = { ...dailyDrafts };
+                          staffList.forEach((s) => {
+                            updated[s.id] = {
+                              ...(updated[s.id] || {}),
+                              status: "PRESENT",
+                              hours: 8.0,
+                              isSaved: false,
+                            };
+                          });
+                          setDailyDrafts(updated);
+                          notify("success", "Marked all staff as Present in draft!");
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#E5E5EA] bg-white hover:bg-[#F5F5F7] text-xs font-medium text-[#1D1D1F] transition cursor-pointer shadow-2xs"
+                      >
+                        <Check size={13} className="text-[#34C759]" />
+                        <span>Mark All Present</span>
+                      </button>
+                    )}
 
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      icon={Save}
-                      loading={submitting}
-                      onClick={handleSaveAllDailyAttendance}
-                    >
-                      Save Changes
-                    </Button>
+                    {hasUnsavedChanges && (
+                      <button
+                        type="button"
+                        disabled={submitting}
+                        onClick={handleSaveAllDailyAttendance}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#007AFF] hover:bg-[#0062CC] text-white text-xs font-semibold shadow-2xs transition cursor-pointer disabled:opacity-50"
+                      >
+                        {submitting ? (
+                          <RefreshCw size={13} className="animate-spin" />
+                        ) : (
+                          <Save size={13} />
+                        )}
+                        <span>Save Changes</span>
+                      </button>
+                    )}
                   </div>
                 </div>
 
-                {/* Attendance Records Table */}
+                {/* Compact Attendance Records Table (8 Columns) */}
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse text-xs">
                     <thead>
-                      <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
-                        <th className="py-3 px-3.5">Staff ID</th>
-                        <th className="py-3 px-3.5">Staff Name</th>
-                        <th className="py-3 px-3.5">Department</th>
-                        <th className="py-3 px-3.5">Role</th>
-                        <th className="py-3 px-3.5">Date</th>
-                        <th className="py-3 px-3.5">Check-In</th>
-                        <th className="py-3 px-3.5">Check-Out</th>
-                        <th className="py-3 px-3.5">Working Hours</th>
-                        <th className="py-3 px-3.5">Status</th>
-                        <th className="py-3 px-3.5">Remarks</th>
-                        <th className="py-3 px-3.5 text-right">Actions</th>
+                      <tr className="bg-[#FAFAFC] border-b border-[#E5E5EA] text-[11px] font-semibold text-[#86868B] uppercase tracking-wider">
+                        <th className="py-2.5 px-3.5">Staff ID</th>
+                        <th className="py-2.5 px-3.5">Employee Name</th>
+                        <th className="py-2.5 px-3.5">Department</th>
+                        <th className="py-2.5 px-3.5">Check-In</th>
+                        <th className="py-2.5 px-3.5">Check-Out</th>
+                        <th className="py-2.5 px-3.5">Working Hours</th>
+                        <th className="py-2.5 px-3.5">Status</th>
+                        <th className="py-2.5 px-3.5 text-right">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody className="divide-y divide-[#E5E5EA]">
                       {filteredDailyStaff.length === 0 ? (
                         <tr>
-                          <td colSpan={11} className="py-12 text-center text-slate-400">
+                          <td colSpan={8} className="py-12 text-center text-[#86868B]">
                             No staff records found matching the selected filters.
                           </td>
                         </tr>
@@ -1488,84 +1494,95 @@ export default function StaffManagement({ defaultTab = "directory" }) {
                             remarks: "",
                           };
                           const badge = getStatusBadge(draft.status);
+                          const palette = getStaffAvatarPalette(staff.id || staff.name);
 
                           return (
-                            <tr key={staff.id} className="hover:bg-slate-50/70 transition">
-                              {/* Staff ID */}
-                              <td className="py-3 px-3.5 font-mono font-medium text-slate-600">
+                            <tr key={staff.id} className="hover:bg-[#F9F9FB] transition">
+                              {/* 1. Staff ID */}
+                              <td className="py-2.5 px-3.5 font-mono text-[11px] font-medium text-[#6E6E73]">
                                 {staff.staffId || "EMP-001"}
                               </td>
 
-                              {/* Staff Name */}
-                              <td className="py-3 px-3.5 font-bold text-slate-800">
-                                <div className="flex items-center gap-2">
-                                  <div className="w-6 h-6 rounded-[5px] bg-slate-100 text-slate-700 text-[10px] font-bold flex items-center justify-center">
+                              {/* 2. Employee Name & Role */}
+                              <td className="py-2.5 px-3.5">
+                                <div className="flex items-center gap-2.5">
+                                  <div
+                                    style={{
+                                      backgroundColor: palette.bg,
+                                      color: palette.text,
+                                      borderColor: palette.border,
+                                    }}
+                                    className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-semibold border shrink-0"
+                                  >
                                     {staff.name.charAt(0).toUpperCase()}
                                   </div>
-                                  <span>{staff.name}</span>
+                                  <div className="min-w-0">
+                                    <div className="font-medium text-[#1D1D1F] truncate text-xs">
+                                      {staff.name}
+                                    </div>
+                                    <div className="text-[11px] text-[#86868B] truncate">
+                                      {staff.role}
+                                    </div>
+                                  </div>
                                 </div>
                               </td>
 
-                              {/* Department */}
-                              <td className="py-3 px-3.5 text-slate-600">
+                              {/* 3. Department */}
+                              <td className="py-2.5 px-3.5 text-[#1D1D1F] text-xs">
                                 {staff.department || "Operations"}
                               </td>
 
-                              {/* Role */}
-                              <td className="py-3 px-3.5 text-slate-600">
-                                {staff.role}
-                              </td>
-
-                              {/* Date */}
-                              <td className="py-3 px-3.5 text-slate-600 font-mono text-[11px]">
-                                {selectedDate}
-                              </td>
-
-                              {/* Check-In */}
-                              <td className="py-2.5 px-3.5">
+                              {/* 4. Check-In */}
+                              <td className="py-2 px-3.5">
                                 <input
                                   type="time"
                                   value={draft.checkIn || "09:00"}
+                                  disabled={!canManageAttendance}
                                   onChange={(e) =>
                                     handleDraftFieldChange(staff.id, "checkIn", e.target.value)
                                   }
-                                  className="w-24 px-2 py-1 text-xs rounded-[6px] border border-slate-300 bg-white"
+                                  className="w-20 px-2 py-1 text-xs rounded-md border border-[#E5E5EA] bg-white text-[#1D1D1F] disabled:bg-[#F2F2F7] disabled:text-[#86868B] outline-none focus:border-[#007AFF]"
                                 />
                               </td>
 
-                              {/* Check-Out */}
-                              <td className="py-2.5 px-3.5">
+                              {/* 5. Check-Out */}
+                              <td className="py-2 px-3.5">
                                 <input
                                   type="time"
                                   value={draft.checkOut || "18:00"}
+                                  disabled={!canManageAttendance}
                                   onChange={(e) =>
                                     handleDraftFieldChange(staff.id, "checkOut", e.target.value)
                                   }
-                                  className="w-24 px-2 py-1 text-xs rounded-[6px] border border-slate-300 bg-white"
+                                  className="w-20 px-2 py-1 text-xs rounded-md border border-[#E5E5EA] bg-white text-[#1D1D1F] disabled:bg-[#F2F2F7] disabled:text-[#86868B] outline-none focus:border-[#007AFF]"
                                 />
                               </td>
 
-                              {/* Working Hours */}
-                              <td className="py-2.5 px-3.5">
+                              {/* 6. Working Hours */}
+                              <td className="py-2 px-3.5">
                                 <input
                                   type="number"
                                   step="0.5"
                                   min="0"
                                   max="24"
                                   value={draft.hours}
+                                  disabled={!canManageAttendance}
                                   onChange={(e) =>
                                     handleDraftFieldChange(staff.id, "hours", e.target.value)
                                   }
-                                  className="w-16 px-2 py-1 text-xs font-mono rounded-[6px] border border-slate-300 bg-white"
+                                  className="w-16 px-2 py-1 text-xs font-mono rounded-md border border-[#E5E5EA] bg-white text-[#1D1D1F] disabled:bg-[#F2F2F7] disabled:text-[#86868B] outline-none focus:border-[#007AFF]"
                                 />
                               </td>
 
-                              {/* Status Select / Badge */}
-                              <td className="py-2.5 px-3.5">
+                              {/* 7. Status */}
+                              <td className="py-2 px-3.5">
                                 <select
                                   value={draft.status}
-                                  onChange={(e) => handleQuickStatusChange(staff.id, e.target.value)}
-                                  className={`px-2.5 py-1 text-xs font-semibold rounded-[6px] border cursor-pointer ${badge.bg}`}
+                                  disabled={!canManageAttendance}
+                                  onChange={(e) =>
+                                    handleQuickStatusChange(staff.id, e.target.value)
+                                  }
+                                  className={`px-2 py-1 text-xs font-medium rounded-md border cursor-pointer outline-none transition ${badge.bg} disabled:opacity-75`}
                                 >
                                   <option value="PRESENT">Present</option>
                                   <option value="ABSENT">Absent</option>
@@ -1575,66 +1592,11 @@ export default function StaffManagement({ defaultTab = "directory" }) {
                                 </select>
                               </td>
 
-                              {/* Remarks */}
-                              <td className="py-2.5 px-3.5">
-                                <input
-                                  type="text"
-                                  placeholder="Notes..."
-                                  value={draft.remarks || ""}
-                                  onChange={(e) =>
-                                    handleDraftFieldChange(staff.id, "remarks", e.target.value)
-                                  }
-                                  className="w-28 px-2 py-1 text-xs rounded-[6px] border border-slate-300 bg-white"
-                                />
-                              </td>
-
-                              {/* Actions */}
-                              <td className="py-2.5 px-3.5 text-right">
-                                <div className="inline-flex items-center gap-1.5">
-                                  <CompactIconButton
-                                    variant="success"
-                                    size="sm"
-                                    icon={Check}
-                                    active={draft.status === "PRESENT"}
-                                    onClick={() => handleQuickStatusChange(staff.id, "PRESENT")}
-                                    title="Mark Present"
-                                  />
-                                  <CompactIconButton
-                                    variant="danger"
-                                    size="sm"
-                                    icon={X}
-                                    active={draft.status === "ABSENT"}
-                                    onClick={() => handleQuickStatusChange(staff.id, "ABSENT")}
-                                    title="Mark Absent"
-                                  />
-                                  <CompactIconButton
-                                    variant="warning"
-                                    size="sm"
-                                    icon={Clock}
-                                    active={draft.status === "LATE"}
-                                    onClick={() => handleQuickStatusChange(staff.id, "LATE")}
-                                    title="Mark Late"
-                                  />
-                                  <CompactIconButton
-                                    variant="warning"
-                                    size="sm"
-                                    icon={AlertCircle}
-                                    active={draft.status === "HALF_DAY"}
-                                    onClick={() => handleQuickStatusChange(staff.id, "HALF_DAY")}
-                                    title="Mark Half Day"
-                                  />
-                                  <CompactIconButton
-                                    variant="info"
-                                    size="sm"
-                                    icon={Calendar}
-                                    active={draft.status === "LEAVE"}
-                                    onClick={() => handleQuickStatusChange(staff.id, "LEAVE")}
-                                    title="Mark Leave"
-                                  />
-                                  <CompactIconButton
-                                    variant="primary"
-                                    size="sm"
-                                    icon={Edit2}
+                              {/* 8. Actions */}
+                              <td className="py-2 px-3.5 text-right whitespace-nowrap">
+                                <div className="inline-flex items-center justify-end gap-1">
+                                  <button
+                                    type="button"
                                     onClick={() =>
                                       setEditingAttendance({
                                         id: draft.id,
@@ -1648,15 +1610,19 @@ export default function StaffManagement({ defaultTab = "directory" }) {
                                         remarks: draft.remarks || "",
                                       })
                                     }
-                                    title="Edit / Correct record"
-                                  />
-                                  <CompactIconButton
-                                    variant="neutral"
-                                    size="sm"
-                                    icon={CalendarCheck2}
+                                    className="p-1.5 rounded-md hover:bg-[#F2F2F7] text-[#6E6E73] hover:text-[#1D1D1F] transition cursor-pointer"
+                                    title="Edit details & remarks"
+                                  >
+                                    <Edit2 size={13} />
+                                  </button>
+                                  <button
+                                    type="button"
                                     onClick={() => setHistoryStaff(staff)}
+                                    className="p-1.5 rounded-md hover:bg-[#F2F2F7] text-[#6E6E73] hover:text-[#1D1D1F] transition cursor-pointer"
                                     title="View staff attendance history"
-                                  />
+                                  >
+                                    <CalendarCheck2 size={13} />
+                                  </button>
                                 </div>
                               </td>
                             </tr>
@@ -1668,24 +1634,34 @@ export default function StaffManagement({ defaultTab = "directory" }) {
                 </div>
 
                 {/* Table Footer Summary & Save CTA */}
-                <div className="p-3 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                  <div className="text-slate-500">
-                    Showing <strong>{filteredDailyStaff.length}</strong> of{" "}
-                    <strong>{staffList.length}</strong> staff members for date{" "}
-                    <strong className="font-mono text-slate-700">{selectedDate}</strong>
+                <div className="p-3 bg-[#FAFAFC] border-t border-[#E5E5EA] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-[#86868B]">
+                  <div>
+                    Showing <strong className="text-[#1D1D1F]">{filteredDailyStaff.length}</strong> of{" "}
+                    <strong className="text-[#1D1D1F]">{staffList.length}</strong> staff members for{" "}
+                    <span className="font-mono text-[#1D1D1F]">{selectedDate}</span>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      icon={Save}
-                      loading={submitting}
-                      onClick={handleSaveAllDailyAttendance}
-                    >
-                      Save All Changes
-                    </Button>
-                  </div>
+                  {hasUnsavedChanges && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] text-[#FF9500] font-medium flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#FF9500] animate-pulse" />
+                        Unsaved changes
+                      </span>
+                      <button
+                        type="button"
+                        disabled={submitting}
+                        onClick={handleSaveAllDailyAttendance}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#007AFF] hover:bg-[#0062CC] text-white text-xs font-semibold shadow-2xs transition cursor-pointer disabled:opacity-50"
+                      >
+                        {submitting ? (
+                          <RefreshCw size={13} className="animate-spin" />
+                        ) : (
+                          <Save size={13} />
+                        )}
+                        <span>Save Changes</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </>
@@ -2151,92 +2127,106 @@ export default function StaffManagement({ defaultTab = "directory" }) {
             </div>
           )}
         </div>
+      ) : activeTab === "invitations" ? (
+        <RoleInvitationManager />
       ) : (
         /* ══════════════════════════════════════════════════════
            TAB 3: INTEGRATED PAYROLL & SALARIES
         ══════════════════════════════════════════════════════ */
         <div className="space-y-4">
-          <div className="bg-white rounded-[8px] border border-slate-200 p-4 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div>
-              <h2 className="text-sm font-bold text-slate-800">
-                Attendance-Integrated Monthly Payroll
-              </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Automatically calculates Paid Days, Unpaid Days, Leave Deductions, and Overtime Pay directly from Staff Attendance logs.
-              </p>
+          <div className="bg-white rounded-xl border border-[#E5E5EA] shadow-2xs overflow-hidden">
+            <div className="p-3.5 border-b border-[#E5E5EA] bg-[#FAFAFC] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-xs font-semibold text-[#1D1D1F]">
+                  Attendance-Integrated Monthly Payroll
+                </h2>
+                <p className="text-[11px] text-[#86868B] mt-0.5">
+                  Calculates Paid Days, Unpaid Days, Leave Deductions, and Overtime Pay directly from Attendance logs.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {canViewSalaries && (
+                  <button
+                    type="button"
+                    onClick={() => setShowSalaries(!showSalaries)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-[#E5E5EA] bg-white text-[#1D1D1F] hover:bg-[#F5F5F7] rounded-lg transition cursor-pointer"
+                  >
+                    {revealSalaries ? <EyeOff size={13} className="text-[#6E6E73]" /> : <Eye size={13} className="text-[#6E6E73]" />}
+                    <span>{revealSalaries ? "Mask" : "Reveal"}</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setShowPayrollModal(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#007AFF] hover:bg-[#0062CC] text-white text-xs font-semibold shadow-2xs transition cursor-pointer"
+                >
+                  <DollarSign size={13} />
+                  <span>Process Payroll</span>
+                </button>
+              </div>
             </div>
 
-            <Button
-              variant="primary"
-              size="sm"
-              icon={DollarSign}
-              onClick={() => setShowPayrollModal(true)}
-            >
-              Process Monthly Payroll
-            </Button>
-          </div>
-
-          <div className="bg-white rounded-[8px] border border-slate-200 shadow-2xs overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
-                    <th className="py-3 px-4">Period</th>
-                    <th className="py-3 px-4">Staff Member</th>
-                    <th className="py-3 px-4">Role</th>
-                    <th className="py-3 px-4 text-right">Basic Salary</th>
-                    <th className="py-3 px-4 text-right">Deductions</th>
-                    <th className="py-3 px-4 text-right">Overtime Pay</th>
-                    <th className="py-3 px-4 text-right">Net Salary</th>
-                    <th className="py-3 px-4">Status</th>
-                    <th className="py-3 px-4 text-right">Actions</th>
+                  <tr className="bg-[#FAFAFC] border-b border-[#E5E5EA] text-[11px] font-semibold text-[#86868B] uppercase tracking-wider">
+                    <th className="py-2.5 px-3.5">Period</th>
+                    <th className="py-2.5 px-3.5">Staff Member</th>
+                    <th className="py-2.5 px-3.5">Role</th>
+                    <th className="py-2.5 px-3.5 text-right">Basic Salary</th>
+                    <th className="py-2.5 px-3.5 text-right">Deductions</th>
+                    <th className="py-2.5 px-3.5 text-right">Overtime Pay</th>
+                    <th className="py-2.5 px-3.5 text-right">Net Salary</th>
+                    <th className="py-2.5 px-3.5">Status</th>
+                    <th className="py-2.5 px-3.5 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-[#E5E5EA]">
                   {payrolls.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="py-12 text-center text-slate-400">
-                        No payroll disbursements calculated yet. Click &quot;Process Monthly Payroll&quot; above.
+                      <td colSpan={9} className="py-12 text-center text-[#86868B]">
+                        No payroll disbursements calculated yet. Click &quot;Process Payroll&quot; to calculate.
                       </td>
                     </tr>
                   ) : (
                     payrolls.map((p) => (
-                      <tr key={p.id} className="hover:bg-slate-50/60 transition">
-                        <td className="py-3 px-4 font-semibold text-slate-800">
+                      <tr key={p.id} className="hover:bg-[#F9F9FB] transition">
+                        <td className="py-2.5 px-3.5 font-medium text-[#1D1D1F]">
                           {p.month} {p.year}
                         </td>
-                        <td className="py-3 px-4 font-bold text-slate-800">
+                        <td className="py-2.5 px-3.5 font-medium text-[#1D1D1F]">
                           {p.staff?.name || "Staff Member"}
                         </td>
-                        <td className="py-3 px-4 text-slate-600">
+                        <td className="py-2.5 px-3.5 text-[#6E6E73]">
                           {p.staff?.role || "Staff"}
                         </td>
-                        <td className="py-3 px-4 text-right text-slate-700 font-mono">
+                        <td className="py-2.5 px-3.5 text-right text-[#1D1D1F] font-mono">
                           {maskCurrency(p.basicSalary || p.baseSalary, revealSalaries)}
                         </td>
-                        <td className="py-3 px-4 text-right text-rose-600 font-mono">
+                        <td className="py-2.5 px-3.5 text-right text-[#FF3B30] font-mono">
                           -{maskCurrency(p.deductions || 0, revealSalaries)}
                         </td>
-                        <td className="py-3 px-4 text-right text-emerald-600 font-mono">
+                        <td className="py-2.5 px-3.5 text-right text-[#34C759] font-mono">
                           +{maskCurrency(p.overtimePay || 0, revealSalaries)}
                         </td>
-                        <td className="py-3 px-4 text-right font-bold text-emerald-700 font-mono">
+                        <td className="py-2.5 px-3.5 text-right font-semibold text-[#34C759] font-mono">
                           {maskCurrency(p.netSalary, revealSalaries)}
                         </td>
-                        <td className="py-3 px-4">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-[5px] text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <td className="py-2.5 px-3.5">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                             {p.paymentStatus || p.status || "DISBURSED"}
                           </span>
                         </td>
-                        <td className="py-3 px-4 text-right">
-                          <Button
-                            variant="secondary"
-                            size="xs"
-                            icon={FileText}
+                        <td className="py-2.5 px-3.5 text-right">
+                          <button
+                            type="button"
                             onClick={() => setPayslipModalData(p)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-[#E5E5EA] bg-white hover:bg-[#F5F5F7] text-xs font-medium text-[#1D1D1F] transition cursor-pointer"
                           >
-                            Payslip
-                          </Button>
+                            <FileText size={12} className="text-[#6E6E73]" />
+                            <span>Payslip</span>
+                          </button>
                         </td>
                       </tr>
                     ))

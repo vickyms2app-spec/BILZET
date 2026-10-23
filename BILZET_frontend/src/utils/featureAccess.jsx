@@ -88,7 +88,7 @@ export const FEATURE_CATALOG = {
     minPlan: "PRO",
     name: "Team & Cashier Sub-Users",
     module: "Operations & HR",
-    description: "Add up to 5 sub-users on Pro and up to 15 sub-users on Premium.",
+    description: "Add up to 5 sub-users on Pro and unlimited sub-users on Premium.",
     benefit: "Allow your cashier, manager, and warehouse staff to operate simultaneously.",
   },
   // Advanced Reports & Profit Analysis (Pro)
@@ -128,13 +128,13 @@ export const FEATURE_CATALOG = {
 /**
  * Validates if the current tier has permission to access a feature.
  */
-export const isFeatureAllowed = (featureKey, currentTier = "FREE", isActive = true) => {
+export const isFeatureAllowed = (featureKey, currentTier = "PREMIUM", isActive = true) => {
   const feat = FEATURE_CATALOG[featureKey];
   if (!feat) return true; // Unrestricted if not cataloged
 
   if (!isActive) return false;
 
-  const currentRank = TIER_RANKS[String(currentTier).toUpperCase()] || 1;
+  const currentRank = TIER_RANKS[String(currentTier).toUpperCase()] || 3;
   const requiredRank = TIER_RANKS[String(feat.minPlan).toUpperCase()] || 1;
 
   return currentRank >= requiredRank;

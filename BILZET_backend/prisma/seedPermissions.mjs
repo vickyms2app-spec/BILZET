@@ -125,12 +125,12 @@ export async function seedPermissionsAndRoles() {
     // Update subscription maxSubUsers defaults if 0
     if (user.subscriptions && user.subscriptions.length > 0) {
       for (const sub of user.subscriptions) {
-        if (!sub.maxSubUsers || sub.maxSubUsers === 0) {
+        if (!sub.maxSubUsers || sub.maxSubUsers === 0 || sub.maxSubUsers === 15) {
           let seats = 0;
           if (sub.planTier === 'PRO') seats = 5;
-          if (sub.planTier === 'ENTERPRISE' || sub.planTier === 'PREMIUM') seats = 15;
+          if (sub.planTier === 'ENTERPRISE' || sub.planTier === 'PREMIUM') seats = -1;
 
-          if (seats > 0) {
+          if (seats !== 0) {
             await prisma.subscription.update({
               where: { id: sub.id },
               data: { maxSubUsers: seats },

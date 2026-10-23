@@ -5,9 +5,11 @@ import { round2 } from '../utils/calculations.mjs';
 
 export const getDashboardStats = asyncHandler(async (req, res) => {
   const businessId =
-    req.user?.role === 'SUPER_ADMIN'
-      ? (req.query.storeId || req.user?.businessId || null)
-      : (req.user?.businessId || null);
+    req.headers['x-business-id'] ||
+    req.query.businessId ||
+    req.query.storeId ||
+    req.user?.businessId ||
+    null;
 
   const baseStoreFilter = businessId ? { businessId } : {};
 
@@ -76,7 +78,7 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
 
     // Expenses for target day
     prisma.expense.aggregate({
-      where: { date: { gte: startOfTargetDay, lte: endOfTargetDay } },
+      where: { ...baseStoreFilter, date: { gte: startOfTargetDay, lte: endOfTargetDay } },
       _sum: { amount: true },
     }),
 
@@ -148,7 +150,7 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
 
   // Purchases for target day
   const todayPurchasesAgg = await prisma.purchase.aggregate({
-    where: { createdAt: { gte: startOfTargetDay, lte: endOfTargetDay } },
+    where: { ...baseStoreFilter, createdAt: { gte: startOfTargetDay, lte: endOfTargetDay } },
     _sum: { grandTotal: true },
     _count: { id: true },
   });
@@ -157,7 +159,7 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
 
   // Past 7-days purchases
   const pastSevenDaysPurchases = await prisma.purchase.findMany({
-    where: { createdAt: { gte: sevenDaysAgo, lte: endOfTargetDay } },
+    where: { ...baseStoreFilter, createdAt: { gte: sevenDaysAgo, lte: endOfTargetDay } },
     select: { grandTotal: true, createdAt: true },
   });
 
@@ -191,7 +193,7 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
     select: { grandTotal: true, createdAt: true },
   });
   const monthPurchasesList = await prisma.purchase.findMany({
-    where: { createdAt: { gte: startOfMonth, lte: endOfMonth } },
+    where: { ...baseStoreFilter, createdAt: { gte: startOfMonth, lte: endOfMonth } },
     select: { grandTotal: true, createdAt: true },
   });
 
@@ -222,7 +224,7 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
     select: { grandTotal: true, createdAt: true },
   });
   const yearPurchasesList = await prisma.purchase.findMany({
-    where: { createdAt: { gte: startOfYear, lte: endOfYear } },
+    where: { ...baseStoreFilter, createdAt: { gte: startOfYear, lte: endOfYear } },
     select: { grandTotal: true, createdAt: true },
   });
 

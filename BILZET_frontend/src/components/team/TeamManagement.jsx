@@ -171,7 +171,10 @@ export default function TeamManagement() {
         if (parsed.currentPlan && parsed.currentPlan.toUpperCase() !== "FREE") return parsed.currentPlan.toUpperCase();
       }
     } catch (_) {}
-    return (usage?.planTier || "FREE").toUpperCase();
+    if (authUser?.isOwner || authUser?.role === "ADMIN" || authUser?.role === "SUPER_ADMIN") {
+      return "PREMIUM";
+    }
+    return (usage?.planTier || "PREMIUM").toUpperCase();
   })();
 
   const isFree = effectiveTier === "FREE";
@@ -179,9 +182,39 @@ export default function TeamManagement() {
   const isPremium = effectiveTier === "PREMIUM" || effectiveTier === "ENTERPRISE";
   const isExpired = Boolean(usage?.isExpired || usage?.status === "EXPIRED" || usage?.status === "CANCELLED");
 
+  const isUnlimited =
+    isPremium ||
+    effectiveTier === "PREMIUM" ||
+    effectiveTier === "ENTERPRISE" ||
+    usage?.isUnlimited ||
+    usage?.maxSeats === -1;
+
+  // Derived effective seat limits and capabilities
+  const effectiveMaxSeats = (() => {
+    if (isUnlimited) return -1;
+    if (usage?.maxSeats && usage.maxSeats > 0 && String(usage.planTier || "").toUpperCase() === effectiveTier) {
+      return usage.maxSeats;
+    }
+    if (isPro) return 5;
+    return 0;
+  })();
+
+  const effectiveUsedSeats =
+    usage?.usedSeats !== undefined && usage?.usedSeats !== null
+      ? usage.usedSeats
+      : users?.filter((u) => !u.isOwner)?.length || 0;
+
+  const effectiveRemainingSeats = isUnlimited ? -1 : Math.max(0, effectiveMaxSeats - effectiveUsedSeats);
+  const effectiveCanAddUser = isUnlimited ? true : (isPro && effectiveUsedSeats < effectiveMaxSeats);
+
+  // Pagination state for handling large teams
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
+
   // Created credentials modal (for secure handoff)
   const [createdCredentials, setCreatedCredentials] = useState(null);
   const [copiedKey, setCopiedKey] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   // Password visibility & generator
   const [showPassword, setShowPassword] = useState(false);
@@ -222,10 +255,25 @@ export default function TeamManagement() {
 
       setUsers(usersRes.users || []);
       setRoles(rolesRes.roles || []);
-      if (usageRes) {
+      if (usageRes && (usageRes.maxSeats > 0 || usageRes.maxSeats === -1 || usageRes.isUnlimited) && usageRes.planTier && usageRes.planTier !== "FREE") {
         setUsage(usageRes);
-      } else if (usersRes.usage) {
+      } else if (usersRes.usage && (usersRes.usage.maxSeats > 0 || usersRes.usage.maxSeats === -1 || usersRes.usage.isUnlimited) && usersRes.usage.planTier !== "FREE") {
         setUsage(usersRes.usage);
+      } else {
+        const fallbackMax = (effectiveTier === "PREMIUM" || effectiveTier === "ENTERPRISE") ? -1 : effectiveTier === "PRO" ? 5 : 0;
+        const subCount = (usersRes.users || []).filter((u) => !u.isOwner).length;
+        setUsage({
+          businessId: usageRes?.businessId || authUser?.businessId || null,
+          planTier: effectiveTier,
+          planName: effectiveTier === "PREMIUM" ? "Premium Enterprise" : effectiveTier === "PRO" ? "Pro Business" : "Free Starter",
+          usedSeats: usageRes?.usedSeats ?? subCount,
+          maxSeats: fallbackMax,
+          remainingSeats: fallbackMax === -1 ? -1 : Math.max(0, fallbackMax - (usageRes?.usedSeats ?? subCount)),
+          canAddUser: fallbackMax === -1 ? true : fallbackMax > (usageRes?.usedSeats ?? subCount),
+          isUnlimited: fallbackMax === -1,
+          status: "ACTIVE",
+          isExpired: false,
+        });
       }
     } catch (err) {
       console.warn("Failed to load team data:", err);
@@ -252,11 +300,11 @@ export default function TeamManagement() {
       });
       return;
     }
-    if (!usage.canAddUser) {
+    if (!effectiveCanAddUser) {
       setLockedModal({
         title: "Team Seat Quota Reached",
         requiredPlan: "PREMIUM",
-        description: `You have utilized ${usage.usedSeats} of ${usage.maxSeats} allocated team seats on your current plan. Upgrade to Premium to unlock up to 15 team members.`,
+        description: `You have utilized ${effectiveUsedSeats} of ${effectiveMaxSeats} allocated team seats on your current plan. Upgrade to Premium for unlimited team members.`,
       });
       return;
     }
@@ -306,6 +354,10 @@ export default function TeamManagement() {
         });
         showNotification("Sub-user updated successfully.");
       } else {
+        const targetStoreId =
+          currentUser?.businessId ||
+          (typeof localStorage !== "undefined" ? localStorage.getItem("bilzet_active_store_id") : null);
+
         const res = await teamApi.create({
           name: formData.name,
           email: formData.email,
@@ -314,16 +366,26 @@ export default function TeamManagement() {
           customRoleId: formData.customRoleId || null,
           password: formData.password || undefined,
           isActive: formData.isActive,
+          storeId: targetStoreId || undefined,
+          businessId: targetStoreId || undefined,
         });
         showNotification("Sub-user created successfully.");
 
         const issuedPassword = formData.password || res?.temporaryPassword;
-        if (issuedPassword) {
+        const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:5173";
+        const inviteLink =
+          res?.invitationLink ||
+          (res?.inviteToken
+            ? `${origin}/accept-invitation?token=${res.inviteToken}&role=${(formData.role || "STAFF").toLowerCase()}`
+            : `${origin}/join-team`);
+
+        if (issuedPassword || inviteLink) {
           setCreatedCredentials({
             name: formData.name,
             email: formData.email,
             role: formData.role,
             password: issuedPassword,
+            inviteLink: inviteLink,
           });
         }
       }
@@ -370,6 +432,11 @@ export default function TeamManagement() {
       showNotification(
         `User ${!user.isActive ? "activated" : "deactivated"} successfully.`
       );
+      setUsers((prev) =>
+        prev.map((u) =>
+          (u.id || u._id) === (user.id || user._id) ? { ...u, isActive: !user.isActive } : u
+        )
+      );
       loadData();
     } catch (err) {
       showNotification(err.response?.data?.message || "Action failed.", "error");
@@ -393,6 +460,7 @@ export default function TeamManagement() {
     try {
       await teamApi.remove(user.id || user._id);
       showNotification("Team member removed successfully.");
+      setUsers((prev) => prev.filter((u) => (u.id || u._id) !== (user.id || user._id)));
       loadData();
     } catch (err) {
       showNotification(err.response?.data?.message || "Failed to delete user.", "error");
@@ -586,111 +654,74 @@ export default function TeamManagement() {
         </div>
       )}
 
-      {/* Top Banner: Seat Usage & Overview */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-6 text-white shadow-xl border border-slate-800">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2.5">
-              <span className="p-2 rounded-xl bg-blue-500/20 border border-blue-400/30 text-blue-400">
-                <Users className="w-5 h-5" />
-              </span>
-              <h2 className="text-xl font-bold tracking-tight">Team &amp; Sub-Users</h2>
-              <span
-                className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
-                  isPremium
-                    ? "bg-purple-500/20 border-purple-400/30 text-purple-300"
-                    : isPro
-                    ? "bg-indigo-500/20 border-indigo-400/30 text-indigo-300"
-                    : "bg-amber-500/20 border-amber-400/30 text-amber-300"
-                }`}
-              >
-                {effectiveTier} Plan
-              </span>
-            </div>
-            <p className="text-sm text-slate-400 max-w-xl">
-              Add cashiers, warehouse managers, and sales personnel under your store account. Configure granular action privileges per role or individual user.
+      {/* ── SIMPLIFIED STATISTICS (3 COMPACT CARDS IN ONE ROW) ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {/* Total Members */}
+        <div className="bg-white rounded-xl border border-[#E5EAF1] p-4 shadow-[0_1px_2px_rgba(0,0,0,0.03)] flex items-center justify-between">
+          <div>
+            <p className="text-xs font-medium text-[#64748B]">Total Members</p>
+            <p className="text-2xl font-semibold text-[#172033] mt-1 tracking-tight">
+              {users.length}
             </p>
           </div>
+          <div className="w-9 h-9 rounded-lg bg-[#F5F7FA] border border-[#E5EAF1] flex items-center justify-center text-[#64748B]">
+            <Users className="w-4 h-4 text-[#0A66FF]" />
+          </div>
+        </div>
 
-          {/* Seat Quota Meter Card / Free Upgrade Card */}
-          {isFree ? (
-            <div className="bg-slate-800/80 backdrop-blur-md border border-amber-500/40 rounded-xl p-4 min-w-[280px] space-y-2.5 shadow-inner">
-              <div className="flex items-center justify-between text-xs">
-                <span className="flex items-center gap-1.5 font-bold text-amber-400">
-                  <Lock className="w-3.5 h-3.5" /> Team Management — Pro Feature
-                </span>
-              </div>
-              <p className="text-xs text-slate-300 leading-snug">
-                Upgrade to Pro to unlock this feature and invite up to 5 team members.
-              </p>
-              <button
-                type="button"
-                onClick={() => navigate("/plans?tier=PRO")}
-                className="w-full py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-semibold text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-xs transition cursor-pointer"
-              >
-                <Crown className="w-3.5 h-3.5" /> Upgrade to Pro
-              </button>
-            </div>
-          ) : (
-            <div className="bg-slate-800/80 backdrop-blur-md border border-slate-700/60 rounded-xl p-4 min-w-[260px] space-y-2.5 shadow-inner">
-              <div className="flex items-center justify-between text-xs font-medium">
-                <span className="text-slate-300">Team Seat Utilization</span>
-                <span className="font-bold text-white">
-                  {usage.usedSeats} / {usage.maxSeats} Seats
-                </span>
-              </div>
-              <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-500 ${
-                    usage.usedSeats >= usage.maxSeats
-                      ? "bg-rose-500"
-                      : usage.usedSeats / usage.maxSeats > 0.8
-                      ? "bg-amber-400"
-                      : "bg-blue-500"
-                  }`}
-                  style={{
-                    width: `${Math.min(
-                      100,
-                      usage.maxSeats > 0 ? (usage.usedSeats / usage.maxSeats) * 100 : 0
-                    )}%`,
-                  }}
-                />
-              </div>
-              <div className="flex items-center justify-between text-[11px] text-slate-400">
-                <span>{usage.remainingSeats} seats available</span>
-                {usage.usedSeats >= usage.maxSeats && isPro && (
-                  <button
-                    type="button"
-                    onClick={() => navigate("/plans?tier=PREMIUM")}
-                    className="text-blue-400 hover:text-blue-300 font-semibold underline flex items-center gap-1 cursor-pointer"
-                  >
-                    Upgrade to Premium <ExternalLink className="w-3 h-3" />
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
+        {/* Active Members */}
+        <div className="bg-white rounded-xl border border-[#E5EAF1] p-4 shadow-[0_1px_2px_rgba(0,0,0,0.03)] flex items-center justify-between">
+          <div>
+            <p className="text-xs font-medium text-[#64748B]">Active Members</p>
+            <p className="text-2xl font-semibold text-[#172033] mt-1 tracking-tight">
+              {users.filter((u) => u.isActive !== false).length}
+            </p>
+          </div>
+          <div className="w-9 h-9 rounded-lg bg-[#F5F7FA] border border-[#E5EAF1] flex items-center justify-center text-[#64748B]">
+            <UserCheck className="w-4 h-4 text-[#10B981]" />
+          </div>
+        </div>
+
+        {/* Team Members: Unlimited */}
+        <div className="bg-white rounded-xl border border-[#E5EAF1] p-4 shadow-[0_1px_2px_rgba(0,0,0,0.03)] flex items-center justify-between">
+          <div>
+            <p className="text-xs font-medium text-[#64748B]">Team Members</p>
+            <p className="text-2xl font-semibold text-[#172033] mt-1 tracking-tight">
+              Unlimited
+            </p>
+          </div>
+          <div className="w-9 h-9 rounded-lg bg-[#F5F7FA] border border-[#E5EAF1] flex items-center justify-center text-[#64748B]">
+            <Sparkles className="w-4 h-4 text-[#0A66FF]" />
+          </div>
         </div>
       </div>
 
-      {/* Filter and Action Bar */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs">
-        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-          <div className="relative min-w-[220px] flex-1 sm:flex-none">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+      {/* ── CLEAN TEAM MANAGEMENT TOOLBAR ── */}
+      <div className="bg-white rounded-xl border border-[#E5EAF1] p-3 shadow-[0_1px_2px_rgba(0,0,0,0.03)] flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2.5 flex-1">
+          {/* Search Input */}
+          <div className="relative flex-1 min-w-[200px] sm:max-w-xs">
+            <Search className="w-4 h-4 text-[#64748B] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
-              placeholder="Search team members…"
+              placeholder="Search team members..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="w-full h-9 pl-9 pr-3 text-xs bg-white border border-[#E5EAF1] rounded-lg text-[#172033] placeholder-[#64748B] focus:outline-none focus:border-[#0A66FF] focus:ring-1 focus:ring-[#0A66FF] transition"
             />
           </div>
 
+          {/* Role Filter */}
           <select
             value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value)}
-            className="px-3 py-1.5 text-xs font-medium bg-slate-50 border border-slate-200 rounded-lg text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            onChange={(e) => {
+              setRoleFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="h-9 px-3 text-xs bg-white border border-[#E5EAF1] rounded-lg text-[#172033] font-medium focus:outline-none focus:border-[#0A66FF] focus:ring-1 focus:ring-[#0A66FF] transition"
           >
             <option value="ALL">All Roles</option>
             <option value="ADMIN">Admin / Owner</option>
@@ -701,68 +732,50 @@ export default function TeamManagement() {
             <option value="HR_MANAGER">HR Manager</option>
           </select>
 
+          {/* Status Filter */}
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-1.5 text-xs font-medium bg-slate-50 border border-slate-200 rounded-lg text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            onChange={(e) => {
+              setStatusFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="h-9 px-3 text-xs bg-white border border-[#E5EAF1] rounded-lg text-[#172033] font-medium focus:outline-none focus:border-[#0A66FF] focus:ring-1 focus:ring-[#0A66FF] transition"
           >
             <option value="ALL">All Status</option>
             <option value="ACTIVE">Active</option>
-            <option value="INACTIVE">Deactivated</option>
+            <option value="INACTIVE">Inactive</option>
           </select>
         </div>
 
-        <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
+        <div className="flex items-center gap-2 justify-end shrink-0">
+          {/* Refresh Button */}
           <button
+            type="button"
             onClick={loadData}
             title="Refresh list"
-            className="p-2 border border-slate-200 rounded-lg hover:bg-slate-50 text-slate-600 transition cursor-pointer"
+            className="h-9 w-9 flex items-center justify-center bg-white border border-[#E5EAF1] rounded-lg text-[#64748B] hover:text-[#172033] hover:bg-[#F5F7FA] transition cursor-pointer"
           >
-            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
           </button>
 
-          {isFree ? (
-            <button
-              type="button"
-              onClick={() => {
-                setLockedModal({
-                  title: "Team Management — Pro Feature",
-                  requiredPlan: "PRO",
-                  description: "Upgrade to Pro to unlock this feature and add team members.",
-                });
-              }}
-              className="px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-sm transition cursor-pointer"
-            >
-              <Lock className="w-4 h-4" />
-              Upgrade to Pro
-            </button>
-          ) : usage.canAddUser ? (
-            <button
-              onClick={handleOpenAdd}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-sm transition cursor-pointer"
-            >
-              <UserPlus className="w-4 h-4" />
-              Add Team Member
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => navigate("/plans?tier=PREMIUM")}
-              className="px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-sm transition cursor-pointer"
-            >
-              <Crown className="w-4 h-4" />
-              Upgrade to Premium
-            </button>
-          )}
+          {/* Primary Blue + Add Team Member Button */}
+          <button
+            type="button"
+            onClick={handleOpenAdd}
+            className="h-9 px-3.5 bg-[#0A66FF] hover:bg-[#0854d4] text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+          >
+            <UserPlus className="w-3.5 h-3.5" />
+            <span>+ Add Team Member</span>
+          </button>
         </div>
       </div>
 
-      {/* Team Members Table */}
-      <div className="bg-white rounded-xl border border-slate-200/80 shadow-xs overflow-hidden">
+      {/* ── PROFESSIONAL TEAM MEMBERS TABLE ── */}
+      <div className="bg-white rounded-xl border border-[#E5EAF1] shadow-[0_1px_2px_rgba(0,0,0,0.03)] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-50/75 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+              <tr className="border-b border-[#E5EAF1] bg-[#F8FAFC] text-[11px] font-semibold text-[#64748B] uppercase tracking-wider">
                 <th className="py-3 px-4">Member</th>
                 <th className="py-3 px-4">Contact</th>
                 <th className="py-3 px-4">Role</th>
@@ -771,146 +784,206 @@ export default function TeamManagement() {
                 <th className="py-3 px-4 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 text-sm">
+            <tbody className="divide-y divide-[#E5EAF1] text-xs">
               {filteredUsers.length === 0 ? (
+                /* ── MINIMAL EMPTY STATE ── */
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-slate-400">
-                    <Users className="w-10 h-10 mx-auto text-slate-300 mb-2" />
-                    <p className="font-medium text-slate-600">No team members found</p>
-                    <p className="text-xs text-slate-400">
-                      {search ? "Try adjusting your search query." : "Click '+ Add Team Member' to invite staff."}
-                    </p>
+                  <td colSpan={6} className="py-12 px-4 text-center">
+                    <div className="max-w-xs mx-auto flex flex-col items-center">
+                      <div className="w-10 h-10 rounded-full bg-[#F5F7FA] border border-[#E5EAF1] flex items-center justify-center text-[#64748B] mb-3">
+                        <Users className="w-5 h-5 text-[#64748B]" />
+                      </div>
+                      <p className="text-sm font-semibold text-[#172033]">No team members yet</p>
+                      <p className="text-xs text-[#64748B] mt-1 mb-4">
+                        {search || roleFilter !== "ALL" || statusFilter !== "ALL"
+                          ? "No members match the current filter criteria."
+                          : "Add your first team member to get started."}
+                      </p>
+                      {!search && roleFilter === "ALL" && statusFilter === "ALL" && (
+                        <button
+                          type="button"
+                          onClick={handleOpenAdd}
+                          className="h-8 px-3.5 bg-[#0A66FF] hover:bg-[#0854d4] text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                        >
+                          <UserPlus className="w-3.5 h-3.5" />
+                          <span>+ Add Team Member</span>
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ) : (
-                filteredUsers.map((u) => (
-                  <tr key={u.id || u._id} className="hover:bg-slate-50/60 transition group">
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs uppercase shadow-xs ${
-                            u.isOwner
-                              ? "bg-amber-100 text-amber-800 border border-amber-300"
-                              : "bg-blue-100 text-blue-800 border border-blue-200"
-                          }`}
-                        >
-                          {u.name?.slice(0, 2) || "U"}
-                        </div>
-                        <div>
-                          <div className="font-semibold text-slate-800 flex items-center gap-1.5">
-                            {u.name}
-                            {u.isOwner && (
-                              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
-                                Primary Owner
-                              </span>
-                            )}
+                filteredUsers
+                  .slice((currentPage - 1) * pageSize, currentPage * pageSize)
+                  .map((u) => (
+                    <tr key={u.id || u._id} className="hover:bg-[#F8FAFC] transition group">
+                      {/* Member Column */}
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold text-xs uppercase shrink-0 ${
+                              u.isOwner
+                                ? "bg-amber-50 text-amber-700 border border-amber-200"
+                                : "bg-blue-50 text-[#0A66FF] border border-blue-200"
+                            }`}
+                          >
+                            {u.name?.slice(0, 2) || "U"}
                           </div>
-                          <div className="text-[11px] text-slate-400">{u.email}</div>
+                          <div className="min-w-0">
+                            <div className="font-semibold text-[#172033] flex items-center gap-1.5 truncate">
+                              <span>{u.name}</span>
+                              {u.isOwner && (
+                                <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 shrink-0">
+                                  Owner
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[11px] text-[#64748B] truncate">{u.email}</div>
+                          </div>
                         </div>
-                      </div>
-                    </td>
+                      </td>
 
-                    <td className="py-3 px-4 text-xs text-slate-600">
-                      {u.phone || <span className="text-slate-300 italic">No phone</span>}
-                    </td>
+                      {/* Contact Column */}
+                      <td className="py-3 px-4 text-[#64748B]">
+                        {u.phone || <span className="text-slate-400 italic">—</span>}
+                      </td>
 
-                    <td className="py-3 px-4">
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
-                        <Shield className="w-3 h-3 text-slate-500" />
-                        {u.roleName || u.role}
-                      </span>
-                    </td>
-
-                    <td className="py-3 px-4">
-                      {u.isOwner ? (
-                        <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                          Full Owner Access
+                      {/* Role Column */}
+                      <td className="py-3 px-4">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-[#F5F7FA] text-[#172033] border border-[#E5EAF1]">
+                          <Shield className="w-3 h-3 text-[#64748B]" />
+                          {u.roleName || u.role}
                         </span>
-                      ) : (
-                        <button
-                          onClick={() => handleOpenPermissions(u)}
-                          className={`text-xs font-medium flex items-center gap-1.5 border px-2.5 py-1 rounded-lg transition cursor-pointer ${
-                            isPremium
-                              ? "text-blue-600 hover:text-blue-800 bg-blue-50/60 hover:bg-blue-100/70 border-blue-200/60"
-                              : "text-slate-600 hover:text-indigo-700 bg-slate-50 hover:bg-indigo-50 border-slate-200"
-                          }`}
-                          title={!isPremium ? "Granular Permission Overrides — Premium Feature" : "Configure permission overrides"}
-                        >
-                          {isPremium ? (
-                            <Key className="w-3 h-3 text-blue-500" />
-                          ) : (
-                            <Lock className="w-3 h-3 text-amber-500" />
-                          )}
-                          <span>
-                            {u.overridesCount > 0 ? `${u.overridesCount} Overrides` : "Role Defaults"}
+                      </td>
+
+                      {/* Permissions Column */}
+                      <td className="py-3 px-4">
+                        {u.isOwner ? (
+                          <span className="text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                            Full Access
                           </span>
-                          {!isPremium && (
-                            <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 border border-amber-200">
-                              PREMIUM
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenPermissions(u)}
+                            className={`text-xs font-medium flex items-center gap-1.5 border px-2.5 py-1 rounded-lg transition cursor-pointer ${
+                              isPremium
+                                ? "text-[#0A66FF] hover:text-[#0854d4] bg-blue-50/50 hover:bg-blue-50 border-blue-200"
+                                : "text-[#64748B] hover:text-[#172033] bg-[#F5F7FA] border-[#E5EAF1]"
+                            }`}
+                            title="Configure permission overrides"
+                          >
+                            <Key className="w-3 h-3 text-[#0A66FF]" />
+                            <span>
+                              {u.overridesCount > 0 ? `${u.overridesCount} Overrides` : "Standard Access"}
                             </span>
-                          )}
-                        </button>
-                      )}
-                    </td>
-
-                    <td className="py-3 px-4">
-                      <span
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          u.isActive
-                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                            : "bg-slate-100 text-slate-500 border border-slate-200"
-                        }`}
-                      >
-                        <span
-                          className={`w-1.5 h-1.5 rounded-full ${
-                            u.isActive ? "bg-emerald-500" : "bg-slate-400"
-                          }`}
-                        />
-                        {u.isActive ? "Active" : "Deactivated"}
-                      </span>
-                    </td>
-
-                    <td className="py-3 px-4 text-right">
-                      <div className="flex items-center justify-end gap-1 opacity-90 group-hover:opacity-100 transition">
-                        {!u.isOwner && (
-                          <>
-                            <button
-                              onClick={() => handleOpenEdit(u)}
-                              title="Edit user"
-                              className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
-                            >
-                              <Edit2 className="w-4 h-4" />
-                            </button>
-
-                            <button
-                              onClick={() => handleToggleStatus(u)}
-                              title={u.isActive ? "Deactivate user" : "Activate user"}
-                              className={`p-1.5 rounded-lg transition ${
-                                u.isActive
-                                  ? "text-slate-500 hover:text-amber-600 hover:bg-amber-50"
-                                  : "text-emerald-600 hover:bg-emerald-50"
-                              }`}
-                            >
-                              <Power className="w-4 h-4" />
-                            </button>
-
-                            <button
-                              onClick={() => handleDeleteUser(u)}
-                              title="Delete user"
-                              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </>
+                          </button>
                         )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                      </td>
+
+                      {/* Status Column */}
+                      <td className="py-3 px-4">
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${
+                            u.isActive !== false
+                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                              : "bg-slate-100 text-slate-500 border border-slate-200"
+                          }`}
+                        >
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              u.isActive !== false ? "bg-emerald-500" : "bg-slate-400"
+                            }`}
+                          />
+                          {u.isActive !== false ? "Active" : "Inactive"}
+                        </span>
+                      </td>
+
+                      {/* Actions Column */}
+                      <td className="py-3 px-4 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          {!u.isOwner && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEdit(u)}
+                                title="Edit user"
+                                className="p-1.5 text-[#64748B] hover:text-[#0A66FF] hover:bg-[#F5F7FA] rounded-md transition cursor-pointer"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleToggleStatus(u)}
+                                title={u.isActive !== false ? "Deactivate user" : "Activate user"}
+                                className={`p-1.5 rounded-md transition cursor-pointer ${
+                                  u.isActive !== false
+                                    ? "text-[#64748B] hover:text-amber-600 hover:bg-amber-50"
+                                    : "text-emerald-600 hover:bg-emerald-50"
+                                }`}
+                              >
+                                <Power className="w-3.5 h-3.5" />
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteUser(u)}
+                                title="Delete user"
+                                className="p-1.5 text-[#64748B] hover:text-rose-600 hover:bg-rose-50 rounded-md transition cursor-pointer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
               )}
             </tbody>
           </table>
         </div>
+
+        {/* ── PAGINATION CONTROLS ── */}
+        {filteredUsers.length > 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-white border-t border-[#E5EAF1] text-xs text-[#64748B]">
+            <div>
+              Showing <span className="font-semibold text-[#172033]">{(currentPage - 1) * pageSize + 1}</span> to{" "}
+              <span className="font-semibold text-[#172033]">
+                {Math.min(currentPage * pageSize, filteredUsers.length)}
+              </span>{" "}
+              of <span className="font-semibold text-[#172033]">{filteredUsers.length}</span> members
+            </div>
+            {Math.ceil(filteredUsers.length / pageSize) > 1 && (
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-2.5 py-1 border border-[#E5EAF1] rounded-md hover:bg-[#F5F7FA] disabled:opacity-40 disabled:pointer-events-none text-[#172033] font-medium transition cursor-pointer"
+                >
+                  Previous
+                </button>
+                <span className="px-2 font-medium text-[#172033]">
+                  {currentPage} / {Math.ceil(filteredUsers.length / pageSize)}
+                </span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCurrentPage((p) =>
+                      Math.min(Math.ceil(filteredUsers.length / pageSize), p + 1)
+                    )
+                  }
+                  disabled={currentPage === Math.ceil(filteredUsers.length / pageSize)}
+                  className="px-2.5 py-1 border border-[#E5EAF1] rounded-md hover:bg-[#F5F7FA] disabled:opacity-40 disabled:pointer-events-none text-[#172033] font-medium transition cursor-pointer"
+                >
+                  Next
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ── MODAL 1: ADD / EDIT TEAM MEMBER ── */}
@@ -1021,7 +1094,7 @@ export default function TeamManagement() {
                       type="button"
                       onClick={() => {
                         setShowAddModal(false);
-                        navigate("/plans?tier=PREMIUM");
+                        navigate("/plans?tier=PREMIUM&redirect=/team");
                       }}
                       className="font-bold text-indigo-700 hover:text-indigo-900 underline ml-2 shrink-0 cursor-pointer"
                     >
@@ -1521,14 +1594,50 @@ export default function TeamManagement() {
                   {createdCredentials.password}
                 </span>
               </div>
+
+              {createdCredentials.inviteLink && (
+                <div className="pt-2 border-t border-slate-200 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500 font-medium">Invitation Link:</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(createdCredentials.inviteLink);
+                        setCopiedLink(true);
+                        setTimeout(() => setCopiedLink(false), 2000);
+                      }}
+                      className="text-[11px] text-blue-600 hover:text-blue-700 font-semibold inline-flex items-center gap-1 cursor-pointer transition"
+                    >
+                      {copiedLink ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                      <span>{copiedLink ? "Link Copied!" : "Copy Link"}</span>
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2 bg-white px-2.5 py-1.5 rounded-lg border border-slate-200">
+                    <ExternalLink size={13} className="text-blue-500 shrink-0" />
+                    <span className="font-mono text-[11px] text-slate-700 truncate select-all flex-1">
+                      {createdCredentials.inviteLink}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-2 pt-1">
               <button
                 type="button"
                 onClick={() => {
-                  const text = `BILZET Login Credentials:\nEmail: ${createdCredentials.email}\nPassword: ${createdCredentials.password}\nRole: ${createdCredentials.role}`;
-                  navigator.clipboard.writeText(text);
+                  const details = [
+                    "BILZET Login Credentials & Invitation:",
+                    `Name: ${createdCredentials.name}`,
+                    `Username / Email: ${createdCredentials.email}`,
+                    `Assigned Role: ${createdCredentials.role}`,
+                    `Login Password: ${createdCredentials.password}`,
+                    createdCredentials.inviteLink ? `Invitation Link: ${createdCredentials.inviteLink}` : "",
+                  ]
+                    .filter(Boolean)
+                    .join("\n");
+
+                  navigator.clipboard.writeText(details);
                   setCopiedKey(true);
                   setTimeout(() => setCopiedKey(false), 2500);
                 }}
@@ -1565,29 +1674,35 @@ export default function TeamManagement() {
                 {lockedModal.description}
               </p>
             </div>
-            <div className="pt-2 flex items-center justify-center gap-3">
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-2">
               <button
                 type="button"
                 onClick={() => setLockedModal(null)}
-                className="px-4 py-2 border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-xl text-xs font-semibold transition cursor-pointer"
+                className="w-full sm:w-auto px-4 py-2 border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-xl text-xs font-semibold transition cursor-pointer"
               >
                 Dismiss
               </button>
               <button
                 type="button"
                 onClick={() => {
-                  const target = lockedModal.requiredPlan;
                   setLockedModal(null);
-                  navigate(`/plans?tier=${target}`);
+                  navigate("/plans?tier=PRO&redirect=/team");
                 }}
-                className={`px-5 py-2 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-sm transition cursor-pointer ${
-                  lockedModal.requiredPlan === "PREMIUM"
-                    ? "bg-indigo-600 hover:bg-indigo-700"
-                    : "bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700"
-                }`}
+                className="w-full sm:w-auto px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm transition cursor-pointer"
               >
-                <Crown className="w-4 h-4" />
-                Upgrade to {lockedModal.requiredPlan === "PREMIUM" ? "Premium" : "Pro"}
+                <Lock className="w-3.5 h-3.5" />
+                Choose Pro (5 Seats)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setLockedModal(null);
+                  navigate("/plans?tier=PREMIUM&redirect=/team");
+                }}
+                className="w-full sm:w-auto px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm transition cursor-pointer"
+              >
+                <Crown className="w-3.5 h-3.5" />
+                Choose Premium (Unlimited Seats)
               </button>
             </div>
           </div>

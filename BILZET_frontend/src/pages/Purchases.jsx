@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   ShoppingBag,
   Plus,
@@ -25,12 +25,15 @@ import {
   ExternalLink,
   ArrowUpRight,
   Check,
+  Download,
 } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { purchasesApi, suppliersApi, productsApi } from "../api";
 import Modal from "../components/common/Modal";
 import SearchBar from "../components/common/SearchBar";
 import Button, { CompactIconButton } from "../components/common/Button";
+import { useRealtimeSync } from "../hooks/useRealtimeSync";
+import { handleSmartFormKeyDown } from "../utils/keyboardNavigation";
 
 export default function Purchases({ defaultTab = "invoices" }) {
   const location = useLocation();
@@ -59,6 +62,7 @@ export default function Purchases({ defaultTab = "invoices" }) {
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [showDebitModal, setShowDebitModal] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
+  const invoiceFormRef = useRef(null);
 
   // Supplier mode in forms ("existing" | "new")
   const [invoiceSupplierMode, setInvoiceSupplierMode] = useState("existing");
@@ -166,6 +170,14 @@ export default function Purchases({ defaultTab = "invoices" }) {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Real-time synchronization for Purchases
+  useRealtimeSync(
+    ["PURCHASE_CREATED", "STOCK_ADJUSTED", "PRODUCT_UPDATED", "PRODUCT_CREATED"],
+    () => {
+      loadData();
+    }
+  );
 
   // ── Helper: find supplier ──
   const getSupplierInfo = (supplierId) => {
@@ -526,16 +538,104 @@ export default function Purchases({ defaultTab = "invoices" }) {
 
   const PageIcon = pageMeta.icon;
 
+  // Predefined palette of soft, professional colors for deterministic avatar assignment
+  const SUPPLIER_AVATAR_PALETTES = [
+    { bg: "#EBF5FF", text: "#007AFF", border: "#D0E2FF" }, // Blue
+    { bg: "#F3E8FF", text: "#7C3AED", border: "#E9D5FF" }, // Purple
+    { bg: "#E6FFFA", text: "#0D9488", border: "#B2F5EA" }, // Teal
+    { bg: "#EDF8F0", text: "#248A3D", border: "#CCE8D4" }, // Green
+    { bg: "#FFF4E5", text: "#C25E00", border: "#FFE2B8" }, // Orange
+    { bg: "#FDF2F8", text: "#DB2777", border: "#FCE7F3" }, // Pink
+    { bg: "#EEF2FF", text: "#4F46E5", border: "#E0E7FF" }, // Indigo
+    { bg: "#FFF1F2", text: "#E11D48", border: "#FECDD3" }, // Rose
+  ];
+
+  const getSupplierAvatarPalette = (idOrName) => {
+    const str = String(idOrName || "supplier");
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = (hash << 5) - hash + str.charCodeAt(i);
+      hash |= 0;
+    }
+    const index = Math.abs(hash) % SUPPLIER_AVATAR_PALETTES.length;
+    return SUPPLIER_AVATAR_PALETTES[index];
+  };
+
+  // Date filter & pagination states for Purchase Invoices
+  const [dateFilter, setDateFilter] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
   const filteredInvoices = safeInvoices.filter((inv) => {
-    if (!search.trim()) return true;
-    const term = search.toLowerCase();
-    return (
+    const term = search.toLowerCase().trim();
+    const matchesSearch =
+      !term ||
       inv.invoiceNumber?.toLowerCase().includes(term) ||
       inv.supplier?.name?.toLowerCase().includes(term) ||
       inv.supplier?.companyName?.toLowerCase().includes(term) ||
-      inv.supplier?.phone?.includes(term)
-    );
+      inv.supplier?.phone?.includes(term);
+
+    if (!matchesSearch) return false;
+
+    const invDateStr = inv.invoiceDate || inv.createdAt;
+    if (dateFilter === "all" || !invDateStr) return true;
+    const d = new Date(invDateStr);
+    const now = new Date();
+    if (dateFilter === "today") {
+      return d.toDateString() === now.toDateString();
+    }
+    if (dateFilter === "week") {
+      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      return d >= weekAgo;
+    }
+    if (dateFilter === "month") {
+      const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      return d >= monthAgo;
+    }
+    return true;
   });
+
+  const totalPages = Math.max(1, Math.ceil(filteredInvoices.length / itemsPerPage));
+  const paginatedInvoices = filteredInvoices.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const handleExportInvoices = () => {
+    const headers = [
+      "Invoice #",
+      "Supplier",
+      "Company",
+      "Date",
+      "Total Amount",
+      "Balance Due",
+      "Status",
+    ];
+    const rows = filteredInvoices.map((inv) => [
+      `"${inv.invoiceNumber || `BILL-${inv.id?.slice(0, 6)}`}"`,
+      `"${inv.supplier?.name || "Vendor"}"`,
+      `"${inv.supplier?.companyName || ""}"`,
+      `"${inv.invoiceDate ? new Date(inv.invoiceDate).toLocaleDateString() : new Date(inv.createdAt).toLocaleDateString()}"`,
+      Number(inv.totalAmount || inv.grandTotal || 0).toFixed(2),
+      Number(
+        inv.balanceDue ||
+          Math.max(0, (inv.grandTotal || inv.totalAmount || 0) - (inv.paidAmount || 0))
+      ).toFixed(2),
+      `"${inv.paymentStatus || "PAID"}"`,
+    ]);
+    const csvContent =
+      "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute(
+      "download",
+      `purchase_invoices_${new Date().toISOString().split("T")[0]}.csv`
+    );
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const filteredOrders = safeOrders.filter((po) => {
     if (!search.trim()) return true;
@@ -558,22 +658,34 @@ export default function Purchases({ defaultTab = "invoices" }) {
   });
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto fade-up">
+    <div
+      className="space-y-6 max-w-7xl mx-auto pb-12 fade-up text-[#1D1D1F]"
+      style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif" }}
+    >
       {/* ── Page Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/90 shadow-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 sm:p-6 rounded-2xl border border-[#E5E5EA] shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
         <div className="flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shrink-0 shadow-2xs">
-            <PageIcon size={22} />
+          <div className="w-10 h-10 rounded-xl bg-[#F5F5F7] text-[#007AFF] border border-[#E5E5EA] flex items-center justify-center shrink-0">
+            <PageIcon size={20} strokeWidth={2} />
           </div>
           <div>
-            <h1 className="page-title">{pageMeta.title}</h1>
-            <p className="page-desc">{pageMeta.subtitle}</p>
+            <h1 className="text-[26px] sm:text-[28px] font-semibold text-[#1D1D1F] tracking-tight leading-tight">
+              {pageMeta.title}
+            </h1>
+            <p className="text-[13.5px] text-[#6E6E73] font-normal mt-0.5">
+              {pageMeta.subtitle}
+            </p>
           </div>
         </div>
 
-        <Button variant="primary" size="sm" icon={Plus} onClick={pageMeta.onAction}>
-          {pageMeta.actionLabel}
-        </Button>
+        <button
+          type="button"
+          onClick={pageMeta.onAction}
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-[13.5px] font-medium bg-[#007AFF] hover:bg-[#0062CC] text-white transition cursor-pointer shadow-[0_1px_2px_rgba(0,122,255,0.25)] self-start sm:self-auto"
+        >
+          <Plus size={15} strokeWidth={2.5} />
+          <span>{pageMeta.actionLabel}</span>
+        </button>
       </div>
 
       {/* Notifications */}
@@ -581,40 +693,83 @@ export default function Purchases({ defaultTab = "invoices" }) {
         <div
           className={`p-3.5 rounded-xl text-xs font-medium flex items-center gap-2 ${
             message.type === "success"
-              ? "bg-emerald-50 border border-emerald-200 text-emerald-800"
-              : "bg-rose-50 border border-rose-200 text-rose-800"
+              ? "bg-[#EDF8F0] border border-[#CCE8D4] text-[#248A3D]"
+              : "bg-[#FFF2F2] border border-[#FFD0D0] text-[#D70015]"
           }`}
         >
           {message.type === "success" ? (
-            <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+            <CheckCircle2 size={16} className="text-[#248A3D] shrink-0" />
           ) : (
-            <AlertTriangle size={16} className="text-rose-600 shrink-0" />
+            <AlertTriangle size={16} className="text-[#D70015] shrink-0" />
           )}
           <span>{message.text}</span>
         </div>
       )}
 
-      {/* ── Search Bar & Actions ── */}
-      <div className="card p-4 flex flex-col sm:flex-row items-center justify-between gap-3 bg-white">
-        <SearchBar
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          onClear={() => setSearch("")}
-          placeholder={pageMeta.searchPlaceholder}
-          className="max-w-md"
-        />
+      {/* ── Search Bar & Actions Toolbar ── */}
+      <div className="p-4 rounded-2xl border border-[#E5E5EA] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)] flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 flex-1 max-w-2xl">
+          {/* Search field */}
+          <div className="relative flex-1">
+            <Search
+              size={15}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6E6E73]"
+            />
+            <input
+              type="text"
+              placeholder={pageMeta.searchPlaceholder}
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="w-full pl-9 pr-3 py-2 text-[13.5px] border border-[#E5E5EA] rounded-xl outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/15 transition bg-white text-[#1D1D1F] placeholder-[#6E6E73]/60"
+            />
+          </div>
 
-        <div className="flex items-center gap-3 self-end sm:self-center">
-          <span className="text-xs text-slate-500 font-medium">
-            Total Records: <strong className="text-slate-800">{pageMeta.count}</strong>
-          </span>
+          {/* Date Filter Dropdown (Active for Invoices) */}
+          {activeTab === "invoices" && (
+            <select
+              value={dateFilter}
+              onChange={(e) => {
+                setDateFilter(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="px-3 py-2 text-[13.5px] border border-[#E5E5EA] rounded-xl bg-white text-[#1D1D1F] outline-none focus:border-[#007AFF] cursor-pointer"
+            >
+              <option value="all">All Dates</option>
+              <option value="today">Today</option>
+              <option value="week">This Week</option>
+              <option value="month">This Month</option>
+            </select>
+          )}
+        </div>
+
+        {/* Export & Action Buttons */}
+        <div className="flex items-center gap-2 self-end md:self-center">
+          {activeTab === "invoices" && (
+            <button
+              type="button"
+              onClick={handleExportInvoices}
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-[13.5px] font-medium border border-[#E5E5EA] bg-white text-[#1D1D1F] hover:bg-[#F5F5F7] rounded-xl transition cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.02)]"
+              title="Export filtered invoices as CSV"
+            >
+              <Download size={14} className="text-[#6E6E73]" />
+              <span>Export CSV</span>
+            </button>
+          )}
+
           <button
+            type="button"
             onClick={loadData}
             disabled={loading}
-            className="btn-secondary"
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-[13.5px] font-medium border border-[#E5E5EA] bg-white text-[#1D1D1F] hover:bg-[#F5F5F7] rounded-xl transition cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.02)]"
             title="Refresh records"
           >
-            <RefreshCw size={14} className={loading ? "animate-spin text-blue-600" : ""} />
+            <RefreshCw
+              size={14}
+              className={loading ? "animate-spin text-[#007AFF]" : "text-[#6E6E73]"}
+            />
             <span>Refresh</span>
           </button>
         </div>
@@ -623,16 +778,16 @@ export default function Purchases({ defaultTab = "invoices" }) {
       {/* ── Tab Views ── */}
       {loading ? (
         <div className="py-16 flex flex-col items-center justify-center gap-3">
-          <RefreshCw size={24} className="animate-spin text-indigo-600" />
-          <p className="text-xs text-slate-500">Loading purchase records…</p>
+          <RefreshCw size={24} className="animate-spin text-[#007AFF]" />
+          <p className="text-[13.5px] text-[#6E6E73]">Loading purchase records…</p>
         </div>
       ) : activeTab === "invoices" ? (
-        /* Purchase Invoices Table */
-        <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-xs">
+        /* Purchase Invoices Table — Apple macOS Typography & Design */
+        <div className="bg-white rounded-2xl border border-[#E5E5EA] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
+            <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50/75 border-b border-slate-200/80 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                <tr className="bg-[#F5F5F7] border-b border-[#E5E5EA] text-[12px] font-medium text-[#6E6E73] uppercase tracking-wider">
                   <th className="py-3 px-4">Invoice #</th>
                   <th className="py-3 px-4">Supplier &amp; Company</th>
                   <th className="py-3 px-4">Date</th>
@@ -642,71 +797,178 @@ export default function Purchases({ defaultTab = "invoices" }) {
                   <th className="py-3 px-4 text-center">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-[#E5E5EA]">
                 {filteredInvoices.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-12 text-center text-slate-400">
-                      No purchase invoices recorded yet. Click &quot;Record Purchase&quot; above to add your first vendor bill.
+                    <td colSpan={7} className="py-12 text-center text-[13.5px] text-[#6E6E73]">
+                      No purchase invoices found matching your filters. Click &quot;Record Purchase&quot; above to add your first vendor bill.
                     </td>
                   </tr>
                 ) : (
-                  filteredInvoices.map((inv) => (
-                    <tr key={inv.id} className="hover:bg-slate-50/60 transition">
-                      <td className="py-3 px-4 font-mono font-semibold text-indigo-600">
-                        {inv.invoiceNumber || `BILL-${inv.id.slice(0, 6)}`}
-                      </td>
-                      <td className="py-3 px-4">
-                        <p className="font-semibold text-slate-900 leading-tight">
-                          {inv.supplier?.name || "Vendor"}
-                        </p>
-                        {inv.supplier?.companyName ? (
-                          <p className="text-[11px] text-indigo-600 font-medium flex items-center gap-1 mt-0.5">
-                            <Building2 size={11} className="shrink-0 text-indigo-500" />
-                            <span>{inv.supplier.companyName}</span>
-                          </p>
-                        ) : (
-                          <p className="text-[10px] text-slate-400">{inv.supplier?.phone || ""}</p>
-                        )}
-                      </td>
-                      <td className="py-3 px-4 text-slate-500">
-                        {inv.invoiceDate
-                          ? new Date(inv.invoiceDate).toLocaleDateString()
-                          : new Date(inv.createdAt).toLocaleDateString()}
-                      </td>
-                      <td className="py-3 px-4 text-right font-bold text-slate-800 tabular-nums">
-                        ₹{Number(inv.totalAmount || inv.grandTotal || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                      </td>
-                      <td className="py-3 px-4 text-right font-semibold text-rose-600 tabular-nums">
-                        ₹{Number(inv.balanceDue || Math.max(0, (inv.grandTotal || inv.totalAmount || 0) - (inv.paidAmount || 0))).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                      </td>
-                      <td className="py-3 px-4">
-                        <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            inv.paymentStatus === "PAID"
-                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                              : inv.paymentStatus === "PARTIAL"
-                              ? "bg-amber-50 text-amber-700 border border-amber-200"
-                              : "bg-rose-50 text-rose-700 border border-rose-200"
-                          }`}
-                        >
-                          {inv.paymentStatus || "PAID"}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-center">
-                        <button
-                          onClick={() => setSelectedInvoice(inv)}
-                          className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
-                          title="View Details"
-                        >
-                          <Eye size={15} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))
+                  paginatedInvoices.map((inv, idx) => {
+                    const dueAmount = Number(
+                      inv.balanceDue ||
+                        Math.max(
+                          0,
+                          (inv.grandTotal || inv.totalAmount || 0) - (inv.paidAmount || 0)
+                        )
+                    );
+                    const status = inv.paymentStatus || "PAID";
+                    const supplierName = inv.supplier?.name || "Vendor";
+                    const supplierInitial = supplierName.trim().charAt(0).toUpperCase() || "S";
+                    const palette = getSupplierAvatarPalette(
+                      inv.invoiceNumber || inv.id || `${supplierName}-${idx}`
+                    );
+                    const invDateFormatted = inv.invoiceDate
+                      ? new Date(inv.invoiceDate).toLocaleDateString("en-IN", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                        })
+                      : new Date(inv.createdAt).toLocaleDateString("en-IN", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                        });
+
+                    return (
+                      <tr key={inv.id} className="hover:bg-[#F5F5F7]/60 transition">
+                        {/* Invoice # */}
+                        <td className="py-3 px-4 font-mono font-medium text-[13.5px] text-[#007AFF]">
+                          <span
+                            onClick={() => setSelectedInvoice(inv)}
+                            className="hover:underline cursor-pointer"
+                          >
+                            {inv.invoiceNumber || `BILL-${inv.id.slice(0, 6)}`}
+                          </span>
+                        </td>
+
+                        {/* Supplier & Company */}
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-2.5">
+                            <div
+                              style={{
+                                backgroundColor: palette.bg,
+                                color: palette.text,
+                                borderColor: palette.border,
+                              }}
+                              className="w-7 h-7 rounded-full border font-semibold text-xs flex items-center justify-center shrink-0 select-none"
+                            >
+                              {supplierInitial}
+                            </div>
+                            <div>
+                              <p className="font-semibold text-[#1D1D1F] text-[14px] leading-snug">
+                                {supplierName}
+                              </p>
+                              <p className="text-[12.5px] text-[#6E6E73] font-normal leading-normal">
+                                {inv.supplier?.companyName || inv.supplier?.phone || "No company on file"}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Date */}
+                        <td className="py-3 px-4 text-[#1D1D1F] text-[13.5px] font-normal">
+                          {invDateFormatted}
+                        </td>
+
+                        {/* Total Amount */}
+                        <td className="py-3 px-4 text-right font-semibold text-[#1D1D1F] text-[13.5px] font-mono tabular-nums">
+                          ₹{Number(inv.totalAmount || inv.grandTotal || 0).toLocaleString("en-IN", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                        </td>
+
+                        {/* Balance Due */}
+                        <td className="py-3 px-4 text-right font-semibold text-[13.5px] font-mono tabular-nums">
+                          <span className={dueAmount > 0 ? "text-[#D70015]" : "text-[#6E6E73]"}>
+                            ₹{dueAmount.toLocaleString("en-IN", {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })}
+                          </span>
+                        </td>
+
+                        {/* Status */}
+                        <td className="py-3 px-4">
+                          <span
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[12px] font-medium border ${
+                              status === "PAID"
+                                ? "bg-[#EDF8F0] text-[#248A3D] border-[#CCE8D4]"
+                                : status === "PARTIAL"
+                                ? "bg-[#FFF8EB] text-[#9A6700] border-[#FBE3B5]"
+                                : "bg-[#FFF2F2] text-[#D70015] border-[#FFD0D0]"
+                            }`}
+                          >
+                            {status}
+                          </span>
+                        </td>
+
+                        {/* Action: View Button */}
+                        <td className="py-3 px-4 text-center">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedInvoice(inv)}
+                            className="inline-flex items-center gap-1 px-3 py-1 text-[13.5px] font-medium rounded-lg text-[#007AFF] hover:bg-[#EBF5FF] transition cursor-pointer"
+                            title="View Invoice Details"
+                          >
+                            <span>View</span>
+                            <span aria-hidden="true">&rarr;</span>
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
           </div>
+
+          {/* Pagination and Footer Text */}
+          {filteredInvoices.length > 0 && (
+            <div className="px-4 py-3 border-t border-[#E5E5EA] bg-white flex flex-col sm:flex-row items-center justify-between gap-3 text-[12.5px] text-[#6E6E73]">
+              <div>
+                Showing{" "}
+                <strong className="text-[#1D1D1F] font-semibold">
+                  {(currentPage - 1) * itemsPerPage + 1}
+                </strong>{" "}
+                to{" "}
+                <strong className="text-[#1D1D1F] font-semibold">
+                  {Math.min(currentPage * itemsPerPage, filteredInvoices.length)}
+                </strong>{" "}
+                of{" "}
+                <strong className="text-[#1D1D1F] font-semibold">
+                  {filteredInvoices.length}
+                </strong>{" "}
+                invoices
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1.5 text-[12.5px] font-medium border border-[#E5E5EA] rounded-lg bg-white text-[#1D1D1F] hover:bg-[#F5F5F7] disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
+                >
+                  Previous
+                </button>
+
+                <span className="px-2.5 py-1 text-[12.5px] font-medium text-[#1D1D1F]">
+                  {currentPage} / {totalPages}
+                </span>
+
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1.5 text-[12.5px] font-medium border border-[#E5E5EA] rounded-lg bg-white text-[#1D1D1F] hover:bg-[#F5F5F7] disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       ) : activeTab === "orders" ? (
         /* Purchase Orders Table */
@@ -732,24 +994,44 @@ export default function Purchases({ defaultTab = "invoices" }) {
                     </td>
                   </tr>
                 ) : (
-                  filteredOrders.map((po) => (
-                    <tr key={po.id} className="hover:bg-slate-50/60 transition">
-                      <td className="py-3 px-4 font-mono font-semibold text-indigo-600">
-                        {po.poNumber || `PO-${po.id.slice(0, 6)}`}
-                      </td>
-                      <td className="py-3 px-4">
-                        <p className="font-semibold text-slate-800 leading-tight">
-                          {po.supplier?.name || "Supplier"}
-                        </p>
-                        {po.supplier?.companyName ? (
-                          <p className="text-[11px] text-indigo-600 font-medium flex items-center gap-1 mt-0.5">
-                            <Building2 size={11} className="shrink-0 text-indigo-500" />
-                            <span>{po.supplier.companyName}</span>
-                          </p>
-                        ) : (
-                          <span className="text-[10px] text-slate-400">{po.supplier?.phone || ""}</span>
-                        )}
-                      </td>
+                  filteredOrders.map((po, idx) => {
+                    const supName = po.supplier?.name || "Supplier";
+                    const initial = supName.trim().charAt(0).toUpperCase();
+                    const palette = getSupplierAvatarPalette(
+                      po.poNumber || po.id || `${supName}-${idx}`
+                    );
+                    return (
+                      <tr key={po.id} className="hover:bg-slate-50/60 transition">
+                        <td className="py-3 px-4 font-mono font-semibold text-indigo-600">
+                          {po.poNumber || `PO-${po.id.slice(0, 6)}`}
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-2.5">
+                            <div
+                              style={{
+                                backgroundColor: palette.bg,
+                                color: palette.text,
+                                borderColor: palette.border,
+                              }}
+                              className="w-7 h-7 rounded-full border font-semibold text-xs flex items-center justify-center shrink-0 select-none"
+                            >
+                              {initial}
+                            </div>
+                            <div>
+                              <p className="font-semibold text-slate-800 leading-tight">
+                                {supName}
+                              </p>
+                              {po.supplier?.companyName ? (
+                                <p className="text-[11px] text-indigo-600 font-medium flex items-center gap-1 mt-0.5">
+                                  <Building2 size={11} className="shrink-0 text-indigo-500" />
+                                  <span>{po.supplier.companyName}</span>
+                                </p>
+                              ) : (
+                                <span className="text-[10px] text-slate-400">{po.supplier?.phone || ""}</span>
+                              )}
+                            </div>
+                          </div>
+                        </td>
                       <td className="py-3 px-4 text-slate-500">
                         {po.expectedDelivery
                           ? new Date(po.expectedDelivery).toLocaleDateString()
@@ -777,8 +1059,9 @@ export default function Purchases({ defaultTab = "invoices" }) {
                         </button>
                       </td>
                     </tr>
-                  ))
-                )}
+                  );
+                })
+              )}
               </tbody>
             </table>
           </div>
@@ -874,7 +1157,17 @@ export default function Purchases({ defaultTab = "invoices" }) {
           </>
         }
       >
-        <form id="invoice-form" onSubmit={handleCreateInvoice} className="space-y-4 text-xs">
+        <form
+          id="invoice-form"
+          ref={invoiceFormRef}
+          onKeyDown={(e) =>
+            handleSmartFormKeyDown(e, invoiceFormRef.current, {
+              onAddRow: () => addInvoiceItem(),
+            })
+          }
+          onSubmit={handleCreateInvoice}
+          className="space-y-4 text-xs"
+        >
           {/* Supplier Section Header & Selector */}
           <div className="bg-slate-50/80 p-3.5 rounded-xl border border-slate-200/80 space-y-3">
             <div className="flex items-center justify-between">

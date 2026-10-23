@@ -349,7 +349,7 @@ describe('PHASE 12: SUBSCRIPTION PLAN MANAGEMENT & CENTRALIZED ACCESS CONTROL', 
 
     assert.equal(res.status, 200);
     assert.equal(data.data.planTier, 'PREMIUM');
-    assert.equal(data.data.usage.maxSeats, 15);
+    assert.ok(data.data.usage.maxSeats === -1 || data.data.usage.isUnlimited === true);
   });
 
   test('Premium user CAN access CA Connect portal without restriction', async () => {

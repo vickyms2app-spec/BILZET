@@ -170,98 +170,80 @@ export default function StaffDashboard({ defaultTab }) {
         </div>
       )}
 
-      {/* ── TOP HERO HEADER ── */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 sm:p-8 rounded-3xl border border-slate-800 shadow-xl">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-2.5">
-              <span className="p-2 rounded-xl bg-blue-500/20 border border-blue-400/30 text-blue-400">
-                <UserCheck className="w-5 h-5" />
-              </span>
-              <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-                Staff Workspace
-              </h1>
-              <span className="px-3 py-0.5 rounded-full text-xs font-semibold bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 flex items-center gap-1.5">
-                <Shield className="w-3.5 h-3.5" />
-                {user?.role || "STAFF"}
-              </span>
-            </div>
-            <p className="text-sm text-slate-300 max-w-xl">
-              Welcome back, <strong>{user?.name || "Team Member"}</strong>.{" "}
-              {canManageTeam
-                ? "Manage store sub-users, configure role-based access, and supervise operational shifts."
-                : "Track your daily shift attendance, view personal sales invoices, and check assigned privileges."}
+      {/* ── COMPACT APPLE-INSPIRED HEADER ── */}
+      <div className="bg-white rounded-2xl border border-[#E5EAF1] p-5 sm:p-6 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-semibold text-[#172033] tracking-tight">
+              Team &amp; Sub-Users
+            </h1>
+            <p className="text-sm text-[#64748B] mt-0.5">
+              Manage your team members, roles, and permissions.
             </p>
           </div>
 
-          {/* Digital Clock & Shift Status Badge */}
-          <div className="bg-slate-800/80 backdrop-blur-md border border-slate-700/60 rounded-2xl p-4 min-w-[240px] text-right space-y-1.5 shadow-inner">
-            <div className="text-xs text-slate-400">Current Time</div>
-            <div className="text-xl font-bold font-mono text-white tracking-wider">
-              {currentTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+          {/* Digital Clock & Shift Status Component */}
+          <div className="flex items-center gap-3.5 bg-[#F5F7FA] border border-[#E5EAF1] rounded-xl px-3.5 py-2 shrink-0 self-start md:self-auto">
+            <div className="flex items-center gap-2 text-xs font-medium text-[#64748B]">
+              <Clock className="w-3.5 h-3.5 text-[#64748B]" />
+              <span className="font-mono text-[#172033] font-semibold text-xs tracking-wide">
+                {currentTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+              </span>
             </div>
-            <div className="flex items-center justify-end gap-2 text-xs">
-              <span className="text-slate-400">Shift Status:</span>
+            <div className="h-3.5 w-px bg-[#E5EAF1]" />
+            <div className="flex items-center gap-1.5">
               <span
-                className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-bold text-[11px] ${
-                  isCheckedIn
-                    ? "bg-emerald-500/20 text-emerald-300 border border-emerald-400/30"
-                    : isShiftCompleted
-                    ? "bg-blue-500/20 text-blue-300 border border-blue-400/30"
-                    : "bg-amber-500/20 text-amber-300 border border-amber-400/30"
+                className={`w-2 h-2 rounded-full ${
+                  isCheckedIn ? "bg-[#10B981] animate-pulse" : isShiftCompleted ? "bg-[#0A66FF]" : "bg-[#F59E0B]"
                 }`}
-              >
-                <span
-                  className={`w-1.5 h-1.5 rounded-full ${
-                    isCheckedIn ? "bg-emerald-400 animate-pulse" : isShiftCompleted ? "bg-blue-400" : "bg-amber-400"
-                  }`}
-                />
+              />
+              <span className="text-xs font-medium text-[#172033]">
                 {isCheckedIn ? "On Duty" : isShiftCompleted ? "Shift Done" : "Not Started"}
               </span>
             </div>
           </div>
         </div>
 
-        {/* ── WORKSPACE NAVIGATION TABS ── */}
-        <div className="flex items-center gap-2 mt-6 pt-5 border-t border-slate-800/80 overflow-x-auto">
+        {/* ── WORKSPACE NAVIGATION TABS (macOS Segmented Style) ── */}
+        <div className="flex items-center gap-1.5 mt-5 pt-4 border-t border-[#E5EAF1] overflow-x-auto">
           {canManageTeam && (
             <button
               type="button"
               onClick={() => setActiveTab("users")}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer flex items-center gap-1.5 ${
                 activeTab === "users"
-                  ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
-                  : "bg-slate-800/60 text-slate-300 hover:bg-slate-800 hover:text-white"
+                  ? "bg-[#0A66FF] text-white shadow-xs font-semibold"
+                  : "text-[#64748B] hover:text-[#172033] hover:bg-[#F5F7FA]"
               }`}
             >
-              <Users className="w-4 h-4" />
-              <span>Team &amp; Sub-Users (RBAC)</span>
+              <Users className="w-3.5 h-3.5" />
+              <span>Team &amp; Sub-Users</span>
             </button>
           )}
 
           <button
             type="button"
             onClick={() => setActiveTab("clock")}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer flex items-center gap-1.5 ${
               activeTab === "clock"
-                ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
-                : "bg-slate-800/60 text-slate-300 hover:bg-slate-800 hover:text-white"
+                ? "bg-[#0A66FF] text-white shadow-xs font-semibold"
+                : "text-[#64748B] hover:text-[#172033] hover:bg-[#F5F7FA]"
             }`}
           >
-            <Clock className="w-4 h-4" />
+            <Clock className="w-3.5 h-3.5" />
             <span>Daily Shift Clock</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab("sales")}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer flex items-center gap-1.5 ${
               activeTab === "sales"
-                ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
-                : "bg-slate-800/60 text-slate-300 hover:bg-slate-800 hover:text-white"
+                ? "bg-[#0A66FF] text-white shadow-xs font-semibold"
+                : "text-[#64748B] hover:text-[#172033] hover:bg-[#F5F7FA]"
             }`}
           >
-            <DollarSign className="w-4 h-4" />
+            <DollarSign className="w-3.5 h-3.5" />
             <span>Personal Sales ({todaySalesCount})</span>
           </button>
 
@@ -269,13 +251,13 @@ export default function StaffDashboard({ defaultTab }) {
             <button
               type="button"
               onClick={() => setActiveTab("my_permissions")}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer flex items-center gap-1.5 ${
                 activeTab === "my_permissions"
-                  ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
-                  : "bg-slate-800/60 text-slate-300 hover:bg-slate-800 hover:text-white"
+                  ? "bg-[#0A66FF] text-white shadow-xs font-semibold"
+                  : "text-[#64748B] hover:text-[#172033] hover:bg-[#F5F7FA]"
               }`}
             >
-              <Shield className="w-4 h-4" />
+              <Shield className="w-3.5 h-3.5" />
               <span>My Role &amp; Access</span>
             </button>
           )}

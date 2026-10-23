@@ -32,7 +32,7 @@ import {
   Square,
   ChevronDown,
 } from "lucide-react";
-import { caConnectApi, caInvitationApi } from "../api";
+import { caConnectApi, caInvitationApi, subscriptionApi } from "../api";
 import { useAuth } from "../store/auth";
 import { useStore } from "../store/storeContext";
 import useRealtimeSync from "../hooks/useRealtimeSync";
@@ -51,7 +51,14 @@ const AVAILABLE_PERMISSIONS = [
 export default function CaConnect() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const updateSubscription = useAuth((s) => s.updateSubscription);
+  const refreshUser = useAuth((s) => s.refreshUser);
   const { currentStore } = useStore();
+
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [upgradingPlan, setUpgradingPlan] = useState(false);
+  const [upgradeSuccess, setUpgradeSuccess] = useState(false);
+  const [upgradeError, setUpgradeError] = useState("");
 
   useEffect(() => {
     if (user?.role === "CA") {
@@ -191,6 +198,7 @@ export default function CaConnect() {
     subscription.status?.toLowerCase() !== "inactive";
 
   const isUnlocked =
+    user?.isOwner ||
     user?.role === "ADMIN" ||
     user?.role === "SUPER_ADMIN" ||
     user?.role === "OWNER" ||
@@ -255,6 +263,49 @@ export default function CaConnect() {
     }
   }, []);
 
+  // Instant Upgrade to Premium Handler
+  const handleInstantUpgrade = async () => {
+    if (upgradingPlan) return;
+    setUpgradingPlan(true);
+    setUpgradeError("");
+    try {
+      const paymentRef = `PAY-${Date.now().toString().slice(-6)}`;
+      const res = await subscriptionApi.verifyPayment({
+        planTier: "PREMIUM",
+        amount: 2999,
+        billingCycle: "ANNUAL",
+        paymentReference: paymentRef,
+        paymentMethod: "UPI",
+      });
+
+      if (updateSubscription && res) {
+        updateSubscription(res);
+      }
+      if (refreshUser) {
+        refreshUser().catch(() => {});
+      }
+
+      setUpgradeSuccess(true);
+      setSubscription({
+        plan: "Premium",
+        status: "Active",
+        isExpired: false,
+        isUnlocked: true,
+      });
+
+      setTimeout(() => {
+        setUpgradingPlan(false);
+        setUpgradeSuccess(false);
+        setShowUpgradeModal(false);
+        loadConnectedCas();
+        loadInvitations();
+      }, 1200);
+    } catch (err) {
+      setUpgradingPlan(false);
+      setUpgradeError(err?.message || "Failed to activate Premium. Please try again.");
+    }
+  };
+
   // Initial load
   useEffect(() => {
     if (isUnlocked) {
@@ -295,13 +346,20 @@ export default function CaConnect() {
     setInviteSuccessData(null);
 
     try {
+      const targetStoreId =
+        currentStore?.id ||
+        user?.businessId ||
+        user?.business?.id ||
+        (typeof localStorage !== "undefined" ? localStorage.getItem("bilzet_active_store_id") : null);
+
       const payload = {
         email: inviteEmail.trim().toLowerCase(),
         caName: inviteName.trim() || undefined,
         message: inviteMessage.trim() || undefined,
         expiryHours: Number(inviteExpiryHours) || 168,
         permissions: selectedPermissions,
-        storeId: currentStore?.id,
+        storeId: targetStoreId || undefined,
+        businessId: targetStoreId || undefined,
       };
 
       const res = await caInvitationApi.invite(payload);
@@ -372,6 +430,13 @@ export default function CaConnect() {
 
   // Handle Disconnect CA
   const handleDisconnectCa = async (caUserId, caName) => {
+    if (!caUserId) {
+      setActionMessage({
+        type: "error",
+        text: "Cannot disconnect CA: Missing user ID reference.",
+      });
+      return;
+    }
     if (!window.confirm(`Are you sure you want to disconnect ${caName || "this Chartered Accountant"}? They will lose access to your financial records immediately.`)) {
       return;
     }
@@ -526,15 +591,108 @@ export default function CaConnect() {
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <Button
-              onClick={() => navigate("/subscription")}
+              onClick={() => setShowUpgradeModal(true)}
               variant="primary"
-              icon={ArrowRight}
-              className="w-full sm:w-auto px-6 py-2.5 text-sm font-bold shadow-md shadow-blue-500/20"
+              icon={Sparkles}
+              className="w-full sm:w-auto px-6 py-2.5 text-sm font-bold shadow-md shadow-amber-500/20 bg-amber-500 hover:bg-amber-600 text-slate-950 border-amber-600"
             >
               Upgrade to Premium
             </Button>
+            <Button
+              onClick={() => navigate("/plans?tier=PREMIUM&redirect=/ca-connect")}
+              variant="neutral"
+              icon={ArrowRight}
+              className="w-full sm:w-auto px-5 py-2.5 text-sm font-medium"
+            >
+              Compare All Plans
+            </Button>
           </div>
         </div>
+
+        {/* INLINE INSTANT UPGRADE MODAL */}
+        {showUpgradeModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+            <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 text-left">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <CreditCard size={18} className="text-amber-500" />
+                  <h3 className="font-bold text-slate-900 text-sm">Upgrade to Premium Plan</h3>
+                </div>
+                <CompactIconButton
+                  icon={X}
+                  variant="neutral"
+                  onClick={() => setShowUpgradeModal(false)}
+                  title="Close"
+                />
+              </div>
+
+              <div className="py-4 space-y-4 text-xs">
+                <div className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200/80 flex items-center justify-between">
+                  <div>
+                    <p className="font-bold text-slate-900 text-sm">Premium Enterprise</p>
+                    <p className="text-[11px] text-slate-600">365 Days Full Access &middot; Unlimited Bills</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-base font-black text-slate-900">₹2,999.00</p>
+                    <span className="text-[10px] text-emerald-600 font-bold">18% GST Included</span>
+                  </div>
+                </div>
+
+                <div className="space-y-2 text-slate-600">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
+                    <span>Instant access to CA Connect collaboration portal</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
+                    <span>Granular CA workpaper permissions (GSTR-1, 3B, Audit)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
+                    <span>Unlimited team sub-users &amp; custom roles studio</span>
+                  </div>
+                </div>
+
+                {upgradeSuccess && (
+                  <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-center font-bold flex items-center justify-center gap-2">
+                    <CheckCircle2 size={16} />
+                    <span>Premium Activated! Unlocking CA Connect...</span>
+                  </div>
+                )}
+
+                {upgradeError && (
+                  <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 font-medium text-xs flex items-center gap-2">
+                    <AlertTriangle size={16} className="shrink-0 text-red-600" />
+                    <span>{upgradeError}</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="pt-2 flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="neutral"
+                  disabled={upgradingPlan}
+                  onClick={() => setShowUpgradeModal(false)}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  variant="primary"
+                  icon={ArrowRight}
+                  disabled={upgradingPlan}
+                  loading={upgradingPlan}
+                  onClick={handleInstantUpgrade}
+                  className="flex-1 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold border-amber-600"
+                >
+                  {upgradeSuccess ? "Plan Activated!" : "Pay ₹2,999 & Activate"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -1138,7 +1296,7 @@ export default function CaConnect() {
 
                         <td className="py-3.5 px-4">
                           <div className="font-mono font-bold text-slate-900">
-                            {d.invoiceNumber || (log.entityType === "SALE" ? `#${log.entityId.slice(0, 8)}` : "—")}
+                            {d.invoiceNumber || (log.entityType === "SALE" && log.entityId ? `#${String(log.entityId).slice(0, 8)}` : "—")}
                           </div>
                           <div className="text-[11px] text-slate-500">
                             {d.customerName || "Walk-in Customer"}

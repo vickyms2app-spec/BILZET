@@ -38,6 +38,10 @@ export const updateShopSettingsSchema = z.object({
       defaultGstRate: z.number().min(0).max(100).optional(),
     })
     .optional(),
+  logoUrl: z.string().nullable().optional(),
+  signatureUrl: z.string().nullable().optional(),
+  showLogoOnInvoices: z.boolean().optional(),
+  showSignatureOnInvoices: z.boolean().optional(),
 }).passthrough();
 
 export default {

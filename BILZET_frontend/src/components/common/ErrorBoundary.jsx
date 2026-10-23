@@ -21,8 +21,20 @@ export class ErrorBoundary extends Component {
     window.location.href = "/login";
   };
 
+  handleLocalMode = () => {
+    sessionStorage.setItem("bilzet_skip_clerk", "true");
+    window.location.reload();
+  };
+
   render() {
     if (this.state.hasError) {
+      const errMsg = String(this.state.error?.message || "");
+      const isClerkError =
+        errMsg.includes("Clerk") ||
+        errMsg.includes("clerk") ||
+        errMsg.includes("failed_to_load_clerk") ||
+        errMsg.includes("INTERNET_DISCONNECTED");
+
       return (
         <div style={{
           minHeight: "100vh",
@@ -31,7 +43,7 @@ export class ErrorBoundary extends Component {
           justifyContent: "center",
           background: "#081028",
           color: "#fff",
-          fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
+          fontFamily: "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif",
           padding: "24px",
         }}>
           <div style={{
@@ -49,12 +61,31 @@ export class ErrorBoundary extends Component {
               <Logo variant="full" theme="dark" size="lg" />
             </div>
             <h2 style={{ fontSize: "20px", fontWeight: "700", marginBottom: "8px" }}>
-              Something interrupted your session
+              {isClerkError ? "Network Offline / Auth Timeout" : "Something interrupted your session"}
             </h2>
-            <p style={{ color: "#94a3b8", fontSize: "14px", lineHeight: "1.5", marginBottom: "24px" }}>
-              {this.state.error?.message || "An unexpected error occurred while rendering the page."}
+            <p style={{ color: isClerkError ? "#38bdf8" : "#94a3b8", fontSize: "14px", lineHeight: "1.5", marginBottom: "24px" }}>
+              {isClerkError
+                ? "Could not reach remote authentication services. Click below to continue using BILZET in local authentication mode."
+                : (this.state.error?.message || "An unexpected error occurred while rendering the page.")}
             </p>
-            <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
+            <div style={{ display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap" }}>
+              {isClerkError ? (
+                <button
+                  onClick={this.handleLocalMode}
+                  style={{
+                    padding: "10px 20px",
+                    borderRadius: "10px",
+                    background: "#059669",
+                    color: "#fff",
+                    fontWeight: "700",
+                    fontSize: "14px",
+                    border: "none",
+                    cursor: "pointer",
+                  }}
+                >
+                  Continue in Local Mode
+                </button>
+              ) : null}
               <button
                 onClick={() => window.location.reload()}
                 style={{

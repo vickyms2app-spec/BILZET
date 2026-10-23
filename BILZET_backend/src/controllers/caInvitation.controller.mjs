@@ -7,8 +7,17 @@ import { asyncHandler } from '../utils/asyncHandler.mjs';
  * Chartered Accountant (CA) Invitation Controller
  */
 
+const resolveBusinessId = (req) =>
+  req.body?.businessId ||
+  req.body?.storeId ||
+  req.query?.storeId ||
+  req.query?.businessId ||
+  req.headers['x-business-id'] ||
+  req.headers['x-store-id'] ||
+  req.user?.businessId;
+
 export const createInvitation = asyncHandler(async (req, res) => {
-  const businessId = req.body.businessId || req.query.storeId || req.user.businessId;
+  const businessId = resolveBusinessId(req);
   const result = await caInvitationService.createInvitation(req.user, businessId, req.body);
   const msg = result.emailSent
     ? 'Invitation successfully sent to Chartered Accountant.'
@@ -57,26 +66,23 @@ export const declineInvitation = asyncHandler(async (req, res) => {
 });
 
 export const revokeCaAccess = asyncHandler(async (req, res) => {
-  const businessId = req.query.storeId || req.body.businessId || req.user.businessId;
+  const businessId = resolveBusinessId(req);
+  if (!businessId) {
+    throw ApiError.badRequest('Store ID / businessId is required.');
+  }
   const { caUserId } = req.params;
   const result = await caInvitationService.revokeCaAccess(req.user, businessId, caUserId);
   return sendResponse(res, 200, result, 'Chartered Accountant connection revoked.');
 });
 
 export const getInvitations = asyncHandler(async (req, res) => {
-  const businessId = req.query.storeId || req.user.businessId;
-  if (!businessId) {
-    throw ApiError.badRequest('Store ID / businessId is required.');
-  }
+  const businessId = resolveBusinessId(req);
   const invitations = await caInvitationService.getInvitationsForStore(req.user, businessId);
   return sendResponse(res, 200, { invitations, total: invitations.length }, 'Invitations retrieved successfully.');
 });
 
 export const getConnectedCas = asyncHandler(async (req, res) => {
-  const businessId = req.query.storeId || req.user.businessId;
-  if (!businessId) {
-    throw ApiError.badRequest('Store ID / businessId is required.');
-  }
+  const businessId = resolveBusinessId(req);
   const accountants = await caInvitationService.getConnectedCasForStore(req.user, businessId);
   return sendResponse(res, 200, { accountants, total: accountants.length }, 'Connected Chartered Accountants retrieved successfully.');
 });

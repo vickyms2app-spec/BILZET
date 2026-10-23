@@ -58,6 +58,11 @@ import { caPortalApi } from "../api";
 import TaxInvoice from "../components/invoice/TaxInvoice";
 import Button, { CompactIconButton } from "../components/common/Button";
 import useRealtimeSync from "../hooks/useRealtimeSync";
+import CaReferral from "./CaReferral";
+import CaGstReview from "./CaGstReview";
+import CaAuditWorkspace from "./CaAuditWorkspace";
+import CaExceptionsInbox from "./CaExceptionsInbox";
+import { Gift } from "lucide-react";
 
 export default function CaPortal() {
   const { user } = useAuth();
@@ -71,7 +76,8 @@ export default function CaPortal() {
     switch (tab) {
       case "dashboard": return "dashboard";
       case "clients": return "clients";
-      case "pipeline": return "pipeline";
+      case "pipeline":
+      case "audit": return "pipeline";
       case "deadlines": return "deadlines";
       case "sales":
       case "invoices": return "invoices";
@@ -84,6 +90,9 @@ export default function CaPortal() {
       case "inventory": return "inventory";
       case "tasks": return "tasks";
       case "discrepancies": return "discrepancies";
+      case "exceptions":
+      case "inbox":
+      case "exception": return "exceptions";
       case "documents": return "documents";
       case "queries": return "queries";
       case "reports":
@@ -94,6 +103,9 @@ export default function CaPortal() {
       case "team": return "team";
       case "automation": return "automation";
       case "settings": return "settings";
+      case "referral":
+      case "referrals":
+      case "refer-earn": return "referral";
       default: return tab;
     }
   };
@@ -120,6 +132,35 @@ export default function CaPortal() {
   const [selectedYear, setSelectedYear] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+
+  // Dynamic statutory deadlines and FY calculations
+  const getNextDeadline = (day) => {
+    const now = new Date();
+    let target = new Date(now.getFullYear(), now.getMonth(), day);
+    if (now.getDate() > day) {
+      target = new Date(now.getFullYear(), now.getMonth() + 1, day);
+    }
+    const monthName = target.toLocaleString("en-IN", { month: "short" });
+    const daySuffix = day === 11 ? "11th" : day === 20 ? "20th" : `${day}th`;
+    const diffDays = Math.ceil((target - now) / (1000 * 60 * 60 * 24));
+    return {
+      label: `Due ${daySuffix} ${monthName}`,
+      diffDays,
+      isUrgent: diffDays <= 3,
+    };
+  };
+
+  const dynamicCurrentFY = useMemo(() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = now.getMonth();
+    return m >= 3 ? `${y} - ${y + 1}` : `${y - 1} - ${y}`;
+  }, []);
+
+  const dynamicAvailableYears = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    return [String(currentYear), String(currentYear - 1), String(currentYear - 2), String(currentYear - 3)];
+  }, []);
 
   // Sync activeTab when subTab in URL changes
   useEffect(() => {
@@ -342,7 +383,10 @@ export default function CaPortal() {
         const list = res?.stores || [];
         setStores(list);
         if (list.length > 0) {
-          setSelectedStoreId(list[0].id);
+          const stored = localStorage.getItem("bilzet_active_store_id");
+          const targetStore = list.find((s) => s.id === stored) || list[0];
+          setSelectedStoreId(targetStore.id);
+          localStorage.setItem("bilzet_active_store_id", targetStore.id);
         }
       })
       .catch((err) => {
@@ -873,13 +917,21 @@ export default function CaPortal() {
 
   // Handle opening an invoice modal
   const handleOpenInvoice = (inv) => {
+    if (!inv) return;
+    if (inv.invoiceNumber) {
+      setSelectedInvoice(inv);
+    }
     caPortalApi
       .getInvoice(inv.id || inv._id)
       .then((res) => {
         setSelectedInvoice(res?.invoice || res || inv);
       })
       .catch(() => {
-        setSelectedInvoice(inv);
+        if (!inv.invoiceNumber) {
+          alert("Unable to load full details for this linked invoice.");
+        } else {
+          setSelectedInvoice(inv);
+        }
       });
   };
 
@@ -1097,6 +1149,56 @@ export default function CaPortal() {
     totalIgst: invoices.reduce((s, i) => s + (i.igst || 0), 0),
   };
 
+  // ══════════════════════════════════════════════════════════
+  // SIMPLIFIED DEDICATED VIEWS FOR CA AUDIT SUITE
+  // 1. GST & Tax Review: Minimal, professional, 4 cards, 3 tabs
+  // 2. Audit Workspace (Pipeline): Minimal, 4 cards, 3 tabs
+  // ══════════════════════════════════════════════════════════
+  if (activeTab === "gst") {
+    return (
+      <div className="pb-16 fade-up">
+        <CaGstReview
+          stores={stores}
+          selectedStoreId={selectedStoreId}
+          setSelectedStoreId={setSelectedStoreId}
+          loadingStores={loadingStores}
+          user={user}
+          onNavigateTab={handleTabChange}
+        />
+      </div>
+    );
+  }
+
+  if (activeTab === "pipeline") {
+    return (
+      <div className="pb-16 fade-up">
+        <CaAuditWorkspace
+          stores={stores}
+          selectedStoreId={selectedStoreId}
+          setSelectedStoreId={setSelectedStoreId}
+          loadingStores={loadingStores}
+          user={user}
+          onNavigateTab={handleTabChange}
+        />
+      </div>
+    );
+  }
+
+  if (activeTab === "exceptions") {
+    return (
+      <div className="pb-16 fade-up">
+        <CaExceptionsInbox
+          stores={stores}
+          selectedStoreId={selectedStoreId}
+          setSelectedStoreId={setSelectedStoreId}
+          loadingStores={loadingStores}
+          user={user}
+          onNavigateTab={handleTabChange}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 pb-16 fade-up">
       {/* ══════════════════════════════════════════════════
@@ -1137,7 +1239,11 @@ export default function CaPortal() {
               ) : (
                 <select
                   value={selectedStoreId}
-                  onChange={(e) => setSelectedStoreId(e.target.value)}
+                  onChange={(e) => {
+                    const newId = e.target.value;
+                    setSelectedStoreId(newId);
+                    if (newId) localStorage.setItem("bilzet_active_store_id", newId);
+                  }}
                   className="bg-transparent text-xs sm:text-sm font-bold text-slate-800 outline-hidden cursor-pointer"
                 >
                   {stores.map((s) => (
@@ -1657,6 +1763,19 @@ export default function CaPortal() {
               >
                 <Settings size={14} /> Client Settings
               </button>
+
+              <span className="h-4 w-px bg-slate-200 mx-1 shrink-0" />
+
+              <button
+                onClick={() => handleTabChange("referral")}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                  activeTab === "referral"
+                    ? "bg-amber-400 text-slate-950 font-black shadow-xs"
+                    : "text-amber-700 bg-amber-50 hover:bg-amber-100/80 border border-amber-200"
+                }`}
+              >
+                <Gift size={14} className="text-amber-600" /> Refer &amp; Earn
+              </button>
             </div>
 
             <div className="flex items-center gap-2">
@@ -1759,7 +1878,10 @@ export default function CaPortal() {
                   {stores.map((s) => (
                     <button
                       key={s.id}
-                      onClick={() => setSelectedStoreId(s.id)}
+                      onClick={() => {
+                        setSelectedStoreId(s.id);
+                        localStorage.setItem("bilzet_active_store_id", s.id);
+                      }}
                       className={`p-3.5 rounded-xl border text-left transition relative flex flex-col justify-between ${
                         selectedStoreId === s.id
                           ? "border-blue-600 bg-blue-50/40 shadow-xs"
@@ -1822,7 +1944,7 @@ export default function CaPortal() {
                     <div className="p-3 bg-rose-50/60 rounded-xl border border-rose-200">
                       <span className="text-[10px] text-rose-700 font-bold uppercase tracking-wider block">Correction Req.</span>
                       <span className="text-xl font-black text-rose-800 mt-1 block font-mono">
-                        {tasksList.filter((t) => t.status === "CORRECTION_REQUIRED").length}
+                        {tasksList.filter((t) => t.status === "CORRECTION_REQUIRED" || t.status === "CORRECTION_REQUESTED").length}
                       </span>
                     </div>
                     <div className="p-3 bg-emerald-50/60 rounded-xl border border-emerald-200">
@@ -1887,8 +2009,12 @@ export default function CaPortal() {
                         <span className="font-bold text-slate-900 block">GSTR-1 Monthly Return</span>
                         <span className="text-[10px] text-slate-500">Outward B2B &amp; B2C supplies</span>
                       </div>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
-                        Due 11th Nov
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        getNextDeadline(11).isUrgent
+                          ? "bg-rose-100 text-rose-800"
+                          : "bg-amber-100 text-amber-800"
+                      }`}>
+                        {getNextDeadline(11).label}
                       </span>
                     </div>
                     <div className="p-3 rounded-xl border border-blue-200/80 bg-blue-50/30 flex items-center justify-between">
@@ -1896,8 +2022,12 @@ export default function CaPortal() {
                         <span className="font-bold text-slate-900 block">GSTR-3B Summary Return</span>
                         <span className="text-[10px] text-slate-500">Tax settlement &amp; eligible ITC</span>
                       </div>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800">
-                        Due 20th Nov
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        getNextDeadline(20).isUrgent
+                          ? "bg-rose-100 text-rose-800"
+                          : "bg-blue-100 text-blue-800"
+                      }`}>
+                        {getNextDeadline(20).label}
                       </span>
                     </div>
                     <div className="p-3 rounded-xl border border-slate-200 bg-slate-50/60 flex items-center justify-between">
@@ -2031,7 +2161,7 @@ export default function CaPortal() {
                       className="bg-transparent font-medium text-slate-700 outline-hidden cursor-pointer"
                     >
                       <option value="">Year</option>
-                      {["2026", "2025", "2024"].map((y) => (
+                      {dynamicAvailableYears.map((y) => (
                         <option key={y} value={y}>{y}</option>
                       ))}
                     </select>
@@ -2096,9 +2226,9 @@ export default function CaPortal() {
                     ) : (
                       invoices.map((inv) => {
                         const rawPS = (inv.paymentStatus || "").toUpperCase();
-                        const isPaid = rawPS === "PAID" || inv.balanceDue === 0;
+                        const isPaid = rawPS === "PAID" || (inv.balanceDue === 0 && Number(inv.paidAmount || 0) > 0);
                         const isPartial = rawPS === "PARTIALLY_PAID" || rawPS === "PARTIALLY PAID" || rawPS === "PARTIAL";
-                        const isPending = rawPS === "PENDING";
+                        const isPending = rawPS === "PENDING" || (inv.balanceDue > 0 && Number(inv.paidAmount || 0) === 0);
 
                         const retStatus = (inv.returnStatus || (inv.returns?.length > 0 ? "PARTIALLY_RETURNED" : "NONE")).toUpperCase();
 
@@ -2431,13 +2561,16 @@ export default function CaPortal() {
                         <th className="py-3 px-4 text-right">Taxable Turnover (₹)</th>
                         <th className="py-3 px-4 text-right">CGST (₹)</th>
                         <th className="py-3 px-4 text-right">SGST (₹)</th>
+                        <th className="py-3 px-4 text-right">IGST (₹)</th>
                         <th className="py-3 px-4 text-right">Total Tax (₹)</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 font-mono">
                       {["0", "5", "12", "18", "28"].map((rate) => {
-                        const slab = summary?.gstFiling?.slabs?.[rate] || { taxable: 0, tax: 0 };
-                        const halfTax = (slab.tax / 2).toFixed(2);
+                        const slab = summary?.gstFiling?.slabs?.[rate] || { taxable: 0, tax: 0, cgst: 0, sgst: 0, igst: 0 };
+                        const cgstVal = slab.cgst !== undefined ? slab.cgst : (slab.tax / 2);
+                        const sgstVal = slab.sgst !== undefined ? slab.sgst : (slab.tax / 2);
+                        const igstVal = slab.igst !== undefined ? slab.igst : 0;
                         return (
                           <tr key={rate} className="hover:bg-slate-50/80 transition">
                             <td className="py-3 px-4 font-sans font-bold text-slate-900">
@@ -2446,8 +2579,9 @@ export default function CaPortal() {
                             <td className="py-3 px-4 text-right text-slate-800">
                               ₹{Number(slab.taxable || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                             </td>
-                            <td className="py-3 px-4 text-right text-slate-600">₹{halfTax}</td>
-                            <td className="py-3 px-4 text-right text-slate-600">₹{halfTax}</td>
+                            <td className="py-3 px-4 text-right text-slate-600">₹{Number(cgstVal).toFixed(2)}</td>
+                            <td className="py-3 px-4 text-right text-slate-600">₹{Number(sgstVal).toFixed(2)}</td>
+                            <td className="py-3 px-4 text-right text-slate-600">₹{Number(igstVal).toFixed(2)}</td>
                             <td className="py-3 px-4 text-right font-bold text-blue-600">
                               ₹{Number(slab.tax || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                             </td>
@@ -2550,7 +2684,7 @@ export default function CaPortal() {
 
                             <td className="py-3.5 px-4">
                               <div className="font-mono font-bold text-slate-900">
-                                {d.invoiceNumber || (log.entityType === "SALE" ? `#${log.entityId.slice(0, 8)}` : "—")}
+                                {d.invoiceNumber || (log.entityType === "SALE" && log.entityId ? `#${String(log.entityId).slice(0, 8)}` : "—")}
                               </div>
                               <div className="text-[11px] text-slate-500">
                                 {d.customerName || "Walk-in Customer"}
@@ -3004,7 +3138,7 @@ export default function CaPortal() {
                 <div className="p-3 bg-slate-50 font-bold text-xs text-slate-700 border-b border-slate-200">
                   Stock Holdings &amp; HSN/GST Classification
                 </div>
-                <div className="overflow-x-auto max-h-96">
+                <div className="overflow-auto max-h-96">
                   <table className="w-full text-xs text-left">
                     <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider text-[10px] font-bold border-b border-slate-200 sticky top-0">
                       <tr>
@@ -3045,7 +3179,7 @@ export default function CaPortal() {
                 <div className="p-3 bg-slate-50 font-bold text-xs text-slate-700 border-b border-slate-200">
                   Chronological Stock Movements Ledger (Deductions &amp; Returns Reversals)
                 </div>
-                <div className="overflow-x-auto max-h-72">
+                <div className="overflow-auto max-h-72">
                   <table className="w-full text-xs text-left font-mono">
                     <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider text-[10px] font-bold border-b border-slate-200 sticky top-0">
                       <tr>
@@ -3059,27 +3193,33 @@ export default function CaPortal() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 text-[11px]">
-                      {inventoryMovements.map((m) => (
-                        <tr key={m.id} className="hover:bg-slate-50/70 transition">
-                          <td className="py-2 px-4 text-slate-500">{new Date(m.createdAt).toLocaleString("en-IN")}</td>
-                          <td className="py-2 px-4 font-sans font-semibold text-slate-800">{m.productName}</td>
-                          <td className="py-2 px-4">
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                              m.type === "RETURN"
-                                ? "bg-purple-50 text-purple-700"
-                                : m.type === "SALE"
-                                ? "bg-blue-50 text-blue-700"
-                                : "bg-slate-100 text-slate-700"
-                            }`}>
-                              {m.type}
-                            </span>
-                          </td>
-                          <td className="py-2 px-4 text-right font-bold text-slate-900">{m.quantity}</td>
-                          <td className="py-2 px-4 text-right text-slate-500">{m.previousStock}</td>
-                          <td className="py-2 px-4 text-right font-bold text-emerald-700">{m.newStock}</td>
-                          <td className="py-2 px-4 font-sans text-slate-600">{m.reason}</td>
-                        </tr>
-                      ))}
+                      {loadingInventory ? (
+                        <tr><td colSpan={7} className="py-8 text-center text-slate-400">Loading stock movements...</td></tr>
+                      ) : inventoryMovements.length === 0 ? (
+                        <tr><td colSpan={7} className="py-8 text-center text-slate-400">No stock movements recorded for this audit period.</td></tr>
+                      ) : (
+                        inventoryMovements.map((m) => (
+                          <tr key={m.id} className="hover:bg-slate-50/70 transition">
+                            <td className="py-2 px-4 text-slate-500">{new Date(m.createdAt).toLocaleString("en-IN")}</td>
+                            <td className="py-2 px-4 font-sans font-semibold text-slate-800">{m.productName}</td>
+                            <td className="py-2 px-4">
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                m.type === "RETURN"
+                                  ? "bg-purple-50 text-purple-700"
+                                  : m.type === "SALE"
+                                  ? "bg-blue-50 text-blue-700"
+                                  : "bg-slate-100 text-slate-700"
+                              }`}>
+                                {m.type}
+                              </span>
+                            </td>
+                            <td className="py-2 px-4 text-right font-bold text-slate-900">{m.quantity}</td>
+                            <td className="py-2 px-4 text-right text-slate-500">{m.previousStock}</td>
+                            <td className="py-2 px-4 text-right font-bold text-emerald-700">{m.newStock}</td>
+                            <td className="py-2 px-4 font-sans text-slate-600">{m.reason}</td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -3584,6 +3724,7 @@ export default function CaPortal() {
                         <th className="p-2 text-right">Taxable (₹)</th>
                         <th className="p-2 text-right">CGST (₹)</th>
                         <th className="p-2 text-right">SGST (₹)</th>
+                        <th className="p-2 text-right">IGST (₹)</th>
                         <th className="p-2 text-right">Net Payable (₹)</th>
                       </tr>
                     </thead>
@@ -3595,6 +3736,7 @@ export default function CaPortal() {
                           <td className="p-2 text-right">₹{Number(s.taxableAmount || 0).toFixed(2)}</td>
                           <td className="p-2 text-right">₹{Number(s.cgst || 0).toFixed(2)}</td>
                           <td className="p-2 text-right">₹{Number(s.sgst || 0).toFixed(2)}</td>
+                          <td className="p-2 text-right">₹{Number(s.igst || 0).toFixed(2)}</td>
                           <td className="p-2 text-right font-bold text-blue-600">₹{Number(s.netPayable || 0).toFixed(2)}</td>
                         </tr>
                       ))}
@@ -3664,7 +3806,10 @@ export default function CaPortal() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-slate-500">State / Jurisdictional Code:</span>
-                      <strong>{activeStore?.state || "Tamil Nadu"} (33)</strong>
+                      <strong>
+                        {activeStore?.state || (activeStore?.gstin ? `State Code ${activeStore.gstin.slice(0, 2)}` : "Registered Jurisdiction")}
+                        {activeStore?.gstin && activeStore.gstin.length >= 2 ? ` (${activeStore.gstin.slice(0, 2)})` : ""}
+                      </strong>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-slate-500">Registered Address:</span>
@@ -3690,7 +3835,9 @@ export default function CaPortal() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-slate-500">CA Membership / FRN:</span>
-                      <strong className="font-mono text-emerald-700">ICAI-MEM-88254</strong>
+                      <strong className="font-mono text-emerald-700">
+                        {user?.icaiNumber || user?.membershipNo || user?.caRegistrationNumber || "ICAI Registered Partner"}
+                      </strong>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-slate-500">Audit Status:</span>
@@ -3818,11 +3965,11 @@ export default function CaPortal() {
                     <div className="space-y-2 text-xs border-t border-slate-100 pt-3 text-slate-600">
                       <div className="flex justify-between">
                         <span className="text-slate-400">Financial Year:</span>
-                        <strong className="text-slate-800">2026 - 2027</strong>
+                        <strong className="text-slate-800">{dynamicCurrentFY}</strong>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-slate-400">Assigned CA:</span>
-                        <strong className="text-slate-800">{user?.name || "Karthik CA"}</strong>
+                        <strong className="text-slate-800">{user?.name || "Chartered Accountant"}</strong>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-slate-400">Audit Status:</span>
@@ -3836,6 +3983,7 @@ export default function CaPortal() {
                         size="sm"
                         onClick={() => {
                           setSelectedStoreId(s.id);
+                          localStorage.setItem("bilzet_active_store_id", s.id);
                           handleTabChange("dashboard");
                         }}
                         className="w-full justify-center text-xs"
@@ -3889,6 +4037,7 @@ export default function CaPortal() {
                   const colTasks = tasksList.filter((t) => {
                     if (col.id === "PENDING") return t.status === "PENDING" || !t.status;
                     if (col.id === "COMPLETED") return t.status === "COMPLETED" || t.status === "APPROVED";
+                    if (col.id === "CORRECTION_REQUIRED") return t.status === "CORRECTION_REQUIRED" || t.status === "CORRECTION_REQUESTED";
                     return t.status === col.id;
                   });
 
@@ -3950,6 +4099,14 @@ export default function CaPortal() {
                                       className="px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 font-bold text-[10px] hover:bg-indigo-100"
                                     >
                                       Review →
+                                    </button>
+                                  )}
+                                  {col.id === "WAITING_FOR_CLIENT" && (
+                                    <button
+                                      onClick={() => handleUpdateTaskStatus(task.id, "IN_PROGRESS")}
+                                      className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-bold text-[10px] hover:bg-blue-100"
+                                    >
+                                      Resume →
                                     </button>
                                   )}
                                   {col.id === "READY_FOR_APPROVAL" && (
@@ -4418,6 +4575,15 @@ export default function CaPortal() {
                   </div>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* ══════════════════════════════════════════════════
+              VIEW: CA REFER & EARN MODULE
+          ══════════════════════════════════════════════════ */}
+          {activeTab === "referral" && (
+            <div className="pt-2">
+              <CaReferral />
             </div>
           )}
         </>

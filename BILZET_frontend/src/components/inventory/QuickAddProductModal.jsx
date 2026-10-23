@@ -51,7 +51,13 @@ export default function QuickAddProductModal({ isOpen, onClose, onSuccess }) {
         const list = res?.categories || [];
         setCategories(list);
         if (list.length > 0) {
-          setForm((prev) => ({ ...prev, categoryId: list[0].id || list[0]._id }));
+          const firstCat = list[0];
+          const defaultRate = firstCat.defaultGstRate !== undefined && firstCat.defaultGstRate !== null ? String(firstCat.defaultGstRate) : "18";
+          setForm((prev) => ({
+            ...prev,
+            categoryId: firstCat.id || firstCat._id,
+            gstRate: defaultRate,
+          }));
         }
       }).catch(() => {});
     }
@@ -178,13 +184,22 @@ export default function QuickAddProductModal({ isOpen, onClose, onSuccess }) {
               </label>
               <select
                 value={form.categoryId}
-                onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
+                onChange={(e) => {
+                  const newCatId = e.target.value;
+                  const cat = categories.find((c) => (c.id || c._id) === newCatId);
+                  const newRate = cat?.defaultGstRate !== undefined && cat?.defaultGstRate !== null ? String(cat.defaultGstRate) : "18";
+                  setForm((prev) => ({
+                    ...prev,
+                    categoryId: newCatId,
+                    gstRate: newRate,
+                  }));
+                }}
                 className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
               >
                 <option value="">General / None</option>
                 {categories.map((c) => (
                   <option key={c.id || c._id} value={c.id || c._id}>
-                    {c.name}
+                    {c.name} ({c.defaultGstRate !== undefined && c.defaultGstRate !== null ? c.defaultGstRate : 18}% GST)
                   </option>
                 ))}
               </select>

@@ -1,5 +1,6 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+import { BILZET_LOGO_DARK_BASE64, BILZET_LOGO_ASPECT_RATIO } from "./bilzetLogoData.js";
 
 /**
  * Format currency into readable Indian Rupees format compatible with standard PDF fonts.
@@ -67,7 +68,7 @@ export function generateReportsPdf({
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const marginX = 14;
-  let cursorY = 16;
+  let cursorY = 12;
 
   // Colors
   const primaryNavy = [15, 39, 71]; // #0F2747
@@ -84,73 +85,99 @@ export function generateReportsPdf({
   const shopGstin = shopSettings?.gstin || "";
 
   // ════════════════════════════════════════════════════════════════
-  // 1. HEADER SECTION (Brand, Store Info, Report Title)
+  // 1. HEADER SECTION (Brand Logo, Store Info & Report Title)
   // ════════════════════════════════════════════════════════════════
   // Top Decorative Accent Bar
   doc.setFillColor(...primaryNavy);
-  doc.rect(0, 0, pageWidth, 5, "F");
+  doc.rect(0, 0, pageWidth, 4, "F");
 
-  // BILZET Badge
-  doc.setFillColor(...accentBlue);
-  doc.roundedRect(marginX, cursorY, 24, 7, 1.5, 1.5, "F");
-  doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(8);
-  doc.text("BILZET", marginX + 4.5, cursorY + 4.8);
+  // 1. Bilzet Official Logo (Top-Left, Proportional Scaling)
+  const logoHeight = 11; // mm
+  const logoWidth = Number((logoHeight * BILZET_LOGO_ASPECT_RATIO).toFixed(2)); // ~38.16 mm
+  const logoX = marginX;
+  const logoY = cursorY;
+
+  try {
+    doc.addImage(BILZET_LOGO_DARK_BASE64, "PNG", logoX, logoY, logoWidth, logoHeight, undefined, "FAST");
+  } catch (err) {
+    console.warn("PDF Logo render fallback:", err);
+  }
+
+  // 2. Store Identity Block (Left section, aligned to the right of the logo)
+  const storeSpacing = 6;
+  const storeBlockX = logoX + logoWidth + storeSpacing;
+  const rightMarginX = pageWidth - marginX;
 
   // Store Name
   doc.setTextColor(...primaryNavy);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(16);
-  doc.text(shopName, marginX + 27, cursorY + 5.5);
+  doc.setFontSize(13);
+  doc.text(shopName, storeBlockX, cursorY + 4.2, { maxWidth: 78 });
 
-  // Document Title Pill (Right side)
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(...accentBlue);
-  doc.text("EXECUTIVE ANALYTICS REPORT", pageWidth - marginX, cursorY + 5, { align: "right" });
-
-  cursorY += 12;
-
-  // Store Contact Sub-line
+  // Subtitle (Aligned to the EXACT same left edge as store name)
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8.5);
   doc.setTextColor(...textMuted);
+  doc.text(shopAddress, storeBlockX, cursorY + 8.8, { maxWidth: 78 });
+
+  // Store Contact Sub-line (if contact details exist)
   const contactParts = [];
-  if (shopAddress) contactParts.push(shopAddress);
   if (shopPhone) contactParts.push(`Phone: ${shopPhone}`);
   if (shopEmail) contactParts.push(`Email: ${shopEmail}`);
   if (shopGstin) contactParts.push(`GSTIN: ${shopGstin}`);
-  doc.text(contactParts.join("  |  "), marginX, cursorY, { maxWidth: pageWidth - marginX * 2 });
 
-  cursorY += 6;
+  if (contactParts.length > 0) {
+    doc.setFontSize(7.5);
+    doc.setTextColor(...textMuted);
+    doc.text(contactParts.join("  |  "), storeBlockX, cursorY + 12.8, { maxWidth: 78 });
+  }
 
-  // Divider Line
+  // 3. Right Section: EXECUTIVE ANALYTICS REPORT (Right edge aligned)
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor(...primaryNavy);
+  doc.text("EXECUTIVE ANALYTICS REPORT", rightMarginX, cursorY + 4.2, { align: "right" });
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7.5);
+  doc.setTextColor(...textMuted);
+  doc.text("Official Financial Ledger Audit", rightMarginX, cursorY + 8.8, { align: "right" });
+  doc.text(
+    `Generated: ${new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}`,
+    rightMarginX,
+    cursorY + 12.8,
+    { align: "right" }
+  );
+
+  // 4. Subtle Horizontal Divider below the Header (aligned with table edges)
+  const headerBottomY = cursorY + Math.max(logoHeight, contactParts.length > 0 ? 14 : 10) + 3;
   doc.setDrawColor(...borderLight);
   doc.setLineWidth(0.4);
-  doc.line(marginX, cursorY, pageWidth - marginX, cursorY);
-  cursorY += 5;
+  doc.line(marginX, headerBottomY, rightMarginX, headerBottomY);
 
-  // Period & Filter Metadata Bar
+  cursorY = headerBottomY + 4.5;
+
+  // 5. Reporting Period & Filter Metadata Bar
   doc.setFillColor(...bgLight);
-  doc.roundedRect(marginX, cursorY, pageWidth - marginX * 2, 10, 1.5, 1.5, "F");
+  doc.roundedRect(marginX, cursorY, pageWidth - marginX * 2, 9, 1.5, 1.5, "F");
   doc.setDrawColor(...borderLight);
-  doc.roundedRect(marginX, cursorY, pageWidth - marginX * 2, 10, 1.5, 1.5, "S");
+  doc.roundedRect(marginX, cursorY, pageWidth - marginX * 2, 9, 1.5, 1.5, "S");
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8.5);
   doc.setTextColor(...primaryNavy);
   const periodText = `Period: ${dateRange.label || "Selected Range"} (${dateRange.displayPeriod || "N/A"})`;
-  doc.text(periodText, marginX + 3.5, cursorY + 6.2);
+  doc.text(periodText, marginX + 3.5, cursorY + 5.8);
 
   const filterText = searchInvoiceQuery
     ? `Filter: Matching "${searchInvoiceQuery}"`
     : "Filter: All Recorded Transactions";
   doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
   doc.setTextColor(...textMuted);
-  doc.text(filterText, pageWidth - marginX - 3.5, cursorY + 6.2, { align: "right" });
+  doc.text(filterText, rightMarginX - 3.5, cursorY + 5.8, { align: "right" });
 
-  cursorY += 14;
+  cursorY += 13.5;
 
   // ════════════════════════════════════════════════════════════════
   // 2. EXECUTIVE FINANCIAL SUMMARY (2 x 4 KPI Grid)
@@ -413,6 +440,14 @@ export function generateReportsPdf({
   }
 
   // Directly download the PDF file to user device
-  doc.save(fileName);
+  if (typeof window !== "undefined" && typeof doc.save === "function") {
+    doc.save(fileName);
+  } else if (typeof doc.save === "function") {
+    try {
+      doc.save(fileName);
+    } catch (_) {
+      // Safe fallback in Node.js test environment
+    }
+  }
   return fileName;
 }

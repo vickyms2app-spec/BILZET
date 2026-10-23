@@ -1195,22 +1195,29 @@ export default function Reports() {
       <div id="printable-analytics-report" className="print-only font-sans text-slate-900 bg-white">
         {/* Document Header with Shop Details & Period */}
         <div className="border-b-2 border-slate-900 pb-4 mb-5">
-          <div className="flex justify-between items-start">
-            <div>
-              <h1 className="text-2xl font-black tracking-tight text-slate-900 uppercase">
-                {shopSettings?.shopName || "BILZET RETAIL STORE"}
-              </h1>
-              <p className="text-xs text-slate-600 mt-1 max-w-md">
-                {shopSettings?.address || "Primary Business Premises"}
-              </p>
-              <div className="flex flex-wrap gap-4 text-xs text-slate-600 mt-1.5 font-medium">
-                {shopSettings?.phone && <span>Phone: {shopSettings.phone}</span>}
-                {shopSettings?.email && <span>Email: {shopSettings.email}</span>}
-                {shopSettings?.gstin && <span>GSTIN: {shopSettings.gstin}</span>}
+          <div className="flex justify-between items-start gap-4">
+            <div className="flex items-center gap-4">
+              <img
+                src="/assets/bilzet-logo-dark.png"
+                alt="BILZET"
+                className="h-10 w-auto object-contain shrink-0"
+              />
+              <div>
+                <h1 className="text-xl font-bold tracking-tight text-slate-900 uppercase">
+                  {shopSettings?.shopName || "BILZET RETAIL STORE"}
+                </h1>
+                <p className="text-xs text-slate-600 mt-0.5 max-w-md">
+                  {shopSettings?.address || "Business Premises, Commercial Plaza"}
+                </p>
+                <div className="flex flex-wrap gap-4 text-xs text-slate-500 mt-1 font-medium">
+                  {shopSettings?.phone && <span>Phone: {shopSettings.phone}</span>}
+                  {shopSettings?.email && <span>Email: {shopSettings.email}</span>}
+                  {shopSettings?.gstin && <span>GSTIN: {shopSettings.gstin}</span>}
+                </div>
               </div>
             </div>
 
-            <div className="text-right">
+            <div className="text-right shrink-0">
               <span className="inline-block px-3 py-1 bg-slate-900 text-white font-bold text-xs uppercase tracking-wider rounded">
                 EXECUTIVE ANALYTICS REPORT
               </span>

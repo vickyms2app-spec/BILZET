@@ -138,15 +138,20 @@ export const createPaymentIn = asyncHandler(async (req, res) => {
   });
 
   try {
-    const targetBusinessId = req.user?.businessId || (payment.customerId ? null : null);
-    if (targetBusinessId) {
-      realtimeService.broadcastBusinessEvent(targetBusinessId, 'PAYMENT_RECORDED', {
-        paymentId: payment.id,
+    const targetBusinessId = req.user?.businessId || 'default';
+    realtimeService.broadcastBusinessEvent(targetBusinessId, 'PAYMENT_RECORDED', {
+      paymentId: payment.id,
+      customerId: payment.customerId,
+      saleId: payment.saleId,
+      amount: payment.amount,
+      method: payment.method,
+    }, { userId: req.user?.id || 'system', action: 'PAYMENT_IN' });
+
+    if (payment.customerId) {
+      realtimeService.broadcastBusinessEvent(targetBusinessId, 'CUSTOMER_UPDATED', {
         customerId: payment.customerId,
-        saleId: payment.saleId,
-        amount: payment.amount,
-        method: payment.method,
-      }, { userId: req.user.id, action: 'PAYMENT_IN' });
+        paymentReceived: payment.amount,
+      }, { userId: req.user?.id || 'system', action: 'PAYMENT_RECEIVED' });
     }
   } catch (_) {}
 

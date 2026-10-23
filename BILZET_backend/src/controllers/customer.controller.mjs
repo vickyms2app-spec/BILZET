@@ -3,6 +3,7 @@ import { sendResponse } from '../utils/apiResponse.mjs';
 import { ApiError } from '../utils/ApiError.mjs';
 import prisma from '../config/prisma.mjs';
 import { getPaginationParams, buildPaginationMeta } from '../utils/pagination.mjs';
+import realtimeService from '../services/realtime.service.mjs';
 
 const mapCustomer = (c) => {
   if (!c) return null;
@@ -214,6 +215,13 @@ export const createCustomer = asyncHandler(async (req, res) => {
       },
     });
 
+    try {
+      const targetBusinessId = customer.businessId || req.user?.businessId || 'default';
+      realtimeService.broadcastBusinessEvent(targetBusinessId, 'CUSTOMER_CREATED', {
+        customer: mapCustomer(customer),
+      }, { userId: req.user?.id, action: 'CUSTOMER_CREATED' });
+    } catch (_) {}
+
     return sendResponse(res, 201, { customer: mapCustomer(customer) }, 'Customer created successfully');
   } catch (err) {
     if (err instanceof ApiError) throw err;
@@ -237,6 +245,14 @@ export const createCustomer = asyncHandler(async (req, res) => {
     };
 
     inMemoryCustomers.unshift(fallbackCustomer);
+
+    try {
+      const targetBusinessId = fallbackCustomer.businessId || req.user?.businessId || 'default';
+      realtimeService.broadcastBusinessEvent(targetBusinessId, 'CUSTOMER_CREATED', {
+        customer: mapCustomer(fallbackCustomer),
+      }, { userId: req.user?.id, action: 'CUSTOMER_CREATED' });
+    } catch (_) {}
+
     return sendResponse(res, 201, { customer: mapCustomer(fallbackCustomer) }, 'Customer created successfully');
   }
 });
@@ -289,6 +305,13 @@ export const updateCustomer = asyncHandler(async (req, res) => {
       ...(isActive !== undefined && { isActive }),
     },
   });
+
+  try {
+    const targetBusinessId = customer.businessId || req.user?.businessId || 'default';
+    realtimeService.broadcastBusinessEvent(targetBusinessId, 'CUSTOMER_UPDATED', {
+      customer: mapCustomer(customer),
+    }, { userId: req.user?.id, action: 'CUSTOMER_UPDATED' });
+  } catch (_) {}
 
   return sendResponse(res, 200, { customer: mapCustomer(customer) }, 'Customer updated successfully');
 });

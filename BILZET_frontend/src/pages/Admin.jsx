@@ -30,23 +30,25 @@ import {
   Layers,
   ArrowUpRight,
   Activity,
+  Gift,
 } from "lucide-react";
 import { useSecurityStore } from "../store/securityStore";
 import { maskAccountNumber, maskIFSC, maskUPI, maskSecret } from "../utils/security";
 import { Link, useSearchParams } from "react-router-dom";
+import SuperAdminReferrals from "./superAdmin/SuperAdminReferrals";
 
 export default function Admin() {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = searchParams.get("tab");
   const [activeTab, setActiveTabState] = useState(
-    initialTab && ["overview", "vault", "payroll", "users"].includes(initialTab)
+    initialTab && ["overview", "vault", "payroll", "users", "referrals"].includes(initialTab)
       ? initialTab
       : "overview"
   );
 
   useEffect(() => {
     const t = searchParams.get("tab");
-    if (t && ["overview", "vault", "payroll", "users"].includes(t)) {
+    if (t && ["overview", "vault", "payroll", "users", "referrals"].includes(t)) {
       setActiveTabState(t);
     }
   }, [searchParams]);
@@ -235,6 +237,18 @@ export default function Admin() {
         >
           <Users size={14} />
           <span>User Accounts &amp; Permissions ({usersList.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("referrals")}
+          className={`pb-3 flex items-center gap-2 border-b-2 transition whitespace-nowrap cursor-pointer ${
+            activeTab === "referrals"
+              ? "border-blue-600 text-blue-700 font-bold"
+              : "border-transparent hover:text-slate-800"
+          }`}
+        >
+          <Gift size={14} className="text-amber-500" />
+          <span>CA Referrals &amp; Payouts</span>
         </button>
       </div>
 
@@ -907,6 +921,15 @@ export default function Admin() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════
+          TAB 5: CA REFERRALS & PAYOUTS
+      ══════════════════════════════════════════════════ */}
+      {activeTab === "referrals" && (
+        <div className="bg-[#060b18] -mx-4 sm:-mx-6 -mb-6 p-4 rounded-3xl border border-slate-800 shadow-xl">
+          <SuperAdminReferrals />
         </div>
       )}
     </div>

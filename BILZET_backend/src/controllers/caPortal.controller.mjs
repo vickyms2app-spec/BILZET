@@ -4,6 +4,7 @@ import caPortalService from '../services/caPortal.service.mjs';
 import auditRulesService from '../services/auditRules.service.mjs';
 import bankReconciliationService from '../services/bankReconciliation.service.mjs';
 import caWorkpapersService from '../services/caWorkpapers.service.mjs';
+import caExceptionsService from '../services/caExceptions.service.mjs';
 
 /**
  * Controller for the Chartered Accountant (CA) Portal.
@@ -11,7 +12,16 @@ import caWorkpapersService from '../services/caWorkpapers.service.mjs';
  */
 
 const resolveStoreId = (req) => {
-  return req.query?.storeId || req.body?.storeId || req.headers?.['x-store-id'] || req.user?.businessId || null;
+  return (
+    req.query?.storeId ||
+    req.query?.businessId ||
+    req.body?.storeId ||
+    req.body?.businessId ||
+    req.headers?.['x-business-id'] ||
+    req.headers?.['x-store-id'] ||
+    req.user?.businessId ||
+    null
+  );
 };
 
 export const getAuthorizedStores = asyncHandler(async (req, res) => {
@@ -251,6 +261,47 @@ export const getWorkpapers = asyncHandler(async (req, res) => {
   return sendResponse(res, 200, { workpapers }, 'CA Audit workpapers compiled successfully');
 });
 
+// ══════════════════════════════════════════════════════════════
+// EXCEPTIONS INBOX HANDLERS (B2B, B2C, SEZ & LIVE SYNC)
+// ══════════════════════════════════════════════════════════════
+export const getExceptions = asyncHandler(async (req, res) => {
+  const { storeId: _, ...query } = req.query;
+  const storeId = resolveStoreId(req);
+  const result = await caExceptionsService.getStoreExceptions(req.user, storeId, query);
+  return sendResponse(res, 200, result, 'Exceptions retrieved successfully', result.meta);
+});
+
+export const getExceptionDetail = asyncHandler(async (req, res) => {
+  const result = await caExceptionsService.getExceptionById(req.user, req.params.id);
+  return sendResponse(res, 200, result, 'Exception details retrieved successfully');
+});
+
+export const syncExceptions = asyncHandler(async (req, res) => {
+  const storeId = resolveStoreId(req);
+  const result = await caExceptionsService.syncStoreExceptions(req.user, storeId);
+  return sendResponse(res, 200, result, 'Billing exceptions synchronized successfully');
+});
+
+export const updateExceptionStatus = asyncHandler(async (req, res) => {
+  const result = await caExceptionsService.updateExceptionStatus(req.user, req.params.id, req.body);
+  return sendResponse(res, 200, result, 'Exception status updated successfully');
+});
+
+export const addExceptionNote = asyncHandler(async (req, res) => {
+  const result = await caExceptionsService.addExceptionNote(req.user, req.params.id, req.body);
+  return sendResponse(res, 200, result, 'Review note added successfully');
+});
+
+export const requestExceptionDocument = asyncHandler(async (req, res) => {
+  const result = await caExceptionsService.requestExceptionDocument(req.user, req.params.id, req.body);
+  return sendResponse(res, 200, result, 'Document requested successfully');
+});
+
+export const classifyExceptionCustomer = asyncHandler(async (req, res) => {
+  const result = await caExceptionsService.classifyExceptionCustomer(req.user, req.params.id, req.body);
+  return sendResponse(res, 200, result, 'Customer classification updated successfully');
+});
+
 export default {
   getAuthorizedStores,
   getInvoices,
@@ -287,5 +338,12 @@ export default {
   importBankStatement,
   updateBankMatch,
   getWorkpapers,
+  getExceptions,
+  getExceptionDetail,
+  syncExceptions,
+  updateExceptionStatus,
+  addExceptionNote,
+  requestExceptionDocument,
+  classifyExceptionCustomer,
 };
 

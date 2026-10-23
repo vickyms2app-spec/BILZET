@@ -21,6 +21,7 @@ enum Role {
   HR_MANAGER
   CA
   ACCOUNTANT
+  NONE
 }
 
 enum PaymentMethod {
@@ -60,9 +61,12 @@ model Business {
   id              String         @id @default(uuid())
   ownerId         String         @map("owner_id")
   name            String         @default("My Business")
+  businessType    String?        @default("RETAIL") @map("business_type")
   gstin           String?
   phone           String?
   email           String?
+  address         String?
+  state           String?        @default("Tamil Nadu")
   createdAt       DateTime       @default(now()) @map("created_at")
   updatedAt       DateTime       @updatedAt @map("updated_at")
 
@@ -75,7 +79,10 @@ model Business {
   sales           Sale[]
   caAccesses      CaStoreAccess[] @relation("BusinessCAAccess")
   caInvitations   CaInvitation[]  @relation("BusinessCAInvitations")
+  businessMembers BusinessMember[]
+  roleInvitations RoleInvitation[]
   expenses        Expense[]
+  caExceptions    CaException[]
 
   @@index([ownerId])
   @@map("businesses")
@@ -109,8 +116,13 @@ model User {
   auditLogs           AuditLog[]
   subscriptions       Subscription[]
   caAccesses          CaStoreAccess[] @relation("CAUserAccess")
-  sentCaInvites       CaInvitation[]  @relation("InvitedCAUsers")
-  acceptedCaInvites   CaInvitation[]  @relation("AcceptedCAInvitations")
+  sentCaInvites            CaInvitation[]   @relation("InvitedCAUsers")
+  acceptedCaInvites        CaInvitation[]   @relation("AcceptedCAInvitations")
+  businessMemberships      BusinessMember[]
+  sentRoleInvitations      RoleInvitation[] @relation("InvitedRoleUsers")
+  receivedRoleInvitations  RoleInvitation[] @relation("ReceivedRoleInvitations")
+  notifications            Notification[]
+  caReferralProfile        CaReferralProfile?
 
   @@index([businessId])
   @@map("users")
@@ -174,14 +186,15 @@ model UserPermission {
 }
 
 model Category {
-  id          String    @id @default(uuid())
-  name        String    @unique
-  description String?
-  isActive    Boolean   @default(true) @map("is_active")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  id             String    @id @default(uuid())
+  name           String    @unique
+  description    String?
+  defaultGstRate Decimal   @default(18) @db.Decimal(5, 2) @map("default_gst_rate")
+  isActive       Boolean   @default(true) @map("is_active")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
 
-  products    Product[]
+  products       Product[]
 
   @@map("categories")
 }
@@ -265,13 +278,16 @@ model Customer {
   phone       String?   @unique
   email       String?
   address     String?
-  gstin       String?
-  state       String?
-  creditLimit Decimal   @default(0) @db.Decimal(12, 2) @map("credit_limit")
-  balance     Decimal   @default(0) @db.Decimal(12, 2)
-  isActive    Boolean   @default(true) @map("is_active")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  gstin          String?
+  state          String?
+  customerType   String?   @default("B2C") @map("customer_type") // B2B, B2C, SEZ, UNCLASSIFIED
+  isSez          Boolean   @default(false) @map("is_sez")
+  sezUnitType    String?   @map("sez_unit_type") // UNIT, DEVELOPER
+  creditLimit    Decimal   @default(0) @db.Decimal(12, 2) @map("credit_limit")
+  balance        Decimal   @default(0) @db.Decimal(12, 2)
+  isActive       Boolean   @default(true) @map("is_active")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
 
   sales       Sale[]
   payments    Payment[]
@@ -297,8 +313,11 @@ model Sale {
   paymentStatus PaymentStatus @default(UNPAID) @map("payment_status")
   paymentMethod PaymentMethod @default(CASH) @map("payment_method")
   status        SaleStatus    @default(COMPLETED)
-  returnStatus  String        @default("NONE") @map("return_status") // NONE, PARTIALLY_RETURNED, RETURNED
-  dueDate       DateTime?     @map("due_date")
+  returnStatus    String        @default("NONE") @map("return_status") // NONE, PARTIALLY_RETURNED, RETURNED
+  customerType    String?       @map("customer_type") // B2B, B2C, SEZ, UNCLASSIFIED
+  isSez           Boolean       @default(false) @map("is_sez")
+  sezTaxTreatment String?       @map("sez_tax_treatment") // WITH_PAYMENT, WITHOUT_PAYMENT_UNDER_LUT
+  dueDate         DateTime?     @map("due_date")
   createdById   String?       @map("created_by_id")
   createdBy     User?         @relation(fields: [createdById], references: [id])
   createdAt     DateTime      @default(now()) @map("created_at")
@@ -837,4 +856,242 @@ model CaInvitation {
   @@index([status])
   @@map("ca_invitations")
 }
+
+model BusinessMember {
+  id           String    @id @default(uuid())
+  userId       String    @map("user_id")
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  businessId   String    @map("business_id")
+  business     Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  role         Role      @default(STAFF)
+  department   String?
+  designation  String?
+  permissions  Json?
+  status       String    @default("ACTIVE") // ACTIVE, INACTIVE, SUSPENDED
+  invitedBy    String?   @map("invited_by")
+  acceptedAt   DateTime? @map("accepted_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  @@unique([userId, businessId])
+  @@index([userId])
+  @@index([businessId])
+  @@map("business_members")
+}
+
+model RoleInvitation {
+  id               String         @id @default(uuid())
+  businessId       String         @map("business_id")
+  business         Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  inviterId        String         @map("inviter_id")
+  inviter          User           @relation("InvitedRoleUsers", fields: [inviterId], references: [id], onDelete: Cascade)
+  recipientEmail   String         @map("recipient_email")
+  recipientUserId  String?        @map("recipient_user_id")
+  recipientUser    User?          @relation("ReceivedRoleInvitations", fields: [recipientUserId], references: [id], onDelete: SetNull)
+  name             String?
+  role             Role           @default(STAFF)
+  department       String?
+  designation      String?
+  permissions      Json?
+  tokenHash        String         @unique @map("token_hash")
+  status           String         @default("PENDING") // PENDING, ACCEPTED, REJECTED, EXPIRED, REVOKED
+  deliveryStatus   String         @default("PENDING") @map("delivery_status") // PENDING, SENT, DELIVERED, FAILED
+  deliveryError    String?        @map("delivery_error")
+  message          String?
+  expiresAt        DateTime       @map("expires_at")
+  acceptedAt       DateTime?      @map("accepted_at")
+  rejectedAt       DateTime?      @map("rejected_at")
+  revokedAt        DateTime?      @map("revoked_at")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+
+  notifications    Notification[]
+
+  @@index([businessId])
+  @@index([recipientEmail])
+  @@index([status])
+  @@map("role_invitations")
+}
+
+model Notification {
+  id           String          @id @default(uuid())
+  userId       String?         @map("user_id")
+  user         User?           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  email        String?
+  type         String          @default("INVITATION") // INVITATION, ROLE_ASSIGNED, INVITATION_ACCEPTED, INVITATION_REJECTED, SYSTEM
+  title        String
+  message      String
+  invitationId String?         @map("invitation_id")
+  invitation   RoleInvitation? @relation(fields: [invitationId], references: [id], onDelete: SetNull)
+  data         Json?
+  isRead       Boolean         @default(false) @map("is_read")
+  readAt       DateTime?       @map("read_at")
+  createdAt    DateTime        @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([email])
+  @@index([isRead])
+  @@map("notifications")
+}
+
+model CaReferralProfile {
+  id                String                   @id @default(uuid())
+  userId            String                   @unique @map("user_id")
+  user              User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  referralCode      String                   @unique @map("referral_code")
+  totalCoinsEarned  Int                      @default(0) @map("total_coins_earned")
+  availableCoins    Int                      @default(0) @map("available_coins")
+  reservedCoins     Int                      @default(0) @map("reserved_coins")
+  redeemedCoins     Int                      @default(0) @map("redeemed_coins")
+  totalPayoutRupees Int                      @default(0) @map("total_payout_rupees")
+  isEligible        Boolean                  @default(true) @map("is_eligible")
+  isVerified        Boolean                  @default(true) @map("is_verified")
+  createdAt         DateTime                 @default(now()) @map("created_at")
+  updatedAt         DateTime                 @updatedAt @map("updated_at")
+
+  attributions      CaReferralAttribution[]
+  ledgerEntries     CaRewardLedger[]
+  redemptions       CaRedemptionRequest[]
+
+  @@map("ca_referral_profiles")
+}
+
+model CaReferralAttribution {
+  id                   String            @id @default(uuid())
+  caUserId             String            @map("ca_user_id")
+  caProfile            CaReferralProfile @relation(fields: [caUserId], references: [userId], onDelete: Cascade)
+  referredBusinessId   String            @unique @map("referred_business_id")
+  referredOwnerId      String?           @map("referred_owner_id")
+  referredBusinessName String?           @map("referred_business_name")
+  referralCode         String            @map("referral_code")
+  status               String            @default("REGISTERED") // REGISTERED, ELIGIBLE, INELIGIBLE, REVERSED
+  qualifyingPaymentRef String?           @map("qualifying_payment_ref")
+  qualifyingPaymentDate DateTime?        @map("qualifying_payment_date")
+  qualifyingPlanTier   String?           @map("qualifying_plan_tier")
+  rewardCoins          Int               @default(100) @map("reward_coins")
+  notes                String?
+  createdAt            DateTime          @default(now()) @map("created_at")
+  updatedAt            DateTime          @updatedAt @map("updated_at")
+
+  ledgerEntries        CaRewardLedger[]
+
+  @@index([caUserId])
+  @@index([referralCode])
+  @@index([status])
+  @@map("ca_referral_attributions")
+}
+
+model CaRewardLedger {
+  id              String                 @id @default(uuid())
+  caUserId        String                 @map("ca_user_id")
+  caProfile       CaReferralProfile      @relation(fields: [caUserId], references: [userId], onDelete: Cascade)
+  attributionId   String?                @map("attribution_id")
+  attribution     CaReferralAttribution? @relation(fields: [attributionId], references: [id], onDelete: SetNull)
+  redemptionId    String?                @map("redemption_id")
+  redemption      CaRedemptionRequest?   @relation(fields: [redemptionId], references: [id], onDelete: SetNull)
+  entryType       String                 @map("entry_type") // REWARD_CREDIT, REDEMPTION_RESERVE, REDEMPTION_PAYOUT_FINAL, REDEMPTION_RELEASE, ADMIN_ADJUSTMENT_CREDIT, ADMIN_ADJUSTMENT_DEBIT
+  coins           Int
+  balanceAfter    Int                    @map("balance_after")
+  idempotencyKey  String                 @unique @map("idempotency_key")
+  description     String
+  actorId         String?                @map("actor_id")
+  metadata        Json?
+  createdAt       DateTime               @default(now()) @map("created_at")
+
+  @@index([caUserId])
+  @@index([entryType])
+  @@map("ca_reward_ledgers")
+}
+
+model CaRedemptionRequest {
+  id               String            @id @default(uuid())
+  caUserId         String            @map("ca_user_id")
+  caProfile        CaReferralProfile @relation(fields: [caUserId], references: [userId], onDelete: Cascade)
+  coinsRequested   Int               @map("coins_requested")
+  rupeeAmount      Int               @map("rupee_amount")
+  payoutMethod     String            @default("UPI") @map("payout_method") // UPI, BANK_TRANSFER
+  payoutDetails    Json              @map("payout_details")
+  status           String            @default("PENDING_REVIEW") @map("status") // PENDING_REVIEW, APPROVED, REJECTED, PAYMENT_PROCESSING, PAID, CANCELLED
+  rejectionReason  String?           @map("rejection_reason")
+  paymentReference String?           @map("payment_reference")
+  paymentDate      DateTime?         @map("payment_date")
+  reviewedById     String?           @map("reviewed_by_id")
+  reviewedAt       DateTime?         @map("reviewed_at")
+  paidById         String?           @map("paid_by_id")
+  paidAt           DateTime?         @map("paid_at")
+  notes            String?
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+
+  ledgerEntries    CaRewardLedger[]
+
+  @@index([caUserId])
+  @@index([status])
+  @@map("ca_redemption_requests")
+}
+
+model CaReferralConfig {
+  id                 String   @id @default("global_ca_referral_config")
+  isEnabled          Boolean  @default(true) @map("is_enabled")
+  coinsPerReferral   Int      @default(100) @map("coins_per_referral")
+  rupeesPerCoin      Float    @default(1.0) @map("rupees_per_coin")
+  minRedemptionCoins Int      @default(500) @map("min_redemption_coins")
+  updatedById        String?  @map("updated_by_id")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  @@map("ca_referral_configs")
+}
+
+model CaException {
+  id               String    @id @default(uuid())
+  businessId       String    @map("business_id")
+  business         Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  category         String    @default("GST_MISMATCH") // GST_MISMATCH, RETURNS_CREDIT_NOTE, MISSING_INVOICE, PENDING_DOCUMENT, UNCLASSIFIED_TAX
+  exceptionType    String    @map("exception_type") // RATE_MISMATCH, ARITHMETIC_VARIANCE, EXCESS_RETURN, UNMATCHED_CREDIT_NOTE, MISSING_INVOICE, PENDING_DOCUMENT, UNCLASSIFIED_CUSTOMER, MISSING_GSTIN
+  title            String
+  description      String
+  referenceNumber  String?   @map("reference_number")
+  invoiceId        String?   @map("invoice_id")
+  invoiceDate      DateTime? @map("invoice_date")
+  customerType     String    @default("UNCLASSIFIED") @map("customer_type") // B2B, B2C, SEZ, UNCLASSIFIED
+  customerName     String?   @map("customer_name")
+  customerGstin    String?   @map("customer_gstin")
+  placeOfSupply    String?   @map("place_of_supply")
+  amount           Decimal   @default(0) @db.Decimal(12, 2)
+  gstAmount        Decimal   @default(0) @db.Decimal(12, 2) @map("gst_amount")
+  taxableAmount    Decimal   @default(0) @db.Decimal(12, 2) @map("taxable_amount")
+  expectedGst      Decimal   @default(0) @db.Decimal(12, 2) @map("expected_gst")
+  differenceAmount Decimal   @default(0) @db.Decimal(12, 2) @map("difference_amount")
+  cgst             Decimal   @default(0) @db.Decimal(12, 2)
+  sgst             Decimal   @default(0) @db.Decimal(12, 2)
+  igst             Decimal   @default(0) @db.Decimal(12, 2)
+  portalCgst       Decimal?  @db.Decimal(12, 2) @map("portal_cgst")
+  portalSgst       Decimal?  @db.Decimal(12, 2) @map("portal_sgst")
+  portalIgst       Decimal?  @db.Decimal(12, 2) @map("portal_igst")
+  portalTaxable    Decimal?  @db.Decimal(12, 2) @map("portal_taxable")
+  sezTaxTreatment  String?   @map("sez_tax_treatment") // WITH_PAYMENT, WITHOUT_PAYMENT_UNDER_LUT
+  status           String    @default("OPEN") // OPEN, IN_REVIEW, RESOLVED, REOPENED
+  severity         String    @default("HIGH") // LOW, MEDIUM, HIGH, URGENT
+  sourceType       String    @default("SALES_INVOICE") @map("source_type") // SALES_INVOICE, PURCHASE, CREDIT_NOTE, RETURN, DOCUMENT
+  sourceId         String?   @map("source_id")
+  resolvedById     String?   @map("resolved_by_id")
+  resolvedByName   String?   @map("resolved_by_name")
+  resolvedAt       DateTime? @map("resolved_at")
+  resolutionReason String?   @map("resolution_reason")
+  reviewNotes      Json?     @default("[]") @map("review_notes")
+  history          Json?     @default("[]")
+  documents        Json?     @default("[]")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  @@index([businessId])
+  @@index([category])
+  @@index([customerType])
+  @@index([status])
+  @@index([createdAt])
+  @@index([referenceNumber])
+  @@map("ca_exceptions")
+}
+
 

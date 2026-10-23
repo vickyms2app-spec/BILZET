@@ -130,6 +130,10 @@ export const DEFAULT_INVOICE_SETTINGS = {
   fssai: "",
   logoUrl: "",
   showLogo: true,
+  showLogoOnInvoices: true,
+  signatureUrl: "",
+  showSignatory: true,
+  showSignatureOnInvoices: true,
 
   // Table & Columns
   showItemNumber: true,
@@ -163,7 +167,6 @@ export const DEFAULT_INVOICE_SETTINGS = {
   // Notes & Footer
   notes: "Thank you for your business! Please visit us again.",
   terms: "1. Goods once sold are subject to standard return policy within 7 days.\n2. Warranty claims as per manufacturer terms.\n3. All disputes subject to local jurisdiction.",
-  showSignatory: true,
   signatoryLabel: "Authorized Signatory",
   authorizedPerson: "Authorized Signatory",
 };
@@ -181,6 +184,23 @@ export const DEFAULT_INVOICE_SETTINGS = {
  * - Clean footer with BILZET branding
  * - Real downloadable PDF export & native print support
  */
+// Helper to normalize relative /api asset URLs to full backend URLs
+export const resolveAssetUrl = (url) => {
+  if (!url || typeof url !== "string") return "";
+  if (
+    url.startsWith("data:") ||
+    url.startsWith("blob:") ||
+    url.startsWith("http://") ||
+    url.startsWith("https://")
+  ) {
+    return url;
+  }
+  const backendBase = (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL)
+    ? import.meta.env.VITE_API_URL.replace(/\/api\/v1\/?$/, "")
+    : "http://localhost:5000";
+  return `${backendBase}${url.startsWith("/") ? "" : "/"}${url}`;
+};
+
 export default function TaxInvoice({
   invoice,
   shopSettings = {},
@@ -194,20 +214,75 @@ export default function TaxInvoice({
 }) {
   const printRef = useRef(null);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [logoLoadFailed, setLogoLoadFailed] = useState(false);
+  const [signatureLoadFailed, setSignatureLoadFailed] = useState(false);
 
   // Merge shopSettings with customizationSettings and fallback defaults
+  const cleanShopSettings = shopSettings?.settings ? { ...shopSettings, ...shopSettings.settings } : (shopSettings || {});
+  const cleanCustomizationSettings = customizationSettings?.settings ? { ...customizationSettings, ...customizationSettings.settings } : (customizationSettings || {});
+
   const settings = {
     ...DEFAULT_INVOICE_SETTINGS,
-    ...shopSettings,
-    ...customizationSettings,
+    ...cleanShopSettings,
+    ...cleanCustomizationSettings,
   };
 
+  // Resolve branding URLs from settings, shopSettings, or invoice business relation
+  const rawLogoUrl =
+    settings.logoUrl ||
+    cleanShopSettings?.logoUrl ||
+    shopSettings?.settings?.logoUrl ||
+    invoice?.business?.logoUrl ||
+    "";
+
+  const rawSignatureUrl =
+    settings.signatureUrl ||
+    cleanShopSettings?.signatureUrl ||
+    shopSettings?.settings?.signatureUrl ||
+    invoice?.business?.signatureUrl ||
+    "";
+
+  const resolvedLogoUrl = resolveAssetUrl(rawLogoUrl);
+  const resolvedSignatureUrl = resolveAssetUrl(rawSignatureUrl);
+
+  // Independent visibility toggles
+  const isLogoEnabled =
+    settings.showLogoOnInvoices !== undefined
+      ? Boolean(settings.showLogoOnInvoices)
+      : (cleanShopSettings?.showLogoOnInvoices !== undefined
+          ? Boolean(cleanShopSettings.showLogoOnInvoices)
+          : (settings.showLogo !== undefined ? Boolean(settings.showLogo) : Boolean(resolvedLogoUrl)));
+
+  // Detect if rendering a Quotation vs an Invoice
+  const isQuotationDoc = Boolean(
+    invoice?.quotationNumber ||
+    invoice?.documentType === "quotation" ||
+    settings.documentType === "quotation"
+  );
+
+  const isSignatureEnabled = isQuotationDoc
+    ? (settings.showSignatureOnQuotations !== undefined
+        ? Boolean(settings.showSignatureOnQuotations)
+        : (cleanShopSettings?.showSignatureOnQuotations !== undefined
+            ? Boolean(cleanShopSettings.showSignatureOnQuotations)
+            : Boolean(resolvedSignatureUrl)))
+    : (settings.showSignatureOnInvoices !== undefined
+        ? Boolean(settings.showSignatureOnInvoices)
+        : (cleanShopSettings?.showSignatureOnInvoices !== undefined
+            ? Boolean(cleanShopSettings.showSignatureOnInvoices)
+            : (settings.showSignatory !== undefined ? Boolean(settings.showSignatory) : Boolean(resolvedSignatureUrl))));
+
+  const shouldDisplayLogo = isLogoEnabled && Boolean(resolvedLogoUrl) && !logoLoadFailed;
+  const shouldDisplaySignature = isSignatureEnabled && Boolean(resolvedSignatureUrl) && !signatureLoadFailed;
+
   // Sanitize and clean document title
-  const rawTitle = settings.invoiceTitle || "TAX INVOICE";
+  const rawTitle = isQuotationDoc
+    ? (settings.quotationTitle || "QUOTATION / ESTIMATE")
+    : (settings.invoiceTitle || "TAX INVOICE");
   const displayTitle =
     rawTitle.includes("TAX INVOICESUPER") || rawTitle.includes("SUPER TAX INVOICE")
       ? "TAX INVOICE"
-      : rawTitle.trim() || "TAX INVOICE";
+      : rawTitle.trim() || (isQuotationDoc ? "QUOTATION / ESTIMATE" : "TAX INVOICE");
 
   // Dynamic Store Information from currently selected store / settings
   const storeName =
@@ -499,6 +574,18 @@ export default function TaxInvoice({
     setDownloadingPdf(true);
     try {
       const element = printRef.current;
+      // Preload all images before capturing canvas to ensure logo & signature render flawlessly in PDF
+      const images = Array.from(element.querySelectorAll("img"));
+      await Promise.all(
+        images.map((img) => {
+          if (img.complete) return Promise.resolve();
+          return new Promise((resolve) => {
+            img.onload = resolve;
+            img.onerror = resolve;
+          });
+        })
+      );
+
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
@@ -550,7 +637,7 @@ export default function TaxInvoice({
       <div
         className={`bg-white max-w-[850px] w-full overflow-hidden relative flex flex-col my-auto border transition-all ${
           isModal
-            ? "rounded-2xl shadow-2xl border-slate-300 print:border-none print:shadow-none print:rounded-none"
+            ? "rounded-2xl shadow-2xl border-slate-300 print:border-none print:shadow-none print:rounded-none max-h-[94vh]"
             : "rounded-xl shadow-md border-slate-200"
         }`}
       >
@@ -614,29 +701,58 @@ export default function TaxInvoice({
         {/* ══════════════════════════════════════════════════
             PRINTABLE A4 INVOICE SHEET (BILZET BRANDED)
         ══════════════════════════════════════════════════ */}
-        <div
-          ref={printRef}
-          id="printable-tax-invoice"
-          className="@container relative bg-white text-slate-800 text-xs p-5 sm:p-8 space-y-4 print:p-6 print:m-0 print:border-none"
+        <div className={isModal ? "overflow-y-auto flex-1 print:overflow-visible" : "w-full"}>
+          <div
+            ref={printRef}
+            id="printable-tax-invoice"
+          className={`@container relative bg-white text-slate-800 text-xs p-5 sm:p-8 space-y-4 print:p-6 print:m-0 print:border-none ${
+            settings.paperSize === "Thermal 80mm"
+              ? "max-w-[340px] mx-auto text-[11px]"
+              : settings.paperSize === "Thermal 58mm"
+              ? "max-w-[260px] mx-auto text-[10px]"
+              : ""
+          }`}
           style={{
-            fontFamily: "'Plus Jakarta Sans', Inter, system-ui, -apple-system, sans-serif",
+            fontFamily: "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif",
             color: "#0F172A",
           }}
         >
-          {/* ── 1. BILZET Branding & Store Information Header ── */}
+          {/* Thermal Layout Centered Logo */}
+          {settings.paperSize?.includes("Thermal") && shouldDisplayLogo && (
+            <div className="flex justify-center pb-2 border-b border-slate-200">
+              <img
+                src={resolvedLogoUrl}
+                alt={storeName}
+                crossOrigin="anonymous"
+                className="max-h-12 max-w-[140px] object-contain mx-auto"
+                onError={() => setLogoLoadFailed(true)}
+              />
+            </div>
+          )}
+          {/* ── 1. Store Information Header & Logo ── */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-3 border-b border-slate-200">
-            {/* Left: BILZET Logo & Store Information */}
+            {/* Left: Store Logo & Information */}
             <div className="flex items-start gap-4">
               <div className="shrink-0 pt-0.5">
-                <img
-                  src="/assets/bilzet-logo-dark.png"
-                  alt="BILZET"
-                  className="h-10 sm:h-12 w-auto object-contain"
-                  onError={(e) => {
-                    e.target.onerror = null;
-                    e.target.src = "/assets/bilzet-logo-main.png";
-                  }}
-                />
+                {shouldDisplayLogo ? (
+                  <img
+                    src={resolvedLogoUrl}
+                    alt={storeName}
+                    crossOrigin="anonymous"
+                    className="h-12 sm:h-14 max-w-[140px] sm:max-w-[180px] object-contain rounded"
+                    onError={() => setLogoLoadFailed(true)}
+                  />
+                ) : (
+                  <img
+                    src="/assets/bilzet-logo-dark.png"
+                    alt="BILZET"
+                    className="h-10 sm:h-12 w-auto object-contain"
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = "/assets/bilzet-logo-main.png";
+                    }}
+                  />
+                )}
               </div>
 
               <div className="space-y-0.5 border-l border-slate-200 pl-4">
@@ -658,17 +774,6 @@ export default function TaxInvoice({
                 )}
               </div>
             </div>
-
-            {/* Right: Optional Store Logo if configured */}
-            {settings.showLogo && settings.logoUrl && (
-              <div className="shrink-0 self-start sm:self-center">
-                <img
-                  src={settings.logoUrl}
-                  alt={storeName}
-                  className="max-h-12 max-w-[120px] object-contain rounded-md"
-                />
-              </div>
-            )}
           </div>
 
           {/* ── 2. Horizontal Information Strip (GSTIN, FSSAI, State) ── */}
@@ -1067,33 +1172,36 @@ export default function TaxInvoice({
 
             {/* Right: Store Tagline & Authorized Signature */}
             <div className="flex items-end gap-4 text-right ml-auto">
-              {settings.showSignatory !== false && (
-                <div className="flex flex-col items-end min-w-[150px]">
-                  {/* Dedicated Space for Physical Signature / Rubber Stamp */}
+              <div className="flex flex-col items-end min-w-[150px]">
+                {/* Dedicated Space for Owner Signature */}
+                {shouldDisplaySignature ? (
                   <div className="h-14 sm:h-16 flex items-end justify-center w-full pb-1">
-                    {settings.signatureUrl ? (
-                      <img
-                        src={settings.signatureUrl}
-                        alt="Signature"
-                        className="max-h-12 max-w-[130px] object-contain"
-                      />
-                    ) : (
-                      <span className="text-[9px] font-medium text-slate-300 select-none tracking-wider italic">
-                        (Signature / Seal)
-                      </span>
-                    )}
+                    <img
+                      src={resolvedSignatureUrl}
+                      alt="Authorized Owner Signature"
+                      crossOrigin="anonymous"
+                      className="max-h-12 max-w-[140px] object-contain"
+                      onError={() => setSignatureLoadFailed(true)}
+                    />
                   </div>
-                  <div className="border-t border-slate-400 pt-1 w-full text-right">
-                    <p className="text-[11px] font-bold text-[#0F2747] leading-tight">
-                      {settings.authorizedPerson || storeName}
-                    </p>
-                    <p className="text-[9px] font-semibold text-slate-500 uppercase tracking-wider">
-                      {settings.signatoryLabel || "Authorized Signatory"}
-                    </p>
+                ) : (
+                  <div className="h-10 sm:h-12 flex items-end justify-center w-full pb-1">
+                    <span className="text-[9px] font-medium text-slate-300 select-none tracking-wider italic">
+                      (Signature / Seal)
+                    </span>
                   </div>
+                )}
+                <div className="border-t border-slate-400 pt-1 w-full text-right">
+                  <p className="text-[11px] font-bold text-[#0F2747] leading-tight">
+                    {settings.authorizedPerson || storeName}
+                  </p>
+                  <p className="text-[9px] font-semibold text-slate-500 uppercase tracking-wider">
+                    {settings.signatoryLabel || "Authorized Signatory"}
+                  </p>
                 </div>
-              )}
+              </div>
             </div>
+          </div>
           </div>
         </div>
       </div>

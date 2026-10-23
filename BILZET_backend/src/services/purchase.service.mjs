@@ -1,6 +1,7 @@
 import prisma from '../config/prisma.mjs';
 import { ApiError } from '../utils/ApiError.mjs';
 import { getPaginationParams, buildPaginationMeta } from '../utils/pagination.mjs';
+import realtimeService from './realtime.service.mjs';
 
 const round2 = (num) => Math.round((Number(num) + Number.EPSILON) * 100) / 100;
 
@@ -176,7 +177,7 @@ export const createPurchase = async (purchaseData, user = {}, context = {}) => {
     `PUR-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`;
 
   // Execute atomically in a transaction
-  return await prisma.$transaction(async (tx) => {
+  const createdPurchase = await prisma.$transaction(async (tx) => {
     // A. Create Purchase record
     const purchase = await tx.purchase.create({
       data: {
@@ -263,6 +264,31 @@ export const createPurchase = async (purchaseData, user = {}, context = {}) => {
 
     return purchase;
   });
+
+  // Broadcast authoritative business events to all connected clients & CA Connect
+  try {
+    const targetBusinessId = purchaseData.businessId || user?.businessId || 'default';
+    realtimeService.broadcastBusinessEvent(targetBusinessId, 'PURCHASE_CREATED', {
+      purchaseId: createdPurchase.id,
+      invoiceNumber: createdPurchase.invoiceNumber,
+      supplierId: createdPurchase.supplierId,
+      supplierName: createdPurchase.supplier?.name,
+      grandTotal: createdPurchase.grandTotal,
+      paidAmount: createdPurchase.paidAmount,
+      paymentStatus: createdPurchase.paymentStatus,
+      itemsCount: processedItems.length,
+      purchase: createdPurchase,
+    }, { userId: user?.id, action: 'PURCHASE_CREATED' });
+
+    realtimeService.broadcastBusinessEvent(targetBusinessId, 'STOCK_ADJUSTED', {
+      reason: `Purchased via bill ${createdPurchase.invoiceNumber}`,
+      items: processedItems.map((i) => ({ productId: i.productId, quantity: i.quantity })),
+    }, { userId: user?.id, action: 'STOCK_ADJUSTED' });
+  } catch (err) {
+    console.warn('[PurchaseService] Realtime broadcast error:', err?.message);
+  }
+
+  return createdPurchase;
 };
 
 export const getPurchases = async (query = {}) => {

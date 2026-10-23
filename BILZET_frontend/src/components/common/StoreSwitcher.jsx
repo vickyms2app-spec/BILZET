@@ -51,9 +51,14 @@ export default function StoreSwitcher({ variant = "header" }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Initial fetch of stores on mount
+  // Initial fetch of stores on mount & listen to store changes across app
   useEffect(() => {
     fetchStores();
+    const handleStoreChange = () => {
+      fetchStores();
+    };
+    window.addEventListener("bilzet:store-changed", handleStoreChange);
+    return () => window.removeEventListener("bilzet:store-changed", handleStoreChange);
   }, [fetchStores]);
 
   const handleSelect = async (storeId) => {
@@ -83,9 +88,17 @@ export default function StoreSwitcher({ variant = "header" }) {
     } catch {}
   };
 
+  const cachedStore = (() => {
+    try {
+      return JSON.parse(localStorage.getItem("bilzet_active_store") || "null");
+    } catch {
+      return null;
+    }
+  })();
+
   const hasMultipleStores = stores.length > 1;
-  const storeDisplayName = currentStore?.name || "BILZET Store";
-  const storeDisplayAddress = currentStore?.address || "Main Branch";
+  const storeDisplayName = currentStore?.name || cachedStore?.name || "BILZET Store";
+  const storeDisplayAddress = currentStore?.address || cachedStore?.address || "Main Branch";
 
   // ═════════════════════════════════════════════════════════════════════
   // VARIANT: SIDEBAR (Bottom sidebar card)

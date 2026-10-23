@@ -34,9 +34,9 @@ describe('1. Subscription Seat Quota Configuration & Validation', () => {
     assert.equal(getPlanSeatLimit('PRO'), 5);
   });
 
-  test('Premium / Enterprise tier seat quota is 15', () => {
-    assert.equal(getPlanSeatLimit('PREMIUM'), 15);
-    assert.equal(getPlanSeatLimit('ENTERPRISE'), 15);
+  test('Premium / Enterprise tier seat quota is unlimited (-1)', () => {
+    assert.equal(getPlanSeatLimit('PREMIUM'), -1);
+    assert.equal(getPlanSeatLimit('ENTERPRISE'), -1);
   });
 
   test('Unknown plan defaults to 0', () => {

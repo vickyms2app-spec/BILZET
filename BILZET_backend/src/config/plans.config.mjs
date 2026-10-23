@@ -20,8 +20,8 @@ export const TIER_RANKS = {
 export const PLAN_SEAT_LIMITS = {
   FREE: 0,
   PRO: 5,
-  PREMIUM: 15,
-  ENTERPRISE: 15,
+  PREMIUM: -1, // -1 denotes Unlimited seats
+  ENTERPRISE: -1,
 };
 
 export const DEFAULT_PLAN_LIMIT = 0;
@@ -92,12 +92,12 @@ export const PLAN_DETAILS = {
     billingPeriod: '/ year',
     badge: 'PREMIUM',
     description: 'Unlimited bills · 365 days',
-    maxSubUsers: 15,
+    maxSubUsers: -1,
     billLimit: 'Unlimited',
     features: [
       'Unlimited bills for 1 year',
       'Everything in Pro plan',
-      'Up to 15 Team Sub-Users',
+      'Unlimited Team Sub-Users',
       'CA Connect — Chartered Accountant collaboration portal',
       'Custom Roles & Permissions Studio',
       'Granular Permission Overrides per user',
@@ -182,7 +182,7 @@ export const FEATURE_ENTITLEMENTS = {
     minPlan: 'PRO',
     name: 'Team & Cashier Sub-Users',
     module: 'Operations & HR',
-    description: 'Add up to 5 sub-users on Pro and up to 15 sub-users on Premium.',
+    description: 'Add up to 5 sub-users on Pro and unlimited sub-users on Premium.',
     benefit: 'Allow your cashier, manager, and warehouse staff to operate simultaneously.',
   },
   // Advanced Reports & Profit Analysis (Pro)

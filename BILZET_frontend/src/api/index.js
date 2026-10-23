@@ -89,6 +89,16 @@ export const salesApi = {
   paymentIn: (p) => http.post("/sales/payments-in", p).then(unwrap),
 };
 
+export const quotationsApi = {
+  list: (p) => withFallback(http.get("/quotations", { params: p }).then((r) => r.data), { quotations: [], total: 0 }),
+  get: (id) => http.get(`/quotations/${id}`).then(unwrap),
+  create: (p) => http.post("/quotations", p).then(unwrap),
+  update: (id, p) => http.patch(`/quotations/${id}`, p).then(unwrap),
+  updateStatus: (id, status) => http.patch(`/quotations/${id}/status`, { status }).then(unwrap),
+  convertToInvoice: (id, p) => http.post(`/quotations/${id}/convert-to-invoice`, p).then(unwrap),
+  remove: (id) => http.delete(`/quotations/${id}`).then(unwrap),
+};
+
 export const dashboardApi = {
   get: () => withFallback(http.get("/dashboard").then(unwrap), mockDashboardData),
 };
@@ -222,8 +232,15 @@ export const settingsApi = {
       invoicePrefix: "INV-",
       paperSize: "A4",
       terms: "",
+      logoUrl: "",
+      signatureUrl: "",
+      showLogoOnInvoices: true,
+      showSignatureOnInvoices: true,
     }),
   update: (p) => http.patch("/settings/shop", p).then(unwrap),
+  uploadBranding: (data) => http.post("/settings/branding/upload", data).then(unwrap),
+  removeBranding: (type) => http.delete(`/settings/branding/${type}`).then(unwrap),
+  updateBrandingPreferences: (prefs) => http.put("/settings/branding/preferences", prefs).then(unwrap),
 };
 
 export const usersApi = {
@@ -309,7 +326,50 @@ export const subscriptionApi = {
   getPlans: () => http.get("/subscription/plans").then(unwrap),
   getUsage: async () => {
     try {
-      return await http.get("/subscription/usage").then(unwrap);
+      const res = await http.get("/subscription/usage").then(unwrap);
+      if (res && res.planTier && res.planTier !== "FREE" && (res.maxSeats > 0 || res.maxSeats === -1 || res.isUnlimited)) {
+        return res;
+      }
+
+      // Check cached subscription tier if backend returned FREE or 0 seats
+      try {
+        const saved =
+          localStorage.getItem("bilzet_subscription_data") ||
+          localStorage.getItem("bilzet_subscription");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          const rawPlan = String(parsed.planTier || parsed.currentPlan || "FREE").toUpperCase();
+          if (parsed.status !== "EXPIRED" && parsed.status !== "CANCELLED") {
+            if (rawPlan === "PREMIUM" || rawPlan === "ENTERPRISE") {
+              const usedSeats = res?.usedSeats ?? 0;
+              return {
+                ...(res || {}),
+                planTier: "PREMIUM",
+                planName: res?.planName || "Premium Enterprise",
+                usedSeats,
+                maxSeats: -1,
+                remainingSeats: -1,
+                canAddUser: true,
+                isUnlimited: true,
+              };
+            }
+            if (rawPlan === "PRO") {
+              const usedSeats = res?.usedSeats ?? 0;
+              return {
+                ...(res || {}),
+                planTier: "PRO",
+                planName: res?.planName || "Pro Business",
+                usedSeats,
+                maxSeats: 5,
+                remainingSeats: Math.max(0, 5 - usedSeats),
+                canAddUser: usedSeats < 5,
+              };
+            }
+          }
+        }
+      } catch (_) {}
+
+      return res;
     } catch (err) {
       // Check cached subscription tier first before assuming 0 seats
       try {
@@ -319,8 +379,8 @@ export const subscriptionApi = {
         if (saved) {
           const parsed = JSON.parse(saved);
           const rawPlan = String(parsed.planTier || parsed.currentPlan || "FREE").toUpperCase();
-          if (rawPlan === "PREMIUM") {
-            return { planTier: "PREMIUM", planName: "Premium Enterprise", usedSeats: 0, maxSeats: 15, remainingSeats: 15, canAddUser: true };
+          if (rawPlan === "PREMIUM" || rawPlan === "ENTERPRISE") {
+            return { planTier: "PREMIUM", planName: "Premium Enterprise", usedSeats: 0, maxSeats: -1, remainingSeats: -1, canAddUser: true, isUnlimited: true };
           }
           if (rawPlan === "PRO") {
             return { planTier: "PRO", planName: "Pro Business", usedSeats: 0, maxSeats: 5, remainingSeats: 5, canAddUser: true };
@@ -442,7 +502,10 @@ export const storesApi = {
   list: () => http.get("/stores").then(unwrap),
   switch: (storeId) => http.post("/stores/switch", { storeId }).then(unwrap),
   create: (p) => http.post("/stores", p).then(unwrap),
+  registerShop: (payload) => http.post("/stores/register-shop", payload).then(unwrap),
+  getOnboardingStatus: () => http.get("/stores/onboarding-status").then(unwrap),
 };
+export const storeApi = storesApi;
 
 export const superAdminApi = {
   getOverview: () => http.get("/super-admin/overview").then(unwrap),
@@ -500,10 +563,14 @@ export const caPortalApi = {
   updateBankMatch: (id, data, params) => http.patch(`/ca-portal/bank-reconciliation/match/${id}`, data, { params }).then(unwrap),
   // Reports & Workpapers
   getWorkpapers: (params) => http.get("/ca-portal/workpapers", { params }).then(unwrap),
-  // Correction Workflow
-  requestCorrection: (invoiceId, data, params) => http.post(`/ca-portal/invoices/${invoiceId}/request-correction`, data, { params }).then(unwrap),
-  approveCorrection: (discrepancyId, data, params) => http.post(`/ca-portal/discrepancies/${discrepancyId}/approve`, data, { params }).then(unwrap),
-  rejectCorrection: (discrepancyId, data, params) => http.post(`/ca-portal/discrepancies/${discrepancyId}/reject`, data, { params }).then(unwrap),
+  // Exceptions Inbox (B2B, B2C, SEZ & Live Billing Sync)
+  getExceptions: (params) => http.get("/ca-portal/exceptions", { params }).then(unwrap),
+  syncExceptions: (data, params) => http.post("/ca-portal/exceptions/sync", data, { params }).then(unwrap),
+  getException: (id, params) => http.get(`/ca-portal/exceptions/${id}`, { params }).then(unwrap),
+  updateExceptionStatus: (id, data, params) => http.patch(`/ca-portal/exceptions/${id}/status`, data, { params }).then(unwrap),
+  addExceptionNote: (id, data, params) => http.post(`/ca-portal/exceptions/${id}/notes`, data, { params }).then(unwrap),
+  requestExceptionDocument: (id, data, params) => http.post(`/ca-portal/exceptions/${id}/request-document`, data, { params }).then(unwrap),
+  classifyExceptionCustomer: (id, data, params) => http.post(`/ca-portal/exceptions/${id}/classify`, data, { params }).then(unwrap),
 };
 
 export const realtimeApi = {
@@ -522,6 +589,49 @@ export const caInvitationApi = {
   accept: (payload) => http.post("/ca-invitations/accept", payload).then(unwrap),
   decline: (payload) => http.post("/ca-invitations/decline", payload).then(unwrap),
 };
+
+export const roleInvitationApi = {
+  invite: (payload) => http.post("/invitations", payload).then(unwrap),
+  list: (params) => http.get("/invitations", { params }).then(unwrap),
+  getMyInvitations: () => http.get("/invitations/my").then(unwrap),
+  verify: (token) => http.get("/invitations/verify", { params: { token } }).then(unwrap),
+  accept: (payload) => http.post("/invitations/accept", payload).then(unwrap),
+  decline: (payload) => http.post("/invitations/decline", payload).then(unwrap),
+  resend: (id) => http.post(`/invitations/${id}/resend`).then(unwrap),
+  revoke: (id) => http.post(`/invitations/${id}/revoke`).then(unwrap),
+};
+
+export const notificationApi = {
+  list: (params) => http.get("/notifications", { params }).then(unwrap),
+  getUnreadCount: () => http.get("/notifications/unread-count").then(unwrap),
+  markRead: (id) => http.patch(`/notifications/${id}/read`).then(unwrap),
+  markAllRead: () => http.post("/notifications/mark-all-read").then(unwrap),
+};
+
+export const memberApi = {
+  list: (params) => http.get("/members", { params }).then(unwrap),
+  updateRole: (id, payload) => http.patch(`/members/${id}`, payload).then(unwrap),
+  remove: (id) => http.delete(`/members/${id}`).then(unwrap),
+};
+
+export const caReferralApi = {
+  // CA Portal endpoints
+  getDashboard: () => http.get('/ca-referral/dashboard').then(unwrap),
+  getReferrals: (params) => http.get('/ca-referral/referrals', { params }).then(unwrap),
+  getPayouts: (params) => http.get('/ca-referral/payouts', { params }).then(unwrap),
+  submitRedemption: (payload) => http.post('/ca-referral/redemptions', payload).then(unwrap),
+  validateCode: (code) => http.get(`/ca-referral/validate/${encodeURIComponent(code)}`).then(unwrap),
+
+  // Super Admin Management endpoints
+  getAdminReferrals: (params) => http.get('/ca-referral/admin/referrals', { params }).then(unwrap),
+  getAdminRedemptions: (params) => http.get('/ca-referral/admin/redemptions', { params }).then(unwrap),
+  approveRedemption: (id, notes) => http.post(`/ca-referral/admin/redemptions/${id}/approve`, { notes }).then(unwrap),
+  rejectRedemption: (id, reason) => http.post(`/ca-referral/admin/redemptions/${id}/reject`, { reason }).then(unwrap),
+  recordPayout: (id, payload) => http.post(`/ca-referral/admin/redemptions/${id}/payout`, payload).then(unwrap),
+  getConfig: () => http.get('/ca-referral/admin/config').then(unwrap),
+  updateConfig: (payload) => http.put('/ca-referral/admin/config', payload).then(unwrap),
+};
+
 
 
 

@@ -416,6 +416,7 @@ describe('MASTER VERIFICATION: COMPLETE CA CONNECT (14 SECTIONS) + AUTOMATIC GST
   // ══════════════════════════════════════════════════════════════════════
   test('Section 6: Expenses & Financial Outflow Review', async () => {
     // Seed expense
+    await prisma.expense.deleteMany({ where: { businessId: storeAId } });
     await prisma.expense.create({
       data: {
         id: 'exp-master-001',

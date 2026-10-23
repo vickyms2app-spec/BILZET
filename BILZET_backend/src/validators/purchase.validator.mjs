@@ -20,7 +20,7 @@ export const createPurchaseSchema = z.object({
         name: z.string().optional().or(z.literal('')),
         sku: z.string().optional().or(z.literal('')),
         barcode: z.string().optional().or(z.literal('')),
-        quantity: z.number().min(1, 'Quantity must be at least 1'),
+        quantity: z.number().positive('Quantity must be greater than 0'),
         purchasePrice: z.number().nonnegative('Purchase price cannot be negative'),
         gstRate: z.number().min(0).max(100).optional().default(0),
         taxRate: z.number().min(0).max(100).optional(),

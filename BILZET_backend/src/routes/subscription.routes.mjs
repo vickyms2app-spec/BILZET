@@ -39,7 +39,7 @@ router.get(
   '/status',
   asyncHandler(async (req, res) => {
     const subInfo = await getActiveSubscription(req.user.businessId, req.user.id);
-    const usage = await getSubscriptionUsage(req.user.businessId);
+    const usage = await getSubscriptionUsage(req.user.businessId, req.user.id);
 
     return sendResponse(
       res,
@@ -60,7 +60,7 @@ router.get(
 router.get(
   '/usage',
   asyncHandler(async (req, res) => {
-    const usage = await getSubscriptionUsage(req.user.businessId);
+    const usage = await getSubscriptionUsage(req.user.businessId, req.user.id);
     return sendResponse(res, 200, usage, 'Subscription usage retrieved successfully.');
   })
 );

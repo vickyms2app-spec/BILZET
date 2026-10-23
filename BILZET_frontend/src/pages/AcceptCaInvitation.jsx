@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import {
   Briefcase,
@@ -19,9 +19,10 @@ import {
   Layers,
   Sparkles,
 } from "lucide-react";
-import { caInvitationApi } from "../api";
+import { caInvitationApi, roleInvitationApi } from "../api";
 import { useAuth } from "../store/auth";
 import Button from "../components/common/Button";
+import { getWorkspaceRedirectPath } from "../utils/workspaceRouter";
 
 export default function AcceptCaInvitation() {
   const [searchParams] = useSearchParams();
@@ -35,6 +36,17 @@ export default function AcceptCaInvitation() {
   const [accepting, setAccepting] = useState(false);
   const [declining, setDeclining] = useState(false);
   const [successResult, setSuccessResult] = useState(null);
+  const [inlineError, setInlineError] = useState("");
+  const [showDeclineConfirm, setShowDeclineConfirm] = useState(false);
+  const [declineReason, setDeclineReason] = useState("");
+  const [isRoleInvite, setIsRoleInvite] = useState(false);
+  const redirectTimerRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
+    };
+  }, []);
 
   // 1. Verify token on load
   useEffect(() => {
@@ -52,8 +64,38 @@ export default function AcceptCaInvitation() {
       setLoading(true);
       setErrorStatus(null);
       try {
-        const res = await caInvitationApi.verify(token);
+        // Try roleInvitationApi first if role query param exists, else try caInvitationApi first
+        const isLikelyRole = searchParams.get("role") || window.location.pathname.includes("role");
+        let res = null;
+        let matchedRole = false;
+
+        if (isLikelyRole) {
+          try {
+            res = await roleInvitationApi.verify(token);
+            if (res?.valid && res.invitation) {
+              matchedRole = true;
+            }
+          } catch (_) {}
+        }
+
+        if (!res?.valid) {
+          try {
+            res = await caInvitationApi.verify(token);
+          } catch (_) {}
+        }
+
+        if (!res?.valid && !matchedRole) {
+          try {
+            const roleRes = await roleInvitationApi.verify(token);
+            if (roleRes?.valid && roleRes.invitation) {
+              res = roleRes;
+              matchedRole = true;
+            }
+          } catch (_) {}
+        }
+
         if (isMounted) {
+          setIsRoleInvite(matchedRole);
           if (res?.valid && res.invitation) {
             setInvitationData(res.invitation);
           } else {
@@ -82,10 +124,10 @@ export default function AcceptCaInvitation() {
     return () => {
       isMounted = false;
     };
-  }, [token]);
+  }, [token, searchParams]);
 
   // Check email match if user is signed in
-  const invitedEmail = (invitationData?.email || "").trim().toLowerCase();
+  const invitedEmail = (invitationData?.recipientEmail || invitationData?.email || invitationData?.invitedEmail || "").trim().toLowerCase();
   const userEmail = (user?.email || "").trim().toLowerCase();
   const isEmailMatch = Boolean(user && userEmail && invitedEmail && userEmail === invitedEmail);
   const isEmailMismatch = Boolean(user && userEmail && invitedEmail && userEmail !== invitedEmail);
@@ -94,38 +136,55 @@ export default function AcceptCaInvitation() {
   const handleAccept = async () => {
     if (!token || !isEmailMatch) return;
     setAccepting(true);
+    setInlineError("");
     try {
-      const res = await caInvitationApi.accept({ token });
+      let res;
+      if (isRoleInvite) {
+        res = await roleInvitationApi.accept({ token });
+      } else {
+        res = await caInvitationApi.accept({ token });
+      }
       setSuccessResult(res);
 
-      // Save connected store in local storage so CA Portal opens this store
-      if (res?.storeId) {
-        localStorage.setItem("bilzet_active_store_id", res.storeId);
+      const targetStoreId = res?.storeId || res?.data?.member?.businessId || invitationData?.businessId;
+      if (targetStoreId) {
+        localStorage.setItem("bilzet_active_store_id", targetStoreId);
+        window.dispatchEvent(new CustomEvent("bilzet:store-changed", { detail: { businessId: targetStoreId } }));
       }
 
-      // Automatically redirect to CA Portal workspace after short feedback
-      setTimeout(() => {
-        navigate(`/ca-portal`, { replace: true });
+      // Automatically redirect to role workspace after short feedback
+      redirectTimerRef.current = setTimeout(() => {
+        const targetRole = res?.data?.member?.role || invitationData?.role || "CA";
+        const redirectPath = getWorkspaceRedirectPath({ role: targetRole, businessId: targetStoreId });
+        navigate(redirectPath, { replace: true });
       }, 1800);
     } catch (err) {
-      alert("Failed to accept invitation: " + (err?.message || "Unknown error"));
+      setInlineError(err?.response?.data?.message || err?.message || "Failed to accept invitation");
       setAccepting(false);
     }
   };
 
   // 3. Handle Decline
-  const handleDecline = async () => {
+  const handleConfirmDecline = async () => {
     if (!token) return;
-    if (!window.confirm("Are you sure you want to decline this invitation to connect?")) return;
     setDeclining(true);
+    setInlineError("");
     try {
-      await caInvitationApi.decline({ token, reason: "Declined by invitee" });
+      if (isRoleInvite) {
+        await roleInvitationApi.decline({ token });
+      } else {
+        await caInvitationApi.decline({
+          token,
+          reason: declineReason.trim() || "Declined by invitee",
+        });
+      }
+      setShowDeclineConfirm(false);
       setErrorStatus({
         code: "DECLINED",
         message: "You have declined this invitation. No connection was established.",
       });
     } catch (err) {
-      alert("Failed to decline invitation: " + (err?.message || "Unknown error"));
+      setInlineError(err?.response?.data?.message || err?.message || "Failed to decline invitation");
       setDeclining(false);
     }
   };
@@ -372,33 +431,73 @@ export default function AcceptCaInvitation() {
                       </span>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
-                      <button
-                        onClick={handleAccept}
-                        disabled={accepting || declining}
-                        className="w-full sm:flex-1 py-3 px-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-sm font-bold rounded-xl transition shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
-                      >
-                        {accepting ? (
-                          <>
-                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                            <span>Connecting Workspace…</span>
-                          </>
-                        ) : (
-                          <>
-                            <ShieldCheck className="w-4 h-4" />
-                            <span>Accept Invitation & Connect</span>
-                          </>
-                        )}
-                      </button>
+                    {inlineError && (
+                      <div className="p-3 rounded-xl bg-rose-950/60 border border-rose-500/40 text-rose-300 text-xs flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+                        <span>{inlineError}</span>
+                      </div>
+                    )}
 
-                      <button
-                        onClick={handleDecline}
-                        disabled={accepting || declining}
-                        className="w-full sm:w-auto py-3 px-5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl border border-slate-700 transition cursor-pointer"
-                      >
-                        {declining ? "Declining…" : "Decline"}
-                      </button>
-                    </div>
+                    {showDeclineConfirm ? (
+                      <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-700 space-y-3">
+                        <h4 className="text-xs font-bold text-slate-200">Decline Invitation Confirmation</h4>
+                        <p className="text-[11px] text-slate-400">
+                          Are you sure you want to decline this invitation? You will not be granted access to this client store.
+                        </p>
+                        <input
+                          type="text"
+                          value={declineReason}
+                          onChange={(e) => setDeclineReason(e.target.value)}
+                          placeholder="Optional reason (e.g. not my client, wrong email)"
+                          className="w-full px-3 py-2 text-xs rounded-lg bg-slate-800 border border-slate-700 text-slate-200 placeholder-slate-500 focus:outline-hidden"
+                        />
+                        <div className="flex items-center justify-end gap-2 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => setShowDeclineConfirm(false)}
+                            className="px-3 py-1.5 text-xs text-slate-400 hover:text-slate-200"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleConfirmDecline}
+                            disabled={declining}
+                            className="px-3 py-1.5 text-xs bg-rose-600 hover:bg-rose-500 text-white font-semibold rounded-lg transition disabled:opacity-50"
+                          >
+                            {declining ? "Declining…" : "Confirm Decline"}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
+                        <button
+                          onClick={handleAccept}
+                          disabled={accepting || declining}
+                          className="w-full sm:flex-1 py-3 px-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-sm font-bold rounded-xl transition shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
+                        >
+                          {accepting ? (
+                            <>
+                              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                              <span>Connecting Workspace…</span>
+                            </>
+                          ) : (
+                            <>
+                              <ShieldCheck className="w-4 h-4" />
+                              <span>Accept Invitation & Connect</span>
+                            </>
+                          )}
+                        </button>
+
+                        <button
+                          onClick={() => setShowDeclineConfirm(true)}
+                          disabled={accepting || declining}
+                          className="w-full sm:w-auto py-3 px-5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl border border-slate-700 transition cursor-pointer"
+                        >
+                          Decline
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

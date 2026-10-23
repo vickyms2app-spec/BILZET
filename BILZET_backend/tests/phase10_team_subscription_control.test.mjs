@@ -380,14 +380,14 @@ describe('PHASE 10: TEAM & SUBUSERS SUBSCRIPTION CONTROL', () => {
   });
 
   describe('3. Premium User Entitlements', () => {
-    test('Premium user can view team usage with 15 max seats', async () => {
+    test('Premium user can view team usage with unlimited seats', async () => {
       const res = await fetch(`${baseUrl}/users`, {
         headers: { Authorization: `Bearer ${premToken}` },
       });
       assert.equal(res.status, 200);
       const json = await res.json();
       assert.equal(json.data.usage.planTier, 'PREMIUM');
-      assert.equal(json.data.usage.maxSeats, 15);
+      assert.ok(json.data.usage.maxSeats === -1 || json.data.usage.isUnlimited === true);
       assert.equal(json.data.usage.canAddUser, true);
     });
 

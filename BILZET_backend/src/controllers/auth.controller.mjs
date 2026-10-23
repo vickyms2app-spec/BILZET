@@ -2,6 +2,7 @@ import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendResponse } from '../utils/apiResponse.mjs';
 import authService from '../services/auth.service.mjs';
 import { getActiveSubscription } from '../services/subscription.service.mjs';
+import prisma from '../config/prisma.mjs';
 
 export const register = asyncHandler(async (req, res) => {
   const result = await authService.register(req.body, { req });
@@ -15,14 +16,13 @@ export const login = asyncHandler(async (req, res) => {
 });
 
 export const getMe = asyncHandler(async (req, res) => {
-  const targetUser = req.user || (await authService.getCurrentUser(req.user?._id || req.user?.id));
-  const subInfo = await getActiveSubscription(targetUser?.businessId, targetUser?.id || targetUser?._id);
-  const user = {
-    ...targetUser,
-    subscription: subInfo,
-    currentPlan: subInfo?.planTier || 'FREE',
-  };
-  return sendResponse(res, 200, { user }, 'Current user profile fetched successfully');
+  const userId = req.user?.id || req.user?._id;
+  const dbUser = userId
+    ? await prisma.user.findUnique({ where: { id: userId } })
+    : req.user;
+
+  const enriched = await authService.enrichUserWithSubscription(dbUser || req.user);
+  return sendResponse(res, 200, { user: enriched }, 'Current user profile fetched successfully');
 });
 
 export const refresh = asyncHandler(async (req, res) => {

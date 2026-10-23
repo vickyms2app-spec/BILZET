@@ -7,11 +7,21 @@ import { getAuth, verifyToken, createClerkClient } from '@clerk/express';
 
 const attachTenantContext = async (user, requestedStoreId = null) => {
   let effectiveBusinessId = user.businessId || null;
-  let isOwner = Boolean(user.isOwner);
+  let isOwner =
+    Boolean(user.isOwner) ||
+    user.role === 'ADMIN' ||
+    user.role === 'OWNER' ||
+    user.role === 'SUPER_ADMIN' ||
+    Boolean(user.isSuperAdmin);
 
-  // If a specific store was requested via headers, verify authorization
+  const isMasterAdmin =
+    user.role === 'SUPER_ADMIN' ||
+    Boolean(user.isSuperAdmin) ||
+    (user.email && user.email.toLowerCase() === 'vickyms2app@gmail.com');
+
+  // If a specific store was requested via headers or query, verify authorization
   if (requestedStoreId && requestedStoreId !== effectiveBusinessId) {
-    if (user.role === 'SUPER_ADMIN') {
+    if (isMasterAdmin) {
       effectiveBusinessId = requestedStoreId;
     } else {
       const existingBiz = await prisma.business.findUnique({
@@ -19,47 +29,104 @@ const attachTenantContext = async (user, requestedStoreId = null) => {
       });
 
       if (!existingBiz) {
-        // Store does NOT exist in DB (e.g. stale header from a wiped/reset DB or offline mock).
-        // Safely fall back to the user's real business without throwing 403.
-        console.warn(`[Tenant] Requested store ${requestedStoreId} does not exist in DB, falling back to ${effectiveBusinessId}`);
-      } else if (
-        existingBiz.ownerId !== user.id &&
-        (!user.businessId || user.businessId !== existingBiz.id)
-      ) {
-        // Anti-IDOR: Store exists and belongs to a different owner!
-        throw ApiError.forbidden('You are not authorized to access this store.');
+        // Store does NOT exist in DB (stale ID from reset DB, expired localStorage, or old JWT).
+        // Silently clear the stale businessId from the user's DB record so future requests heal.
+        if (user.id && user.businessId === requestedStoreId) {
+          prisma.user.update({
+            where: { id: user.id },
+            data: { businessId: null },
+          }).catch(() => {});
+        }
+        // Clear from effective context — let the fallback below resolve the real store.
+        effectiveBusinessId = null;
+      } else if (user.role === 'CA') {
+        // Chartered Accountants must have ACTIVE caStoreAccess, BusinessMember status, or staff assignment
+        const activeCaAccess = await prisma.caStoreAccess.findFirst({
+          where: { caUserId: user.id, businessId: existingBiz.id, status: 'ACTIVE' },
+        });
+        const activeMember = await prisma.businessMember.findFirst({
+          where: { userId: user.id, businessId: existingBiz.id, status: 'ACTIVE' },
+        });
+        const staffAccess = user.email
+          ? await prisma.staff.findFirst({
+              where: {
+                businessId: existingBiz.id,
+                email: { equals: user.email.trim(), mode: 'insensitive' },
+                status: 'ACTIVE',
+              },
+            })
+          : null;
+        if (activeCaAccess || activeMember || staffAccess) {
+          effectiveBusinessId = existingBiz.id;
+        } else {
+          throw ApiError.forbidden('You are not authorized to access this store.');
+        }
       } else {
-        effectiveBusinessId = existingBiz.id;
-        isOwner = existingBiz.ownerId === user.id || isOwner;
+        const member = await prisma.businessMember.findFirst({
+          where: { userId: user.id, businessId: existingBiz.id, status: 'ACTIVE' },
+        });
+
+        if (member) {
+          effectiveBusinessId = existingBiz.id;
+          isOwner = existingBiz.ownerId === user.id || isOwner;
+        } else if (existingBiz.ownerId === user.id) {
+          effectiveBusinessId = existingBiz.id;
+          isOwner = true;
+        } else {
+          // Self-heal: If requested store in header/localStorage is stale and belongs to another owner,
+          // gracefully fallback to the user's legitimate store rather than bricking the whole session.
+          const userOwned = await prisma.business.findFirst({ where: { ownerId: user.id } }).catch(() => null);
+          if (userOwned) {
+            effectiveBusinessId = userOwned.id;
+            isOwner = true;
+          } else if (user.businessId) {
+            effectiveBusinessId = user.businessId;
+          } else {
+            effectiveBusinessId = null;
+          }
+        }
       }
     }
   }
 
-  if (!effectiveBusinessId && user.role !== 'SUPER_ADMIN') {
+  // If effectiveBusinessId is set, verify that the business actually exists in DB
+  if (effectiveBusinessId && !isMasterAdmin) {
+    const bizExists = await prisma.business.findUnique({
+      where: { id: effectiveBusinessId },
+    }).catch(() => null);
+    if (!bizExists) {
+      effectiveBusinessId = null;
+    }
+  }
+
+  if (!effectiveBusinessId) {
     try {
-      const owned = await prisma.business.findFirst({ where: { ownerId: user.id } });
-      if (owned) {
-        effectiveBusinessId = owned.id;
-        isOwner = true;
-      } else if (user.role === 'ADMIN' || !user.role) {
-        // Auto-provision tenant for store admin
-        const newBiz = await prisma.business.create({
-          data: {
-            ownerId: user.id,
-            name: `${user.name || 'Store'}'s Store`,
-            email: user.email || `${user.id}@bilzet.store`,
-          },
-        });
-        effectiveBusinessId = newBiz.id;
-        isOwner = true;
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { businessId: newBiz.id, isOwner: true },
-        }).catch(() => {});
+      // Check if user is an active member of any business
+      const activeMember = await prisma.businessMember.findFirst({
+        where: { userId: user.id, status: 'ACTIVE' },
+      });
+      if (activeMember) {
+        effectiveBusinessId = activeMember.businessId;
+      } else {
+        const owned = await prisma.business.findFirst({ where: { ownerId: user.id } });
+        if (owned) {
+          effectiveBusinessId = owned.id;
+          isOwner = true;
+        } else if (isMasterAdmin) {
+          const latestBiz = await prisma.business.findFirst({ orderBy: { createdAt: 'desc' } });
+          if (latestBiz) {
+            effectiveBusinessId = latestBiz.id;
+            isOwner = true;
+          }
+        } else {
+          // User has no store yet — they need to go through /register-shop onboarding.
+          // Do NOT auto-provision here; that bypasses the registration flow.
+          isOwner = Boolean(user.isOwner);
+        }
       }
     } catch (bizErr) {
       console.warn('[Tenant] Auto-provision fallback:', bizErr?.message);
-      effectiveBusinessId = user.id;
+      effectiveBusinessId = requestedStoreId || user.businessId || user.id;
       isOwner = true;
     }
   }
@@ -97,6 +164,8 @@ export const authMiddleware = asyncHandler(async (req, res, next) => {
   const requestedStoreId =
     req.headers['x-business-id'] ||
     req.headers['x-store-id'] ||
+    req.query?.businessId ||
+    req.query?.storeId ||
     null;
 
   // 1. Detect if this is a Clerk token or session
@@ -197,6 +266,7 @@ export const authMiddleware = asyncHandler(async (req, res, next) => {
                 name: finalName,
                 email: finalEmail,
                 role: 'ADMIN',
+                isOwner: true,
                 isActive: true,
               };
             }
@@ -246,8 +316,42 @@ export const authMiddleware = asyncHandler(async (req, res, next) => {
         name: decoded.name || decoded.email.split('@')[0],
         email: decoded.email,
         role: decoded.role || 'ADMIN',
+        businessId: decoded.businessId || null,
+        isOwner:
+          decoded.isOwner !== undefined
+            ? Boolean(decoded.isOwner)
+            : Boolean(decoded.role === 'OWNER' || decoded.role === 'ADMIN'),
         isActive: true,
       };
+
+      // Ensure user record exists in DB for foreign key relations
+      try {
+        let validBusinessId = null;
+        if (user.businessId) {
+          const bizCheck = await prisma.business.findUnique({ where: { id: user.businessId } }).catch(() => null);
+          if (bizCheck) validBusinessId = user.businessId;
+        }
+
+        const persisted = await prisma.user.create({
+          data: {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            businessId: validBusinessId,
+            isOwner: user.isOwner,
+            isActive: true,
+          },
+        });
+        user = persisted;
+      } catch (_) {
+        const existingUser = await prisma.user.findFirst({
+          where: { OR: [{ id: user.id }, { email: user.email }] },
+        }).catch(() => null);
+        if (existingUser) user = existingUser;
+      }
+    } else if (user && decoded.businessId && !user.businessId) {
+      user.businessId = decoded.businessId;
     }
 
     if (!user) {

@@ -6,13 +6,22 @@ export const ROLES = {
 
 export const PRODUCT_UNITS = [
   'piece',
+  'nos',
   'kg',
   'gram',
+  'litre',
   'liter',
+  'ml',
+  'millilitre',
+  'metre',
   'meter',
   'box',
+  'pack',
   'packet',
-  'dozen'
+  'dozen',
+  'roll',
+  'set',
+  'bundle'
 ];
 
 export const PAYMENT_METHODS = [

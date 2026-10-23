@@ -15,6 +15,7 @@ import {
   Menu,
   X,
   Server,
+  Gift,
 } from "lucide-react";
 
 const adminNav = [
@@ -22,6 +23,7 @@ const adminNav = [
   { label: "Users & Shops", path: "/app-admin/users", icon: Users },
   { label: "Subscriptions & Plans", path: "/app-admin/subscriptions", icon: CreditCard },
   { label: "Global Customers", path: "/app-admin/customers", icon: Contact },
+  { label: "CA Referrals & Payouts", path: "/app-admin/referrals", icon: Gift },
   { label: "Platform Settings", path: "/app-admin/settings", icon: Sliders },
 ];
 

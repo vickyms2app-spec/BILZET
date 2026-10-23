@@ -311,12 +311,87 @@ export const sendCaInvitationAcceptedEmail = async ({
   });
 };
 
+/**
+ * Send Role Invitation Email (Staff, Manager, CA, etc.)
+ */
+export const sendRoleInvitationEmail = async ({
+  to,
+  name,
+  businessName,
+  role = 'Staff',
+  inviterName = 'Store Administrator',
+  inviteLink,
+  expiresAt,
+  message,
+}) => {
+  if (!to) return null;
+
+  const roleLabel = role.charAt(0).toUpperCase() + role.slice(1).toLowerCase();
+  const subject = `Invitation to join ${businessName} as ${roleLabel} on BILZET`;
+  const formattedExpiry = new Date(expiresAt).toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>${subject}</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 24px;">
+  <div style="max-width: 580px; margin: 0 auto; background: #ffffff; border-radius: 14px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+    <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 28px 32px; color: #ffffff;">
+      <h1 style="margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -0.02em;">BILZET Team Invitation</h1>
+      <p style="margin: 6px 0 0; font-size: 13px; color: #94a3b8;">Secure workspace membership invitation</p>
+    </div>
+    <div style="padding: 32px;">
+      <p style="font-size: 15px; color: #1e293b; margin-top: 0;">
+        Hello <strong>${name || to}</strong>,
+      </p>
+      <p style="font-size: 14px; color: #475569; line-height: 1.6;">
+        <strong>${inviterName}</strong> has invited you to join <strong>${businessName}</strong> as a <strong>${roleLabel}</strong> on BILZET.
+      </p>
+      ${message ? `
+      <div style="background: #f1f5f9; border-left: 4px solid #3b82f6; padding: 12px 16px; border-radius: 0 8px 8px 0; font-size: 13px; color: #475569; margin: 16px 0; font-style: italic;">
+        "${message}"
+      </div>
+      ` : ''}
+      <div style="text-align: center; margin: 32px 0;">
+        <a href="${inviteLink}" style="display: inline-block; background: #2563eb; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-size: 15px; font-weight: 600;">
+          Accept Invitation
+        </a>
+      </div>
+      <p style="font-size: 12px; color: #64748b; line-height: 1.5;">
+        This invitation is valid until <strong>${formattedExpiry}</strong>. If you don't have an account yet, you can register with <strong>${to}</strong> and accept the invitation directly inside the application.
+      </p>
+    </div>
+    <div style="background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 16px 32px; text-align: center; font-size: 12px; color: #94a3b8;">
+      BILZET Platform &bull; Secure Multi-Tenant ERP & Billing
+    </div>
+  </div>
+</body>
+</html>
+  `.trim();
+
+  return sendEmail({
+    to,
+    subject,
+    html,
+    text: `${inviterName} has invited you to join ${businessName} as ${roleLabel}. Open: ${inviteLink} (Expires: ${formattedExpiry})`,
+  });
+};
+
 export default {
   sendEmail,
   sendCaInvitationEmail,
   sendCaInvitationAcceptedEmail,
+  sendRoleInvitationEmail,
   isEmailConfigured,
   getOutbox,
   clearOutbox,
   getLatestEmail,
 };
+

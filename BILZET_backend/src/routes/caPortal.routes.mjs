@@ -11,7 +11,7 @@ const router = Router();
 // Hiding navigation alone is insufficient — all API requests are validated here.
 // ══════════════════════════════════════════════════════════════
 router.use(verifyAuth);
-router.use(authorizeRoles('CA', 'SUPER_ADMIN', 'ADMIN', 'OWNER'));
+router.use(authorizeRoles('CA', 'SUPER_ADMIN'));
 
 router.get('/stores', caPortalController.getAuthorizedStores);
 router.get('/invoices', caPortalController.getInvoices);
@@ -75,5 +75,15 @@ router.patch('/bank-reconciliation/match/:id', caPortalController.updateBankMatc
 // Reports & Workpapers
 router.get('/workpapers', caPortalController.getWorkpapers);
 
+// Exceptions Inbox (B2B, B2C, SEZ & Live Billing Sync)
+router.get('/exceptions', caPortalController.getExceptions);
+router.post('/exceptions/sync', caPortalController.syncExceptions);
+router.get('/exceptions/:id', caPortalController.getExceptionDetail);
+router.patch('/exceptions/:id/status', caPortalController.updateExceptionStatus);
+router.post('/exceptions/:id/notes', caPortalController.addExceptionNote);
+router.post('/exceptions/:id/request-document', caPortalController.requestExceptionDocument);
+router.post('/exceptions/:id/classify', caPortalController.classifyExceptionCustomer);
+
 export default router;
+
 

@@ -11,4 +11,6 @@ export const CLERK_PUBLISHABLE_KEY =
   import.meta.env.VITE_CLERK_PUBLISHABLE_KEY ||
   "pk_test_dW5pdGVkLWJlZGJ1Zy03NTkzLmNsZXJrLmFjY291bnRzLmRldiQ";
 
-export const hasClerk = Boolean(CLERK_PUBLISHABLE_KEY);
+export const hasClerk =
+  Boolean(CLERK_PUBLISHABLE_KEY) &&
+  (typeof window === "undefined" || sessionStorage.getItem("bilzet_skip_clerk") !== "true");

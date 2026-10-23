@@ -1,7 +1,11 @@
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendResponse } from '../utils/apiResponse.mjs';
+import { ApiError } from '../utils/ApiError.mjs';
 import prisma from '../config/prisma.mjs';
 import { getActiveSubscription } from '../services/subscription.service.mjs';
+import brandingService from '../services/branding.service.mjs';
+import path from 'path';
+import fs from 'fs';
 
 let customizerStore = {
   template: 'modern',
@@ -18,6 +22,16 @@ let customizerStore = {
   ifsc: 'HDFC0001234',
   accountHolder: 'BILZET Retail Mart',
   upiId: 'bilzet@hdfcbank',
+};
+
+// Helper to resolve active store ID for current user
+const resolveUserStoreId = async (req) => {
+  if (req.user?.businessId) return req.user.businessId;
+  if (req.user?.id) {
+    const owned = await prisma.business.findFirst({ where: { ownerId: req.user.id } });
+    if (owned?.id) return owned.id;
+  }
+  return 'busi-01';
 };
 
 export const getShopSettings = asyncHandler(async (req, res) => {
@@ -47,6 +61,9 @@ export const getShopSettings = asyncHandler(async (req, res) => {
     } catch (e) {}
   }
 
+  // Resolve active store ID for tenant-isolated branding
+  const activeStoreId = await resolveUserStoreId(req);
+
   // If user is operating in an active store context, merge store profile
   if (req.user?.businessId) {
     try {
@@ -60,6 +77,9 @@ export const getShopSettings = asyncHandler(async (req, res) => {
       }
     } catch (_) {}
   }
+
+  // Load tenant-isolated branding (Company Logo & Owner Signature)
+  const storeBranding = await brandingService.getStoreBranding(activeStoreId);
 
   let effectiveTier = 'FREE';
   let planName = 'Free Starter';
@@ -79,6 +99,15 @@ export const getShopSettings = asyncHandler(async (req, res) => {
     ...settings,
     terms: customizerStore.termsText || customizerStore.terms || (settings.terms?.startsWith('{') ? customizerStore.terms : settings.terms),
     _id: settings.id,
+    businessId: activeStoreId,
+    // Company Logo & Owner Signature branding fields
+    logoUrl: storeBranding.logoUrl || null,
+    signatureUrl: storeBranding.signatureUrl || null,
+    showLogoOnInvoices: storeBranding.showLogoOnInvoices !== undefined ? storeBranding.showLogoOnInvoices : Boolean(storeBranding.logoUrl),
+    showSignatureOnInvoices: storeBranding.showSignatureOnInvoices !== undefined ? storeBranding.showSignatureOnInvoices : Boolean(storeBranding.signatureUrl),
+    // Backward-compatibility aliases for invoice renderers
+    showLogo: storeBranding.showLogoOnInvoices !== undefined ? storeBranding.showLogoOnInvoices : Boolean(storeBranding.logoUrl),
+    showSignatory: storeBranding.showSignatureOnInvoices !== undefined ? storeBranding.showSignatureOnInvoices : Boolean(storeBranding.signatureUrl),
     subscriptionTier: effectiveTier,
     subscriptionPlanName: planName,
   };
@@ -129,6 +158,22 @@ export const updateShopSettings = asyncHandler(async (req, res) => {
     }
   }
 
+  const activeStoreId = await resolveUserStoreId(req);
+
+  // Handle branding preferences persistence per store
+  const brandingUpdates = {};
+  if (req.body.logoUrl !== undefined) brandingUpdates.logoUrl = req.body.logoUrl;
+  if (req.body.signatureUrl !== undefined) brandingUpdates.signatureUrl = req.body.signatureUrl;
+  if (req.body.showLogoOnInvoices !== undefined) brandingUpdates.showLogoOnInvoices = Boolean(req.body.showLogoOnInvoices);
+  if (req.body.showSignatureOnInvoices !== undefined) brandingUpdates.showSignatureOnInvoices = Boolean(req.body.showSignatureOnInvoices);
+
+  let updatedBranding = null;
+  if (Object.keys(brandingUpdates).length > 0) {
+    updatedBranding = await brandingService.saveStoreBranding(activeStoreId, brandingUpdates);
+  } else {
+    updatedBranding = await brandingService.getStoreBranding(activeStoreId);
+  }
+
   let settings = await prisma.shopSettings.findFirst();
 
   // Merge any incoming customization fields
@@ -164,21 +209,56 @@ export const updateShopSettings = asyncHandler(async (req, res) => {
     });
   }
 
-  // Also update active store if businessId present
-  if (req.user?.businessId) {
+  // Also update or register active business for the user
+  const effectiveShopName = (dbData.shopName || req.body.storeName || '').trim();
+  const effectiveAddress = (dbData.address || req.body.storeLocation || '').trim();
+  const effectivePhone = (dbData.phone || req.body.storePhone || '').trim();
+  const effectiveEmail = (dbData.email || req.body.storeEmail || '').trim();
+  const effectiveGstin = (dbData.gstin || '').trim();
+
+  let targetBizId = req.user?.businessId;
+  if (!targetBizId && req.user?.id) {
+    const owned = await prisma.business.findFirst({ where: { ownerId: req.user.id } });
+    if (owned) targetBizId = owned.id;
+  }
+
+  if (targetBizId) {
     try {
       const bizUpdate = {};
-      if (dbData.shopName) bizUpdate.name = dbData.shopName;
-      if (dbData.address) bizUpdate.address = dbData.address;
-      if (dbData.phone) bizUpdate.phone = dbData.phone;
-      if (dbData.email) bizUpdate.email = dbData.email;
-      if (dbData.gstin) bizUpdate.gstin = dbData.gstin;
+      if (effectiveShopName) bizUpdate.name = effectiveShopName;
+      if (effectiveAddress) bizUpdate.address = effectiveAddress;
+      if (effectivePhone) bizUpdate.phone = effectivePhone;
+      if (effectiveEmail) bizUpdate.email = effectiveEmail;
+      if (effectiveGstin) bizUpdate.gstin = effectiveGstin;
       if (Object.keys(bizUpdate).length > 0) {
         await prisma.business.update({
-          where: { id: req.user.businessId },
+          where: { id: targetBizId },
           data: bizUpdate,
         });
       }
+    } catch (_) {}
+  } else if (req.user?.id && effectiveShopName) {
+    // If user has NO store registered yet, automatically create and register it for them!
+    try {
+      const newBiz = await prisma.business.create({
+        data: {
+          ownerId: req.user.id,
+          name: effectiveShopName,
+          address: effectiveAddress || 'Main Branch',
+          phone: effectivePhone || req.user.phone || '',
+          email: effectiveEmail || req.user.email,
+          gstin: effectiveGstin || '',
+        },
+      });
+      await prisma.user.update({
+        where: { id: req.user.id },
+        data: { businessId: newBiz.id, isOwner: true, role: 'ADMIN' },
+      }).catch(() => {});
+      await prisma.businessMember.upsert({
+        where: { userId_businessId: { userId: req.user.id, businessId: newBiz.id } },
+        update: { role: 'ADMIN', status: 'ACTIVE' },
+        create: { userId: req.user.id, businessId: newBiz.id, role: 'ADMIN', status: 'ACTIVE', acceptedAt: new Date() },
+      }).catch(() => {});
     } catch (_) {}
   }
 
@@ -187,12 +267,133 @@ export const updateShopSettings = asyncHandler(async (req, res) => {
     ...settings,
     terms: customizerStore.termsText || customizerStore.terms || req.body.terms,
     _id: settings.id,
+    businessId: activeStoreId,
+    logoUrl: updatedBranding.logoUrl || null,
+    signatureUrl: updatedBranding.signatureUrl || null,
+    showLogoOnInvoices: updatedBranding.showLogoOnInvoices !== undefined ? updatedBranding.showLogoOnInvoices : Boolean(updatedBranding.logoUrl),
+    showSignatureOnInvoices: updatedBranding.showSignatureOnInvoices !== undefined ? updatedBranding.showSignatureOnInvoices : Boolean(updatedBranding.signatureUrl),
+    showLogo: updatedBranding.showLogoOnInvoices !== undefined ? updatedBranding.showLogoOnInvoices : Boolean(updatedBranding.logoUrl),
+    showSignatory: updatedBranding.showSignatureOnInvoices !== undefined ? updatedBranding.showSignatureOnInvoices : Boolean(updatedBranding.signatureUrl),
   };
 
   return sendResponse(res, 200, { settings: merged }, 'Shop settings updated successfully');
 });
 
+/**
+ * Upload company logo or owner signature image
+ */
+export const uploadBrandingImage = asyncHandler(async (req, res) => {
+  const isAuthorized = req.user?.isOwner || req.user?.role === 'ADMIN' || req.user?.role === 'SUPER_ADMIN';
+  if (!isAuthorized) {
+    throw ApiError.forbidden('Only business owners or administrators can upload invoice branding.');
+  }
+
+  const activeStoreId = await resolveUserStoreId(req);
+  const { type, fileData } = req.body;
+
+  const result = await brandingService.processBrandingUpload({
+    storeId: activeStoreId,
+    type,
+    fileData,
+    user: req.user,
+  });
+
+  return sendResponse(res, 200, result, result.message);
+});
+
+/**
+ * Remove an uploaded logo or signature
+ */
+export const removeBrandingImage = asyncHandler(async (req, res) => {
+  const isAuthorized = req.user?.isOwner || req.user?.role === 'ADMIN' || req.user?.role === 'SUPER_ADMIN';
+  if (!isAuthorized) {
+    throw ApiError.forbidden('Only business owners or administrators can remove invoice branding.');
+  }
+
+  const activeStoreId = await resolveUserStoreId(req);
+  const { type } = req.params;
+
+  const result = await brandingService.removeBrandingFile({
+    storeId: activeStoreId,
+    type,
+  });
+
+  return sendResponse(res, 200, result, result.message);
+});
+
+/**
+ * Update logo or signature visibility preferences
+ */
+export const updateBrandingPreferences = asyncHandler(async (req, res) => {
+  const isAuthorized = req.user?.isOwner || req.user?.role === 'ADMIN' || req.user?.role === 'SUPER_ADMIN';
+  if (!isAuthorized) {
+    throw ApiError.forbidden('Only business owners or administrators can update branding preferences.');
+  }
+
+  const activeStoreId = await resolveUserStoreId(req);
+  const updates = {};
+  if (req.body.showLogoOnInvoices !== undefined) {
+    updates.showLogoOnInvoices = Boolean(req.body.showLogoOnInvoices);
+  }
+  if (req.body.showSignatureOnInvoices !== undefined) {
+    updates.showSignatureOnInvoices = Boolean(req.body.showSignatureOnInvoices);
+  }
+
+  const updatedBranding = await brandingService.saveStoreBranding(activeStoreId, updates);
+
+  return sendResponse(
+    res,
+    200,
+    { branding: updatedBranding },
+    'Invoice branding visibility preferences updated successfully'
+  );
+});
+
+/**
+ * Serve uploaded branding image files with CORS headers and traversal protection
+ */
+export const serveBrandingFile = (req, res) => {
+  const { businessId, filename } = req.params;
+
+  // Strict path traversal defense: no directory separators or parent paths
+  if (!filename || filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+    return res.status(400).send('Invalid file path request');
+  }
+
+  const safeStoreId = brandingService.sanitizeStoreId(businessId);
+  const filePath = path.join(brandingService.BRANDING_DIR, safeStoreId, filename);
+
+  // Security check: ensure resolved path is strictly inside BRANDING_DIR
+  if (!filePath.startsWith(brandingService.BRANDING_DIR)) {
+    return res.status(403).send('Access denied');
+  }
+
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).send('Branding file not found');
+  }
+
+  // Determine content type
+  let contentType = 'application/octet-stream';
+  if (filename.endsWith('.png')) contentType = 'image/png';
+  else if (filename.endsWith('.jpg') || filename.endsWith('.jpeg')) contentType = 'image/jpeg';
+  else if (filename.endsWith('.webp')) contentType = 'image/webp';
+
+  // Set permissive CORS so html2canvas and canvas exports can read cross-origin images without tainting
+  res.setHeader('Content-Type', contentType);
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+
+  return res.sendFile(filePath);
+};
+
 export default {
   getShopSettings,
   updateShopSettings,
+  uploadBrandingImage,
+  removeBrandingImage,
+  updateBrandingPreferences,
+  serveBrandingFile,
 };
+

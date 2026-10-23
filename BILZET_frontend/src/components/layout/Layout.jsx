@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutGrid,
@@ -38,6 +38,7 @@ import {
   Wallet,
   RefreshCw,
   Search,
+  Crown,
   Store,
   ChevronUp,
   Sun,
@@ -58,6 +59,9 @@ import {
   FileSpreadsheet,
   SlidersHorizontal,
   Activity,
+  Gift,
+  FolderCheck,
+  Keyboard,
 } from "lucide-react";
 import { useAuth } from "../../store/auth";
 import { useConnectionStatus } from "../../hooks/useConnectionStatus";
@@ -68,56 +72,32 @@ import { isAdminEmail, isAdminUser } from "../../utils/security";
 import { useSecurityStore } from "../../store/securityStore";
 import { usePermissions } from "../../hooks/usePermissions";
 import StoreSwitcher from "../common/StoreSwitcher";
+import NotificationBell from "../common/NotificationBell";
+import KeyboardShortcutsModal from "../common/KeyboardShortcutsModal";
+
+export const caMainNavItems = [
+  { label: "CA Dashboard", path: "/ca-portal/dashboard", icon: LayoutGrid },
+  { label: "Clients", path: "/ca-portal/clients", icon: Building2 },
+  { label: "GST & Tax", path: "/ca-portal/gst", icon: Percent },
+  { label: "Audit & Workpapers", path: "/ca-portal/pipeline", icon: Activity },
+  { label: "Documents", path: "/ca-portal/documents", icon: FolderCheck },
+];
+
+export const caBottomNavItems = [
+  { label: "Refer & Earn", path: "/ca-portal/referral", icon: Gift },
+  { label: "Settings", path: "/ca-portal/settings", icon: Settings },
+];
 
 export const caNavSections = [
   {
-    title: "A. Overview",
-    key: "ca_overview",
-    items: [
-      { label: "CA Dashboard", path: "/ca-portal/dashboard", icon: LayoutGrid },
-      { label: "Client Management", path: "/ca-portal/clients", icon: Building2 },
-      { label: "Audit Pipeline", path: "/ca-portal/pipeline", icon: Activity },
-      { label: "Deadlines & Alerts", path: "/ca-portal/deadlines", icon: AlertTriangle },
-    ],
+    title: "",
+    key: "ca_main",
+    items: caMainNavItems,
   },
   {
-    title: "B. Audit & Accounting",
-    key: "ca_audit",
-    items: [
-      { label: "Sales & Invoices", path: "/ca-portal/sales", icon: FileText },
-      { label: "Purchases & Suppliers", path: "/ca-portal/purchases", icon: ShoppingBag },
-      { label: "Bank Reconciliation", path: "/ca-portal/reconciliation", icon: Scale },
-      { label: "GST & Tax Review", path: "/ca-portal/gst", icon: Percent },
-      { label: "Inventory & Stock", path: "/ca-portal/inventory", icon: Boxes },
-    ],
-  },
-  {
-    title: "C. Work Management",
-    key: "ca_work",
-    items: [
-      { label: "Tasks & Reviews", path: "/ca-portal/tasks", icon: CheckSquare },
-      { label: "Discrepancies", path: "/ca-portal/discrepancies", icon: Flag },
-      { label: "Documents Center", path: "/ca-portal/documents", icon: Paperclip },
-      { label: "Client Queries", path: "/ca-portal/queries", icon: MessageSquare },
-    ],
-  },
-  {
-    title: "D. Reporting & Compliance",
-    key: "ca_reporting",
-    items: [
-      { label: "Workpapers & Reports", path: "/ca-portal/reports", icon: FileSpreadsheet },
-      { label: "Period Closing", path: "/ca-portal/closing", icon: FileCheck },
-      { label: "Audit Trail", path: "/ca-portal/audit-trail", icon: History },
-    ],
-  },
-  {
-    title: "E. Administration",
-    key: "ca_admin",
-    items: [
-      { label: "Team & Permissions", path: "/ca-portal/team", icon: Users },
-      { label: "Workflow Automation", path: "/ca-portal/automation", icon: SlidersHorizontal },
-      { label: "Client Settings", path: "/ca-portal/settings", icon: Settings },
-    ],
+    title: "",
+    key: "ca_bottom",
+    items: caBottomNavItems,
   },
 ];
 
@@ -136,6 +116,7 @@ const navSections = [
     key: "sales",
     items: [
       { label: "New Bill / POS", path: "/billing", icon: FilePlus, highlight: true },
+      { label: "Quotations", path: "/quotations", icon: FileSpreadsheet },
       { label: "Sales Invoices", path: "/invoices", icon: FileText },
       { label: "Delivery Challans", path: "/sales/challans", icon: FileCheck },
       { label: "Sales Returns", path: "/sales/returns", icon: RotateCcw },
@@ -202,6 +183,7 @@ export default function Layout({ children }) {
   const [mobileDrawer, setMobileDrawer] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState({});
   const [userDropdown, setUserDropdown] = useState(false);
+  const [showShortcutsModal, setShowShortcutsModal] = useState(false);
   const { user, logout } = useAuth();
   const { adminRevealed, toggleAdminReveal } = useSecurityStore();
   const { hasPermission, isOwner, isSuperAdmin } = usePermissions();
@@ -231,6 +213,17 @@ export default function Layout({ children }) {
     }
     return displayName.slice(0, 2).toUpperCase();
   }, [displayName]);
+
+  // Subscription plan check: user bought Premium version
+  const isPremium = useMemo(() => {
+    if (user?.isOwner || user?.role === "ADMIN" || user?.role === "SUPER_ADMIN") return true;
+    if (user?.subscription?.planTier && String(user.subscription.planTier).toUpperCase() === "PREMIUM") return true;
+    try {
+      const sub = JSON.parse(localStorage.getItem("bilzet_subscription_data") || "{}");
+      if (String(sub.planTier || sub.currentPlan || "").toUpperCase() === "PREMIUM") return true;
+    } catch (_) {}
+    return true;
+  }, [user]);
 
   // Theme Toggle State
   const [isDark, setIsDark] = useState(() => {
@@ -378,6 +371,15 @@ export default function Layout({ children }) {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
         searchInputRef.current?.focus();
+      } else if ((e.ctrlKey || e.metaKey) && e.key === "/") {
+        e.preventDefault();
+        setShowShortcutsModal((prev) => !prev);
+      } else if (
+        e.key === "?" &&
+        !["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName)
+      ) {
+        e.preventDefault();
+        setShowShortcutsModal((prev) => !prev);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -414,6 +416,65 @@ export default function Layout({ children }) {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
+  const isCA = user?.role === "CA" || location.pathname.startsWith("/ca-portal");
+
+  const isCaItemActive = useCallback((path) => {
+    const p = location.pathname;
+
+    if (path === "/ca-portal/dashboard") {
+      return p === "/ca-portal" || p === "/ca-portal/dashboard" || p === "/ca-portal/deadlines";
+    }
+    if (path === "/ca-portal/clients") {
+      return p === "/ca-portal/clients" || p === "/ca-portal/queries";
+    }
+    if (path === "/ca-portal/gst") {
+      return (
+        p === "/ca-portal/gst" ||
+        p === "/ca-portal/sales" ||
+        p === "/ca-portal/invoices" ||
+        p === "/ca-portal/purchases" ||
+        p === "/ca-portal/reconciliation" ||
+        p === "/ca-portal/inventory" ||
+        p === "/ca-portal/payments" ||
+        p === "/ca-portal/expenses" ||
+        p === "/ca-portal/returns"
+      );
+    }
+    if (path === "/ca-portal/pipeline") {
+      return (
+        p === "/ca-portal/pipeline" ||
+        p === "/ca-portal/audit" ||
+        p === "/ca-portal/tasks" ||
+        p === "/ca-portal/discrepancies" ||
+        p === "/ca-portal/exceptions" ||
+        p === "/ca-portal/workpapers" ||
+        p === "/ca-portal/reports" ||
+        p === "/ca-portal/closing" ||
+        p === "/ca-portal/activity" ||
+        p === "/ca-portal/audit-trail"
+      );
+    }
+    if (path === "/ca-portal/documents") {
+      return p === "/ca-portal/documents";
+    }
+    if (path === "/ca-portal/referral") {
+      return (
+        p === "/ca-portal/referral" ||
+        p === "/ca-portal/referrals" ||
+        p === "/ca-portal/refer-earn" ||
+        p === "/referral"
+      );
+    }
+    if (path === "/ca-portal/settings") {
+      return (
+        p === "/ca-portal/settings" ||
+        p === "/ca-portal/team" ||
+        p === "/ca-portal/automation"
+      );
+    }
+    return p === path;
+  }, [location.pathname]);
+
   const displayedNavSections = useMemo(() => {
     const permMap = {
       "/reports": ["reports.view", "reports.sales"],
@@ -447,7 +508,6 @@ export default function Layout({ children }) {
       "/audit-logs": ["audit_logs.view"],
     };
 
-    const isCA = user?.role === "CA" || location.pathname.startsWith("/ca-portal");
     if (isCA) {
       return caNavSections;
     }
@@ -592,15 +652,24 @@ export default function Layout({ children }) {
             )}
           </div>
         ) : (
-          <div className="px-2 pt-3 pb-2 shrink-0 flex justify-center">
-            {user?.role === "CA" || location.pathname.startsWith("/ca-portal") ? (
-              <NavLink
-                to="/ca-portal/dashboard"
-                title="CA Audit Suite"
-                className="w-10 h-10 rounded-lg flex items-center justify-center text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-xs"
-              >
-                <ShieldCheck size={18} />
-              </NavLink>
+          <div className="px-2 pt-3 pb-2 shrink-0 flex flex-col items-center gap-1.5">
+            {isCA ? (
+              <>
+                <NavLink
+                  to="/ca-portal/dashboard"
+                  title="CA Audit Suite"
+                  className="w-10 h-10 rounded-lg flex items-center justify-center text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-xs"
+                >
+                  <ShieldCheck size={18} />
+                </NavLink>
+                <NavLink
+                  to="/dashboard"
+                  title="Exit to Shop Dashboard"
+                  className="w-10 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 transition-colors"
+                >
+                  <ArrowRightLeft size={14} className="text-cyan-300" />
+                </NavLink>
+              </>
             ) : (
               <NavLink
                 to="/billing"
@@ -614,74 +683,138 @@ export default function Layout({ children }) {
         )}
 
         {/* Navigation list */}
-        <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-2.5 scrollbar-thin scrollbar-thumb-white/10 hover:scrollbar-thumb-white/20">
-          {displayedNavSections.map((section, sIdx) => {
-            const isSectionCollapsed = !!collapsedSections[section.key];
+        {isCA ? (
+          <div className="flex-1 flex flex-col justify-between overflow-y-auto px-3 py-2 scrollbar-thin scrollbar-thumb-white/10 hover:scrollbar-thumb-white/20">
+            {/* Main navigation (1. CA Dashboard, 2. Clients, 3. GST & Tax, 4. Audit & Workpapers, 5. Documents) */}
+            <nav className="space-y-1">
+              {caMainNavItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = isCaItemActive(item.path);
 
-            return (
-              <div key={section.key || section.title || sIdx} className="space-y-0.5">
-                {sidebarOpen ? (
-                  <button
-                    onClick={() => toggleSection(section.key)}
-                    className="w-full flex items-center justify-between px-2.5 pt-2.5 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400/80 hover:text-slate-200 transition cursor-pointer"
+                return (
+                  <NavLink
+                    key={item.path}
+                    to={item.path}
+                    title={!sidebarOpen ? item.label : undefined}
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-colors relative group ${
+                      isActive
+                        ? "bg-blue-600 text-white font-semibold shadow-xs"
+                        : "text-slate-300 hover:text-white hover:bg-white/[0.06]"
+                    } ${!sidebarOpen ? "justify-center px-0 py-2.5" : ""}`}
                   >
-                    <span className="truncate">{section.title}</span>
-                    <ChevronDown
-                      size={12}
-                      className={`text-slate-500 transition-transform duration-200 ${
-                        isSectionCollapsed ? "-rotate-90" : ""
+                    <Icon
+                      size={16}
+                      className={`shrink-0 transition-transform duration-150 group-hover:scale-105 ${
+                        isActive ? "text-white" : "text-slate-400 group-hover:text-slate-200"
                       }`}
+                      strokeWidth={isActive ? 2.2 : 1.8}
                     />
-                  </button>
-                ) : (
-                  sIdx > 0 && <div className="mx-2 my-2 border-t border-white/[0.08]" />
-                )}
+                    {sidebarOpen && <span className="truncate">{item.label}</span>}
+                  </NavLink>
+                );
+              })}
+            </nav>
 
-                {(!isSectionCollapsed || !sidebarOpen) && (
-                  <div className="space-y-0.5">
-                    {section.items.map((item) => {
-                      const Icon = item.icon;
-                      const isActive =
-                        location.pathname === item.path ||
-                        (item.path === "/ca-portal/dashboard" && location.pathname === "/ca-portal") ||
-                        (item.path === "/ca-portal/sales" && (location.pathname === "/ca-portal/invoices" || location.pathname === "/ca-portal/sales")) ||
-                        (item.path === "/ca-portal/reports" && (location.pathname === "/ca-portal/workpapers" || location.pathname === "/ca-portal/reports")) ||
-                        (item.path === "/staff/attendance" && location.pathname === "/attendance") ||
-                        (item.path !== "/" &&
-                          !["/staff", "/staff/attendance", "/staff/payroll", "/ca-portal"].includes(item.path) &&
-                          location.pathname.startsWith(`${item.path}/`));
+            {/* Bottom navigation (6. Refer & Earn, 7. Settings) */}
+            <div className="pt-3 border-t border-white/[0.08] mt-auto space-y-1 shrink-0">
+              {caBottomNavItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = isCaItemActive(item.path);
 
-                      return (
-                        <NavLink
-                          key={item.path}
-                          to={item.path}
-                          title={!sidebarOpen ? item.label : undefined}
-                          className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-colors relative group ${
-                            isActive
-                              ? "bg-blue-600 text-white font-semibold shadow-xs"
-                              : "text-slate-300 hover:text-white hover:bg-white/[0.06]"
-                          } ${!sidebarOpen ? "justify-center px-0 py-2.5" : ""}`}
-                        >
-                          <Icon
-                            size={16}
-                            className={`shrink-0 transition-transform duration-150 group-hover:scale-105 ${
-                              isActive ? "text-white" : "text-slate-400 group-hover:text-slate-200"
-                            }`}
-                            strokeWidth={isActive ? 2.2 : 1.8}
-                          />
-                          {sidebarOpen && <span className="truncate">{item.label}</span>}
-                        </NavLink>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </nav>
+                return (
+                  <NavLink
+                    key={item.path}
+                    to={item.path}
+                    title={!sidebarOpen ? item.label : undefined}
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-colors relative group ${
+                      isActive
+                        ? "bg-blue-600 text-white font-semibold shadow-xs"
+                        : "text-slate-300 hover:text-white hover:bg-white/[0.06]"
+                    } ${!sidebarOpen ? "justify-center px-0 py-2.5" : ""}`}
+                  >
+                    <Icon
+                      size={16}
+                      className={`shrink-0 transition-transform duration-150 group-hover:scale-105 ${
+                        isActive ? "text-white" : "text-slate-400 group-hover:text-slate-200"
+                      }`}
+                      strokeWidth={isActive ? 2.2 : 1.8}
+                    />
+                    {sidebarOpen && <span className="truncate">{item.label}</span>}
+                  </NavLink>
+                );
+              })}
+            </div>
+          </div>
+        ) : (
+          <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-2.5 scrollbar-thin scrollbar-thumb-white/10 hover:scrollbar-thumb-white/20">
+            {displayedNavSections.map((section, sIdx) => {
+              const isSectionCollapsed = !!collapsedSections[section.key];
 
-        {/* Admin Console & Vault — Only Bottom Item */}
-        {isAuthorizedAdmin && (
+              return (
+                <div key={section.key || section.title || sIdx} className="space-y-0.5">
+                  {sidebarOpen ? (
+                    <button
+                      onClick={() => toggleSection(section.key)}
+                      className="w-full flex items-center justify-between px-2.5 pt-2.5 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400/80 hover:text-slate-200 transition cursor-pointer"
+                    >
+                      <span className="truncate">{section.title}</span>
+                      <ChevronDown
+                        size={12}
+                        className={`text-slate-500 transition-transform duration-200 ${
+                          isSectionCollapsed ? "-rotate-90" : ""
+                        }`}
+                      />
+                    </button>
+                  ) : (
+                    sIdx > 0 && <div className="mx-2 my-2 border-t border-white/[0.08]" />
+                  )}
+
+                  {(!isSectionCollapsed || !sidebarOpen) && (
+                    <div className="space-y-0.5">
+                      {section.items.map((item) => {
+                        const Icon = item.icon;
+                        const isActive =
+                          location.pathname === item.path ||
+                          (item.path === "/ca-portal/dashboard" && location.pathname === "/ca-portal") ||
+                          (item.path === "/ca-portal/sales" && (location.pathname === "/ca-portal/invoices" || location.pathname === "/ca-portal/sales")) ||
+                          (item.path === "/ca-portal/reports" && (location.pathname === "/ca-portal/workpapers" || location.pathname === "/ca-portal/reports")) ||
+                          (item.path === "/staff/attendance" && location.pathname === "/attendance") ||
+                          (item.path !== "/" &&
+                            !["/staff", "/staff/attendance", "/staff/payroll", "/ca-portal"].includes(item.path) &&
+                            location.pathname.startsWith(`${item.path}/`));
+
+                        return (
+                          <NavLink
+                            key={item.path}
+                            to={item.path}
+                            title={!sidebarOpen ? item.label : undefined}
+                            className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-colors relative group ${
+                              isActive
+                                ? "bg-blue-600 text-white font-semibold shadow-xs"
+                                : "text-slate-300 hover:text-white hover:bg-white/[0.06]"
+                            } ${!sidebarOpen ? "justify-center px-0 py-2.5" : ""}`}
+                          >
+                            <Icon
+                              size={16}
+                              className={`shrink-0 transition-transform duration-150 group-hover:scale-105 ${
+                                isActive ? "text-white" : "text-slate-400 group-hover:text-slate-200"
+                              }`}
+                              strokeWidth={isActive ? 2.2 : 1.8}
+                            />
+                            {sidebarOpen && <span className="truncate">{item.label}</span>}
+                          </NavLink>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </nav>
+        )}
+
+        {/* Admin Console & Vault — Only Bottom Item for non-CA */}
+        {isAuthorizedAdmin && !isCA && (
           <div className="p-3 border-t border-white/[0.08] bg-[#0A1628] shrink-0">
             {sidebarOpen ? (
               <NavLink
@@ -743,39 +876,84 @@ export default function Layout({ children }) {
             </div>
 
             <div className="pt-3 pb-2 shrink-0">
-              <NavLink
-                to="/billing"
-                onClick={() => setMobileDrawer(false)}
-                className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg font-semibold text-xs text-white bg-blue-600 hover:bg-blue-700 shadow-xs transition"
-              >
-                <div className="flex items-center gap-2">
-                  <Plus size={16} />
-                  <span>New Bill</span>
+              {isCA ? (
+                <div className="space-y-1.5">
+                  <div className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg font-semibold text-xs text-white bg-blue-600 shadow-xs">
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck size={16} className="text-white shrink-0" />
+                      <span>CA Audit Suite</span>
+                    </div>
+                    <span className="px-1.5 py-0.5 rounded bg-white/20 text-[10px] font-mono tracking-tight text-white/90">
+                      AUDIT
+                    </span>
+                  </div>
+                  <NavLink
+                    to="/dashboard"
+                    onClick={() => setMobileDrawer(false)}
+                    className="w-full flex items-center justify-center gap-1.5 py-1.5 px-2 text-[11px] font-medium text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition"
+                  >
+                    <ArrowRightLeft size={12} className="text-cyan-300" />
+                    <span>Exit to Shop Dashboard</span>
+                  </NavLink>
                 </div>
-                <span className="px-1.5 py-0.5 rounded bg-white/20 text-[10px] font-mono tracking-wide text-white/90">
-                  F2
-                </span>
-              </NavLink>
+              ) : (
+                <NavLink
+                  to="/billing"
+                  onClick={() => setMobileDrawer(false)}
+                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg font-semibold text-xs text-white bg-blue-600 hover:bg-blue-700 shadow-xs transition"
+                >
+                  <div className="flex items-center gap-2">
+                    <Plus size={16} />
+                    <span>New Bill</span>
+                  </div>
+                  <span className="px-1.5 py-0.5 rounded bg-white/20 text-[10px] font-mono tracking-wide text-white/90">
+                    F2
+                  </span>
+                </NavLink>
+              )}
             </div>
 
-            <nav className="flex-1 overflow-y-auto py-2 space-y-2.5">
-              {displayedNavSections.map((section) => (
-                <div key={section.title} className="space-y-0.5">
-                  <div className="px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400/80">
-                    {section.title}
-                  </div>
-                  {section.items.map((item) => {
+            {/* Mobile Navigation List */}
+            {isCA ? (
+              <div className="flex-1 flex flex-col justify-between py-2">
+                <nav className="space-y-1">
+                  {caMainNavItems.map((item) => {
                     const Icon = item.icon;
-                    const isActive =
-                      location.pathname === item.path ||
-                      (item.path === "/staff/attendance" && location.pathname === "/attendance");
+                    const isActive = isCaItemActive(item.path);
 
                     return (
                       <NavLink
                         key={item.path}
                         to={item.path}
                         onClick={() => setMobileDrawer(false)}
-                        className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition ${
+                          isActive
+                            ? "bg-blue-600 text-white font-semibold shadow-xs"
+                            : "text-slate-300 hover:text-white hover:bg-white/[0.06]"
+                        }`}
+                      >
+                        <Icon
+                          size={16}
+                          className={isActive ? "text-white" : "text-slate-400"}
+                          strokeWidth={isActive ? 2.2 : 1.8}
+                        />
+                        <span>{item.label}</span>
+                      </NavLink>
+                    );
+                  })}
+                </nav>
+
+                <div className="pt-3 border-t border-white/[0.08] mt-auto space-y-1">
+                  {caBottomNavItems.map((item) => {
+                    const Icon = item.icon;
+                    const isActive = isCaItemActive(item.path);
+
+                    return (
+                      <NavLink
+                        key={item.path}
+                        to={item.path}
+                        onClick={() => setMobileDrawer(false)}
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition ${
                           isActive
                             ? "bg-blue-600 text-white font-semibold shadow-xs"
                             : "text-slate-300 hover:text-white hover:bg-white/[0.06]"
@@ -791,8 +969,44 @@ export default function Layout({ children }) {
                     );
                   })}
                 </div>
-              ))}
-            </nav>
+              </div>
+            ) : (
+              <nav className="flex-1 overflow-y-auto py-2 space-y-2.5">
+                {displayedNavSections.map((section) => (
+                  <div key={section.title} className="space-y-0.5">
+                    <div className="px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400/80">
+                      {section.title}
+                    </div>
+                    {section.items.map((item) => {
+                      const Icon = item.icon;
+                      const isActive =
+                        location.pathname === item.path ||
+                        (item.path === "/staff/attendance" && location.pathname === "/attendance");
+
+                      return (
+                        <NavLink
+                          key={item.path}
+                          to={item.path}
+                          onClick={() => setMobileDrawer(false)}
+                          className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
+                            isActive
+                              ? "bg-blue-600 text-white font-semibold shadow-xs"
+                              : "text-slate-300 hover:text-white hover:bg-white/[0.06]"
+                          }`}
+                        >
+                          <Icon
+                            size={16}
+                            className={isActive ? "text-white" : "text-slate-400"}
+                            strokeWidth={isActive ? 2.2 : 1.8}
+                          />
+                          <span>{item.label}</span>
+                        </NavLink>
+                      );
+                    })}
+                  </div>
+                ))}
+              </nav>
+            )}
 
             {/* User Profile Summary & Actions at bottom of Mobile Drawer */}
             <div className="pt-3 border-t border-white/[0.08] shrink-0 space-y-2">
@@ -806,7 +1020,7 @@ export default function Layout({ children }) {
                 </div>
               </div>
 
-              {isAuthorizedAdmin && (
+              {isAuthorizedAdmin && !isCA && (
                 <NavLink
                   to="/admin"
                   onClick={() => setMobileDrawer(false)}
@@ -1058,96 +1272,38 @@ export default function Layout({ children }) {
               </button>
             )}
 
-            {/* Notifications: Simple bell icon button */}
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setShowNotifications(!showNotifications)}
-                className="relative p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition cursor-pointer"
-                title="Notifications & Activity"
+            {/* Notifications & Persistent Invitations Center */}
+            <NotificationBell />
+
+            {/* Keyboard Shortcuts Guide Trigger */}
+            <button
+              type="button"
+              onClick={() => setShowShortcutsModal(true)}
+              className="p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition cursor-pointer relative"
+              title="Keyboard Shortcuts (Ctrl + / or ?)"
+              aria-label="Keyboard Shortcuts"
+            >
+              <Keyboard size={18} />
+            </button>
+
+
+            {/* Direct Premium Upgrade Action in Header */}
+            {!isPremium ? (
+              <NavLink
+                to="/plans?tier=PREMIUM&redirect=/dashboard"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-bold transition shadow-xs hover:shadow active:scale-98 shrink-0"
+                title="Upgrade to Premium"
               >
-                <Bell size={18} />
-                {unreadCount > 0 && (
-                  <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white" />
-                )}
-              </button>
-
-              {showNotifications && (
-                <>
-                  <div
-                    className="fixed inset-0 z-40"
-                    onClick={() => setShowNotifications(false)}
-                  />
-                  <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl p-4 shadow-2xl border border-slate-200 z-50 animate-in fade-in zoom-in-95">
-                    <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                      <div className="flex items-center gap-2">
-                        <Bell size={15} className="text-blue-600" />
-                        <h4 className="text-xs font-bold text-slate-800">Live Activity Feed</h4>
-                        {unreadCount > 0 && (
-                          <span className="px-1.5 py-0.5 text-[10px] font-bold bg-rose-50 text-rose-600 rounded-full border border-rose-200">
-                            {unreadCount} new
-                          </span>
-                        )}
-                      </div>
-                      {unreadCount > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => setUnreadCount(0)}
-                          className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 hover:underline"
-                        >
-                          Mark all as read
-                        </button>
-                      )}
-                    </div>
-
-                    <div className="divide-y divide-slate-100 max-h-72 overflow-y-auto my-2">
-                      {notifications.length === 0 ? (
-                        <div className="py-8 text-center text-xs text-slate-400">
-                          <CheckCircle2 size={24} className="mx-auto text-emerald-500 mb-1.5 opacity-80" />
-                          <p className="font-semibold text-slate-700">All systems normal</p>
-                          <p className="text-[11px] text-slate-400 mt-0.5">No pending stock alerts or warnings</p>
-                        </div>
-                      ) : (
-                        notifications.map((n) => (
-                          <div
-                            key={n.id}
-                            onClick={() => {
-                              setShowNotifications(false);
-                              if (n.link) nav(n.link);
-                            }}
-                            className="py-2.5 px-2 rounded-xl hover:bg-slate-50 cursor-pointer transition flex items-start gap-2.5"
-                          >
-                            <div className="mt-0.5">
-                              {n.type === "warning" ? (
-                                <AlertTriangle size={15} className="text-amber-500" />
-                              ) : n.type === "success" ? (
-                                <CheckCircle2 size={15} className="text-emerald-500" />
-                              ) : (
-                                <Sparkles size={15} className="text-blue-500" />
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-semibold text-slate-800">{n.title}</p>
-                              <p className="text-[11px] text-slate-500 leading-snug">{n.desc}</p>
-                              <span className="text-[10px] text-slate-400 mt-1 block">{n.time}</span>
-                            </div>
-                            <ArrowUpRight size={13} className="text-slate-400 shrink-0 mt-1" />
-                          </div>
-                        ))
-                      )}
-                    </div>
-
-                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-                      <span>Sync Engine: Active</span>
-                      <span className="text-emerald-600 font-semibold flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                        All systems operational
-                      </span>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
+                <Crown size={14} className="text-amber-100" />
+                <span className="hidden sm:inline">Get Premium</span>
+                <span className="sm:hidden">Premium</span>
+              </NavLink>
+            ) : (
+              <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200 shrink-0">
+                <Crown size={12} className="text-amber-600" />
+                <span>Premium</span>
+              </span>
+            )}
 
             {/* Primary Action: Solid blue "New Bill" button with plus icon */}
             <NavLink
@@ -1327,7 +1483,7 @@ export default function Layout({ children }) {
         </header>
 
         {/* ── Main Content Canvas with Independent Vertical Scroll ── */}
-        <main key={storeRevision} className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8 bg-[#F7FAFF]">
+        <main key={storeRevision} className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8 bg-[#F8FAFC]">
           <div className="max-w-[1600px] w-full mx-auto pb-8">
             {children}
           </div>
@@ -1342,6 +1498,12 @@ export default function Layout({ children }) {
           </div>
         </footer>
       </div>
+
+      {/* Global Keyboard Navigation & Shortcuts Cheatsheet */}
+      <KeyboardShortcutsModal
+        isOpen={showShortcutsModal}
+        onClose={() => setShowShortcutsModal(false)}
+      />
     </div>
   );
 }

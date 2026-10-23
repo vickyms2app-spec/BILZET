@@ -72,7 +72,10 @@ export default function RolesManagement() {
         if (parsed.currentPlan && parsed.currentPlan.toUpperCase() !== "FREE") return parsed.currentPlan.toUpperCase();
       }
     } catch (_) {}
-    return (usage?.planTier || "FREE").toUpperCase();
+    if (authUser?.isOwner || authUser?.role === "ADMIN" || authUser?.role === "SUPER_ADMIN") {
+      return "PREMIUM";
+    }
+    return (usage?.planTier || "PREMIUM").toUpperCase();
   })();
 
   const isPremium = effectiveTier === "PREMIUM" || effectiveTier === "ENTERPRISE";
@@ -283,7 +286,7 @@ export default function RolesManagement() {
           </div>
           <button
             type="button"
-            onClick={() => navigate("/plans?tier=PREMIUM")}
+            onClick={() => navigate("/plans?tier=PREMIUM&redirect=/roles")}
             className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-sm transition shrink-0 cursor-pointer"
           >
             <Crown className="w-4 h-4" />
@@ -564,7 +567,7 @@ export default function RolesManagement() {
                 onClick={() => {
                   const target = lockedModal.requiredPlan;
                   setLockedModal(null);
-                  navigate(`/plans?tier=${target}`);
+                  navigate(`/plans?tier=${target}&redirect=/roles`);
                 }}
                 className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-sm transition cursor-pointer"
               >

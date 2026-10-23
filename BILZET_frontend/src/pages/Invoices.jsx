@@ -30,6 +30,29 @@ import SearchBar from "../components/common/SearchBar";
 import Button, { CompactIconButton } from "../components/common/Button";
 import useRealtimeSync from "../hooks/useRealtimeSync";
 
+// Predefined palette of soft, professional colors for deterministic avatar assignment
+const AVATAR_PALETTES = [
+  { bg: "#EBF5FF", text: "#007AFF", border: "#D0E2FF" }, // Blue
+  { bg: "#F3E8FF", text: "#7C3AED", border: "#E9D5FF" }, // Purple
+  { bg: "#E6FFFA", text: "#0D9488", border: "#B2F5EA" }, // Teal
+  { bg: "#EDF8F0", text: "#248A3D", border: "#CCE8D4" }, // Green
+  { bg: "#FFF4E5", text: "#C25E00", border: "#FFE2B8" }, // Orange
+  { bg: "#FDF2F8", text: "#DB2777", border: "#FCE7F3" }, // Pink
+  { bg: "#EEF2FF", text: "#4F46E5", border: "#E0E7FF" }, // Indigo
+  { bg: "#FFF1F2", text: "#E11D48", border: "#FECDD3" }, // Rose
+];
+
+const getAvatarPalette = (idOrName) => {
+  const str = String(idOrName || "customer");
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0;
+  }
+  const index = Math.abs(hash) % AVATAR_PALETTES.length;
+  return AVATAR_PALETTES[index];
+};
+
 export default function Invoices() {
   const nav = useNavigate();
   const [search, setSearch] = useState("");
@@ -66,13 +89,14 @@ export default function Invoices() {
     const local = localStorage.getItem("bilzet_invoice_settings");
     if (local) {
       try {
-        setShopSettings(JSON.parse(local));
+        const raw = JSON.parse(local);
+        setShopSettings(raw?.settings ? { ...raw, ...raw.settings } : raw);
       } catch (e) {}
     } else {
       settingsApi
         .get()
         .then((res) => {
-          if (res) setShopSettings(res);
+          if (res) setShopSettings(res?.settings || res);
         })
         .catch(() => {});
     }
@@ -344,7 +368,12 @@ export default function Invoices() {
                   </td>
                 </tr>
               ) : (
-                filteredInvoices.map((inv) => {
+                filteredInvoices.map((inv, idx) => {
+                  const custName = inv.customer?.name || "Cash Customer";
+                  const initial = custName.trim().charAt(0).toUpperCase();
+                  const palette = getAvatarPalette(
+                    inv.customer?.id || inv.customer?._id || inv.invoiceNumber || `${custName}-${idx}`
+                  );
                   const rawPS = (inv.paymentStatus || (inv.paidAmount >= inv.grandTotal ? "PAID" : "UNPAID")).toUpperCase();
                   const isPaid = rawPS === "PAID" || rawPS === "COMPLETED";
                   const isPartial = rawPS === "PARTIALLY_PAID" || rawPS === "PARTIALLY PAID" || rawPS === "PARTIAL";
@@ -367,10 +396,24 @@ export default function Invoices() {
                       </td>
 
                       <td className="py-3.5 px-4">
-                        <p className="font-semibold text-slate-800">{inv.customer?.name || "Cash Customer"}</p>
-                        {inv.customer?.phone && (
-                          <p className="text-[10px] text-slate-400 font-mono mt-0.5">{inv.customer.phone}</p>
-                        )}
+                        <div className="flex items-center gap-2.5">
+                          <div
+                            style={{
+                              backgroundColor: palette.bg,
+                              color: palette.text,
+                              borderColor: palette.border,
+                            }}
+                            className="w-7 h-7 rounded-full border font-semibold text-xs flex items-center justify-center shrink-0 select-none"
+                          >
+                            {initial}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-slate-800 leading-tight">{custName}</p>
+                            {inv.customer?.phone && (
+                              <p className="text-[10px] text-slate-400 font-mono mt-0.5">{inv.customer.phone}</p>
+                            )}
+                          </div>
+                        </div>
                       </td>
 
                       <td className="py-3.5 px-4 text-slate-600">

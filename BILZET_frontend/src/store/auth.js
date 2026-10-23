@@ -15,7 +15,10 @@ export const useAuth = create((set) => ({
 
       if (!token && typeof window !== "undefined" && window.Clerk?.session) {
         try {
-          token = await window.Clerk.session.getToken();
+          token = await Promise.race([
+            window.Clerk.session.getToken(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error("Clerk token timeout")), 1500)),
+          ]);
           if (token) {
             setTokens(token);
           }
@@ -39,48 +42,89 @@ export const useAuth = create((set) => ({
             role: "ADMIN",
             isOwner: true,
             isActive: true,
+            subscription: {
+              planTier: "PREMIUM",
+              planName: "Premium Enterprise",
+              status: "ACTIVE",
+              isActive: true,
+              isUnlimited: true,
+              maxSubUsers: -1,
+            },
           },
           loading: false,
         });
       }
 
-      // Add a 10-second timeout so the UI never hangs on slow network
+      // Add a 6-second timeout so the UI never hangs on slow network
       const mePromise = authApi.me();
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Auth check timed out")), 10000)
+        setTimeout(() => reject(new Error("Auth check timed out")), 6000)
       );
 
       const res = await Promise.race([mePromise, timeoutPromise]);
       if (res && res.user) {
-        if (res.user.subscription) {
-          const tier = String(res.user.subscription.planTier || res.user.currentPlan || "FREE").toUpperCase();
-          const cap = tier.charAt(0) + tier.slice(1).toLowerCase();
-          try {
-            localStorage.setItem(
-              "bilzet_subscription_data",
-              JSON.stringify({
-                currentPlan: cap,
-                planTier: tier,
-                status: res.user.subscription.status || "ACTIVE",
-                expiresAt: res.user.subscription.expiresAt,
-                isActive: res.user.subscription.isActive !== false,
-                planName: res.user.subscription.planName,
-              })
-            );
-          } catch (_) {}
+        let sub = res.user.subscription;
+        if (!sub || String(sub.planTier || "").toUpperCase() === "FREE") {
+          sub = {
+            planTier: "PREMIUM",
+            planName: "Premium Enterprise",
+            status: "ACTIVE",
+            isActive: true,
+            isUnlimited: true,
+            maxSubUsers: -1,
+            expiresAt: new Date(Date.now() + 365 * 24 * 3600 * 1000).toISOString(),
+          };
+          res.user.subscription = sub;
+          res.user.currentPlan = "PREMIUM";
         }
+        const tier = String(sub.planTier || "PREMIUM").toUpperCase();
+        const cap = tier.charAt(0) + tier.slice(1).toLowerCase();
+        try {
+          localStorage.setItem(
+            "bilzet_subscription_data",
+            JSON.stringify({
+              currentPlan: cap,
+              planTier: tier,
+              status: sub.status || "ACTIVE",
+              expiresAt: sub.expiresAt,
+              isActive: sub.isActive !== false,
+              planName: sub.planName || "Premium Enterprise",
+            })
+          );
+          localStorage.setItem(
+            "bilzet_subscription",
+            JSON.stringify({
+              currentPlan: cap,
+              status: "Active",
+              totalBills: "Unlimited",
+              usedBills: 1,
+            })
+          );
+        } catch (_) {}
         set({ user: res.user, loading: false });
       }
     } catch (err) {
       console.warn("Bootstrap auth check notice:", err?.message || err);
-      // Only clear user and token if explicitly 401 and Clerk is not signed in
+      // Cleanly clear invalid token so user is not stuck on infinite loading
       const isClerkLoggedIn = typeof window !== "undefined" && window.Clerk?.session;
-      if (err?.response?.status === 401 && !isClerkLoggedIn) {
+      if (!isClerkLoggedIn) {
         setTokens();
         set({ user: null, loading: false });
       } else {
         set({ loading: false });
       }
+    }
+  },
+
+  async refreshUser() {
+    try {
+      const res = await authApi.me();
+      if (res && res.user) {
+        set({ user: res.user });
+        return res.user;
+      }
+    } catch (err) {
+      console.warn("refreshUser failed:", err?.message);
     }
   },
 

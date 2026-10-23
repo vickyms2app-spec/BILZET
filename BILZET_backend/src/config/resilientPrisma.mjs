@@ -96,57 +96,114 @@ const seedTransactions = (() => {
     { daysAgo: 0, sales: [12500, 9450, 6500], purchases: [8400] },
   ];
 
-  dailyPattern.forEach((dp, idx) => {
-    const d = new Date(now.getTime() - dp.daysAgo * 86400000);
-    dp.sales.forEach((amt, sIdx) => {
-      const isCredit = dp.daysAgo === 0 && sIdx === 2;
-      const paid = isCredit ? 0 : amt;
-      const saleId = `sale-${idx}-${sIdx}`;
-      sales.push({
-        id: saleId,
-        invoiceNumber: `INV-2026-0${idx * 10 + sIdx + 1}`,
-        businessId: 'busi-01',
-        customerId: isCredit ? 'cust-01' : sIdx % 2 === 0 ? 'cust-01' : 'cust-02',
-        subtotal: Math.round(amt / 1.18),
-        taxTotal: amt - Math.round(amt / 1.18),
-        grandTotal: amt,
-        paidAmount: paid,
-        paymentStatus: isCredit ? 'UNPAID' : 'PAID',
-        paymentMethod: isCredit ? 'CREDIT' : sIdx % 2 === 0 ? 'UPI' : 'CASH',
-        status: 'COMPLETED',
-        dueDate: isCredit ? new Date(now.getTime() + 7 * 86400000) : null,
+  const stores = ['busi-01', 'busi-02'];
+  stores.forEach((bizId) => {
+    dailyPattern.forEach((dp, idx) => {
+      const d = new Date(now.getTime() - dp.daysAgo * 86400000);
+      dp.sales.forEach((amt, sIdx) => {
+        const isCredit = dp.daysAgo === 0 && sIdx === 2;
+        const paid = isCredit ? 0 : amt;
+        const saleId = `sale-${bizId}-${idx}-${sIdx}`;
+        sales.push({
+          id: saleId,
+          invoiceNumber: `INV-${bizId.toUpperCase()}-${idx * 10 + sIdx + 1}`,
+          businessId: bizId,
+          customerId: isCredit ? 'cust-01' : sIdx % 2 === 0 ? 'cust-01' : 'cust-02',
+          subtotal: Math.round(amt / 1.18),
+          taxTotal: amt - Math.round(amt / 1.18),
+          grandTotal: amt,
+          paidAmount: paid,
+          paymentStatus: isCredit ? 'UNPAID' : 'PAID',
+          paymentMethod: isCredit ? 'CREDIT' : sIdx % 2 === 0 ? 'UPI' : 'CASH',
+          status: 'COMPLETED',
+          dueDate: isCredit ? new Date(now.getTime() + 7 * 86400000) : null,
+          createdAt: d,
+          updatedAt: d,
+        });
+        saleItems.push({
+          id: `si-${bizId}-${idx}-${sIdx}`,
+          saleId,
+          productId: 'prod-01',
+          name: 'Basmati Rice Premium 5kg',
+          sku: 'PBR-5KG',
+          quantity: Math.max(1, Math.round(amt / 1500)),
+          price: 1500,
+          total: amt,
+        });
+        if (paid > 0) {
+          payments.push({
+            id: `pay-${bizId}-${idx}-${sIdx}`,
+            saleId,
+            customerId: sIdx % 2 === 0 ? 'cust-01' : 'cust-02',
+            amount: paid,
+            method: sIdx % 2 === 0 ? 'UPI' : 'CASH',
+            createdAt: d,
+          });
+        }
+      });
+
+      dp.purchases.forEach((pAmt, pIdx) => {
+        const purId = `pur-${bizId}-${idx}-${pIdx}`;
+        purchases.push({
+          id: purId,
+          invoiceNumber: `PUR-${bizId.toUpperCase()}-${idx * 10 + pIdx + 1}`,
+          supplierId: pIdx % 2 === 0 ? 'sup-01' : 'sup-02',
+          businessId: bizId,
+          subtotal: Math.round(pAmt / 1.12),
+          taxTotal: pAmt - Math.round(pAmt / 1.12),
+          grandTotal: pAmt,
+          paidAmount: pAmt,
+          paymentStatus: 'PAID',
+          createdAt: d,
+          updatedAt: d,
+        });
+        purchaseItems.push({
+          id: `pi-${bizId}-${idx}-${pIdx}`,
+          purchaseId: purId,
+          productId: 'prod-02',
+          quantity: 50,
+          price: 45,
+          total: pAmt,
+        });
+      });
+
+      expenses.push({
+        id: `exp-${bizId}-${idx}`,
+        businessId: bizId,
+        category: 'Store Utility & Operations',
+        amount: 1200,
+        date: d,
         createdAt: d,
         updatedAt: d,
       });
-      saleItems.push({
-        id: `si-${idx}-${sIdx}`,
-        saleId,
-        productId: 'prod-01',
-        name: 'Basmati Rice Premium 5kg',
-        sku: 'PBR-5KG',
-        quantity: Math.max(1, Math.round(amt / 1500)),
-        price: 1500,
-        total: amt,
-      });
-      if (paid > 0) {
-        payments.push({
-          id: `pay-${idx}-${sIdx}`,
-          saleId,
-          customerId: sIdx % 2 === 0 ? 'cust-01' : 'cust-02',
-          amount: paid,
-          method: sIdx % 2 === 0 ? 'UPI' : 'CASH',
-          createdAt: d,
-        });
-      }
     });
 
-    dp.purchases.forEach((pAmt, pIdx) => {
-      const purId = `pur-${idx}-${pIdx}`;
+    // Additional 3 weeks of earlier history for "This Month" and "This Year"
+    for (let w = 1; w <= 3; w++) {
+      const d = new Date(now.getTime() - (w * 7 + 3) * 86400000);
+      const sAmt = 26000 + w * 2500;
+      const pAmt = 11000 + w * 1200;
+      const sId = `sale-w-${bizId}-${w}`;
+      sales.push({
+        id: sId,
+        invoiceNumber: `INV-${bizId.toUpperCase()}-W0${w}`,
+        businessId: bizId,
+        customerId: 'cust-02',
+        subtotal: Math.round(sAmt / 1.18),
+        taxTotal: sAmt - Math.round(sAmt / 1.18),
+        grandTotal: sAmt,
+        paidAmount: sAmt,
+        paymentStatus: 'PAID',
+        paymentMethod: 'UPI',
+        status: 'COMPLETED',
+        createdAt: d,
+        updatedAt: d,
+      });
       purchases.push({
-        id: purId,
-        invoiceNumber: `PUR-2026-0${idx * 10 + pIdx + 1}`,
-        supplierId: pIdx % 2 === 0 ? 'sup-01' : 'sup-02',
-        businessId: 'busi-01',
+        id: `pur-w-${bizId}-${w}`,
+        invoiceNumber: `PUR-${bizId.toUpperCase()}-W0${w}`,
+        supplierId: 'sup-01',
+        businessId: bizId,
         subtotal: Math.round(pAmt / 1.12),
         taxTotal: pAmt - Math.round(pAmt / 1.12),
         grandTotal: pAmt,
@@ -155,62 +212,8 @@ const seedTransactions = (() => {
         createdAt: d,
         updatedAt: d,
       });
-      purchaseItems.push({
-        id: `pi-${idx}-${pIdx}`,
-        purchaseId: purId,
-        productId: 'prod-02',
-        quantity: 50,
-        price: 45,
-        total: pAmt,
-      });
-    });
-
-    expenses.push({
-      id: `exp-${idx}`,
-      businessId: 'busi-01',
-      category: 'Store Utility & Operations',
-      amount: 1200,
-      date: d,
-      createdAt: d,
-      updatedAt: d,
-    });
+    }
   });
-
-  // Additional 3 weeks of earlier history for "This Month" and "This Year"
-  for (let w = 1; w <= 3; w++) {
-    const d = new Date(now.getTime() - (w * 7 + 3) * 86400000);
-    const sAmt = 26000 + w * 2500;
-    const pAmt = 11000 + w * 1200;
-    const sId = `sale-w-${w}`;
-    sales.push({
-      id: sId,
-      invoiceNumber: `INV-2026-W0${w}`,
-      businessId: 'busi-01',
-      customerId: 'cust-02',
-      subtotal: Math.round(sAmt / 1.18),
-      taxTotal: sAmt - Math.round(sAmt / 1.18),
-      grandTotal: sAmt,
-      paidAmount: sAmt,
-      paymentStatus: 'PAID',
-      paymentMethod: 'UPI',
-      status: 'COMPLETED',
-      createdAt: d,
-      updatedAt: d,
-    });
-    purchases.push({
-      id: `pur-w-${w}`,
-      invoiceNumber: `PUR-2026-W0${w}`,
-      supplierId: 'sup-01',
-      businessId: 'busi-01',
-      subtotal: Math.round(pAmt / 1.12),
-      taxTotal: pAmt - Math.round(pAmt / 1.12),
-      grandTotal: pAmt,
-      paidAmount: pAmt,
-      paymentStatus: 'PAID',
-      createdAt: d,
-      updatedAt: d,
-    });
-  }
 
   return { sales, saleItems, payments, purchases, purchaseItems, expenses };
 })();
@@ -263,14 +266,14 @@ export const memoryStore = {
     {
       id: 'sub-01',
       userId: 'admin-01',
-      planTier: 'PRO',
-      planName: 'Pro Plan',
-      maxSubUsers: 5,
+      planTier: 'PREMIUM',
+      planName: 'Premium Enterprise',
+      maxSubUsers: -1,
       status: 'ACTIVE',
-      amount: 1999,
-      interval: 'MONTHLY',
+      amount: 3999,
+      interval: 'ANNUAL',
       startDate: new Date(),
-      endDate: new Date(Date.now() + 30 * 24 * 3600 * 1000),
+      endDate: new Date(Date.now() + 365 * 24 * 3600 * 1000),
       createdAt: new Date(),
       updatedAt: new Date(),
     },
@@ -310,9 +313,9 @@ export const memoryStore = {
     },
   ],
   category: [
-    { id: 'cat-01', businessId: 'busi-01', name: 'Electronics', description: 'Electronic appliances and accessories', isActive: true, createdAt: new Date() },
-    { id: 'cat-02', businessId: 'busi-01', name: 'Groceries', description: 'Daily household groceries', isActive: true, createdAt: new Date() },
-    { id: 'cat-03', businessId: 'busi-01', name: 'Stationery', description: 'Office and school stationery', isActive: true, createdAt: new Date() },
+    { id: 'cat-01', businessId: 'busi-01', name: 'Electronics', description: 'Electronic appliances and accessories', defaultGstRate: 18, isActive: true, createdAt: new Date() },
+    { id: 'cat-02', businessId: 'busi-01', name: 'Groceries', description: 'Daily household groceries', defaultGstRate: 5, isActive: true, createdAt: new Date() },
+    { id: 'cat-03', businessId: 'busi-01', name: 'Stationery', description: 'Office and school stationery', defaultGstRate: 12, isActive: true, createdAt: new Date() },
   ],
   product: [
     {
@@ -441,6 +444,83 @@ export const memoryStore = {
   payment: seedTransactions.payments,
   salesReturn: [],
   salesReturnItem: [],
+  quotation: [
+    {
+      id: 'quo-01',
+      quotationNumber: 'QUO-2026-0001',
+      businessId: 'busi-01',
+      customerId: 'cust-01',
+      customerName: 'Ramesh Hardware',
+      customerPhone: '9876543210',
+      status: 'ACCEPTED',
+      quotationDate: new Date(Date.now() - 3 * 86400000),
+      expiryDate: new Date(Date.now() + 12 * 86400000),
+      subtotal: 7497,
+      discountTotal: 0,
+      taxTotal: 1349.46,
+      grandTotal: 8846.46,
+      notes: 'Standard trade quote valid for 15 days.',
+      terms: 'Payment 100% on delivery. Delivery within 2 days of invoice confirmation.',
+      convertedToInvoiceId: 'sale-0-0',
+      convertedAt: new Date(Date.now() - 1 * 86400000),
+      createdAt: new Date(Date.now() - 3 * 86400000),
+      updatedAt: new Date(Date.now() - 1 * 86400000),
+    },
+    {
+      id: 'quo-02',
+      quotationNumber: 'QUO-2026-0002',
+      businessId: 'busi-01',
+      customerId: 'cust-02',
+      customerName: 'Priya Supermarket',
+      customerPhone: '9876543211',
+      status: 'SENT',
+      quotationDate: new Date(Date.now() - 1 * 86400000),
+      expiryDate: new Date(Date.now() + 14 * 86400000),
+      subtotal: 4250,
+      discountTotal: 250,
+      taxTotal: 480,
+      grandTotal: 4480,
+      notes: 'Wholesale order quotation. Ready for invoice conversion upon acceptance.',
+      terms: 'Subject to store terms and conditions.',
+      convertedToInvoiceId: null,
+      createdAt: new Date(Date.now() - 1 * 86400000),
+      updatedAt: new Date(Date.now() - 1 * 86400000),
+    },
+  ],
+  quotationItem: [
+    {
+      id: 'qi-01-1',
+      quotationId: 'quo-01',
+      productId: 'prod-01',
+      name: 'Wireless Barcode Scanner',
+      sku: 'WBS-2026',
+      unit: 'PIECE',
+      quantity: 3,
+      rate: 2499,
+      discount: 0,
+      gstRate: 18,
+      taxableAmount: 7497,
+      taxAmount: 1349.46,
+      total: 8846.46,
+      isTaxInclusive: false,
+    },
+    {
+      id: 'qi-02-1',
+      quotationId: 'quo-02',
+      productId: 'prod-02',
+      name: 'Thermal Billing Rolls (80mm x 50m)',
+      sku: 'TBR-8050',
+      unit: 'ROLL',
+      quantity: 50,
+      rate: 85,
+      discount: 250,
+      gstRate: 12,
+      taxableAmount: 4000,
+      taxAmount: 480,
+      total: 4480,
+      isTaxInclusive: false,
+    },
+  ],
   shopSettings: [
     {
       id: 'shop-01',
@@ -663,6 +743,258 @@ export const memoryStore = {
   auditDiscrepancy: [],
   auditDocument: [],
   periodClosing: [],
+  caException: [
+    {
+      id: 'exc-b2b-01',
+      businessId: 'busi-01',
+      category: 'GST_MISMATCH',
+      exceptionType: 'RATE_MISMATCH',
+      title: 'GST Rate Variance on B2B Invoice #INV-2026-B2B01',
+      description: 'HSN 8471 line items billed at 12% instead of statutory 18% GST slab. Variance of ₹1,440.00 between billed GST and schedule rate.',
+      referenceNumber: 'INV-2026-B2B01',
+      invoiceId: 'inv-b2b-01',
+      invoiceDate: new Date('2026-10-14T10:30:00Z'),
+      customerType: 'B2B',
+      customerName: 'Apex Enterprise Solutions Pvt Ltd',
+      customerGstin: '33AAACA1234A1Z5',
+      placeOfSupply: 'Tamil Nadu (33)',
+      amount: 26880,
+      gstAmount: 2880,
+      taxableAmount: 24000,
+      expectedGst: 4320,
+      differenceAmount: -1440,
+      cgst: 1440,
+      sgst: 1440,
+      igst: 0,
+      portalCgst: 2160,
+      portalSgst: 2160,
+      portalIgst: 0,
+      portalTaxable: 24000,
+      sezTaxTreatment: null,
+      status: 'OPEN',
+      severity: 'HIGH',
+      sourceType: 'SALES_INVOICE',
+      sourceId: 'inv-b2b-01',
+      reviewNotes: [],
+      history: [
+        {
+          timestamp: new Date('2026-10-14T10:35:00Z'),
+          action: 'EXCEPTION_DETECTED',
+          actor: 'System Audit Engine',
+          note: 'Variance detected between line rate 12% and master HSN 8471 rate 18%',
+        },
+      ],
+      documents: [
+        {
+          id: 'doc-01',
+          name: 'Invoice_INV-2026-B2B01.pdf',
+          fileUrl: '/uploads/invoices/INV-2026-B2B01.pdf',
+          type: 'INVOICE',
+        },
+      ],
+      createdAt: new Date('2026-10-14T10:35:00Z'),
+      updatedAt: new Date('2026-10-14T10:35:00Z'),
+    },
+    {
+      id: 'exc-b2c-02',
+      businessId: 'busi-01',
+      category: 'RETURNS_CREDIT_NOTE',
+      exceptionType: 'EXCESS_RETURN',
+      title: 'Excess Return Refund on Consumer Invoice #INV-2026-B2C04',
+      description: 'Refund credit note amount ₹4,800.00 exceeds original unreturned invoice balance of ₹3,600.00 for counter buyer.',
+      referenceNumber: 'INV-2026-B2C04',
+      invoiceId: 'inv-b2c-04',
+      invoiceDate: new Date('2026-10-15T14:15:00Z'),
+      customerType: 'B2C',
+      customerName: 'Walk-in Retail Consumer',
+      customerGstin: null,
+      placeOfSupply: 'Tamil Nadu (33)',
+      amount: 4800,
+      gstAmount: 732.2,
+      taxableAmount: 4067.8,
+      expectedGst: 549.15,
+      differenceAmount: 183.05,
+      cgst: 366.1,
+      sgst: 366.1,
+      igst: 0,
+      portalCgst: 274.58,
+      portalSgst: 274.58,
+      portalIgst: 0,
+      portalTaxable: 3050.85,
+      sezTaxTreatment: null,
+      status: 'IN_REVIEW',
+      severity: 'URGENT',
+      sourceType: 'SALES_RETURN',
+      sourceId: 'ret-b2c-04',
+      reviewNotes: [
+        {
+          id: 'rn-01',
+          author: 'Karthik CA',
+          role: 'CA',
+          timestamp: new Date('2026-10-16T11:00:00Z'),
+          note: 'Requested store cashier to verify return inspection slip and restocking receipt.',
+        },
+      ],
+      history: [
+        {
+          timestamp: new Date('2026-10-15T14:20:00Z'),
+          action: 'EXCEPTION_DETECTED',
+          actor: 'System Audit Engine',
+          note: 'Return amount exceeds original invoice balance',
+        },
+        {
+          timestamp: new Date('2026-10-16T11:00:00Z'),
+          action: 'STATUS_UPDATED',
+          actor: 'Karthik CA',
+          previousStatus: 'OPEN',
+          newStatus: 'IN_REVIEW',
+          note: 'Marked under active review',
+        },
+      ],
+      documents: [],
+      createdAt: new Date('2026-10-15T14:20:00Z'),
+      updatedAt: new Date('2026-10-16T11:00:00Z'),
+    },
+    {
+      id: 'exc-sez-03',
+      businessId: 'busi-01',
+      category: 'GST_MISMATCH',
+      exceptionType: 'SEZ_TAX_TREATMENT_MISMATCH',
+      title: 'Improper CGST/SGST Charged on SEZ Developer Supply #INV-2026-SEZ02',
+      description: 'Special Economic Zone supply billed with domestic CGST+SGST (₹18,000.00) instead of Zero-rated LUT/Bond or IGST under IGST Act Section 7(5)(b).',
+      referenceNumber: 'INV-2026-SEZ02',
+      invoiceId: 'inv-sez-02',
+      invoiceDate: new Date('2026-10-16T09:45:00Z'),
+      customerType: 'SEZ',
+      customerName: 'ELCOT SEZ Tech Developers Ltd',
+      customerGstin: '33AAACE9876E1Z2',
+      placeOfSupply: 'Tamil Nadu (33) [SEZ Unit]',
+      amount: 118000,
+      gstAmount: 18000,
+      taxableAmount: 100000,
+      expectedGst: 0,
+      differenceAmount: 18000,
+      cgst: 9000,
+      sgst: 9000,
+      igst: 0,
+      portalCgst: 0,
+      portalSgst: 0,
+      portalIgst: 0,
+      portalTaxable: 100000,
+      sezTaxTreatment: 'WITHOUT_PAYMENT_UNDER_LUT',
+      status: 'OPEN',
+      severity: 'HIGH',
+      sourceType: 'SALES_INVOICE',
+      sourceId: 'inv-sez-02',
+      reviewNotes: [],
+      history: [
+        {
+          timestamp: new Date('2026-10-16T09:50:00Z'),
+          action: 'EXCEPTION_DETECTED',
+          actor: 'System Audit Engine',
+          note: 'SEZ Developer billed with Intra-State CGST/SGST; requires LUT zero-rating or IGST treatment.',
+        },
+      ],
+      documents: [
+        {
+          id: 'doc-sez-01',
+          name: 'SEZ_Registration_Certificate.pdf',
+          fileUrl: '/uploads/documents/SEZ_Cert_ELCOT.pdf',
+          type: 'SEZ_REGISTRATION',
+        },
+      ],
+      createdAt: new Date('2026-10-16T09:50:00Z'),
+      updatedAt: new Date('2026-10-16T09:50:00Z'),
+    },
+    {
+      id: 'exc-unc-04',
+      businessId: 'busi-01',
+      category: 'MISSING_INVOICE',
+      exceptionType: 'UNCLASSIFIED_CUSTOMER',
+      title: 'High-Value Commercial Sale Lacking Recipient GSTIN: Invoice #INV-2026-UNC03',
+      description: 'Invoice value ₹78,500.00 exceeds statutory ₹50,000 threshold for unregistered trade customer Metro Commercial. Requires CA classification review.',
+      referenceNumber: 'INV-2026-UNC03',
+      invoiceId: 'inv-unc-03',
+      invoiceDate: new Date('2026-10-16T16:20:00Z'),
+      customerType: 'UNCLASSIFIED',
+      customerName: 'Metro Commercial Traders',
+      customerGstin: null,
+      placeOfSupply: 'Tamil Nadu (33)',
+      amount: 78500,
+      gstAmount: 11974.58,
+      taxableAmount: 66525.42,
+      expectedGst: 11974.58,
+      differenceAmount: 0,
+      cgst: 5987.29,
+      sgst: 5987.29,
+      igst: 0,
+      portalCgst: 5987.29,
+      portalSgst: 5987.29,
+      portalIgst: 0,
+      portalTaxable: 66525.42,
+      sezTaxTreatment: null,
+      status: 'OPEN',
+      severity: 'MEDIUM',
+      sourceType: 'SALES_INVOICE',
+      sourceId: 'inv-unc-03',
+      reviewNotes: [],
+      history: [
+        {
+          timestamp: new Date('2026-10-16T16:25:00Z'),
+          action: 'EXCEPTION_DETECTED',
+          actor: 'System Audit Engine',
+          note: 'Flagged for CA review: High-value supply without recipient tax classification',
+        },
+      ],
+      documents: [],
+      createdAt: new Date('2026-10-16T16:25:00Z'),
+      updatedAt: new Date('2026-10-16T16:25:00Z'),
+    },
+    {
+      id: 'exc-doc-05',
+      businessId: 'busi-01',
+      category: 'PENDING_DOCUMENT',
+      exceptionType: 'MISSING_PURCHASE_BILL',
+      title: 'Missing Supplier Tax Invoice for Purchase Voucher #PUR-2026-088',
+      description: 'Input Tax Credit of ₹6,750.00 claimed on inward supply from Sun Polymers without uploaded supplier tax invoice voucher.',
+      referenceNumber: 'PUR-2026-088',
+      invoiceId: 'pur-088',
+      invoiceDate: new Date('2026-10-17T08:30:00Z'),
+      customerType: 'B2B',
+      customerName: 'Sun Polymers Distribution',
+      customerGstin: '33AAACS5555S1Z8',
+      placeOfSupply: 'Tamil Nadu (33)',
+      amount: 44250,
+      gstAmount: 6750,
+      taxableAmount: 37500,
+      expectedGst: 6750,
+      differenceAmount: 0,
+      cgst: 3375,
+      sgst: 3375,
+      igst: 0,
+      portalCgst: 3375,
+      portalSgst: 3375,
+      portalIgst: 0,
+      portalTaxable: 37500,
+      sezTaxTreatment: null,
+      status: 'OPEN',
+      severity: 'HIGH',
+      sourceType: 'PURCHASE',
+      sourceId: 'pur-088',
+      reviewNotes: [],
+      history: [
+        {
+          timestamp: new Date('2026-10-17T08:35:00Z'),
+          action: 'EXCEPTION_DETECTED',
+          actor: 'System Audit Engine',
+          note: 'Input Tax Credit voucher without supporting documentary evidence',
+        },
+      ],
+      documents: [],
+      createdAt: new Date('2026-10-17T08:35:00Z'),
+      updatedAt: new Date('2026-10-17T08:35:00Z'),
+    },
+  ],
 };
 
 function matchesWhere(item, where) {
@@ -983,6 +1315,19 @@ function resolveIncludes(modelName, item, include) {
     }
   }
 
+  if (modelName === 'quotation') {
+    if (include.customer) {
+      clone.customer = memoryStore.customer?.find((c) => c.id === clone.customerId) || null;
+    }
+    if (include.items) {
+      const qItems = (memoryStore.quotationItem || []).filter((qi) => qi.quotationId === clone.id);
+      clone.items = qItems.length > 0 ? qItems : (clone.items || []);
+    }
+    if (include.business) {
+      clone.business = memoryStore.business?.find((b) => b.id === clone.businessId) || null;
+    }
+  }
+
   if (modelName === 'auditLog') {
     if (include.user) {
       clone.user = memoryStore.user?.find((u) => u.id === clone.userId) || null;
@@ -1087,6 +1432,43 @@ function resolveIncludes(modelName, item, include) {
     }
   }
 
+  if (modelName === 'roleInvitation') {
+    if (include.business) {
+      const b = (memoryStore.business || []).find((bus) => bus.id === clone.businessId);
+      clone.business = b ? applySelect('business', b, include.business.select || include.business) : null;
+    }
+    if (include.inviter) {
+      const u = (memoryStore.user || []).find((usr) => usr.id === clone.inviterId);
+      clone.inviter = u ? applySelect('user', u, include.inviter.select || include.inviter) : null;
+    }
+    if (include.recipientUser) {
+      const u = (memoryStore.user || []).find((usr) => usr.id === clone.recipientUserId);
+      clone.recipientUser = u ? applySelect('user', u, include.recipientUser.select || include.recipientUser) : null;
+    }
+  }
+
+  if (modelName === 'businessMember') {
+    if (include.business) {
+      const b = (memoryStore.business || []).find((bus) => bus.id === clone.businessId);
+      clone.business = b ? applySelect('business', b, include.business.select || include.business) : null;
+    }
+    if (include.user) {
+      const u = (memoryStore.user || []).find((usr) => usr.id === clone.userId);
+      clone.user = u ? applySelect('user', u, include.user.select || include.user) : null;
+    }
+  }
+
+  if (modelName === 'notification') {
+    if (include.user) {
+      const u = (memoryStore.user || []).find((usr) => usr.id === clone.userId);
+      clone.user = u ? applySelect('user', u, include.user.select || include.user) : null;
+    }
+    if (include.invitation) {
+      const inv = (memoryStore.roleInvitation || []).find((i) => i.id === clone.invitationId);
+      clone.invitation = inv || null;
+    }
+  }
+
   return clone;
 }
 
@@ -1113,7 +1495,11 @@ function applySelect(modelName, item, select) {
   return result;
 }
 
-function createModelHandler(modelName) {
+function createModelHandler(rawModelName) {
+  const modelName = rawModelName === 'caExceptions' ? 'caException' : rawModelName;
+  if (!memoryStore[modelName]) {
+    memoryStore[modelName] = [];
+  }
   return {
     async findMany(args = {}) {
       const list = memoryStore[modelName] || [];
@@ -1252,6 +1638,27 @@ function createModelHandler(modelName) {
       }
 
       memoryStore[modelName].unshift(newRecord);
+
+      if (modelName === 'user' && !newRecord.id.includes('free') && !newRecord.email?.includes('free')) {
+        if (!memoryStore.subscription) memoryStore.subscription = [];
+        const hasSub = memoryStore.subscription.some((s) => s.userId === newRecord.id);
+        if (!hasSub) {
+          memoryStore.subscription.push({
+            id: `sub-${newRecord.id}`,
+            userId: newRecord.id,
+            planTier: 'PREMIUM',
+            planName: 'Premium Enterprise',
+            maxSubUsers: -1,
+            status: 'ACTIVE',
+            amount: 3999,
+            interval: 'ANNUAL',
+            startDate: new Date(),
+            endDate: new Date(Date.now() + 365 * 24 * 3600 * 1000),
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          });
+        }
+      }
       if (args.select) return applySelect(modelName, newRecord, args.select);
       if (args.include) return resolveIncludes(modelName, newRecord, args.include);
       return { ...newRecord };

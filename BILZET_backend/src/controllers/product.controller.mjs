@@ -4,10 +4,12 @@ import { ApiError } from '../utils/ApiError.mjs';
 import prisma from '../config/prisma.mjs';
 import { getPaginationParams, buildPaginationMeta } from '../utils/pagination.mjs';
 import { generateBarcodeBuffer, generateBarcodeString } from '../utils/generateBarcode.mjs';
+import realtimeService from '../services/realtime.service.mjs';
 
 const mapProduct = (p) => {
   if (!p) return null;
   const hsn = p.hsnCode || p.hsn || null;
+  const isInc = p.isTaxInclusive !== undefined ? Boolean(p.isTaxInclusive) : (p.pricingMethod === 'INCLUSIVE');
   return {
     ...p,
     _id: p.id,
@@ -16,6 +18,9 @@ const mapProduct = (p) => {
     sellingPrice: Number(p.sellingPrice),
     purchasePrice: Number(p.purchasePrice),
     gstRate: Number(p.gstRate),
+    unit: p.unit || 'piece',
+    isTaxInclusive: isInc,
+    pricingMethod: p.pricingMethod || (isInc ? 'INCLUSIVE' : 'EXCLUSIVE'),
     hsnCode: hsn,
     hsn,
   };
@@ -118,7 +123,7 @@ export const createProduct = asyncHandler(async (req, res) => {
     unit = 'piece',
     purchasePrice = 0,
     sellingPrice,
-    gstRate = 0,
+    gstRate,
     stock = 0,
     minimumStock = 5,
     businessId,
@@ -131,6 +136,21 @@ export const createProduct = asyncHandler(async (req, res) => {
     'busi-01';
 
   const resolvedCategoryId = categoryId || category || undefined;
+
+  let effectiveGstRate = gstRate;
+  if (effectiveGstRate === undefined || effectiveGstRate === null) {
+    if (resolvedCategoryId) {
+      const cat = await prisma.category.findUnique({ where: { id: resolvedCategoryId } });
+      if (cat && cat.defaultGstRate !== undefined && cat.defaultGstRate !== null) {
+        effectiveGstRate = Number(cat.defaultGstRate);
+      }
+    }
+  }
+  if (effectiveGstRate === undefined || effectiveGstRate === null || isNaN(Number(effectiveGstRate))) {
+    effectiveGstRate = 18;
+  } else {
+    effectiveGstRate = Number(effectiveGstRate);
+  }
 
   const existingSku = await prisma.product.findUnique({
     where: { sku: sku.toUpperCase() },
@@ -149,7 +169,9 @@ export const createProduct = asyncHandler(async (req, res) => {
       unit,
       purchasePrice,
       sellingPrice,
-      gstRate,
+      gstRate: effectiveGstRate,
+      isTaxInclusive: req.body.isTaxInclusive !== undefined ? Boolean(req.body.isTaxInclusive) : (req.body.pricingMethod !== 'EXCLUSIVE'),
+      pricingMethod: req.body.pricingMethod || (req.body.isTaxInclusive === false ? 'EXCLUSIVE' : 'INCLUSIVE'),
       hsnCode: req.body.hsnCode || req.body.hsn || null,
       stock: Number(stock),
       minimumStock: Number(minimumStock),
@@ -170,6 +192,18 @@ export const createProduct = asyncHandler(async (req, res) => {
       },
     });
   }
+
+  try {
+    realtimeService.broadcastBusinessEvent(activeBusinessId, 'PRODUCT_CREATED', {
+      product: mapProduct(product),
+    }, { userId: req.user?.id, action: 'PRODUCT_CREATED' });
+    if (stock > 0) {
+      realtimeService.broadcastBusinessEvent(activeBusinessId, 'STOCK_ADJUSTED', {
+        reason: 'Initial stock recorded during creation',
+        items: [{ productId: product.id, quantity: Number(stock) }],
+      }, { userId: req.user?.id, action: 'STOCK_ADJUSTED' });
+    }
+  } catch (_) {}
 
   return sendResponse(res, 201, { product: mapProduct(product) }, 'Product created successfully');
 });
@@ -217,6 +251,10 @@ export const updateProduct = asyncHandler(async (req, res) => {
       ...(purchasePrice !== undefined && { purchasePrice: Number(purchasePrice) }),
       ...(sellingPrice !== undefined && { sellingPrice: Number(sellingPrice) }),
       ...(gstRate !== undefined && { gstRate: Number(gstRate) }),
+      ...(req.body.isTaxInclusive !== undefined && {
+        isTaxInclusive: Boolean(req.body.isTaxInclusive || req.body.pricingMethod === 'INCLUSIVE'),
+      }),
+      ...(req.body.pricingMethod !== undefined && { pricingMethod: req.body.pricingMethod }),
       ...((req.body.hsnCode !== undefined || req.body.hsn !== undefined) && {
         hsnCode: req.body.hsnCode || req.body.hsn || null,
       }),
@@ -226,6 +264,20 @@ export const updateProduct = asyncHandler(async (req, res) => {
     },
     include: { category: true },
   });
+
+  try {
+    const targetBusinessId = updated.businessId || req.user?.businessId || 'default';
+    realtimeService.broadcastBusinessEvent(targetBusinessId, 'PRODUCT_UPDATED', {
+      product: mapProduct(updated),
+    }, { userId: req.user?.id, action: 'PRODUCT_UPDATED' });
+
+    if (stock !== undefined && Number(stock) !== Number(existing.stock)) {
+      realtimeService.broadcastBusinessEvent(targetBusinessId, 'STOCK_ADJUSTED', {
+        reason: 'Manual stock adjustment in product catalog',
+        items: [{ productId: updated.id, quantity: Number(stock) - Number(existing.stock) }],
+      }, { userId: req.user?.id, action: 'STOCK_ADJUSTED' });
+    }
+  } catch (_) {}
 
   return sendResponse(res, 200, { product: mapProduct(updated) }, 'Product updated successfully');
 });
@@ -239,6 +291,12 @@ export const deleteProduct = asyncHandler(async (req, res) => {
       where: { id },
       data: { isActive: false },
     });
+    try {
+      const targetBusinessId = product.businessId || req.user?.businessId || 'default';
+      realtimeService.broadcastBusinessEvent(targetBusinessId, 'PRODUCT_UPDATED', {
+        product: mapProduct(product),
+      }, { userId: req.user?.id, action: 'PRODUCT_DEACTIVATED' });
+    } catch (_) {}
     return sendResponse(
       res,
       200,
@@ -247,7 +305,14 @@ export const deleteProduct = asyncHandler(async (req, res) => {
     );
   }
 
-  await prisma.product.delete({ where: { id } });
+  const deletedProduct = await prisma.product.delete({ where: { id } });
+  try {
+    const targetBusinessId = deletedProduct.businessId || req.user?.businessId || 'default';
+    realtimeService.broadcastBusinessEvent(targetBusinessId, 'PRODUCT_UPDATED', {
+      productId: id,
+      deleted: true,
+    }, { userId: req.user?.id, action: 'PRODUCT_DELETED' });
+  } catch (_) {}
   return sendResponse(res, 200, {}, 'Product deleted successfully');
 });
 

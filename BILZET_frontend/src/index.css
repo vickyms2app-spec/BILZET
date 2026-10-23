@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,500;1,600;1,700;1,800&family=Inter:wght@300;400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 @custom-variant dark (&:where(.dark, .dark *));
@@ -20,7 +21,7 @@
    ============================================================ */
 
 @theme {
-  --font-sans:            'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-sans:            'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --color-primary:        #2563eb;
   --color-primary-dark:   #1d4ed8;
   --color-primary-light:  #3b82f6;
@@ -40,7 +41,7 @@
 
 /* ── Global Reset & Typography ────────────────────────────── */
 :root, html, body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   color: #0f172a;
   background: #f8fafc;
   font-synthesis: none;
@@ -50,20 +51,35 @@
   letter-spacing: -0.011em;
 }
 
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+.font-jakarta {
+  font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif !important;
+}
+
+.font-macos {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif !important;
+}
+
 body {
   margin: 0;
   min-width: 320px;
   background: #f8fafc;
   color: #0f172a;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
 }
 
-* { box-sizing: border-box; }
-
-button, input, select, textarea {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+button, input, select, textarea, optgroup {
+  font-family: inherit;
 }
 button { cursor: pointer; }
+
+/* Monospace preservation */
+code, kbd, samp, pre, .font-mono, [data-font-mono] {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+}
 
 /* ── Custom Sleek Scrollbar ───────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -73,10 +89,10 @@ button { cursor: pointer; }
 
 /* ── Typography Scale Hierarchy ───────────────────────────── */
 .page-title {
-  font-size: clamp(1.5rem, 2.5vw, 1.875rem);
-  font-weight: 700;
+  font-size: clamp(1.375rem, 2vw, 1.75rem);
+  font-weight: 650;
   line-height: 1.25;
-  letter-spacing: -0.025em;
+  letter-spacing: -0.022em;
   color: #0f172a;
 }
 
@@ -121,6 +137,15 @@ button { cursor: pointer; }
   font-size: 0.8125rem;
   font-weight: 400;
   color: #64748b;
+}
+
+/* Form controls & hierarchy defaults */
+label {
+  font-weight: 500;
+}
+
+th {
+  font-weight: 600;
 }
 
 .caption-text {

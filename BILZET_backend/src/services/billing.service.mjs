@@ -104,8 +104,8 @@ export const mapSale = (s) => {
     s.isInterState !== undefined
       ? s.isInterState
       : (customerState &&
-         businessState &&
-         customerState.trim().toLowerCase() !== businessState.trim().toLowerCase())
+        businessState &&
+        customerState.trim().toLowerCase() !== businessState.trim().toLowerCase())
   );
 
   let totalOriginalItemsQty = 0;
@@ -154,16 +154,16 @@ export const mapSale = (s) => {
       retInfo.taxAmount > 0
         ? retInfo.taxAmount
         : lineQty > 0
-        ? Number(((returnedQty / lineQty) * lineTax).toFixed(2))
-        : 0;
+          ? Number(((returnedQty / lineQty) * lineTax).toFixed(2))
+          : 0;
     const netTaxAmount = Math.max(0, Number((lineTax - lineGstAdjustment).toFixed(2)));
 
     const lineRefundTotal =
       retInfo.totalRefund > 0
         ? retInfo.totalRefund
         : lineQty > 0
-        ? Number(((returnedQty / lineQty) * lineTotal).toFixed(2))
-        : 0;
+          ? Number(((returnedQty / lineQty) * lineTotal).toFixed(2))
+          : 0;
     const netTotal = Math.max(0, Number((lineTotal - lineRefundTotal).toFixed(2)));
     const netTaxable = Math.max(0, Number((taxable - (lineRefundTotal - lineGstAdjustment)).toFixed(2)));
 
@@ -370,6 +370,7 @@ export const mapSale = (s) => {
     netTaxTotal: netGstPayable,
     netGst: netGstPayable,
     taxTotal: netGstPayable,
+    taxAmount: netGstPayable,
     cgst,
     sgst,
     igst,
@@ -467,7 +468,7 @@ export const createSale = async (saleData, user, context = {}) => {
           where: { id: customer.id },
           data: { state: saleData.customerState },
         });
-      } catch (_) {}
+      } catch (_) { }
     }
 
     // Resolve business and determine intra-state vs inter-state
@@ -516,10 +517,29 @@ export const createSale = async (saleData, user, context = {}) => {
         throw ApiError.badRequest('GST rate must be between 0 and 100');
       }
 
+      // Attempt product lookup — treat non-UUID / missing IDs as ad-hoc items (no FK)
+      // If Prisma throws P2023 (invalid UUID format) we catch it and set resolvedProductId = null
+      let resolvedProductId = null;
       if (item.productId) {
-        const productExists = await tx.product.findUnique({ where: { id: item.productId } });
-        if (!productExists) {
-          throw ApiError.badRequest(`Product with ID '${item.productId}' does not exist.`);
+        try {
+          const productCheck = await tx.product.findUnique({ where: { id: item.productId } });
+          if (productCheck) {
+            resolvedProductId = item.productId;
+          } else {
+            // productId provided but not found in catalog — reject if it looks like a real UUID
+            const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+            if (UUID_PATTERN.test(item.productId)) {
+              throw ApiError.badRequest(`Product with ID '${item.productId}' does not exist.`);
+            }
+            // Otherwise it's a client temp ID — treat as ad-hoc item, resolvedProductId stays null
+          }
+        } catch (e) {
+          if (e.code === 'P2023' || e.message?.includes('Invalid') || e.message?.includes('UUID')) {
+            // Prisma error: invalid UUID format — treat as ad-hoc item
+            resolvedProductId = null;
+          } else {
+            throw e; // re-throw real errors
+          }
         }
       }
 
@@ -527,8 +547,8 @@ export const createSale = async (saleData, user, context = {}) => {
         item.isTaxInclusive !== undefined
           ? Boolean(item.isTaxInclusive)
           : item.pricingMethod
-          ? item.pricingMethod === 'INCLUSIVE'
-          : isInvoiceTaxInclusive;
+            ? item.pricingMethod === 'INCLUSIVE'
+            : isInvoiceTaxInclusive;
 
       let lineTaxable = 0;
       let lineTax = 0;
@@ -554,8 +574,8 @@ export const createSale = async (saleData, user, context = {}) => {
 
       // Look up product first to resolve correct product name, HSN, and validate stock
       let product = null;
-      if (item.productId) {
-        product = await tx.product.findUnique({ where: { id: item.productId } });
+      if (resolvedProductId) {
+        product = await tx.product.findUnique({ where: { id: resolvedProductId } });
         if (product && product.stock < qty) {
           throw ApiError.badRequest(
             `Insufficient stock for '${product.name}'. Available: ${product.stock}, Requested: ${qty}`

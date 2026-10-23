@@ -9,14 +9,31 @@ export const http = axios.create({
 });
 let accessToken = localStorage.getItem("bilzet_access_token") || localStorage.getItem("token");
 
+// On startup: if there is a stored active_store_id but no access token, it is definitely stale — purge it.
+// Also purge if the stored store ID looks like the old mock/fallback format (busi-xxxxxxxx with 8 hex chars).
+(function purgeStaleStoreId() {
+  try {
+    const storedStoreId = localStorage.getItem("bilzet_active_store_id");
+    const hasToken = localStorage.getItem("bilzet_access_token") || localStorage.getItem("token");
+    if (storedStoreId && !hasToken) {
+      localStorage.removeItem("bilzet_active_store_id");
+      localStorage.removeItem("bilzet_active_store");
+    }
+  } catch (_) {}
+})();
+
 export function setTokens(a, r) {
   accessToken = a || null;
   if (a) {
     localStorage.setItem("bilzet_access_token", a);
     localStorage.setItem("token", a);
   } else {
+    // On logout / token clear: also purge the active store context
+    // so the stale x-business-id header is never sent again after re-login.
     localStorage.removeItem("bilzet_access_token");
     localStorage.removeItem("token");
+    localStorage.removeItem("bilzet_active_store_id");
+    localStorage.removeItem("bilzet_active_store");
   }
   if (r) {
     localStorage.setItem("bilzet_refresh_token", r);
@@ -47,12 +64,15 @@ http.interceptors.request.use(async (config) => {
     } catch (_) {}
   }
 
-  // 2. Direct Clerk session token lookup from window.Clerk
+  // 2. Direct Clerk session token lookup from window.Clerk with safety timeout
   if (!token && typeof window !== "undefined" && window.Clerk?.session) {
     try {
-      token = await window.Clerk.session.getToken();
+      token = await Promise.race([
+        window.Clerk.session.getToken(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Clerk timeout")), 1500)),
+      ]);
     } catch (err) {
-      console.warn("[HTTP Interceptor] Could not fetch Clerk token:", err?.message || err);
+      // Gracefully continue without throwing
     }
   }
 
@@ -97,7 +117,7 @@ http.interceptors.response.use(
   async (e) => {
     const original = e.config;
 
-    // Self-healing: if an unauthorized store header from localStorage caused 403, purge it and retry
+    // Self-healing: if an unauthorized or non-existent store header caused 403, purge it and retry
     if (
       e.response?.status === 403 &&
       !original._storeRetry &&
@@ -115,13 +135,17 @@ http.interceptors.response.use(
       return http(original);
     }
 
-    if (e.response?.status === 401 && !original._retry) {
+    const isAuthEndpoint = original?.url?.includes("/auth/login") || original?.url?.includes("/auth/register");
+    if (e.response?.status === 401 && !original._retry && !isAuthEndpoint) {
       original._retry = true;
 
-      // 1. If Clerk is active, try obtaining a fresh Clerk session token first
+      // 1. If Clerk is active, try obtaining a fresh Clerk session token with safety timeout
       if (typeof window !== "undefined" && window.Clerk?.session) {
         try {
-          const freshClerkToken = await window.Clerk.session.getToken({ skipCache: true });
+          const freshClerkToken = await Promise.race([
+            window.Clerk.session.getToken({ skipCache: true }),
+            new Promise((_, reject) => setTimeout(() => reject(new Error("Clerk refresh timeout")), 2000)),
+          ]);
           if (freshClerkToken) {
             setTokens(freshClerkToken);
             if (original.headers?.set) {

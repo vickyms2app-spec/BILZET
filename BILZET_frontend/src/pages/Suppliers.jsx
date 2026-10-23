@@ -19,6 +19,29 @@ import Modal from "../components/common/Modal";
 import SearchBar from "../components/common/SearchBar";
 import Button from "../components/common/Button";
 
+// Predefined palette of soft, professional colors for deterministic avatar assignment
+const SUPPLIER_AVATAR_PALETTES = [
+  { bg: "#EBF5FF", text: "#007AFF", border: "#D0E2FF" }, // Blue
+  { bg: "#F3E8FF", text: "#7C3AED", border: "#E9D5FF" }, // Purple
+  { bg: "#E6FFFA", text: "#0D9488", border: "#B2F5EA" }, // Teal
+  { bg: "#EDF8F0", text: "#248A3D", border: "#CCE8D4" }, // Green
+  { bg: "#FFF4E5", text: "#C25E00", border: "#FFE2B8" }, // Orange
+  { bg: "#FDF2F8", text: "#DB2777", border: "#FCE7F3" }, // Pink
+  { bg: "#EEF2FF", text: "#4F46E5", border: "#E0E7FF" }, // Indigo
+  { bg: "#FFF1F2", text: "#E11D48", border: "#FECDD3" }, // Rose
+];
+
+const getSupplierAvatarPalette = (idOrName) => {
+  const str = String(idOrName || "supplier");
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0;
+  }
+  const index = Math.abs(hash) % SUPPLIER_AVATAR_PALETTES.length;
+  return SUPPLIER_AVATAR_PALETTES[index];
+};
+
 export default function Suppliers() {
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -271,13 +294,23 @@ export default function Suppliers() {
                   </td>
                 </tr>
               ) : (
-                filteredSuppliers.map((s) => (
-                  <tr key={s.id || s._id} className="hover:bg-slate-50/60 transition">
-                    <td className="py-3 px-4 font-semibold text-slate-800">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 text-white font-bold flex items-center justify-center text-xs shadow-2xs shrink-0">
-                          {s.name?.[0]?.toUpperCase() || "S"}
-                        </div>
+                filteredSuppliers.map((s, idx) => {
+                  const initial = s.name ? s.name.trim().charAt(0).toUpperCase() : "S";
+                  const palette = getSupplierAvatarPalette(s.id || s._id || s.name || `supplier-${idx}`);
+                  return (
+                    <tr key={s.id || s._id} className="hover:bg-slate-50/60 transition">
+                      <td className="py-3 px-4 font-semibold text-slate-800">
+                        <div className="flex items-center gap-2.5">
+                          <div
+                            style={{
+                              backgroundColor: palette.bg,
+                              color: palette.text,
+                              borderColor: palette.border,
+                            }}
+                            className="w-7 h-7 rounded-full border font-semibold text-xs flex items-center justify-center shrink-0 select-none"
+                          >
+                            {initial}
+                          </div>
                         <div>
                           <p className="font-semibold text-slate-900 leading-tight">{s.name}</p>
                           {s.companyName ? (
@@ -312,7 +345,8 @@ export default function Suppliers() {
                       </span>
                     </td>
                   </tr>
-                ))
+                  );
+                })
               )}
             </tbody>
           </table>

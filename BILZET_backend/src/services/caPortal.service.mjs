@@ -57,22 +57,25 @@ export const getAuthorizedStoresForCA = async (caUser) => {
 
   // CA user → check direct businessId + explicit CAStoreAccess + staff invitations
 
-  // 1. Direct business assignment on User record
-  const directBusinessIds = caUser.businessId ? [caUser.businessId] : [];
-
-  // 2. Explicit CAStoreAccess assignments
+  // 1. Explicit CAStoreAccess assignments
   let assignedBusinessIds = [];
+  let revokedBusinessIds = [];
   try {
     const assignments = await prisma.caStoreAccess.findMany({
       where: {
         caUserId: caUser.id,
-        status: 'ACTIVE',
       },
     });
-    assignedBusinessIds = assignments.map((a) => a.businessId);
+    assignedBusinessIds = assignments.filter((a) => a.status === 'ACTIVE').map((a) => a.businessId);
+    revokedBusinessIds = assignments.filter((a) => a.status === 'REVOKED').map((a) => a.businessId);
   } catch (_) {
     // Graceful fallback if table is empty or in mock
   }
+
+  // 2. Direct business assignment on User record (only if not explicitly revoked)
+  const directBusinessIds = (caUser.businessId && !revokedBusinessIds.includes(caUser.businessId))
+    ? [caUser.businessId]
+    : [];
 
   // 3. Staff invitations linking the CA's email to a business
   let staffBusinessIds = [];
@@ -119,7 +122,14 @@ export const getAuthorizedStoresForCA = async (caUser) => {
  * Throws 403 Forbidden if not authorized.
  */
 export const verifyCAStoreAccess = async (caUser, storeId) => {
-  const effectiveStoreId = storeId || caUser?.businessId;
+  let effectiveStoreId = storeId || caUser?.businessId;
+  if (!effectiveStoreId) {
+    const authorizedStores = await getAuthorizedStoresForCA(caUser);
+    if (authorizedStores && authorizedStores.length > 0) {
+      effectiveStoreId = authorizedStores[0].id;
+    }
+  }
+
   if (!effectiveStoreId) {
     throw ApiError.badRequest('Store ID is required');
   }
@@ -141,7 +151,7 @@ export const verifyCAStoreAccess = async (caUser, storeId) => {
     );
   }
 
-  return authorizedStores.find((s) => s.id === effectiveStoreId);
+  return authorizedStores.find((s) => s.id === effectiveStoreId) || { id: effectiveStoreId };
 };
 
 /**
@@ -381,12 +391,12 @@ export const getFinancialSummaryForCA = async (caUser, storeId, query = {}) => {
 
   // Slabs tracking: 0%, 5%, 12%, 18%, 28%
   const slabs = {
-    '0': { rate: 0, taxable: 0, tax: 0 },
-    '5': { rate: 5, taxable: 0, tax: 0 },
-    '12': { rate: 12, taxable: 0, tax: 0 },
-    '18': { rate: 18, taxable: 0, tax: 0 },
-    '28': { rate: 28, taxable: 0, tax: 0 },
-    other: { rate: 'other', taxable: 0, tax: 0 },
+    '0': { rate: 0, taxable: 0, tax: 0, cgst: 0, sgst: 0, igst: 0 },
+    '5': { rate: 5, taxable: 0, tax: 0, cgst: 0, sgst: 0, igst: 0 },
+    '12': { rate: 12, taxable: 0, tax: 0, cgst: 0, sgst: 0, igst: 0 },
+    '18': { rate: 18, taxable: 0, tax: 0, cgst: 0, sgst: 0, igst: 0 },
+    '28': { rate: 28, taxable: 0, tax: 0, cgst: 0, sgst: 0, igst: 0 },
+    other: { rate: 'other', taxable: 0, tax: 0, cgst: 0, sgst: 0, igst: 0 },
   };
 
   for (const sale of sales) {
@@ -440,12 +450,15 @@ export const getFinancialSummaryForCA = async (caUser, storeId, query = {}) => {
     // Slabs breakdown from items
     for (const item of formatted.items) {
       const slabKey = String(Math.round(item.gstRate));
-      if (slabs[slabKey]) {
-        slabs[slabKey].taxable += item.taxableAmount;
-        slabs[slabKey].tax += item.originalTaxAmount || item.taxAmount;
+      const targetSlab = slabs[slabKey] || slabs.other;
+      targetSlab.taxable += item.taxableAmount;
+      const itemTax = item.originalTaxAmount || item.taxAmount;
+      targetSlab.tax += itemTax;
+      if (isInter) {
+        targetSlab.igst = (targetSlab.igst || 0) + itemTax;
       } else {
-        slabs.other.taxable += item.taxableAmount;
-        slabs.other.tax += item.originalTaxAmount || item.taxAmount;
+        targetSlab.cgst = (targetSlab.cgst || 0) + (itemTax / 2);
+        targetSlab.sgst = (targetSlab.sgst || 0) + (itemTax / 2);
       }
     }
   }
@@ -859,7 +872,7 @@ export const getStoreExpensesForCA = async (caUser, storeId, query = {}) => {
   const store = await verifyCAStoreAccess(caUser, storeId);
   const { page, limit, skip } = getPaginationParams(query);
 
-  const where = {};
+  const where = { businessId: storeId };
   if (query.category && query.category !== 'ALL') {
     where.category = query.category;
   }
@@ -1111,8 +1124,25 @@ export const deleteTaskForCA = async (caUser, storeId, taskId) => {
  * 10. Discrepancies & Corrections
  */
 export const getStoreDiscrepanciesForCA = async (caUser, storeId, query = {}) => {
-  const store = await verifyCAStoreAccess(caUser, storeId);
-  const where = { businessId: storeId };
+  let effectiveStoreId = storeId || caUser?.businessId;
+  if (!effectiveStoreId) {
+    const stores = await getAuthorizedStoresForCA(caUser);
+    if (stores && stores.length > 0) {
+      effectiveStoreId = stores[0].id;
+    }
+  }
+
+  if (!effectiveStoreId) {
+    return {
+      store: null,
+      discrepancies: [],
+      total: 0,
+    };
+  }
+
+  const store = await verifyCAStoreAccess(caUser, effectiveStoreId);
+  const targetStoreId = store?.id || effectiveStoreId;
+  const where = { businessId: targetStoreId };
   if (query.status && query.status !== 'ALL') {
     where.status = query.status.toUpperCase();
   }

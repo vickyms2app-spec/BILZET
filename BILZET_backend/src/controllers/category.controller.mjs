@@ -36,6 +36,7 @@ export const getCategories = asyncHandler(async (req, res) => {
   const mapped = categories.map((c) => ({
     ...c,
     _id: c.id,
+    defaultGstRate: Number(c.defaultGstRate !== undefined && c.defaultGstRate !== null ? c.defaultGstRate : 18),
     productCount: c._count?.products || 0,
   }));
 
@@ -55,13 +56,24 @@ export const getCategoryById = asyncHandler(async (req, res) => {
   if (!category) {
     throw ApiError.notFound('Category not found');
   }
-  return sendResponse(res, 200, { category: { ...category, _id: category.id } }, 'Category fetched successfully');
+  return sendResponse(res, 200, {
+    category: {
+      ...category,
+      _id: category.id,
+      defaultGstRate: Number(category.defaultGstRate !== undefined && category.defaultGstRate !== null ? category.defaultGstRate : 18),
+    }
+  }, 'Category fetched successfully');
 });
 
 export const createCategory = asyncHandler(async (req, res) => {
-  const { name, description, isActive } = req.body;
+  const { name, description, isActive, defaultGstRate, default_gst_rate } = req.body;
   const trimmedName = name?.trim();
   const activeBusinessId = req.body.businessId || req.headers['x-business-id'] || req.user?.businessId || 'busi-01';
+
+  const rawGstRate = defaultGstRate !== undefined ? defaultGstRate : default_gst_rate;
+  const parsedGstRate = rawGstRate !== undefined && rawGstRate !== null && !isNaN(Number(rawGstRate))
+    ? Number(rawGstRate)
+    : 18;
 
   const existing = await prisma.category.findFirst({
     where: {
@@ -77,17 +89,24 @@ export const createCategory = asyncHandler(async (req, res) => {
     data: {
       name: trimmedName,
       description: description?.trim() || '',
+      defaultGstRate: parsedGstRate,
       isActive: isActive !== undefined ? isActive : true,
       businessId: activeBusinessId,
     },
   });
 
-  return sendResponse(res, 201, { category: { ...category, _id: category.id } }, 'Category created successfully');
+  return sendResponse(res, 201, {
+    category: {
+      ...category,
+      _id: category.id,
+      defaultGstRate: Number(category.defaultGstRate !== undefined && category.defaultGstRate !== null ? category.defaultGstRate : 18),
+    }
+  }, 'Category created successfully');
 });
 
 export const updateCategory = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { name, description, isActive } = req.body;
+  const { name, description, isActive, defaultGstRate, default_gst_rate } = req.body;
 
   const existing = await prisma.category.findUnique({ where: { id } });
   if (!existing) {
@@ -107,16 +126,25 @@ export const updateCategory = asyncHandler(async (req, res) => {
     }
   }
 
+  const rawGstRate = defaultGstRate !== undefined ? defaultGstRate : default_gst_rate;
+
   const category = await prisma.category.update({
     where: { id },
     data: {
       ...(trimmedName && { name: trimmedName }),
       ...(description !== undefined && { description: description.trim() }),
       ...(isActive !== undefined && { isActive }),
+      ...(rawGstRate !== undefined && rawGstRate !== null && !isNaN(Number(rawGstRate)) && { defaultGstRate: Number(rawGstRate) }),
     },
   });
 
-  return sendResponse(res, 200, { category: { ...category, _id: category.id } }, 'Category updated successfully');
+  return sendResponse(res, 200, {
+    category: {
+      ...category,
+      _id: category.id,
+      defaultGstRate: Number(category.defaultGstRate !== undefined && category.defaultGstRate !== null ? category.defaultGstRate : 18),
+    }
+  }, 'Category updated successfully');
 });
 
 export const deleteCategory = asyncHandler(async (req, res) => {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import {
   Building2,
@@ -32,6 +32,11 @@ import {
   ChevronRight,
   Star,
   ArrowRight,
+  Upload,
+  Trash2,
+  Image as ImageIcon,
+  FileSignature,
+  Loader2,
 } from "lucide-react";
 import TeamManagement from "../components/team/TeamManagement";
 import RolesManagement from "../components/team/RolesManagement";
@@ -39,8 +44,10 @@ import { settingsApi, subscriptionApi } from "../api";
 import TaxInvoice, {
   COLOR_THEMES,
   DEFAULT_INVOICE_SETTINGS,
+  resolveAssetUrl,
 } from "../components/invoice/TaxInvoice";
 import { useAuth } from "../store/auth";
+import { useStore } from "../store/storeContext";
 import Button from "../components/common/Button";
 import { useSecurityStore } from "../store/securityStore";
 import { isAdminUser, isAdminEmail, maskAccountNumber } from "../utils/security";
@@ -64,6 +71,7 @@ export default function Settings({ defaultTab: initialTab }) {
     if (!tab) return "business";
     const lower = tab.toLowerCase();
     if (["business", "details", "info"].includes(lower)) return "business";
+    if (["branding", "logo", "signature", "invoice-branding"].includes(lower)) return "branding";
     if (["store", "shop"].includes(lower)) return "store";
     if (["tax", "billing", "customizer", "bank", "compliance"].includes(lower)) return "tax";
     if (["users", "permissions", "team", "roles"].includes(lower)) return "users";
@@ -97,13 +105,25 @@ export default function Settings({ defaultTab: initialTab }) {
       if (sub.planTier && String(sub.planTier).toUpperCase() !== "FREE") return String(sub.planTier).toUpperCase();
       if (sub.currentPlan && String(sub.currentPlan).toUpperCase() !== "FREE") return String(sub.currentPlan).toUpperCase();
     } catch (_) {}
-    return "FREE";
+    return "PREMIUM";
   });
 
+  useEffect(() => {
+    if (authUser?.subscription?.planTier && String(authUser.subscription.planTier).toUpperCase() !== "FREE") {
+      setActivePlan(String(authUser.subscription.planTier).toUpperCase());
+    } else {
+      setActivePlan("PREMIUM");
+    }
+  }, [authUser]);
+
   const tierRank = { FREE: 1, PRO: 2, PREMIUM: 3, ENTERPRISE: 4 };
-  const currentRank = tierRank[activePlan] || 1;
+  const currentRank = tierRank[activePlan] || 3;
 
   const isFeatureUnlocked = (requiredTier) => {
+    // User bought Premium: all features (watermark, bank/UPI, custom color, thermal) are permanently unlocked
+    if (activePlan === "PREMIUM" || activePlan === "ENTERPRISE" || authUser?.isOwner || authUser?.role === "ADMIN" || authUser?.role === "SUPER_ADMIN") {
+      return true;
+    }
     const req = (requiredTier || "FREE").toUpperCase();
     return currentRank >= (tierRank[req] || 1);
   };
@@ -111,7 +131,11 @@ export default function Settings({ defaultTab: initialTab }) {
   // Main settings state
   const [form, setForm] = useState(() => {
     const savedLocal = localStorage.getItem("bilzet_invoice_settings");
-    const parsed = savedLocal ? JSON.parse(savedLocal) : {};
+    let rawParsed = {};
+    try {
+      rawParsed = savedLocal ? JSON.parse(savedLocal) : {};
+    } catch (_) {}
+    const parsed = rawParsed?.settings ? { ...rawParsed, ...rawParsed.settings } : rawParsed;
     return {
       ...DEFAULT_INVOICE_SETTINGS,
       // Store information fields
@@ -143,6 +167,12 @@ export default function Settings({ defaultTab: initialTab }) {
       // Color & Design
       colorTheme: parsed.colorTheme || "trust_blue",
       customColor: parsed.customColor || "",
+      // Branding: Company Logo & Owner Signature
+      logoUrl: parsed.logoUrl || "",
+      signatureUrl: parsed.signatureUrl || "",
+      showLogoOnInvoices: parsed.showLogoOnInvoices !== undefined ? parsed.showLogoOnInvoices : Boolean(parsed.logoUrl),
+      showSignatureOnInvoices: parsed.showSignatureOnInvoices !== undefined ? parsed.showSignatureOnInvoices : Boolean(parsed.signatureUrl),
+      showSignatureOnQuotations: parsed.showSignatureOnQuotations !== undefined ? parsed.showSignatureOnQuotations : Boolean(parsed.signatureUrl),
       ...parsed,
     };
   });
@@ -186,6 +216,150 @@ export default function Settings({ defaultTab: initialTab }) {
   const [showFullBankDetails, setShowFullBankDetails] = useState(false);
   const [showInvoicePreviewModal, setShowInvoicePreviewModal] = useState(false);
 
+  // Branding upload refs & states
+  const logoInputRef = useRef(null);
+  const signatureInputRef = useRef(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingSignature, setUploadingSignature] = useState(false);
+  const [brandingSuccessMsg, setBrandingSuccessMsg] = useState("");
+
+  const { currentStore } = useStore();
+
+  // Re-fetch store settings whenever the active store changes
+  useEffect(() => {
+    if (currentStore?.id) {
+      settingsApi.get().then((res) => {
+        if (res) {
+          const data = res?.settings || res;
+          setForm((prev) => ({
+            ...prev,
+            ...data,
+            logoUrl: data.logoUrl || "",
+            signatureUrl: data.signatureUrl || "",
+            showLogoOnInvoices: data.showLogoOnInvoices !== undefined ? data.showLogoOnInvoices : Boolean(data.logoUrl),
+            showSignatureOnInvoices: data.showSignatureOnInvoices !== undefined ? data.showSignatureOnInvoices : Boolean(data.signatureUrl),
+          }));
+        }
+      }).catch(() => {});
+    }
+  }, [currentStore?.id]);
+
+  // Handle uploading company logo
+  const handleLogoFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      setErrorMessage("Company logo file size exceeds 2MB limit. Please choose a smaller image.");
+      return;
+    }
+
+    const validTypes = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
+    if (!validTypes.includes(file.type)) {
+      setErrorMessage("Invalid logo format. Please upload a PNG, JPG/JPEG, or WebP image.");
+      return;
+    }
+
+    setUploadingLogo(true);
+    setErrorMessage("");
+    try {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const fileData = event.target.result;
+        try {
+          const res = await settingsApi.uploadBranding({ type: "logo", fileData });
+          if (res?.url) {
+            handleFieldChange("logoUrl", res.url);
+            handleFieldChange("showLogoOnInvoices", true);
+            setBrandingSuccessMsg("Company logo uploaded and enabled.");
+            setTimeout(() => setBrandingSuccessMsg(""), 3500);
+          }
+        } catch (err) {
+          const msg = err?.response?.data?.message || err?.message || "Failed to upload company logo.";
+          setErrorMessage(msg);
+        } finally {
+          setUploadingLogo(false);
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      setErrorMessage("Error reading logo file. Please try again.");
+      setUploadingLogo(false);
+    }
+  };
+
+  // Handle uploading owner signature
+  const handleSignatureFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      setErrorMessage("Owner signature file size exceeds 2MB limit. Please choose a smaller image.");
+      return;
+    }
+
+    const validTypes = ["image/png", "image/jpeg", "image/jpg"];
+    if (!validTypes.includes(file.type)) {
+      setErrorMessage("Invalid signature format. Please upload a PNG (with transparency) or JPG/JPEG image.");
+      return;
+    }
+
+    setUploadingSignature(true);
+    setErrorMessage("");
+    try {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const fileData = event.target.result;
+        try {
+          const res = await settingsApi.uploadBranding({ type: "signature", fileData });
+          if (res?.url) {
+            handleFieldChange("signatureUrl", res.url);
+            handleFieldChange("showSignatureOnInvoices", true);
+            setBrandingSuccessMsg("Owner signature uploaded and enabled.");
+            setTimeout(() => setBrandingSuccessMsg(""), 3500);
+          }
+        } catch (err) {
+          const msg = err?.response?.data?.message || err?.message || "Failed to upload owner signature.";
+          setErrorMessage(msg);
+        } finally {
+          setUploadingSignature(false);
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      setErrorMessage("Error reading signature file. Please try again.");
+      setUploadingSignature(false);
+    }
+  };
+
+  // Handle removing logo
+  const handleRemoveLogo = async () => {
+    if (!window.confirm("Remove company logo from invoice settings?")) return;
+    try {
+      await settingsApi.removeBranding("logo");
+      handleFieldChange("logoUrl", "");
+      handleFieldChange("showLogoOnInvoices", false);
+      setBrandingSuccessMsg("Company logo removed.");
+      setTimeout(() => setBrandingSuccessMsg(""), 3500);
+    } catch (err) {
+      setErrorMessage("Failed to remove company logo. Please try again.");
+    }
+  };
+
+  // Handle removing signature
+  const handleRemoveSignature = async () => {
+    if (!window.confirm("Remove owner signature from invoice settings?")) return;
+    try {
+      await settingsApi.removeBranding("signature");
+      handleFieldChange("signatureUrl", "");
+      handleFieldChange("showSignatureOnInvoices", false);
+      setBrandingSuccessMsg("Owner signature removed.");
+      setTimeout(() => setBrandingSuccessMsg(""), 3500);
+    } catch (err) {
+      setErrorMessage("Failed to remove owner signature. Please try again.");
+    }
+  };
+
   // Fetch shop settings & subscription from backend
   useEffect(() => {
     let mounted = true;
@@ -195,17 +369,27 @@ export default function Settings({ defaultTab: initialTab }) {
     ]).then(([settingsRes, usageRes]) => {
       if (!mounted) return;
       if (settingsRes) {
+        const data = settingsRes?.settings || settingsRes;
         setForm((prev) => {
-          const merged = { ...prev, ...settingsRes };
-          if (settingsRes.subscriptionTier) {
-            setActivePlan(settingsRes.subscriptionTier.toUpperCase());
+          const merged = { ...prev, ...data };
+          if (data.subscriptionTier && data.subscriptionTier.toUpperCase() !== "FREE") {
+            setActivePlan(data.subscriptionTier.toUpperCase());
           }
           localStorage.setItem("bilzet_invoice_settings", JSON.stringify(merged));
           return merged;
         });
       }
-      if (usageRes && usageRes.planTier) {
+      if (usageRes && usageRes.planTier && usageRes.planTier.toUpperCase() !== "FREE") {
         setActivePlan(usageRes.planTier.toUpperCase());
+      } else {
+        // Fallback to cached active subscription tier if available
+        try {
+          const savedSub = JSON.parse(localStorage.getItem("bilzet_subscription_data") || "{}");
+          const cachedPlan = String(savedSub.planTier || savedSub.currentPlan || "").toUpperCase();
+          if (cachedPlan && cachedPlan !== "FREE" && savedSub.status !== "EXPIRED" && savedSub.status !== "CANCELLED") {
+            setActivePlan(cachedPlan);
+          }
+        } catch (_) {}
       }
       setLoading(false);
     });
@@ -257,6 +441,24 @@ export default function Settings({ defaultTab: initialTab }) {
   const handleSaveAll = async (e) => {
     if (e) e.preventDefault();
     setErrorMessage("");
+
+    const shopName = (form.shopName || form.storeName || "").trim();
+    const address = (form.address || form.storeLocation || "").trim();
+    const phone = (form.phone || form.storePhone || "").trim();
+    const email = (form.email || form.storeEmail || "").trim();
+
+    const normalizedForm = {
+      ...form,
+      shopName: shopName || form.shopName,
+      storeName: shopName || form.storeName,
+      address: address || form.address,
+      storeLocation: address || form.storeLocation,
+      phone: phone || form.phone,
+      storePhone: phone || form.storePhone,
+      email: email || form.email,
+      storeEmail: email || form.storeEmail,
+    };
+
     const errors = validateBusinessInfo();
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
@@ -271,10 +473,19 @@ export default function Settings({ defaultTab: initialTab }) {
     try {
       // Save operational preferences
       localStorage.setItem("bilzet_attendance_settings", JSON.stringify(attSettings));
-      localStorage.setItem("bilzet_invoice_settings", JSON.stringify(form));
+      localStorage.setItem("bilzet_invoice_settings", JSON.stringify(normalizedForm));
 
       // Persist to backend settings
-      await settingsApi.update(form);
+      await settingsApi.update(normalizedForm);
+
+      // Refresh store context so store switcher and header instantly update
+      try {
+        const { fetchStores } = useStore.getState();
+        if (fetchStores) await fetchStores();
+        window.dispatchEvent(
+          new CustomEvent("bilzet:store-changed", { detail: { name: shopName } })
+        );
+      } catch (_) {}
 
       setSavedSuccess(true);
       setTimeout(() => setSavedSuccess(false), 3500);
@@ -293,7 +504,8 @@ export default function Settings({ defaultTab: initialTab }) {
         .get()
         .then((res) => {
           if (res) {
-            setForm((prev) => ({ ...prev, ...res }));
+            const data = res?.settings || res;
+            setForm((prev) => ({ ...prev, ...data }));
           }
           setErrorMessage("");
           setFormErrors({});
@@ -304,7 +516,7 @@ export default function Settings({ defaultTab: initialTab }) {
 
   // Navigates to existing upgrade flow
   const handleUpgrade = (targetTier) => {
-    navigate(`/plans?tier=${targetTier}`);
+    navigate(`/plans?tier=${targetTier}&redirect=/settings`);
   };
 
   // Sample data for master invoice preview
@@ -315,6 +527,17 @@ export default function Settings({ defaultTab: initialTab }) {
     saleType: "B2B",
     placeOfSupply: `${form.stateCode || "33"}-${form.state || "Tamil Nadu"}`,
     paymentStatus: "PAID",
+    business: {
+      name: form.shopName || form.storeName || "BILZET Retail Mart",
+      address: form.address || form.storeLocation || "123 Commercial Plaza, Main Market",
+      phone: form.phone || form.storePhone || "+91 9876543210",
+      email: form.email || form.storeEmail || "billing@bilzet.app",
+      gstin: form.gstin || "33AAAAA0000A1Z5",
+      state: form.state || "Tamil Nadu",
+      stateCode: form.stateCode || "33",
+      logoUrl: form.logoUrl || "",
+      signatureUrl: form.signatureUrl || "",
+    },
     customer: {
       name: "Ramesh Traders & Co.",
       phone: "9876543210",
@@ -464,6 +687,7 @@ export default function Settings({ defaultTab: initialTab }) {
         <nav className="flex gap-1 min-w-max">
           {[
             { id: "business", label: "Business Information", icon: Building2 },
+            { id: "branding", label: "Invoice Branding", icon: Sparkles },
             { id: "store", label: "Store Information", icon: Store },
             { id: "tax", label: "Tax & Billing", icon: Receipt },
             { id: "users", label: "Users & Permissions", icon: Users },
@@ -636,7 +860,405 @@ export default function Settings({ defaultTab: initialTab }) {
       )}
 
       {/* ════════════════════════════════════════════════════
-          SECTION 2: STORE INFORMATION
+          SECTION: INVOICE BRANDING (COMPANY LOGO & OWNER SIGNATURE)
+      ════════════════════════════════════════════════════ */}
+      {activeTab === "branding" && (
+        <div className="space-y-6">
+          {/* Header Card */}
+          <div className="bg-white p-6 sm:p-7 rounded-2xl border border-slate-200/90 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-bold text-slate-900">Invoice Branding</h2>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                  STORE CUSTOMIZATION
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Upload your company logo and owner's authorized signature to brand generated invoices and POS receipts.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2.5">
+              <Button
+                variant="neutral"
+                size="sm"
+                icon={Eye}
+                onClick={() => setShowInvoicePreviewModal(true)}
+              >
+                Preview Bill
+              </Button>
+              <Button
+                variant="neutral"
+                size="sm"
+                icon={RotateCcw}
+                onClick={handleReset}
+                disabled={loading || saving}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant={savedSuccess ? "success" : "primary"}
+                size="sm"
+                icon={savedSuccess ? Check : Save}
+                onClick={handleSaveAll}
+                disabled={loading || saving}
+              >
+                {saving ? "Saving…" : savedSuccess ? "Saved!" : "Save Changes"}
+              </Button>
+            </div>
+          </div>
+
+          {/* Alert for Branding Actions */}
+          {brandingSuccessMsg && (
+            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 font-semibold flex items-center justify-between animate-fadeIn">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                <span>{brandingSuccessMsg}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Configuration Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* ── CARD 1: COMPANY LOGO ── */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-200/90 shadow-xs flex flex-col justify-between space-y-5">
+              <div className="space-y-4">
+                <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <ImageIcon size={18} className="text-blue-600" />
+                      <h3 className="text-sm font-bold text-slate-900">Company Logo</h3>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Your logo will appear on generated invoices and supported invoice exports.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Hidden File Input */}
+                <input
+                  type="file"
+                  ref={logoInputRef}
+                  onChange={handleLogoFileChange}
+                  accept="image/png,image/jpeg,image/webp"
+                  className="hidden"
+                />
+
+                {/* Logo Preview or Upload Box */}
+                {form.logoUrl ? (
+                  <div className="p-4 rounded-xl border border-slate-200 bg-[#F9F9FB] flex flex-col items-center justify-center space-y-3">
+                    <div className="w-full h-32 flex items-center justify-center p-2 bg-white rounded-lg border border-slate-200/80 shadow-2xs">
+                      <img
+                        src={resolveAssetUrl(form.logoUrl)}
+                        alt="Company Logo Preview"
+                        className="max-h-28 max-w-full object-contain"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2 w-full justify-end">
+                      <button
+                        type="button"
+                        onClick={() => logoInputRef.current?.click()}
+                        disabled={uploadingLogo}
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 text-slate-700 hover:bg-slate-50 transition cursor-pointer flex items-center gap-1.5"
+                      >
+                        {uploadingLogo ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
+                        <span>Replace Logo</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleRemoveLogo}
+                        disabled={uploadingLogo}
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-rose-200 text-rose-600 hover:bg-rose-50 transition cursor-pointer flex items-center gap-1.5"
+                      >
+                        <Trash2 size={13} />
+                        <span>Remove</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => logoInputRef.current?.click()}
+                    className="p-8 rounded-xl border-2 border-dashed border-slate-200 hover:border-blue-400 bg-[#FAFAFC] hover:bg-blue-50/20 transition cursor-pointer text-center space-y-2"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 mx-auto flex items-center justify-center">
+                      {uploadingLogo ? <Loader2 size={18} className="animate-spin" /> : <Upload size={18} />}
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-800">
+                        {uploadingLogo ? "Uploading company logo…" : "Upload Company Logo"}
+                      </p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        PNG, JPG/JPEG or WebP up to 2MB
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Show on Invoices Toggle */}
+                <div className="pt-2">
+                  <label className="flex items-center justify-between p-3 rounded-xl border border-slate-200/80 bg-slate-50/60 cursor-pointer hover:bg-slate-50 transition">
+                    <div>
+                      <span className="text-xs font-bold text-slate-900 block">
+                        Show company logo on invoices
+                      </span>
+                      <span className="text-[11px] text-slate-500 block mt-0.5">
+                        Controls visibility in invoice headers, thermal slips, and PDFs.
+                      </span>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(form.showLogoOnInvoices)}
+                      disabled={!form.logoUrl}
+                      onChange={(e) => handleFieldChange("showLogoOnInvoices", e.target.checked)}
+                      className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300 disabled:opacity-50 cursor-pointer"
+                    />
+                  </label>
+                  {!form.logoUrl && (
+                    <span className="text-[10px] text-slate-400 mt-1 block italic">
+                      Upload a logo above to enable on invoices.
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* ── CARD 2: OWNER SIGNATURE ── */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-200/90 shadow-xs flex flex-col justify-between space-y-5">
+              <div className="space-y-4">
+                <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <FileSignature size={18} className="text-blue-600" />
+                      <h3 className="text-sm font-bold text-slate-900">Owner Signature</h3>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Your signature will appear in the authorized signature area of generated invoices.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Hidden File Input */}
+                <input
+                  type="file"
+                  ref={signatureInputRef}
+                  onChange={handleSignatureFileChange}
+                  accept="image/png,image/jpeg"
+                  className="hidden"
+                />
+
+                {/* Signature Preview or Upload Box */}
+                {form.signatureUrl ? (
+                  <div className="p-4 rounded-xl border border-slate-200 bg-[#F9F9FB] flex flex-col items-center justify-center space-y-3">
+                    <div className="w-full h-32 flex items-center justify-center p-2 bg-white rounded-lg border border-slate-200/80 shadow-2xs relative">
+                      {/* Checkered pattern background to verify PNG transparency */}
+                      <div className="absolute inset-2 opacity-15 bg-[radial-gradient(#94a3b8_1px,transparent_1px)] [background-size:8px_8px]" />
+                      <img
+                        src={resolveAssetUrl(form.signatureUrl)}
+                        alt="Owner Signature Preview"
+                        className="max-h-24 max-w-full object-contain relative z-10"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2 w-full justify-end">
+                      <button
+                        type="button"
+                        onClick={() => signatureInputRef.current?.click()}
+                        disabled={uploadingSignature}
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 text-slate-700 hover:bg-slate-50 transition cursor-pointer flex items-center gap-1.5"
+                      >
+                        {uploadingSignature ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
+                        <span>Replace Signature</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleRemoveSignature}
+                        disabled={uploadingSignature}
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-rose-200 text-rose-600 hover:bg-rose-50 transition cursor-pointer flex items-center gap-1.5"
+                      >
+                        <Trash2 size={13} />
+                        <span>Remove</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => signatureInputRef.current?.click()}
+                    className="p-8 rounded-xl border-2 border-dashed border-slate-200 hover:border-blue-400 bg-[#FAFAFC] hover:bg-blue-50/20 transition cursor-pointer text-center space-y-2"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 mx-auto flex items-center justify-center">
+                      {uploadingSignature ? <Loader2 size={18} className="animate-spin" /> : <Upload size={18} />}
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-800">
+                        {uploadingSignature ? "Uploading owner signature…" : "Upload Owner Signature"}
+                      </p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        PNG (transparent background recommended) or JPG up to 2MB
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Show on Invoices Toggle */}
+                <div className="pt-2">
+                  <label className="flex items-center justify-between p-3 rounded-xl border border-slate-200/80 bg-slate-50/60 cursor-pointer hover:bg-slate-50 transition">
+                    <div>
+                      <span className="text-xs font-bold text-slate-900 block">
+                        Show owner signature on invoices
+                      </span>
+                      <span className="text-[11px] text-slate-500 block mt-0.5">
+                        Controls display above the Authorized Signatory stamp area.
+                      </span>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(form.showSignatureOnInvoices)}
+                      disabled={!form.signatureUrl}
+                      onChange={(e) => handleFieldChange("showSignatureOnInvoices", e.target.checked)}
+                      className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300 disabled:opacity-50 cursor-pointer"
+                    />
+                  </label>
+                  {!form.signatureUrl && (
+                    <span className="text-[10px] text-slate-400 mt-1 block italic">
+                      Upload a signature above to enable on invoices.
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ── LIVE INVOICE PREVIEW (REQUIREMENT 8) ── */}
+          <div className="bg-white p-6 rounded-2xl border border-slate-200/90 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Live Invoice Branding Preview</h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Illustrative preview showing how your company logo and owner signature render on invoices.
+                </p>
+              </div>
+              <span className="text-[11px] font-mono text-slate-400">
+                Live Output Mode
+              </span>
+            </div>
+
+            {/* Scaled / Compact Master Invoice Frame */}
+            <div className="max-w-xl mx-auto p-5 sm:p-6 bg-white rounded-xl border border-slate-200 shadow-sm space-y-4 text-xs">
+              {/* Header with Logo & Store */}
+              <div className="flex items-center justify-between border-b border-slate-200 pb-3 gap-3">
+                <div className="space-y-0.5">
+                  <h4 className="text-sm font-bold text-slate-900 uppercase">
+                    {form.shopName || "BILZET Retail Mart"}
+                  </h4>
+                  <p className="text-[11px] text-slate-500">
+                    {form.address || "123 Commercial Plaza, Main Market"}
+                  </p>
+                  <p className="text-[10px] font-mono text-slate-600">
+                    GSTIN: {form.gstin || "33AAAAA0000A1Z5"}
+                  </p>
+                </div>
+                {form.showLogoOnInvoices && form.logoUrl ? (
+                  <div className="shrink-0 p-1 bg-white rounded border border-slate-200/80">
+                    <img
+                      src={resolveAssetUrl(form.logoUrl)}
+                      alt="Logo preview"
+                      className="max-h-12 max-w-[120px] object-contain"
+                    />
+                  </div>
+                ) : (
+                  <div className="text-[10px] text-slate-400 italic">
+                    (Logo disabled or not uploaded)
+                  </div>
+                )}
+              </div>
+
+              {/* Sample Mini Table */}
+              <div className="space-y-1 py-1">
+                <div className="flex justify-between font-mono text-[11px] text-slate-500 pb-1 border-b border-slate-100">
+                  <span>ITEM DESCRIPTION</span>
+                  <span>TOTAL</span>
+                </div>
+                <div className="flex justify-between text-slate-800 text-xs py-0.5">
+                  <span>1. Premium Basmati Rice (5kg)</span>
+                  <span className="font-mono">₹1,102.50</span>
+                </div>
+                <div className="flex justify-between text-slate-800 text-xs py-0.5">
+                  <span>2. Cold-Pressed Groundnut Oil (1L)</span>
+                  <span className="font-mono">₹537.60</span>
+                </div>
+                <div className="flex justify-between font-bold text-slate-900 border-t border-slate-200 pt-1 text-xs">
+                  <span>Grand Total</span>
+                  <span className="font-mono text-blue-600">₹1,640.10</span>
+                </div>
+              </div>
+
+              {/* Footer with Signatory Area */}
+              <div className="flex items-end justify-between pt-3 border-t border-slate-200">
+                <div className="text-[10px] text-slate-400">
+                  <p>Terms: Goods once sold are not returnable.</p>
+                  <p className="italic">Thank you for your business!</p>
+                </div>
+
+                <div className="flex flex-col items-end min-w-[140px]">
+                  <div className="h-12 flex items-end justify-center w-full pb-1">
+                    {form.showSignatureOnInvoices && form.signatureUrl ? (
+                      <img
+                        src={resolveAssetUrl(form.signatureUrl)}
+                        alt="Signature preview"
+                        className="max-h-10 max-w-[110px] object-contain"
+                      />
+                    ) : (
+                      <span className="text-[9px] text-slate-300 italic">
+                        (Signature / Seal)
+                      </span>
+                    )}
+                  </div>
+                  <div className="border-t border-slate-400 pt-0.5 w-full text-right">
+                    <p className="text-[10px] font-bold text-slate-900">
+                      {form.authorizedPerson || form.ownerName || "Authorized Signatory"}
+                    </p>
+                    <p className="text-[8px] font-semibold text-slate-500 uppercase tracking-wider">
+                      Authorized Signatory
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+              <p className="text-[11px] text-slate-400 italic">
+                Note: This is an illustrative preview. Saved branding preferences control all actual POS bills, downloads, and receipts.
+              </p>
+              <Button
+                variant="neutral"
+                size="sm"
+                icon={Eye}
+                onClick={() => setShowInvoicePreviewModal(true)}
+              >
+                Preview Full Bill
+              </Button>
+            </div>
+          </div>
+
+          {/* Bottom Save Bar */}
+          <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
+            <Button variant="neutral" size="sm" onClick={handleReset} disabled={saving}>
+              Cancel
+            </Button>
+            <Button
+              variant={savedSuccess ? "success" : "primary"}
+              size="sm"
+              icon={savedSuccess ? Check : Save}
+              onClick={handleSaveAll}
+              disabled={saving}
+            >
+              {saving ? "Saving…" : savedSuccess ? "Saved!" : "Save Changes"}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════════════════
+          SECTION 3: STORE INFORMATION
       ════════════════════════════════════════════════════ */}
       {activeTab === "store" && (
         <div className="bg-white p-6 sm:p-7 rounded-2xl border border-slate-200/90 shadow-xs space-y-6">
@@ -1249,6 +1871,230 @@ export default function Settings({ defaultTab: initialTab }) {
               </div>
             </div>
 
+            {/* ── Business Logo & Authorized Signature (Screenshot 2) ── */}
+            <div className="pt-5 border-t border-slate-100">
+              <div className="border-b border-slate-100 pb-3 mb-5">
+                <div className="flex items-center gap-2">
+                  <FileSignature size={18} className="text-blue-600" />
+                  <h3 className="text-sm font-bold text-slate-900">
+                    Business Logo &amp; Authorized Signature
+                  </h3>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Upload official business logo and authorized signature to display on tax invoices, quotations, print layouts, and customer receipts.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* 1. Business Logo Upload */}
+                <div className="space-y-3 bg-[#F8FAFC] p-4 rounded-xl border border-slate-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="text-xs font-bold text-slate-900 block">
+                        Business Logo
+                      </label>
+                      <span className="text-[11px] text-slate-500 block">
+                        PNG, JPG, JPEG, or WebP (max 2MB)
+                      </span>
+                    </div>
+                    {form.logoUrl && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <Check size={10} /> Uploaded
+                      </span>
+                    )}
+                  </div>
+
+                  <input
+                    ref={logoInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/jpg,image/webp"
+                    className="hidden"
+                    onChange={handleLogoFileChange}
+                  />
+
+                  {form.logoUrl ? (
+                    <div className="p-3 rounded-lg border border-slate-200 bg-white flex flex-col items-center justify-center space-y-2.5">
+                      <div className="w-full h-24 flex items-center justify-center p-2 rounded bg-slate-50 border border-slate-100">
+                        <img
+                          src={resolveAssetUrl(form.logoUrl)}
+                          alt="Business Logo Preview"
+                          className="max-h-20 max-w-full object-contain"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2 w-full justify-end">
+                        <button
+                          type="button"
+                          onClick={() => logoInputRef.current?.click()}
+                          disabled={uploadingLogo}
+                          className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 text-slate-700 hover:bg-slate-50 transition cursor-pointer flex items-center gap-1.5"
+                        >
+                          {uploadingLogo ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
+                          <span>Replace Logo</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleRemoveLogo}
+                          disabled={uploadingLogo}
+                          className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-rose-200 text-rose-600 hover:bg-rose-50 transition cursor-pointer flex items-center gap-1.5"
+                        >
+                          <Trash2 size={13} />
+                          <span>Remove</span>
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div
+                      onClick={() => logoInputRef.current?.click()}
+                      className="p-6 rounded-lg border-2 border-dashed border-slate-200 hover:border-blue-400 bg-white hover:bg-blue-50/20 transition cursor-pointer text-center space-y-1.5"
+                    >
+                      <div className="w-9 h-9 rounded-full bg-blue-50 text-blue-600 mx-auto flex items-center justify-center">
+                        {uploadingLogo ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+                      </div>
+                      <p className="text-xs font-bold text-slate-800">
+                        {uploadingLogo ? "Uploading logo…" : "Upload Business Logo"}
+                      </p>
+                      <p className="text-[10px] text-slate-400">
+                        Displays on invoice headers, print receipts, and quotations
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Show Logo Toggle */}
+                  <label className="flex items-center justify-between p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer hover:bg-slate-50 transition">
+                    <div>
+                      <span className="text-xs font-semibold text-slate-800 block">
+                        Display logo on invoices &amp; quotations
+                      </span>
+                      <span className="text-[10px] text-slate-400 block">
+                        Include in master document headers and printouts
+                      </span>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(form.showLogoOnInvoices)}
+                      disabled={!form.logoUrl}
+                      onChange={(e) => handleFieldChange("showLogoOnInvoices", e.target.checked)}
+                      className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300 disabled:opacity-50 cursor-pointer"
+                    />
+                  </label>
+                </div>
+
+                {/* 2. Authorized Signature Upload */}
+                <div className="space-y-3 bg-[#F8FAFC] p-4 rounded-xl border border-slate-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="text-xs font-bold text-slate-900 block">
+                        Authorized Signature
+                      </label>
+                      <span className="text-[11px] text-slate-500 block">
+                        Transparent PNG or JPG (max 2MB)
+                      </span>
+                    </div>
+                    {form.signatureUrl && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <Check size={10} /> Uploaded
+                      </span>
+                    )}
+                  </div>
+
+                  <input
+                    ref={signatureInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/jpg"
+                    className="hidden"
+                    onChange={handleSignatureFileChange}
+                  />
+
+                  {form.signatureUrl ? (
+                    <div className="p-3 rounded-lg border border-slate-200 bg-white flex flex-col items-center justify-center space-y-2.5">
+                      <div className="w-full h-24 flex items-center justify-center p-2 rounded bg-slate-50 border border-slate-100 relative">
+                        <div className="absolute inset-1 opacity-15 bg-[radial-gradient(#94a3b8_1px,transparent_1px)] [background-size:6px_6px]" />
+                        <img
+                          src={resolveAssetUrl(form.signatureUrl)}
+                          alt="Authorized Signature Preview"
+                          className="max-h-20 max-w-full object-contain relative z-10"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2 w-full justify-end">
+                        <button
+                          type="button"
+                          onClick={() => signatureInputRef.current?.click()}
+                          disabled={uploadingSignature}
+                          className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 text-slate-700 hover:bg-slate-50 transition cursor-pointer flex items-center gap-1.5"
+                        >
+                          {uploadingSignature ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
+                          <span>Replace Signature</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleRemoveSignature}
+                          disabled={uploadingSignature}
+                          className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-rose-200 text-rose-600 hover:bg-rose-50 transition cursor-pointer flex items-center gap-1.5"
+                        >
+                          <Trash2 size={13} />
+                          <span>Remove</span>
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div
+                      onClick={() => signatureInputRef.current?.click()}
+                      className="p-6 rounded-lg border-2 border-dashed border-slate-200 hover:border-blue-400 bg-white hover:bg-blue-50/20 transition cursor-pointer text-center space-y-1.5"
+                    >
+                      <div className="w-9 h-9 rounded-full bg-blue-50 text-blue-600 mx-auto flex items-center justify-center">
+                        {uploadingSignature ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+                      </div>
+                      <p className="text-xs font-bold text-slate-800">
+                        {uploadingSignature ? "Uploading signature…" : "Upload Authorized Signature"}
+                      </p>
+                      <p className="text-[10px] text-slate-400">
+                        Appears above the Authorized Signatory name
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Independent Toggles: Invoices vs Quotations */}
+                  <div className="space-y-2">
+                    <label className="flex items-center justify-between p-2 rounded-lg border border-slate-200 bg-white cursor-pointer hover:bg-slate-50 transition">
+                      <div>
+                        <span className="text-xs font-semibold text-slate-800 block">
+                          Enable signature on Invoices
+                        </span>
+                        <span className="text-[10px] text-slate-400 block">
+                          Displays on Sales Invoices &amp; Printouts
+                        </span>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={Boolean(form.showSignatureOnInvoices)}
+                        disabled={!form.signatureUrl}
+                        onChange={(e) => handleFieldChange("showSignatureOnInvoices", e.target.checked)}
+                        className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300 disabled:opacity-50 cursor-pointer"
+                      />
+                    </label>
+
+                    <label className="flex items-center justify-between p-2 rounded-lg border border-slate-200 bg-white cursor-pointer hover:bg-slate-50 transition">
+                      <div>
+                        <span className="text-xs font-semibold text-slate-800 block">
+                          Enable signature on Quotations
+                        </span>
+                        <span className="text-[10px] text-slate-400 block">
+                          Displays on formal Quotations &amp; Proformas
+                        </span>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={Boolean(form.showSignatureOnQuotations)}
+                        disabled={!form.signatureUrl}
+                        onChange={(e) => handleFieldChange("showSignatureOnQuotations", e.target.checked)}
+                        className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300 disabled:opacity-50 cursor-pointer"
+                      />
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
               <Button
                 variant="neutral"
@@ -1608,7 +2454,20 @@ export default function Settings({ defaultTab: initialTab }) {
       ════════════════════════════════════════════════════ */}
       {showInvoicePreviewModal && (
         <TaxInvoice
-          invoice={sampleInvoiceData}
+          invoice={{
+            ...sampleInvoiceData,
+            business: {
+              name: form.shopName || form.storeName || "BILZET Retail Mart",
+              address: form.address || form.storeLocation || "123 Commercial Plaza, Main Market",
+              phone: form.phone || form.storePhone || "+91 9876543210",
+              email: form.email || form.storeEmail || "billing@bilzet.app",
+              gstin: form.gstin || "33AAAAA0000A1Z5",
+              state: form.state || "Tamil Nadu",
+              stateCode: form.stateCode || "33",
+              logoUrl: form.logoUrl || "",
+              signatureUrl: form.signatureUrl || "",
+            },
+          }}
           shopSettings={form}
           plan={activePlan}
           isModal={true}
