@@ -68,35 +68,18 @@ export default function CaConnect() {
 
   // Subscription state determination
   const [subscription, setSubscription] = useState(() => {
-    let plan = "Free";
-    let status = "Active";
-    let isExpired = false;
-
-    if (user?.subscription?.planTier) {
-      plan = user.subscription.planTier;
-      status = user.subscription.status || "Active";
-      isExpired = !!user.subscription.isExpired;
-    }
+    let plan = user?.subscription?.planTier || user?.currentPlan || "FREE";
+    let status = user?.subscription?.status || "Active";
+    let isExpired = !!user?.subscription?.isExpired;
 
     try {
       const savedData = localStorage.getItem("bilzet_subscription_data");
       if (savedData) {
         const parsedData = JSON.parse(savedData);
-        if (parsedData.planTier && parsedData.planTier !== "FREE") plan = parsedData.planTier;
-        else if (parsedData.currentPlan && parsedData.currentPlan.toUpperCase() !== "FREE") plan = parsedData.currentPlan;
+        if (parsedData.planTier) plan = parsedData.planTier;
+        else if (parsedData.currentPlan) plan = parsedData.currentPlan;
         if (parsedData.status) status = parsedData.status;
-      }
-      const saved = localStorage.getItem("bilzet_subscription");
-      if (saved && plan === "Free") {
-        const parsed = JSON.parse(saved);
-        if (parsed.currentPlan) plan = parsed.currentPlan;
-        if (parsed.status) status = parsed.status;
-        if (parsed.validUntil) {
-          const dt = new Date(parsed.validUntil);
-          if (!isNaN(dt.getTime()) && dt < new Date()) {
-            isExpired = true;
-          }
-        }
+        if (parsedData.isExpired !== undefined) isExpired = !!parsedData.isExpired;
       }
     } catch (_) {}
 

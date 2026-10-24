@@ -6,6 +6,7 @@ import emailService from './email.service.mjs';
 import notificationService from './notification.service.mjs';
 import realtimeService from './realtime.service.mjs';
 import * as caInvitationService from './caInvitation.service.mjs';
+import { getActiveSubscription, assertCanAddSubUser } from './subscription.service.mjs';
 
 /**
  * Service for Unified Staff, Manager, and CA Role Invitations
@@ -136,6 +137,22 @@ export const createInvitation = async (inviterUser, businessId, data = {}) => {
   // Prevent self-invitation
   if (inviterUser.email && inviterUser.email.toLowerCase() === rawEmail) {
     throw ApiError.badRequest('You cannot invite your own account to this store.');
+  }
+
+  // Enforce Subscription Entitlement:
+  // - Inviting a CA requires an active PREMIUM subscription
+  // - Inviting Team Members requires available sub-user seat allowance (Free plan allows 0 sub-users)
+  if (inviterUser.role !== 'SUPER_ADMIN' && !inviterUser.isSuperAdmin) {
+    if (rawRole === 'CA') {
+      const subInfo = await getActiveSubscription(resolvedBusinessId, inviterUser.id);
+      if (!subInfo.isActive || subInfo.planTier !== 'PREMIUM') {
+        const error = ApiError.forbidden('CA Connect and inviting Chartered Accountants requires an active Premium subscription.');
+        error.code = 'PREMIUM_PLAN_REQUIRED';
+        throw error;
+      }
+    } else {
+      await assertCanAddSubUser(resolvedBusinessId, inviterUser.id);
+    }
   }
 
   // Check if user is already an active member of this store with the same or higher role

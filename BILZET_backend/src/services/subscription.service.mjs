@@ -93,80 +93,47 @@ export const getActiveSubscription = async (businessId, userId = null) => {
     }
   }
 
-  // 4. If absolutely no subscription record exists, provide default Active Free Starter for explicit test cases, or PREMIUM for actual app accounts
+  // 4. If no subscription record exists, default strictly to the FREE starter plan
   if (!activeSub) {
-    const isTestFree =
-      (typeof userId === 'string' && (userId.includes('free') || userId.includes('user-p10-free') || userId.includes('user-p12-free'))) ||
-      (typeof businessId === 'string' && (businessId.includes('free') || businessId.includes('biz-p10-free') || businessId.includes('biz-p12-free')));
-
-    if (isTestFree) {
-      return {
-        planTier: 'FREE',
-        actualPlanTier: 'FREE',
-        planName: 'Free Starter',
-        status: 'ACTIVE',
-        isActive: true,
-        isExpired: false,
-        expiresAt: null,
-        subscription: null,
-      };
-    }
-
-    const now = new Date();
-    const expiry = new Date(now.getTime() + 365 * 24 * 3600 * 1000);
-    let targetUserId = userId;
-    if (!targetUserId && businessId) {
-      const b = await prisma.business.findUnique({ where: { id: businessId } }).catch(() => null);
-      targetUserId = b?.ownerId;
-    }
-    if (!targetUserId) targetUserId = 'admin-01';
-
-    try {
-      activeSub = await prisma.subscription.create({
-        data: {
-          userId: targetUserId,
-          planTier: 'PREMIUM',
-          planName: 'Premium Enterprise',
-          status: 'ACTIVE',
-          billingCycle: 'ANNUAL',
-          amount: 3999,
-          maxSubUsers: -1,
-          startDate: now,
-          endDate: expiry,
-          expiresAt: expiry,
-          paymentReference: 'PAID-PREMIUM-FULL-ACCESS',
-          paymentStatus: 'PAID',
-        },
-      });
-    } catch (_) {
-      activeSub = {
-        id: `sub-prem-${targetUserId}`,
-        userId: targetUserId,
-        planTier: 'PREMIUM',
-        planName: 'Premium Enterprise',
-        maxSubUsers: -1,
-        status: 'ACTIVE',
-        amount: 3999,
-        interval: 'ANNUAL',
-        startDate: now,
-        endDate: expiry,
-        expiresAt: expiry,
-      };
-    }
+    return {
+      planTier: 'FREE',
+      actualPlanTier: 'FREE',
+      planName: 'Free Starter',
+      status: 'ACTIVE',
+      isActive: true,
+      isExpired: false,
+      expiresAt: null,
+      subscription: null,
+    };
   }
 
   const now = new Date();
   const expiryDate = activeSub.expiresAt || activeSub.endDate;
   const isExpired = expiryDate ? new Date(expiryDate) <= now : false;
-  const isStatusActive = String(activeSub.status || '').toUpperCase() === 'ACTIVE';
+  const subStatus = String(activeSub.status || '').toUpperCase();
 
+  // Only active unexpired subscriptions grant paid entitlements. Cancelled subscriptions resolve to FREE.
+  const isStatusActive = subStatus === 'ACTIVE';
   const isValidActive = isStatusActive && !isExpired;
 
+  let resolvedTier = 'FREE';
+  if (isValidActive) {
+    const rawTier = String(activeSub.planTier || 'FREE').toUpperCase();
+    resolvedTier = ['PRO', 'PREMIUM', 'ENTERPRISE'].includes(rawTier) ? rawTier : 'FREE';
+  }
+
+  let effectiveStatus = activeSub.status || 'ACTIVE';
+  if (isExpired) {
+    effectiveStatus = 'EXPIRED';
+  } else if (subStatus === 'CANCELLED') {
+    effectiveStatus = 'CANCELLED';
+  }
+
   return {
-    planTier: isValidActive ? String(activeSub.planTier || 'FREE').toUpperCase() : 'FREE',
+    planTier: resolvedTier,
     actualPlanTier: String(activeSub.planTier || 'FREE').toUpperCase(),
-    planName: activeSub.planName || (isValidActive ? `${activeSub.planTier} Plan` : 'Free Starter'),
-    status: isExpired ? 'EXPIRED' : activeSub.status,
+    planName: isValidActive ? (activeSub.planName || `${resolvedTier} Plan`) : 'Free Starter',
+    status: effectiveStatus,
     isActive: isValidActive,
     isExpired,
     expiresAt: expiryDate,

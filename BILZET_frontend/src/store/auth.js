@@ -34,22 +34,24 @@ export const useAuth = create((set) => ({
         const cu = window.Clerk.user;
         const email = cu.primaryEmailAddress?.emailAddress || cu.emailAddresses?.[0]?.emailAddress;
         const name = cu.fullName || `${cu.firstName || ''} ${cu.lastName || ''}`.trim() || 'Clerk User';
+        const isSuper = email === 'vickyms2app@gmail.com' || email === 'admin@bilzet.com' || email === 'vicky@bilzet.com';
         set({
           user: {
             id: cu.id,
             name,
             email,
-            role: "ADMIN",
+            role: isSuper ? "SUPER_ADMIN" : "ADMIN",
             isOwner: true,
             isActive: true,
             subscription: {
-              planTier: "PREMIUM",
-              planName: "Premium Enterprise",
+              planTier: isSuper ? "PREMIUM" : "FREE",
+              planName: isSuper ? "Premium Enterprise" : "Free Starter",
               status: "ACTIVE",
               isActive: true,
-              isUnlimited: true,
-              maxSubUsers: -1,
+              isUnlimited: isSuper,
+              maxSubUsers: isSuper ? -1 : 0,
             },
+            currentPlan: isSuper ? "PREMIUM" : "FREE",
           },
           loading: false,
         });
@@ -64,20 +66,19 @@ export const useAuth = create((set) => ({
       const res = await Promise.race([mePromise, timeoutPromise]);
       if (res && res.user) {
         let sub = res.user.subscription;
-        if (!sub || String(sub.planTier || "").toUpperCase() === "FREE") {
+        if (!sub) {
           sub = {
-            planTier: "PREMIUM",
-            planName: "Premium Enterprise",
+            planTier: res.user.currentPlan || "FREE",
+            planName: (res.user.currentPlan === "PREMIUM" ? "Premium Enterprise" : res.user.currentPlan === "PRO" ? "Pro Business" : "Free Starter"),
             status: "ACTIVE",
             isActive: true,
-            isUnlimited: true,
-            maxSubUsers: -1,
-            expiresAt: new Date(Date.now() + 365 * 24 * 3600 * 1000).toISOString(),
+            isUnlimited: res.user.currentPlan === "PRO" || res.user.currentPlan === "PREMIUM",
+            maxSubUsers: res.user.currentPlan === "PREMIUM" ? -1 : res.user.currentPlan === "PRO" ? 5 : 0,
+            expiresAt: null,
           };
           res.user.subscription = sub;
-          res.user.currentPlan = "PREMIUM";
         }
-        const tier = String(sub.planTier || "PREMIUM").toUpperCase();
+        const tier = String(sub.planTier || res.user.currentPlan || "FREE").toUpperCase();
         const cap = tier.charAt(0) + tier.slice(1).toLowerCase();
         try {
           localStorage.setItem(
@@ -88,16 +89,16 @@ export const useAuth = create((set) => ({
               status: sub.status || "ACTIVE",
               expiresAt: sub.expiresAt,
               isActive: sub.isActive !== false,
-              planName: sub.planName || "Premium Enterprise",
+              planName: sub.planName || (tier === 'PREMIUM' ? 'Premium Enterprise' : tier === 'PRO' ? 'Pro Business' : 'Free Starter'),
             })
           );
           localStorage.setItem(
             "bilzet_subscription",
             JSON.stringify({
               currentPlan: cap,
-              status: "Active",
-              totalBills: "Unlimited",
-              usedBills: 1,
+              status: sub.status || "Active",
+              totalBills: sub.isUnlimited ? "Unlimited" : "100 bills / year",
+              usedBills: 0,
             })
           );
         } catch (_) {}
@@ -215,13 +216,15 @@ export const useAuth = create((set) => ({
           isOwner: true,
           isActive: true,
           subscription: {
-            planTier: 'PREMIUM',
-            actualPlanTier: 'PREMIUM',
-            planName: 'Premium Enterprise',
+            planTier: isSuper ? 'PREMIUM' : 'FREE',
+            actualPlanTier: isSuper ? 'PREMIUM' : 'FREE',
+            planName: isSuper ? 'Premium Enterprise' : 'Free Starter',
             status: 'ACTIVE',
             isActive: true,
+            isUnlimited: isSuper,
+            maxSubUsers: isSuper ? -1 : 0,
           },
-          currentPlan: 'PREMIUM',
+          currentPlan: isSuper ? 'PREMIUM' : 'FREE',
           isNewUser: false,
           hasShopConfig: true,
         },

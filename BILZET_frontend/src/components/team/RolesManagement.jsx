@@ -46,36 +46,28 @@ export default function RolesManagement() {
 
   // Effective Subscription Tier Evaluation
   const effectiveTier = (() => {
+    if (authUser?.role === "SUPER_ADMIN" || authUser?.isSuperAdmin) {
+      return "PREMIUM";
+    }
     if (usage?.isExpired || usage?.status === "EXPIRED" || usage?.status === "CANCELLED") {
       return "FREE";
     }
-    if (usage?.planTier && usage.planTier !== "FREE") {
+    if (usage?.planTier) {
       return usage.planTier.toUpperCase();
     }
-    if (authUser?.subscription?.planTier && authUser.subscription.planTier !== "FREE") {
+    if (authUser?.subscription?.planTier) {
       return authUser.subscription.planTier.toUpperCase();
     }
     try {
       const savedData = localStorage.getItem("bilzet_subscription_data");
       if (savedData) {
         const parsed = JSON.parse(savedData);
-        if (parsed.status === "EXPIRED" || parsed.status === "CANCELLED") return "FREE";
-        if (parsed.planTier && parsed.planTier !== "FREE") return parsed.planTier.toUpperCase();
-        if (parsed.currentPlan && parsed.currentPlan.toUpperCase() !== "FREE") return parsed.currentPlan.toUpperCase();
+        if (parsed.status === "EXPIRED" || parsed.status === "CANCELLED" || parsed.isExpired) return "FREE";
+        if (parsed.planTier) return parsed.planTier.toUpperCase();
+        if (parsed.currentPlan) return parsed.currentPlan.toUpperCase();
       }
     } catch (_) {}
-    try {
-      const saved = localStorage.getItem("bilzet_subscription");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.status === "Expired" || parsed.status === "Cancelled") return "FREE";
-        if (parsed.currentPlan && parsed.currentPlan.toUpperCase() !== "FREE") return parsed.currentPlan.toUpperCase();
-      }
-    } catch (_) {}
-    if (authUser?.isOwner || authUser?.role === "ADMIN" || authUser?.role === "SUPER_ADMIN") {
-      return "PREMIUM";
-    }
-    return (usage?.planTier || "PREMIUM").toUpperCase();
+    return "FREE";
   })();
 
   const isPremium = effectiveTier === "PREMIUM" || effectiveTier === "ENTERPRISE";

@@ -214,16 +214,20 @@ export default function Layout({ children }) {
     return displayName.slice(0, 2).toUpperCase();
   }, [displayName]);
 
-  // Subscription plan check: user bought Premium version
-  const isPremium = useMemo(() => {
-    if (user?.isOwner || user?.role === "ADMIN" || user?.role === "SUPER_ADMIN") return true;
-    if (user?.subscription?.planTier && String(user.subscription.planTier).toUpperCase() === "PREMIUM") return true;
+  // Subscription plan check: user effective plan tier
+  const userPlan = useMemo(() => {
+    if (user?.role === "SUPER_ADMIN" || user?.isSuperAdmin) return "PREMIUM";
+    const subTier = user?.subscription?.planTier || user?.currentPlan;
+    if (subTier) return String(subTier).toUpperCase();
     try {
       const sub = JSON.parse(localStorage.getItem("bilzet_subscription_data") || "{}");
-      if (String(sub.planTier || sub.currentPlan || "").toUpperCase() === "PREMIUM") return true;
+      if (sub.planTier || sub.currentPlan) return String(sub.planTier || sub.currentPlan).toUpperCase();
     } catch (_) {}
-    return true;
+    return "FREE";
   }, [user]);
+
+  const isPremium = userPlan === "PREMIUM";
+  const isProOrHigher = userPlan === "PRO" || userPlan === "PREMIUM";
 
   // Theme Toggle State
   const [isDark, setIsDark] = useState(() => {
@@ -512,9 +516,23 @@ export default function Layout({ children }) {
       return caNavSections;
     }
 
+    const planRequiredMap = {
+      "/ca-connect": "PREMIUM",
+      "/online-orders": "PRO",
+      "/sms-marketing": "PRO",
+      "/gst": "PRO",
+    };
+
     return navSections
       .map((sec) => {
         let items = sec.items.filter((item) => {
+          // Check plan entitlements first
+          const requiredPlan = planRequiredMap[item.path];
+          if (requiredPlan && !isSuperAdmin) {
+            if (requiredPlan === "PREMIUM" && !isPremium) return false;
+            if (requiredPlan === "PRO" && !isProOrHigher) return false;
+          }
+
           if (isSuperAdmin || isOwner) return true;
           const requiredPerms = permMap[item.path];
           if (!requiredPerms) return true;
@@ -539,7 +557,7 @@ export default function Layout({ children }) {
         return { ...sec, items };
       })
       .filter((sec) => sec.items.length > 0);
-  }, [user, isAuthorizedAdmin, isOwner, isSuperAdmin, hasPermission]);
+  }, [user, isAuthorizedAdmin, isOwner, isSuperAdmin, hasPermission, isPremium, isProOrHigher]);
 
   // Dynamic breadcrumb matching
   const currentBreadcrumb = useMemo(() => {

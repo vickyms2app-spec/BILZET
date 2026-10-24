@@ -66,7 +66,7 @@ export const clerkSync = asyncHandler(async (req, res) => {
         businessId: 'busi-01',
         isOwner: true,
         isActive: true,
-        currentPlan: 'PREMIUM',
+        currentPlan: 'FREE',
         isNewUser: false,
         hasShopConfig: true,
       },

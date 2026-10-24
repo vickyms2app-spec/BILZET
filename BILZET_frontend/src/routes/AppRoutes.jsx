@@ -32,7 +32,37 @@ import { ClerkSsoCallback } from "../components/auth/ClerkAuth";
 import { isAdminEmail, isAdminUser, isSuperAdminUser } from "../utils/security";
 import { usePermissions } from "../hooks/usePermissions";
 import { getWorkspaceRedirectPath } from "../utils/workspaceRouter";
+import { LockedFeatureGate, isFeatureAllowed } from "../utils/featureAccess";
 export { isAdminEmail, isAdminUser, isSuperAdminUser };
+
+function checkPlanAccess(user, minPlan, featureKey) {
+  if (!minPlan && !featureKey) return { allowed: true };
+  if (!user) return { allowed: false, userPlan: "FREE" };
+  if (isSuperAdminUser(user) || isAdminEmail(user?.email)) {
+    return { allowed: true };
+  }
+
+  const userPlan = (() => {
+    const subTier = user?.subscription?.planTier || user?.currentPlan;
+    if (subTier) return String(subTier).toUpperCase();
+    try {
+      const sub = JSON.parse(localStorage.getItem("bilzet_subscription_data") || "{}");
+      if (sub.planTier || sub.currentPlan) return String(sub.planTier || sub.currentPlan).toUpperCase();
+    } catch (_) {}
+    return "FREE";
+  })();
+
+  const tierRanks = { FREE: 1, PRO: 2, PREMIUM: 3, ENTERPRISE: 4 };
+  const userRank = tierRanks[userPlan] || 1;
+  const requiredRank = minPlan ? (tierRanks[minPlan.toUpperCase()] || 2) : 1;
+
+  let allowed = userRank >= requiredRank;
+  if (featureKey) {
+    allowed = allowed && isFeatureAllowed(featureKey, userPlan);
+  }
+
+  return { allowed, userPlan };
+}
 
 // New ERP Modules
 import Warehouses from "../pages/Warehouses";
@@ -101,7 +131,7 @@ function RootRedirect() {
   return <Navigate to={getWorkspaceRedirectPath(user)} replace />;
 }
 
-function ClerkProtectedWrapper({ children, roles, permission }) {
+function ClerkProtectedWrapper({ children, roles, permission, minPlan, featureKey }) {
   const { user, loading: authLoading } = useAuth();
   const { isLoaded: isClerkLoaded, isSignedIn } = useClerkAuth();
   const { hasPermission } = usePermissions();
@@ -124,10 +154,24 @@ function ClerkProtectedWrapper({ children, roles, permission }) {
     return <Navigate to={getWorkspaceRedirectPath(user)} replace />;
   }
 
+  const { allowed, userPlan } = checkPlanAccess(user, minPlan, featureKey);
+  if (!allowed) {
+    return (
+      <Layout>
+        <div className="p-4 sm:p-8 flex items-center justify-center min-h-[60vh]">
+          <LockedFeatureGate
+            featureKey={featureKey || (minPlan === "PREMIUM" ? "ca_connect" : "online_orders")}
+            currentTier={userPlan}
+          />
+        </div>
+      </Layout>
+    );
+  }
+
   return <Layout>{children}</Layout>;
 }
 
-function StandardProtectedWrapper({ children, roles, permission }) {
+function StandardProtectedWrapper({ children, roles, permission, minPlan, featureKey }) {
   const { user, loading } = useAuth();
   const { hasPermission } = usePermissions();
 
@@ -142,6 +186,20 @@ function StandardProtectedWrapper({ children, roles, permission }) {
 
   if (permission && !hasPermission(permission)) {
     return <Navigate to={getWorkspaceRedirectPath(user)} replace />;
+  }
+
+  const { allowed, userPlan } = checkPlanAccess(user, minPlan, featureKey);
+  if (!allowed) {
+    return (
+      <Layout>
+        <div className="p-4 sm:p-8 flex items-center justify-center min-h-[60vh]">
+          <LockedFeatureGate
+            featureKey={featureKey || (minPlan === "PREMIUM" ? "ca_connect" : "online_orders")}
+            currentTier={userPlan}
+          />
+        </div>
+      </Layout>
+    );
   }
 
   return <Layout>{children}</Layout>;
@@ -297,7 +355,7 @@ export default function AppRoutes() {
       <Route
         path="/gst"
         element={
-          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER", "MANAGER"]}>
+          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER", "MANAGER"]} minPlan="PRO" featureKey="gst_filing">
             <Gst />
           </Protected>
         }
@@ -310,7 +368,7 @@ export default function AppRoutes() {
       <Route
         path="/ca-connect"
         element={
-          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER", "MANAGER"]}>
+          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER", "MANAGER"]} minPlan="PREMIUM" featureKey="ca_connect">
             <CaConnect />
           </Protected>
         }
@@ -616,7 +674,7 @@ export default function AppRoutes() {
       <Route
         path="/online-orders"
         element={
-          <Protected>
+          <Protected minPlan="PRO" featureKey="online_orders">
             <OnlineOrders />
           </Protected>
         }
@@ -624,7 +682,7 @@ export default function AppRoutes() {
       <Route
         path="/sms-marketing"
         element={
-          <Protected>
+          <Protected minPlan="PRO" featureKey="sms_campaigns">
             <SmsMarketing />
           </Protected>
         }

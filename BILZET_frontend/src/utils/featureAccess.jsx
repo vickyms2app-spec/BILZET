@@ -128,13 +128,13 @@ export const FEATURE_CATALOG = {
 /**
  * Validates if the current tier has permission to access a feature.
  */
-export const isFeatureAllowed = (featureKey, currentTier = "PREMIUM", isActive = true) => {
+export const isFeatureAllowed = (featureKey, currentTier = "FREE", isActive = true) => {
   const feat = FEATURE_CATALOG[featureKey];
   if (!feat) return true; // Unrestricted if not cataloged
 
   if (!isActive) return false;
 
-  const currentRank = TIER_RANKS[String(currentTier).toUpperCase()] || 3;
+  const currentRank = TIER_RANKS[String(currentTier).toUpperCase()] || 1;
   const requiredRank = TIER_RANKS[String(feat.minPlan).toUpperCase()] || 1;
 
   return currentRank >= requiredRank;
