@@ -1,5 +1,6 @@
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendResponse } from '../utils/apiResponse.mjs';
+import { ApiError } from '../utils/ApiError.mjs';
 import authService from '../services/auth.service.mjs';
 import { getActiveSubscription } from '../services/subscription.service.mjs';
 import prisma from '../config/prisma.mjs';
@@ -11,8 +12,14 @@ export const register = asyncHandler(async (req, res) => {
 
 export const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
-  const result = await authService.login(email, password, { req });
-  return sendResponse(res, 200, result, 'Login successful');
+  try {
+    const result = await authService.login(email, password, { req });
+    return sendResponse(res, 200, result, 'Login successful');
+  } catch (err) {
+    if (err instanceof ApiError) throw err;
+    console.error('[authController.login unexpected error]:', err);
+    throw ApiError.unauthorized('Invalid email or password. Please verify your credentials or click "Create Account".');
+  }
 });
 
 export const getMe = asyncHandler(async (req, res) => {

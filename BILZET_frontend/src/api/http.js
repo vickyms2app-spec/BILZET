@@ -197,6 +197,12 @@ http.interceptors.response.use(
   },
 );
 export function apiError(e) {
+  if (e?.response?.status === 500) {
+    return (
+      e?.response?.data?.message ||
+      "Unable to connect to the authentication service. Please verify your credentials or click 'Create Account'."
+    );
+  }
   return (
     e?.response?.data?.message ||
     e?.response?.data?.errors?.[0]?.message ||
