@@ -1,12 +1,13 @@
 import { ApiError } from '../utils/ApiError.mjs';
 import { getActiveSubscription } from '../services/subscription.service.mjs';
+import { FEATURE_ENTITLEMENTS, resolveFeatureKey } from '../config/plans.config.mjs';
 
 /**
  * Middleware that validates active subscription tier and feature entitlements.
  * Handles active, expired, cancelled, and insufficient tier states.
  * Free, Pro, Expired, or Cancelled users receive a 403 response when accessing higher-tier features.
  */
-export const requirePlanTier = (minTier = 'PRO', featureName = 'This feature') => {
+export const requirePlanTier = (minTier = 'PRO', featureName = 'This feature', featureKey = null) => {
   return async (req, res, next) => {
     try {
       if (!req.user) {
@@ -58,6 +59,7 @@ export const requirePlanTier = (minTier = 'PRO', featureName = 'This feature') =
           currentPlan: currentTier,
           status: subInfo.status,
           requiredPlan: minTier,
+          feature: featureKey || resolveFeatureKey(featureName) || featureName,
         });
       }
 
@@ -69,16 +71,15 @@ export const requirePlanTier = (minTier = 'PRO', featureName = 'This feature') =
   };
 };
 
-import { FEATURE_ENTITLEMENTS } from '../config/plans.config.mjs';
-
 export const requireFeature = (featureKey) => {
-  const feat = FEATURE_ENTITLEMENTS[featureKey];
+  const canonical = resolveFeatureKey(featureKey);
+  const feat = FEATURE_ENTITLEMENTS[canonical] || FEATURE_ENTITLEMENTS[featureKey];
   const minTier = feat?.minPlan || 'PRO';
   const name = feat?.name || featureKey;
-  return requirePlanTier(minTier, name);
+  return requirePlanTier(minTier, name, canonical);
 };
 
-export const requirePremiumPlan = requirePlanTier('PREMIUM', 'CA Connect');
+export const requirePremiumPlan = requirePlanTier('PREMIUM', 'CA Connect', 'ca.connect');
 
 export default {
   requirePlanTier,

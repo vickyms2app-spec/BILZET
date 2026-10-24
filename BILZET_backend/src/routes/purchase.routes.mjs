@@ -3,6 +3,8 @@ import purchaseController from '../controllers/purchase.controller.mjs';
 import { authMiddleware } from '../middleware/auth.middleware.mjs';
 import { requirePermission } from '../middleware/permission.middleware.mjs';
 
+import { requirePlanTier } from '../middleware/plan.middleware.mjs';
+
 const router = Router();
 
 router.use(authMiddleware);
@@ -11,10 +13,10 @@ router.use(authMiddleware);
 router.post('/', requirePermission('purchases.create'), purchaseController.createPurchase);
 router.get('/', requirePermission('purchases.view'), purchaseController.getPurchases);
 
-// Purchase Orders (PO)
-router.post('/orders', requirePermission('purchases.create'), purchaseController.createPurchaseOrder);
-router.get('/orders', requirePermission('purchases.view'), purchaseController.getPurchaseOrders);
-router.patch('/orders/:id/status', requirePermission('purchases.edit'), purchaseController.updatePurchaseOrderStatus);
+// Purchase Orders (PO - Pro Feature)
+router.post('/orders', requirePlanTier('PRO', 'Purchase Orders', 'purchases.orders'), requirePermission('purchases.create'), purchaseController.createPurchaseOrder);
+router.get('/orders', requirePlanTier('PRO', 'Purchase Orders', 'purchases.orders'), requirePermission('purchases.view'), purchaseController.getPurchaseOrders);
+router.patch('/orders/:id/status', requirePlanTier('PRO', 'Purchase Orders', 'purchases.orders'), requirePermission('purchases.edit'), purchaseController.updatePurchaseOrderStatus);
 
 // Returns & Debit Notes
 router.post('/returns', requirePermission('purchases.edit'), purchaseController.createPurchaseReturn);

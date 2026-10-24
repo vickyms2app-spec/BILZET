@@ -5,6 +5,7 @@ export const ADMIN_EMAILS = [
   "vicky@bilzet.com",
   "admin@bilzet.com",
   "karthik@bilzet.com",
+  "m.karthikeyan5225@gmail.com",
 ];
 
 export function isAdminEmail(email) {
@@ -18,9 +19,7 @@ export function isAdminEmail(email) {
 
   return (
     ADMIN_EMAILS.includes(em) ||
-    envAdmins.includes(em) ||
-    em.endsWith("@bilzet.app") ||
-    em.endsWith("@bilzet.com")
+    envAdmins.includes(em)
   );
 }
 
@@ -39,6 +38,7 @@ export function isAdminUser(user) {
   return (
     user.isOwner === true ||
     user.role === "ADMIN" ||
+    user.role === "OWNER" ||
     isSuperAdminUser(user)
   );
 }

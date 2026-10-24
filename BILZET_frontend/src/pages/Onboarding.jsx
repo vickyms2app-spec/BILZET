@@ -369,57 +369,13 @@ export default function Onboarding() {
             Welcome to BILZET
           </h1>
           <p className="text-[15px] text-[#64748B] mt-2 max-w-md mx-auto">
-            Your account is ready. Choose how you want to get started.
+            Your account is ready. Review invitations to join a business team, or switch accounts.
           </p>
         </section>
 
-        {/* 4. Two Onboarding Cards (Equal Width, 1px Neutral Border, Balanced Padding) */}
-        <section className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
-          {/* Card A — Set Up Your Business */}
-          <div className="bg-white rounded-xl border border-[#E2E8F0] p-6 sm:p-7 shadow-xs hover:border-slate-300 transition flex flex-col justify-between">
-            <div>
-              {/* Storefront Icon */}
-              <div className="w-9 h-9 rounded-lg bg-blue-50 text-[#2563EB] border border-blue-100 flex items-center justify-center">
-                <Store size={18} />
-              </div>
-
-              <h2 className="text-xl font-semibold text-[#172033] mt-4">
-                Set Up Your Business
-              </h2>
-              <p className="text-[14px] text-[#64748B] mt-1.5 leading-relaxed min-h-[42px]">
-                Create your business profile and configure billing, inventory, GST and business settings.
-              </p>
-
-              {/* Three Compact Benefits */}
-              <ul className="mt-5 space-y-2.5 pt-4 border-t border-[#E2E8F0] text-[13px] text-[#172033]">
-                <li className="flex items-center gap-2">
-                  <Check size={14} className="text-[#2563EB] shrink-0" />
-                  <span>Business and tax details.</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check size={14} className="text-[#2563EB] shrink-0" />
-                  <span>Billing and invoice setup.</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check size={14} className="text-[#2563EB] shrink-0" />
-                  <span>Inventory and team management.</span>
-                </li>
-              </ul>
-            </div>
-
-            {/* Primary Action Button */}
-            <div className="mt-7 pt-4">
-              <Link
-                to="/register-shop"
-                className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-[14px] font-medium transition cursor-pointer"
-              >
-                <span>Register Your Shop</span>
-                <ArrowRight size={14} />
-              </Link>
-            </div>
-          </div>
-
-          {/* Card B — Join a Team */}
+        {/* 4. Join a Team Card (Centered, Clean 1px Neutral Border, Balanced Padding) */}
+        <section className="max-w-xl mx-auto w-full">
+          {/* Card — Join a Team */}
           <div className="bg-white rounded-xl border border-[#E2E8F0] p-6 sm:p-7 shadow-xs hover:border-slate-300 transition flex flex-col justify-between">
             <div>
               {/* Team Icon */}

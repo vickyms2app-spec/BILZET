@@ -112,9 +112,9 @@ export const enrichUserWithSubscription = async (user) => {
   let memberships = [];
   let pendingInvitationsCount = 0;
   let onboarding = {
-    status: 'UNASSIGNED',
-    destination: '/onboarding',
-    canRegisterShop: true,
+    status: 'COMPLETED',
+    destination: '/dashboard',
+    canRegisterShop: false,
     hasPendingInvitations: false,
   };
 
@@ -206,8 +206,8 @@ export const enrichUserWithSubscription = async (user) => {
         } else if (pendingInvitationsCount > 0) {
           onboarding = {
             status: 'PENDING_INVITATION',
-            destination: '/onboarding',
-            canRegisterShop: true,
+            destination: '/join-team',
+            canRegisterShop: false,
             hasPendingInvitations: true,
           };
         }
@@ -727,7 +727,20 @@ export const clerkSync = async ({ clerkId, email, name, avatar, phone } = {}) =>
 
     if (!user) {
       const isSuper = isAdminEmail(normalizedEmail);
-      const role = isSuper ? 'SUPER_ADMIN' : 'NONE';
+
+      // Check if user has pending invitations sent to their email
+      const pendingInv = await prisma.roleInvitation.findFirst({
+        where: { recipientEmail: { equals: normalizedEmail, mode: 'insensitive' }, status: 'PENDING' }
+      }).catch(() => null);
+      const pendingCa = !pendingInv
+        ? await prisma.caInvitation.findFirst({
+            where: { email: { equals: normalizedEmail, mode: 'insensitive' }, status: 'PENDING' }
+          }).catch(() => null)
+        : null;
+
+      const hasInvitations = Boolean(pendingInv || pendingCa);
+      const role = isSuper ? 'SUPER_ADMIN' : hasInvitations ? 'NONE' : 'ADMIN';
+      const isOwner = isSuper || !hasInvitations;
 
       try {
         user = await prisma.user.create({
@@ -738,28 +751,15 @@ export const clerkSync = async ({ clerkId, email, name, avatar, phone } = {}) =>
             avatar: avatar || null,
             googleId: clerkId || null,
             role,
-            isOwner: isSuper,
+            isOwner,
             isActive: true,
           }
         });
 
-        // Automatically provision active Premium subscription
-        await prisma.subscription.create({
-          data: {
-            userId: user.id,
-            planTier: 'PREMIUM',
-            planName: 'Premium Enterprise',
-            status: 'ACTIVE',
-            billingCycle: 'ANNUAL',
-            amount: 3999,
-            maxSubUsers: -1,
-            startDate: new Date(),
-            endDate: new Date(Date.now() + 365 * 24 * 3600 * 1000),
-            expiresAt: new Date(Date.now() + 365 * 24 * 3600 * 1000),
-            paymentReference: 'PAID-PREMIUM-FULL-ACCESS',
-            paymentStatus: 'PAID',
-          },
-        }).catch(() => {});
+        // If signing up as a store owner, ensure their business profile is created immediately
+        if (isOwner && !isSuper) {
+          user = await ensureAdminBusiness(user, `${displayName}'s Store`);
+        }
       } catch (createErr) {
         console.warn('[clerkSync] create user warning:', createErr.message);
         // Fallback: search again in case of race condition
@@ -783,6 +783,26 @@ export const clerkSync = async ({ clerkId, email, name, avatar, phone } = {}) =>
           });
         } catch (updateErr) {
           console.warn('[clerkSync] update googleId warning:', updateErr.message);
+        }
+      }
+
+      // If user has no businessId and is an owner or has no active memberships, provision their store
+      if (!user.businessId && user.role !== 'SUPER_ADMIN') {
+        const owned = await prisma.business.findFirst({ where: { ownerId: user.id } }).catch(() => null);
+        if (owned) {
+          user = await prisma.user.update({
+            where: { id: user.id },
+            data: { businessId: owned.id, isOwner: true, role: 'ADMIN' },
+          });
+        } else {
+          const hasMember = await prisma.businessMember.findFirst({ where: { userId: user.id, status: 'ACTIVE' } }).catch(() => null);
+          if (!hasMember) {
+            user = await ensureAdminBusiness(user, `${displayName}'s Store`);
+            user = await prisma.user.update({
+              where: { id: user.id },
+              data: { isOwner: true, role: 'ADMIN' },
+            });
+          }
         }
       }
     }

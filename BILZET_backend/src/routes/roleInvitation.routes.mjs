@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { authMiddleware } from '../middleware/auth.middleware.mjs';
+import { requirePlanTier } from '../middleware/plan.middleware.mjs';
 import * as roleInvitationController from '../controllers/roleInvitation.controller.mjs';
 
 const router = Router();
@@ -16,7 +17,11 @@ router.get('/my', roleInvitationController.getMyInvitations);
 router.post('/accept', roleInvitationController.acceptInvitation);
 
 // Admin invitation management
-router.post('/', roleInvitationController.createInvitation);
+router.post(
+  '/',
+  requirePlanTier('PRO', 'Team invitations', 'users.sub_users'),
+  roleInvitationController.createInvitation
+);
 router.get('/', roleInvitationController.getBusinessInvitations);
 router.post('/:id/resend', roleInvitationController.resendInvitation);
 router.post('/:id/revoke', roleInvitationController.revokeInvitation);

@@ -143,38 +143,52 @@ export default function TeamManagement() {
   const [expandedModules, setExpandedModules] = useState({});
 
   // Effective Subscription Tier Evaluation
+  // Source of truth priority: (1) verified auth store subscription → (2) validated localStorage → (3) FREE
+  // NEVER default to PREMIUM or infer from role/isOwner.
   const authUser = useAuth((s) => s.user);
   const effectiveTier = (() => {
+    // Expired or cancelled subscriptions always resolve to FREE
     if (usage?.isExpired || usage?.status === "EXPIRED" || usage?.status === "CANCELLED") {
       return "FREE";
     }
-    if (usage?.planTier && usage.planTier !== "FREE") {
-      return usage.planTier.toUpperCase();
+
+    // 1. Backend-verified usage data (from /subscription/usage API) — highest trust
+    if (usage?.planTier) {
+      const t = String(usage.planTier).toUpperCase();
+      const isValidPaid = ["PRO", "PREMIUM", "ENTERPRISE"].includes(t) && usage.isExpired !== true;
+      if (isValidPaid) return t;
+      if (t === "FREE") return "FREE";
     }
-    if (authUser?.subscription?.planTier && authUser.subscription.planTier !== "FREE") {
-      return authUser.subscription.planTier.toUpperCase();
+
+    // 2. Verified auth store subscription (set by /auth/me response)
+    if (authUser?.subscription?.planTier) {
+      const t = String(authUser.subscription.planTier).toUpperCase();
+      const isActive = authUser.subscription.isActive !== false;
+      const isExpired = authUser.subscription.isExpired === true;
+      if (["PRO", "PREMIUM", "ENTERPRISE"].includes(t) && isActive && !isExpired) return t;
     }
+    if (authUser?.currentPlan) {
+      const t = String(authUser.currentPlan).toUpperCase();
+      if (["PRO", "PREMIUM", "ENTERPRISE"].includes(t)) return t;
+    }
+
+    // 3. Validated cached subscription data (must check expiry and status)
     try {
       const savedData = localStorage.getItem("bilzet_subscription_data");
       if (savedData) {
         const parsed = JSON.parse(savedData);
-        if (parsed.status === "EXPIRED" || parsed.status === "CANCELLED") return "FREE";
-        if (parsed.planTier && parsed.planTier !== "FREE") return parsed.planTier.toUpperCase();
-        if (parsed.currentPlan && parsed.currentPlan.toUpperCase() !== "FREE") return parsed.currentPlan.toUpperCase();
+        const pStatus = String(parsed.status || "").toUpperCase();
+        if (pStatus === "EXPIRED" || pStatus === "CANCELLED") return "FREE";
+        const isActive = parsed.isActive !== false;
+        const isExpired = parsed.expiresAt ? new Date(parsed.expiresAt) <= new Date() : false;
+        if (!isActive || isExpired) return "FREE";
+        const t = String(parsed.planTier || parsed.currentPlan || "").toUpperCase();
+        if (["PRO", "PREMIUM", "ENTERPRISE"].includes(t)) return t;
       }
     } catch (_) {}
-    try {
-      const saved = localStorage.getItem("bilzet_subscription");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.status === "Expired" || parsed.status === "Cancelled") return "FREE";
-        if (parsed.currentPlan && parsed.currentPlan.toUpperCase() !== "FREE") return parsed.currentPlan.toUpperCase();
-      }
-    } catch (_) {}
-    if (authUser?.isOwner || authUser?.role === "ADMIN" || authUser?.role === "SUPER_ADMIN") {
-      return "PREMIUM";
-    }
-    return (usage?.planTier || "PREMIUM").toUpperCase();
+
+    // 4. Final strict default — FREE. NEVER infer from role or isOwner.
+    return "FREE";
   })();
 
   const isFree = effectiveTier === "FREE";
@@ -183,11 +197,12 @@ export default function TeamManagement() {
   const isExpired = Boolean(usage?.isExpired || usage?.status === "EXPIRED" || usage?.status === "CANCELLED");
 
   const isUnlimited =
-    isPremium ||
-    effectiveTier === "PREMIUM" ||
-    effectiveTier === "ENTERPRISE" ||
-    usage?.isUnlimited ||
-    usage?.maxSeats === -1;
+    !isFree &&
+    (isPremium ||
+      effectiveTier === "PREMIUM" ||
+      effectiveTier === "ENTERPRISE" ||
+      (usage?.isUnlimited && String(usage?.planTier || "").toUpperCase() === effectiveTier) ||
+      (usage?.maxSeats === -1 && String(usage?.planTier || "").toUpperCase() === effectiveTier));
 
   // Derived effective seat limits and capabilities
   const effectiveMaxSeats = (() => {
@@ -255,22 +270,25 @@ export default function TeamManagement() {
 
       setUsers(usersRes.users || []);
       setRoles(rolesRes.roles || []);
-      if (usageRes && (usageRes.maxSeats > 0 || usageRes.maxSeats === -1 || usageRes.isUnlimited) && usageRes.planTier && usageRes.planTier !== "FREE") {
+
+      // Always accept whatever the backend sends — it is the source of truth.
+      // Never discard FREE plan usage data; FREE users have 0 seats.
+      if (usageRes && usageRes.planTier !== undefined) {
         setUsage(usageRes);
-      } else if (usersRes.usage && (usersRes.usage.maxSeats > 0 || usersRes.usage.maxSeats === -1 || usersRes.usage.isUnlimited) && usersRes.usage.planTier !== "FREE") {
+      } else if (usersRes.usage && usersRes.usage.planTier !== undefined) {
         setUsage(usersRes.usage);
       } else {
-        const fallbackMax = (effectiveTier === "PREMIUM" || effectiveTier === "ENTERPRISE") ? -1 : effectiveTier === "PRO" ? 5 : 0;
+        // Backend offline: construct a safe FREE baseline. Never default to paid tier.
         const subCount = (usersRes.users || []).filter((u) => !u.isOwner).length;
         setUsage({
           businessId: usageRes?.businessId || authUser?.businessId || null,
-          planTier: effectiveTier,
-          planName: effectiveTier === "PREMIUM" ? "Premium Enterprise" : effectiveTier === "PRO" ? "Pro Business" : "Free Starter",
+          planTier: "FREE",
+          planName: "Free Starter",
           usedSeats: usageRes?.usedSeats ?? subCount,
-          maxSeats: fallbackMax,
-          remainingSeats: fallbackMax === -1 ? -1 : Math.max(0, fallbackMax - (usageRes?.usedSeats ?? subCount)),
-          canAddUser: fallbackMax === -1 ? true : fallbackMax > (usageRes?.usedSeats ?? subCount),
-          isUnlimited: fallbackMax === -1,
+          maxSeats: 0,
+          remainingSeats: 0,
+          canAddUser: false,
+          isUnlimited: false,
           status: "ACTIVE",
           isExpired: false,
         });
@@ -654,6 +672,24 @@ export default function TeamManagement() {
         </div>
       )}
 
+      {/* Free Plan Pro Feature Banner */}
+      {isFree && !isExpired && (
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/80 text-blue-900 px-4 py-3 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-xs animate-in fade-in">
+          <div className="flex items-center gap-2.5">
+            <Lock className="w-4 h-4 text-blue-600 shrink-0" />
+            <span>
+              <strong>Free Starter Plan:</strong> Team &amp; Sub-User access requires a Pro or Premium subscription. You have 1 Owner account (0 sub-users). Upgrade to Pro to invite up to 5 team members.
+            </span>
+          </div>
+          <button
+            onClick={() => navigate("/plans?tier=PRO")}
+            className="px-3.5 py-1.5 bg-[#0A66FF] hover:bg-[#0854d4] text-white font-semibold rounded-lg shrink-0 transition cursor-pointer shadow-xs"
+          >
+            Upgrade to Pro
+          </button>
+        </div>
+      )}
+
       {/* ── SIMPLIFIED STATISTICS (3 COMPACT CARDS IN ONE ROW) ── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* Total Members */}
@@ -682,16 +718,34 @@ export default function TeamManagement() {
           </div>
         </div>
 
-        {/* Team Members: Unlimited */}
+        {/* Team Members Quota */}
         <div className="bg-white rounded-xl border border-[#E5EAF1] p-4 shadow-[0_1px_2px_rgba(0,0,0,0.03)] flex items-center justify-between">
           <div>
-            <p className="text-xs font-medium text-[#64748B]">Team Members</p>
-            <p className="text-2xl font-semibold text-[#172033] mt-1 tracking-tight">
-              Unlimited
-            </p>
+            <p className="text-xs font-medium text-[#64748B]">Team Seats Quota</p>
+            <div className="flex items-center gap-2 mt-1">
+              <p className="text-2xl font-semibold text-[#172033] tracking-tight">
+                {isUnlimited ? "Unlimited" : isFree ? "0" : `${effectiveUsedSeats} / ${effectiveMaxSeats}`}
+              </p>
+              {isFree && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                  <Lock className="w-2.5 h-2.5" /> Pro Feature
+                </span>
+              )}
+              {isPro && !isUnlimited && (
+                <span className="text-[11px] text-[#64748B] font-medium">
+                  ({effectiveRemainingSeats} left)
+                </span>
+              )}
+            </div>
           </div>
           <div className="w-9 h-9 rounded-lg bg-[#F5F7FA] border border-[#E5EAF1] flex items-center justify-center text-[#64748B]">
-            <Sparkles className="w-4 h-4 text-[#0A66FF]" />
+            {isUnlimited ? (
+              <Sparkles className="w-4 h-4 text-[#0A66FF]" />
+            ) : isFree ? (
+              <Lock className="w-4 h-4 text-amber-600" />
+            ) : (
+              <Users className="w-4 h-4 text-[#0A66FF]" />
+            )}
           </div>
         </div>
       </div>
@@ -758,14 +812,28 @@ export default function TeamManagement() {
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
           </button>
 
-          {/* Primary Blue + Add Team Member Button */}
+          {/* Add Team Member Button (Guarded by Subscription) */}
           <button
             type="button"
             onClick={handleOpenAdd}
-            className="h-9 px-3.5 bg-[#0A66FF] hover:bg-[#0854d4] text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+            className={`h-9 px-3.5 text-xs font-semibold rounded-lg flex items-center gap-1.5 shadow-xs transition cursor-pointer ${
+              isFree
+                ? "bg-amber-50 border border-amber-300 text-amber-800 hover:bg-amber-100"
+                : "bg-[#0A66FF] hover:bg-[#0854d4] text-white"
+            }`}
           >
-            <UserPlus className="w-3.5 h-3.5" />
-            <span>+ Add Team Member</span>
+            {isFree ? (
+              <>
+                <Lock className="w-3.5 h-3.5 text-amber-600" />
+                <span>+ Add Team Member</span>
+                <span className="text-[10px] bg-amber-200/80 text-amber-900 font-bold px-1.5 py-0.2 rounded-full">PRO</span>
+              </>
+            ) : (
+              <>
+                <UserPlus className="w-3.5 h-3.5" />
+                <span>+ Add Team Member</span>
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -803,10 +871,24 @@ export default function TeamManagement() {
                         <button
                           type="button"
                           onClick={handleOpenAdd}
-                          className="h-8 px-3.5 bg-[#0A66FF] hover:bg-[#0854d4] text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                          className={`h-8 px-3.5 text-xs font-semibold rounded-lg flex items-center gap-1.5 shadow-xs transition cursor-pointer ${
+                            isFree
+                              ? "bg-amber-50 border border-amber-300 text-amber-800 hover:bg-amber-100"
+                              : "bg-[#0A66FF] hover:bg-[#0854d4] text-white"
+                          }`}
                         >
-                          <UserPlus className="w-3.5 h-3.5" />
-                          <span>+ Add Team Member</span>
+                          {isFree ? (
+                            <>
+                              <Lock className="w-3.5 h-3.5 text-amber-600" />
+                              <span>+ Add Team Member</span>
+                              <span className="text-[10px] bg-amber-200/80 text-amber-900 font-bold px-1.5 py-0.2 rounded-full">PRO</span>
+                            </>
+                          ) : (
+                            <>
+                              <UserPlus className="w-3.5 h-3.5" />
+                              <span>+ Add Team Member</span>
+                            </>
+                          )}
                         </button>
                       )}
                     </div>

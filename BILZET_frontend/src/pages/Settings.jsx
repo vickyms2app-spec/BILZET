@@ -65,6 +65,9 @@ export default function Settings({ defaultTab: initialTab }) {
   const { user } = useAuth();
   const { adminRevealed } = useSecurityStore();
   const isAuthorizedAdmin = isAdminUser(user) || isAdminEmail(user?.email);
+  const isStoreOwner = Boolean(user?.isOwner) || Boolean(user?.ownedBusinesses?.length > 0);
+  const isCAUser = (user?.role === "CA") && !isStoreOwner;
+  const canModifySettings = !isCAUser && (isAuthorizedAdmin || isStoreOwner || user?.role === "ADMIN" || user?.role === "SUPER_ADMIN" || user?.role === "OWNER");
 
   // Tab navigation mapping (backwards compatibility with old tab param names)
   const resolveTab = (tab) => {
@@ -94,34 +97,49 @@ export default function Settings({ defaultTab: initialTab }) {
     }
   }, [searchParams]);
 
-  // Subscription state: verify from backend, fall back to localStorage
+  // Subscription state: verify from backend, fall back to FREE (the only safe default)
   const authUser = useAuth((s) => s.user);
   const [activePlan, setActivePlan] = useState(() => {
-    if (authUser?.subscription?.planTier && String(authUser.subscription.planTier).toUpperCase() !== "FREE") {
-      return String(authUser.subscription.planTier).toUpperCase();
+    // First priority: verified subscription from auth store (set by /auth/me)
+    if (authUser?.subscription?.planTier) {
+      const tier = String(authUser.subscription.planTier).toUpperCase();
+      const isActive = authUser.subscription.isActive !== false;
+      const isExpired = authUser.subscription.isExpired === true;
+      if (isActive && !isExpired && ["PRO", "PREMIUM", "ENTERPRISE"].includes(tier)) {
+        return tier;
+      }
     }
+    if (authUser?.currentPlan && String(authUser.currentPlan).toUpperCase() !== "FREE") {
+      return String(authUser.currentPlan).toUpperCase();
+    }
+    // Second priority: validated cached subscription data (check expiry before trusting)
     try {
       const sub = JSON.parse(localStorage.getItem("bilzet_subscription_data") || "{}");
-      if (sub.planTier && String(sub.planTier).toUpperCase() !== "FREE") return String(sub.planTier).toUpperCase();
-      if (sub.currentPlan && String(sub.currentPlan).toUpperCase() !== "FREE") return String(sub.currentPlan).toUpperCase();
+      const pTier = String(sub.planTier || sub.currentPlan || "").toUpperCase();
+      const pStatus = String(sub.status || "").toUpperCase();
+      const isActive = sub.isActive !== false;
+      const isExpired = sub.expiresAt ? new Date(sub.expiresAt) <= new Date() : false;
+      if (["PRO", "PREMIUM", "ENTERPRISE"].includes(pTier) && isActive && !isExpired && pStatus !== "CANCELLED" && pStatus !== "EXPIRED") {
+        return pTier;
+      }
     } catch (_) {}
-    return "PREMIUM";
+    // Final fallback: FREE — never default to a paid plan without explicit backend confirmation
+    return "FREE";
   });
 
   useEffect(() => {
-    if (authUser?.subscription?.planTier && String(authUser.subscription.planTier).toUpperCase() !== "FREE") {
-      setActivePlan(String(authUser.subscription.planTier).toUpperCase());
-    } else {
-      setActivePlan("PREMIUM");
-    }
+    const rawTier = String(authUser?.subscription?.planTier || authUser?.currentPlan || "FREE").toUpperCase();
+    const isActive = authUser?.subscription?.isActive !== false;
+    const isExpired = authUser?.subscription?.isExpired === true;
+    const isValidPaid = ["PRO", "PREMIUM", "ENTERPRISE"].includes(rawTier) && isActive && !isExpired;
+    setActivePlan(isValidPaid ? rawTier : "FREE");
   }, [authUser]);
 
   const tierRank = { FREE: 1, PRO: 2, PREMIUM: 3, ENTERPRISE: 4 };
-  const currentRank = tierRank[activePlan] || 3;
+  const currentRank = tierRank[activePlan] || 1;
 
   const isFeatureUnlocked = (requiredTier) => {
-    // User bought Premium: all features (watermark, bank/UPI, custom color, thermal) are permanently unlocked
-    if (activePlan === "PREMIUM" || activePlan === "ENTERPRISE" || authUser?.isOwner || authUser?.role === "ADMIN" || authUser?.role === "SUPER_ADMIN") {
+    if (authUser?.role === "SUPER_ADMIN" || authUser?.isSuperAdmin) {
       return true;
     }
     const req = (requiredTier || "FREE").toUpperCase();
@@ -442,6 +460,11 @@ export default function Settings({ defaultTab: initialTab }) {
     if (e) e.preventDefault();
     setErrorMessage("");
 
+    if (!canModifySettings) {
+      setErrorMessage("Access forbidden: Chartered Accountants have read-only audit permissions and are not authorized to modify business settings.");
+      return;
+    }
+
     const shopName = (form.shopName || form.storeName || "").trim();
     const address = (form.address || form.storeLocation || "").trim();
     const phone = (form.phone || form.storePhone || "").trim();
@@ -591,7 +614,7 @@ export default function Settings({ defaultTab: initialTab }) {
   };
 
   const inputCls =
-    "w-full px-3.5 py-2.5 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition placeholder:text-slate-400";
+    "w-full px-3.5 py-2.5 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition placeholder:text-slate-400 disabled:bg-slate-50 disabled:text-slate-500 disabled:cursor-not-allowed";
   const labelCls = "block text-xs font-semibold text-slate-700 mb-1.5";
 
   return (
@@ -630,28 +653,52 @@ export default function Settings({ defaultTab: initialTab }) {
             Preview Bill
           </Button>
 
+          {canModifySettings && (
+            <>
+              <Button
+                variant="neutral"
+                size="sm"
+                icon={RotateCcw}
+                onClick={handleReset}
+                disabled={loading || saving}
+                title="Reset form to last saved data"
+              >
+                Cancel
+              </Button>
+
+              <Button
+                variant={savedSuccess ? "success" : "primary"}
+                size="sm"
+                icon={savedSuccess ? Check : Save}
+                onClick={handleSaveAll}
+                disabled={loading || saving}
+              >
+                {saving ? "Saving…" : savedSuccess ? "Saved!" : "Save Changes"}
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* ── ALERTS: CA READ-ONLY NOTICE ─────────────────── */}
+      {isCAUser && (
+        <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 font-medium flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fadeIn">
+          <div className="flex items-center gap-2.5">
+            <Shield size={18} className="text-amber-600 shrink-0" />
+            <span>
+              <strong>Chartered Accountant Notice:</strong> You have read-only access to view business information. Store settings and configuration can only be modified by the business owner or platform administrator.
+            </span>
+          </div>
           <Button
             variant="neutral"
             size="sm"
-            icon={RotateCcw}
-            onClick={handleReset}
-            disabled={loading || saving}
-            title="Reset form to last saved data"
+            onClick={() => navigate("/ca-portal")}
+            className="shrink-0"
           >
-            Cancel
-          </Button>
-
-          <Button
-            variant={savedSuccess ? "success" : "primary"}
-            size="sm"
-            icon={savedSuccess ? Check : Save}
-            onClick={handleSaveAll}
-            disabled={loading || saving}
-          >
-            {saving ? "Saving…" : savedSuccess ? "Saved!" : "Save Changes"}
+            Switch to CA Portal
           </Button>
         </div>
-      </div>
+      )}
 
       {/* ── ALERTS: SUCCESS & ERROR ──────────────────────── */}
       {savedSuccess && (

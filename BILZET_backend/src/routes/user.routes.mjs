@@ -16,7 +16,12 @@ router.post('/switch-store', storeController.switchStore);
 
 // Team directory & user profile inspection
 router.get('/', requireAnyPermission('team.view', 'team.manage', 'settings.view'), userController.getUsers);
-router.post('/', requireAnyPermission('team.manage', 'settings.edit'), userController.createSubUser);
+router.post(
+  '/',
+  requirePlanTier('PRO', 'Team sub-users', 'users.sub_users'),
+  requireAnyPermission('team.manage', 'settings.edit'),
+  userController.createSubUser
+);
 
 router.get('/:id', userController.getUserById);
 router.patch('/:id', requireAnyPermission('team.manage', 'settings.edit'), userController.updateUser);

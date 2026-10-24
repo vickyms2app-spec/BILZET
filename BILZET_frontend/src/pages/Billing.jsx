@@ -24,7 +24,7 @@ import {
   ShoppingBag,
   RotateCcw,
 } from "lucide-react";
-import { settingsApi, productsApi, customersApi, salesApi } from "../api";
+import { settingsApi, productsApi, customersApi, salesApi, subscriptionApi } from "../api";
 import TaxInvoice from "../components/invoice/TaxInvoice";
 import UpiPaymentModal from "../components/payment/UpiPaymentModal";
 import BarcodeScannerModal from "../components/pos/BarcodeScannerModal";
@@ -87,6 +87,11 @@ export default function Billing() {
 
   // Pricing configuration
   const [taxInclusive, setTaxInclusive] = useState(false);
+  const [billCredits, setBillCredits] = useState(null);
+
+  useEffect(() => {
+    subscriptionApi.getBillCredits().then(setBillCredits).catch(() => {});
+  }, []);
 
   // Payment states
   const [paymentMode, setPaymentMode] = useState("Cash");
@@ -639,6 +644,14 @@ export default function Billing() {
 
   // Save Bill & Complete Sale
   const handleSaveBill = async (openPrintModal = false) => {
+    if (billCredits && !billCredits.isUnlimited && billCredits.totalRemaining <= 0) {
+      notify(
+        "error",
+        "You have reached the Free plan limit of 100 bills. Upgrade to Pro for unlimited bills or purchase a 500-bill pack."
+      );
+      return;
+    }
+
     if (items.length === 0) {
       notify("error", "Please add at least one item to the bill before saving.");
       return;
@@ -696,6 +709,7 @@ export default function Billing() {
       };
 
       notify("success", `Invoice ${finalInvoiceNumber} permanently saved in database!`);
+      subscriptionApi.getBillCredits().then(setBillCredits).catch(() => {});
 
       if (openPrintModal) {
         setCompletedInvoice(invoiceData);
@@ -812,6 +826,39 @@ export default function Billing() {
             </button>
           </div>
         </header>
+
+        {/* Free Plan Bill Credits Quota Banner */}
+        {billCredits && !billCredits.isUnlimited && (
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 rounded-xl border border-slate-200 bg-white shadow-xs text-xs">
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-slate-800">Free Bill Allowance:</span>
+              <span className={`font-medium ${billCredits.totalRemaining <= 10 ? 'text-amber-600 font-bold' : 'text-slate-600'}`}>
+                {billCredits.totalRemaining} bills remaining ({billCredits.includedRemaining}/100 included{billCredits.purchasedRemaining > 0 ? ` + ${billCredits.purchasedRemaining} extra pack` : ''})
+              </span>
+              {billCredits.totalRemaining <= 0 && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700 ml-1">
+                  Allowance Exhausted
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => nav("/plans?buyPack=true")}
+                className="font-semibold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+              >
+                + Buy 500-Bill Pack (₹299)
+              </button>
+              <button
+                type="button"
+                onClick={() => nav("/plans?tier=PRO")}
+                className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 font-semibold border border-blue-200 transition cursor-pointer"
+              >
+                Upgrade to Pro (Unlimited) &rarr;
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Notifications Banner */}
         {notification.text && (

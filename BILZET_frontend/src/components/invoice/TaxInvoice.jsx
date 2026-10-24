@@ -284,6 +284,17 @@ export default function TaxInvoice({
       ? "TAX INVOICE"
       : rawTitle.trim() || (isQuotationDoc ? "QUOTATION / ESTIMATE" : "TAX INVOICE");
 
+  // Subscription Plan & Watermark Enforcements (Free tier bills always carry fixed BILZET watermark)
+  const tierUpper = String(
+    cleanShopSettings?.subscriptionTier ||
+    settings?.subscriptionTier ||
+    settings?.planTier ||
+    cleanShopSettings?.planTier ||
+    ""
+  ).toUpperCase();
+  const isPaidPlan = ["PRO", "PREMIUM", "ENTERPRISE"].includes(tierUpper);
+  const isWatermarkVisible = !isPaidPlan || (settings.showWatermark !== false && !settings.removeWatermark);
+
   // Dynamic Store Information from currently selected store / settings
   const storeName =
     invoice?.business?.name ||
@@ -897,7 +908,7 @@ export default function TaxInvoice({
           {/* ── 5. Itemized Invoice Table with Navy Header & BILZET Watermark ── */}
           <div className="relative border border-[#E2E8F0] rounded-xl overflow-hidden shadow-2xs">
             {/* Subtle BILZET Watermark Centered Behind Table Content */}
-            {settings.showWatermark !== false && (
+            {isWatermarkVisible && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-0 overflow-hidden">
                 <span
                   className="text-7xl sm:text-9xl font-black uppercase tracking-[0.25em] text-[#0F2747] transform -rotate-15 select-none"

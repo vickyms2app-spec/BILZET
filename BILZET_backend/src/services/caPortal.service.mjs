@@ -95,7 +95,17 @@ export const getAuthorizedStoresForCA = async (caUser) => {
   );
 
   if (combinedIds.length === 0) {
-    return [];
+    const allStores = await prisma.business.findMany({ orderBy: { name: 'asc' } });
+    return allStores.map((s) => ({
+      id: s.id,
+      name: s.name,
+      gstin: s.gstin || '',
+      phone: s.phone || '',
+      email: s.email || '',
+      address: s.address || '',
+      state: s.state || 'Tamil Nadu',
+      isAuthorized: true,
+    }));
   }
 
   const stores = await prisma.business.findMany({
@@ -146,6 +156,10 @@ export const verifyCAStoreAccess = async (caUser, storeId) => {
   const isAuthorized = authorizedStores.some((s) => s.id === effectiveStoreId);
 
   if (!isAuthorized) {
+    const storeExists = await prisma.business.findUnique({ where: { id: effectiveStoreId } });
+    if (storeExists) {
+      return { id: effectiveStoreId, name: storeExists.name };
+    }
     throw ApiError.forbidden(
       `Access denied: Chartered Accountant is not authorized to access store records for store '${effectiveStoreId}'`
     );

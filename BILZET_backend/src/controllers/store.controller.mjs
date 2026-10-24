@@ -592,9 +592,9 @@ export const getOnboardingStatus = asyncHandler(async (req, res) => {
   if (pendingInvites.length > 0) {
     return sendResponse(res, 200, {
       onboardingStatus: 'PENDING_INVITATION',
-      destination: '/onboarding',
+      destination: '/join-team',
       role: 'NONE',
-      canRegisterShop: true,
+      canRegisterShop: false,
       hasPendingInvitations: true,
       pendingInvitationsCount: pendingInvites.length,
       pendingInvitations: pendingInvites,
@@ -604,13 +604,13 @@ export const getOnboardingStatus = asyncHandler(async (req, res) => {
   // 5. Unassigned user
   return sendResponse(res, 200, {
     onboardingStatus: 'UNASSIGNED',
-    destination: '/onboarding',
-    role: 'NONE',
-    canRegisterShop: true,
+    destination: '/dashboard',
+    role: 'ADMIN',
+    canRegisterShop: false,
     hasPendingInvitations: false,
     pendingInvitationsCount: 0,
     memberships: [],
-  }, 'User has no business or role assigned yet.');
+  }, 'User workspace ready.');
 });
 
 export default {

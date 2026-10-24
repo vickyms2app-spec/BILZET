@@ -33,19 +33,24 @@ export default function Plans() {
   const authUser = useAuth((s) => s.user);
   const updateSubscription = useAuth((s) => s.updateSubscription);
   const refreshUser = useAuth((s) => s.refreshUser);
+  const refreshSubscription = useAuth((s) => s.refreshSubscription);
 
-  // Authoritative subscription state initialization
+  // Authoritative subscription state initialization — always default to FREE until backend confirms otherwise
   const [subData, setSubData] = useState(() => {
-    let plan = "Premium";
+    // Always start from FREE — the backend is the source of truth
+    let plan = "Free";
     let status = "Active";
     let validUntil = "365 Days Validity";
     let payments = [];
     let extraBills = 0;
 
-    // 1. Prioritize authenticated user store subscription
+    // 1. Prioritize authenticated user store subscription (set by authApi.me() on login)
     if (authUser?.subscription?.planTier) {
       const tier = String(authUser.subscription.planTier).toUpperCase();
-      if (tier !== "FREE") {
+      const isActive = authUser.subscription.isActive !== false;
+      const isExpired = authUser.subscription.isExpired === true;
+      // Only promote to paid tier if the subscription is genuinely active and not expired
+      if (isActive && !isExpired && ["PRO", "PREMIUM"].includes(tier)) {
         plan = tier.charAt(0) + tier.slice(1).toLowerCase();
         status = authUser.subscription.status || "Active";
         if (authUser.subscription.expiresAt) {
@@ -56,45 +61,58 @@ export default function Plans() {
           });
         }
       }
+    } else if (authUser?.currentPlan) {
+      const tier = String(authUser.currentPlan).toUpperCase();
+      if (["PRO", "PREMIUM"].includes(tier)) {
+        plan = tier.charAt(0) + tier.slice(1).toLowerCase();
+      }
     }
 
-    // 2. Check persistent bilzet_subscription_data
-    try {
-      const savedData = localStorage.getItem("bilzet_subscription_data");
-      if (savedData) {
-        const parsedData = JSON.parse(savedData);
-        const pTier = String(parsedData.planTier || parsedData.currentPlan || "").toUpperCase();
-        if (pTier && pTier !== "FREE") {
-          plan = pTier.charAt(0) + pTier.slice(1).toLowerCase();
-          if (parsedData.status) status = parsedData.status;
-          if (parsedData.expiresAt) {
-            validUntil = new Date(parsedData.expiresAt).toLocaleDateString("en-GB", {
-              day: "numeric",
-              month: "short",
-              year: "numeric",
-            });
-          }
-        }
-      }
-    } catch (_) {}
-
-    // 3. Fallback to bilzet_subscription
-    try {
-      const saved = localStorage.getItem("bilzet_subscription");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.currentPlan && plan === "Free") {
-          const pTier = String(parsed.currentPlan).toUpperCase();
-          if (pTier !== "FREE") {
+    // 2. Check persistent bilzet_subscription_data (only if still on Free — backend data takes precedence)
+    if (plan === "Free") {
+      try {
+        const savedData = localStorage.getItem("bilzet_subscription_data");
+        if (savedData) {
+          const parsedData = JSON.parse(savedData);
+          const pTier = String(parsedData.planTier || parsedData.currentPlan || "").toUpperCase();
+          const pStatus = String(parsedData.status || "").toUpperCase();
+          const isActive = parsedData.isActive !== false;
+          const isExpired = parsedData.expiresAt ? new Date(parsedData.expiresAt) <= new Date() : false;
+          // Only restore paid plan if cached data is not expired/cancelled
+          if (pTier && ["PRO", "PREMIUM"].includes(pTier) && isActive && !isExpired && pStatus !== "CANCELLED" && pStatus !== "EXPIRED") {
             plan = pTier.charAt(0) + pTier.slice(1).toLowerCase();
+            if (parsedData.status) status = parsedData.status;
+            if (parsedData.expiresAt) {
+              validUntil = new Date(parsedData.expiresAt).toLocaleDateString("en-GB", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+              });
+            }
           }
         }
-        if (parsed.status) status = parsed.status;
-        if (parsed.validUntil) validUntil = parsed.validUntil;
-        if (parsed.payments) payments = parsed.payments;
-        if (parsed.extraBills) extraBills = parsed.extraBills;
-      }
-    } catch (_) {}
+      } catch (_) {}
+    }
+
+    // 3. Fallback to bilzet_subscription (secondary UI cache — only use if still on Free)
+    if (plan === "Free") {
+      try {
+        const saved = localStorage.getItem("bilzet_subscription");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed.currentPlan) {
+            const pTier = String(parsed.currentPlan).toUpperCase();
+            if (["PRO", "PREMIUM"].includes(pTier)) {
+              plan = pTier.charAt(0) + pTier.slice(1).toLowerCase();
+            }
+          }
+          if (parsed.status) status = parsed.status;
+          if (parsed.validUntil) validUntil = parsed.validUntil;
+          if (parsed.payments) payments = parsed.payments;
+          if (parsed.extraBills) extraBills = parsed.extraBills;
+        }
+      } catch (_) {}
+    }
 
     return {
       currentPlan: plan,
@@ -149,12 +167,9 @@ export default function Plans() {
             const tierCapitalized = rawTier.charAt(0) + rawTier.slice(1).toLowerCase();
 
             setSubData((prev) => {
-              // If local state has a confirmed active paid plan and API returns Free due to transient race, preserve paid plan
-              const prevIsPaid = String(prev.currentPlan).toUpperCase() !== "FREE";
-              const newIsFree = rawTier === "FREE";
-              if (prevIsPaid && newIsFree && !res.isExpired && res.status !== "CANCELLED") {
-                return prev;
-              }
+              // CRITICAL: The backend response is always authoritative.
+              // Never preserve a local paid plan state when the backend says FREE \u2014
+              // it means the subscription is expired, cancelled, or never existed.
 
               const updated = {
                 ...prev,
@@ -396,7 +411,10 @@ export default function Plans() {
         if (updateSubscription && upgradeResult) {
           updateSubscription(upgradeResult);
         }
-        if (refreshUser) {
+        // Always re-fetch verified subscription state from backend after payment
+        if (refreshSubscription) {
+          refreshSubscription().catch(() => {});
+        } else if (refreshUser) {
           refreshUser().catch(() => {});
         }
       }

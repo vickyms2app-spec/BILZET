@@ -38,7 +38,7 @@ export { isAdminEmail, isAdminUser, isSuperAdminUser };
 function checkPlanAccess(user, minPlan, featureKey) {
   if (!minPlan && !featureKey) return { allowed: true };
   if (!user) return { allowed: false, userPlan: "FREE" };
-  if (isSuperAdminUser(user) || isAdminEmail(user?.email)) {
+  if (user?.role === "SUPER_ADMIN" || user?.isSuperAdmin) {
     return { allowed: true };
   }
 
@@ -146,7 +146,13 @@ function ClerkProtectedWrapper({ children, roles, permission, minPlan, featureKe
     return <Navigate to="/sign-in" replace />;
   }
 
-  if (roles && user && !roles.includes(user.role) && !isAdminUser(user) && !isAdminEmail(user?.email) && user.role !== "GUEST") {
+  const isAuthorizedRole =
+    !roles ||
+    roles.includes(user.role) ||
+    (user.isOwner && (roles.includes("ADMIN") || roles.includes("OWNER") || roles.includes("MANAGER"))) ||
+    isAdminUser(user);
+
+  if (!isAuthorizedRole && user.role !== "GUEST") {
     return <Navigate to={getWorkspaceRedirectPath(user)} replace />;
   }
 
@@ -180,7 +186,14 @@ function StandardProtectedWrapper({ children, roles, permission, minPlan, featur
   }
 
   if (!user) return <Navigate to="/login" replace />;
-  if (roles && !roles.includes(user.role) && !isAdminUser(user) && !isAdminEmail(user?.email) && user.role !== "GUEST") {
+
+  const isAuthorizedRole =
+    !roles ||
+    roles.includes(user.role) ||
+    (user.isOwner && (roles.includes("ADMIN") || roles.includes("OWNER") || roles.includes("MANAGER"))) ||
+    isAdminUser(user);
+
+  if (!isAuthorizedRole && user.role !== "GUEST") {
     return <Navigate to={getWorkspaceRedirectPath(user)} replace />;
   }
 
@@ -221,25 +234,13 @@ function RedirectToAcceptInvitation() {
 }
 
 function CaPortalGuard() {
-  const { user } = useAuth();
-  if (user && (user.role === "ADMIN" || user.role === "OWNER") && !user.isSuperAdmin) {
-    return <Navigate to="/ca-connect" replace />;
-  }
   return <CaPortal />;
 }
 
+
 function RegisterShopGuard() {
   const { user } = useAuth();
-  if (
-    user &&
-    (user.role === "STAFF" ||
-      user.role === "CASHIER" ||
-      user.role === "CA" ||
-      user.role === "ACCOUNTANT")
-  ) {
-    return <Navigate to={getWorkspaceRedirectPath(user)} replace />;
-  }
-  return <RegisterShop />;
+  return <Navigate to={getWorkspaceRedirectPath(user) || "/dashboard"} replace />;
 }
 
 function AuthenticatedOnly({ children }) {
@@ -268,7 +269,7 @@ export default function AppRoutes() {
         path="/onboarding"
         element={
           <AuthenticatedOnly>
-            <Onboarding />
+            <RegisterShopGuard />
           </AuthenticatedOnly>
         }
       />
@@ -448,7 +449,7 @@ export default function AppRoutes() {
       <Route
         path="/purchases/orders"
         element={
-          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER", "MANAGER"]}>
+          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER", "MANAGER"]} minPlan="PRO" featureKey="purchase_orders">
             <Purchases defaultTab="orders" />
           </Protected>
         }
@@ -568,7 +569,7 @@ export default function AppRoutes() {
       <Route
         path="/settings/roles"
         element={
-          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER"]}>
+          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER"]} minPlan="PREMIUM" featureKey="custom_roles">
             <Settings defaultTab="roles" />
           </Protected>
         }
@@ -576,7 +577,7 @@ export default function AppRoutes() {
       <Route
         path="/roles"
         element={
-          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER"]}>
+          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER"]} minPlan="PREMIUM" featureKey="custom_roles">
             <Settings defaultTab="roles" />
           </Protected>
         }
@@ -690,7 +691,7 @@ export default function AppRoutes() {
       <Route
         path="/audit-logs"
         element={
-          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER"]}>
+          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER"]} minPlan="PREMIUM" featureKey="audit_logs">
             <AuditLogs />
           </Protected>
         }

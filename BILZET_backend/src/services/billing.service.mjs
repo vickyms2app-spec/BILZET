@@ -2,6 +2,7 @@ import prisma from '../config/prisma.mjs';
 import { ApiError } from '../utils/ApiError.mjs';
 import { getPaginationParams, buildPaginationMeta } from '../utils/pagination.mjs';
 import realtimeService from './realtime.service.mjs';
+import { assertAndConsumeBillCredit } from './billCredit.service.mjs';
 
 /**
  * Builds date range filtering for date-wise, month-wise, and year-wise queries.
@@ -702,6 +703,14 @@ export const createSale = async (saleData, user, context = {}) => {
     } else {
       paymentStatus = 'UNPAID';
     }
+
+    // Verify and consume bill credit allowance (Req 6)
+    await assertAndConsumeBillCredit({
+      businessId: activeBusinessId,
+      userId: user?.id,
+      invoiceNumber,
+      tx,
+    });
 
     // 3. Create Sale & SaleItems
     const sale = await tx.sale.create({

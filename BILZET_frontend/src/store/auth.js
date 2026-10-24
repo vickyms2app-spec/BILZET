@@ -29,7 +29,9 @@ export const useAuth = create((set) => ({
         return set({ user: null, loading: false });
       }
 
-      // If Clerk is active, immediately resolve user to prevent UI freeze
+      // If Clerk is active, immediately resolve user identity to prevent UI freeze.
+      // IMPORTANT: Plan is always FREE until the backend /auth/me call confirms otherwise.
+      // Never hardcode a paid plan tier here — the backend is the single source of truth.
       if (typeof window !== "undefined" && window.Clerk?.user) {
         const cu = window.Clerk.user;
         const email = cu.primaryEmailAddress?.emailAddress || cu.emailAddresses?.[0]?.emailAddress;
@@ -43,15 +45,16 @@ export const useAuth = create((set) => ({
             role: isSuper ? "SUPER_ADMIN" : "ADMIN",
             isOwner: true,
             isActive: true,
+            // Always default to FREE — the /auth/me response will set the real plan.
             subscription: {
-              planTier: isSuper ? "PREMIUM" : "FREE",
-              planName: isSuper ? "Premium Enterprise" : "Free Starter",
+              planTier: "FREE",
+              planName: "Free Starter",
               status: "ACTIVE",
               isActive: true,
-              isUnlimited: isSuper,
-              maxSubUsers: isSuper ? -1 : 0,
+              isUnlimited: false,
+              maxSubUsers: 0,
             },
-            currentPlan: isSuper ? "PREMIUM" : "FREE",
+            currentPlan: "FREE",
           },
           loading: false,
         });
@@ -65,31 +68,34 @@ export const useAuth = create((set) => ({
 
       const res = await Promise.race([mePromise, timeoutPromise]);
       if (res && res.user) {
-        let sub = res.user.subscription;
-        if (!sub) {
-          sub = {
-            planTier: res.user.currentPlan || "FREE",
-            planName: (res.user.currentPlan === "PREMIUM" ? "Premium Enterprise" : res.user.currentPlan === "PRO" ? "Pro Business" : "Free Starter"),
-            status: "ACTIVE",
-            isActive: true,
-            isUnlimited: res.user.currentPlan === "PRO" || res.user.currentPlan === "PREMIUM",
-            maxSubUsers: res.user.currentPlan === "PREMIUM" ? -1 : res.user.currentPlan === "PRO" ? 5 : 0,
-            expiresAt: null,
-          };
-          res.user.subscription = sub;
-        }
-        const tier = String(sub.planTier || res.user.currentPlan || "FREE").toUpperCase();
-        const cap = tier.charAt(0) + tier.slice(1).toLowerCase();
+        // The backend's enrichUserWithSubscription always provides a verified subscription object.
+        // If it is missing (edge case), default strictly to FREE — never infer from currentPlan.
+        const sub = res.user.subscription || {
+          planTier: "FREE",
+          planName: "Free Starter",
+          status: "ACTIVE",
+          isActive: true,
+          isUnlimited: false,
+          maxSubUsers: 0,
+          expiresAt: null,
+        };
+        res.user.subscription = sub;
+        // Ensure currentPlan reflects the verified subscription tier, not a stale field
+        const tier = String(sub.planTier || "FREE").toUpperCase();
+        const isValidPaidTier = ["PRO", "PREMIUM", "ENTERPRISE"].includes(tier) && sub.isActive !== false;
+        res.user.currentPlan = isValidPaidTier ? tier : "FREE";
+
+        const cap = res.user.currentPlan.charAt(0) + res.user.currentPlan.slice(1).toLowerCase();
         try {
           localStorage.setItem(
             "bilzet_subscription_data",
             JSON.stringify({
               currentPlan: cap,
-              planTier: tier,
+              planTier: res.user.currentPlan,
               status: sub.status || "ACTIVE",
               expiresAt: sub.expiresAt,
               isActive: sub.isActive !== false,
-              planName: sub.planName || (tier === 'PREMIUM' ? 'Premium Enterprise' : tier === 'PRO' ? 'Pro Business' : 'Free Starter'),
+              planName: sub.planName || "Free Starter",
             })
           );
           localStorage.setItem(
@@ -97,7 +103,7 @@ export const useAuth = create((set) => ({
             JSON.stringify({
               currentPlan: cap,
               status: sub.status || "Active",
-              totalBills: sub.isUnlimited ? "Unlimited" : "100 bills / year",
+              totalBills: isValidPaidTier ? "Unlimited" : "100 bills / year",
               usedBills: 0,
             })
           );
@@ -204,6 +210,8 @@ export const useAuth = create((set) => ({
     } catch (syncErr) {
       console.warn("Backend Clerk sync warning, creating resilient local session:", syncErr);
       const isSuper = email === 'vickyms2app@gmail.com' || email === 'admin@bilzet.com' || email === 'vicky@bilzet.com';
+      // CRITICAL: When backend is offline, always default to FREE.
+      // Admin status (isSuper) does not grant paid plan access — only a valid subscription does.
       data = {
         user: {
           id: clerkUser.id || 'clerk-user',
@@ -216,15 +224,15 @@ export const useAuth = create((set) => ({
           isOwner: true,
           isActive: true,
           subscription: {
-            planTier: isSuper ? 'PREMIUM' : 'FREE',
-            actualPlanTier: isSuper ? 'PREMIUM' : 'FREE',
-            planName: isSuper ? 'Premium Enterprise' : 'Free Starter',
+            planTier: 'FREE',
+            actualPlanTier: 'FREE',
+            planName: 'Free Starter',
             status: 'ACTIVE',
             isActive: true,
-            isUnlimited: isSuper,
-            maxSubUsers: isSuper ? -1 : 0,
+            isUnlimited: false,
+            maxSubUsers: 0,
           },
-          currentPlan: isSuper ? 'PREMIUM' : 'FREE',
+          currentPlan: 'FREE',
           isNewUser: false,
           hasShopConfig: true,
         },
@@ -245,8 +253,57 @@ export const useAuth = create((set) => ({
     } catch {
     } finally {
       setTokens();
+      // Clear all subscription cache keys so the next login always fetches a fresh plan
+      try {
+        localStorage.removeItem("bilzet_subscription_data");
+        localStorage.removeItem("bilzet_subscription");
+      } catch (_) {}
       set({ user: null, loading: false });
     }
+  },
+
+  async refreshSubscription() {
+    try {
+      const { subscriptionApi } = await import("../api");
+      const res = await subscriptionApi.getStatus();
+      if (res && res.planTier) {
+        const tier = String(res.planTier).toUpperCase();
+        const isValidPaid = ["PRO", "PREMIUM", "ENTERPRISE"].includes(tier) && res.isActive !== false && !res.isExpired;
+        const effectiveTier = isValidPaid ? tier : "FREE";
+        const cap = effectiveTier.charAt(0) + effectiveTier.slice(1).toLowerCase();
+
+        set((state) => {
+          if (!state.user) return state;
+          return {
+            user: {
+              ...state.user,
+              subscription: { ...res, planTier: effectiveTier },
+              currentPlan: effectiveTier,
+            },
+          };
+        });
+
+        try {
+          localStorage.setItem(
+            "bilzet_subscription_data",
+            JSON.stringify({
+              currentPlan: cap,
+              planTier: effectiveTier,
+              status: res.status || "ACTIVE",
+              expiresAt: res.expiresAt,
+              isActive: isValidPaid,
+              planName: res.planName || "Free Starter",
+            })
+          );
+        } catch (_) {}
+
+        window.dispatchEvent(new CustomEvent("bilzet:subscription_updated", { detail: { ...res, planTier: effectiveTier } }));
+        return effectiveTier;
+      }
+    } catch (err) {
+      console.warn("[refreshSubscription] failed:", err?.message);
+    }
+    return null;
   },
 }));
 

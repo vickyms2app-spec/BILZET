@@ -271,22 +271,9 @@ export const memoryStore = {
   permission: initialPermissions,
   rolePermission: initialRolePermissions,
   userPermission: [],
-  subscription: [
-    {
-      id: 'sub-01',
-      userId: 'admin-01',
-      planTier: 'PREMIUM',
-      planName: 'Premium Enterprise',
-      maxSubUsers: -1,
-      status: 'ACTIVE',
-      amount: 3999,
-      interval: 'ANNUAL',
-      startDate: new Date(),
-      endDate: new Date(Date.now() + 365 * 24 * 3600 * 1000),
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    },
-  ],
+  // No subscriptions in the fallback memory store — all users start on FREE by default.
+  // Paid subscriptions are only created after verified payment via upgradeSubscription().
+  subscription: [],
   customer: [
     {
       id: 'cust-01',
@@ -1004,6 +991,8 @@ export const memoryStore = {
       updatedAt: new Date('2026-10-17T08:35:00Z'),
     },
   ],
+  billCreditBalance: [],
+  billCreditLedger: [],
 };
 
 function matchesWhere(item, where) {
@@ -1648,26 +1637,8 @@ function createModelHandler(rawModelName) {
 
       memoryStore[modelName].unshift(newRecord);
 
-      if (modelName === 'user' && !newRecord.id.includes('free') && !newRecord.email?.includes('free')) {
-        if (!memoryStore.subscription) memoryStore.subscription = [];
-        const hasSub = memoryStore.subscription.some((s) => s.userId === newRecord.id);
-        if (!hasSub) {
-          memoryStore.subscription.push({
-            id: `sub-${newRecord.id}`,
-            userId: newRecord.id,
-            planTier: 'PREMIUM',
-            planName: 'Premium Enterprise',
-            maxSubUsers: -1,
-            status: 'ACTIVE',
-            amount: 3999,
-            interval: 'ANNUAL',
-            startDate: new Date(),
-            endDate: new Date(Date.now() + 365 * 24 * 3600 * 1000),
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          });
-        }
-      }
+      // New users start on the FREE plan. No subscription record is auto-created here.
+      // Paid subscriptions are only activated after verified payment via upgradeSubscription().
       if (args.select) return applySelect(modelName, newRecord, args.select);
       if (args.include) return resolveIncludes(modelName, newRecord, args.include);
       return { ...newRecord };

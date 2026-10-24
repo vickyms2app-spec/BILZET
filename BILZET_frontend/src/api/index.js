@@ -271,6 +271,8 @@ export const subscriptionApi = {
       if (res && res.planTier) {
         const tierUpper = String(res.planTier).toUpperCase();
         const tierCap = tierUpper.charAt(0) + tierUpper.slice(1).toLowerCase();
+        // Only persist to localStorage if the backend confirms a valid active plan
+        const isValidActive = ["PRO", "PREMIUM", "ENTERPRISE"].includes(tierUpper) && res.isActive !== false && !res.isExpired;
         try {
           localStorage.setItem(
             "bilzet_subscription_data",
@@ -279,7 +281,7 @@ export const subscriptionApi = {
               planTier: tierUpper,
               status: res.status || "ACTIVE",
               expiresAt: res.expiresAt,
-              isActive: res.isActive !== false,
+              isActive: isValidActive,
               planName: res.planName,
             })
           );
@@ -288,30 +290,9 @@ export const subscriptionApi = {
       return res;
     } catch (err) {
       console.warn("[subscriptionApi.getStatus] API fetch warning:", err?.message || err);
-      // Retain existing paid subscription state if available — NEVER blindly reset to FREE on transient error
-      try {
-        const saved =
-          localStorage.getItem("bilzet_subscription_data") ||
-          localStorage.getItem("bilzet_subscription");
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          const rawPlan = parsed.planTier || parsed.currentPlan;
-          if (rawPlan && String(rawPlan).toUpperCase() !== "FREE") {
-            const tierUpper = String(rawPlan).toUpperCase();
-            return {
-              planTier: tierUpper,
-              actualPlanTier: tierUpper,
-              planName: parsed.planName || `${tierUpper} Plan`,
-              status: parsed.status || "ACTIVE",
-              isActive: true,
-              isExpired: false,
-              expiresAt: parsed.expiresAt || parsed.validUntil || null,
-              currentPlan: tierUpper,
-            };
-          }
-        }
-      } catch (_) {}
-
+      // CRITICAL: On error, ALWAYS return FREE. Never use cached localStorage to restore a
+      // paid plan — the backend is the single source of truth for subscription entitlements.
+      // Stale localStorage may hold an expired or cancelled plan indefinitely.
       return {
         planTier: "FREE",
         actualPlanTier: "FREE",
@@ -327,67 +308,10 @@ export const subscriptionApi = {
   getUsage: async () => {
     try {
       const res = await http.get("/subscription/usage").then(unwrap);
-      if (res && res.planTier && res.planTier !== "FREE" && (res.maxSeats > 0 || res.maxSeats === -1 || res.isUnlimited)) {
-        return res;
-      }
-
-      // Check cached subscription tier if backend returned FREE or 0 seats
-      try {
-        const saved =
-          localStorage.getItem("bilzet_subscription_data") ||
-          localStorage.getItem("bilzet_subscription");
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          const rawPlan = String(parsed.planTier || parsed.currentPlan || "FREE").toUpperCase();
-          if (parsed.status !== "EXPIRED" && parsed.status !== "CANCELLED") {
-            if (rawPlan === "PREMIUM" || rawPlan === "ENTERPRISE") {
-              const usedSeats = res?.usedSeats ?? 0;
-              return {
-                ...(res || {}),
-                planTier: "PREMIUM",
-                planName: res?.planName || "Premium Enterprise",
-                usedSeats,
-                maxSeats: -1,
-                remainingSeats: -1,
-                canAddUser: true,
-                isUnlimited: true,
-              };
-            }
-            if (rawPlan === "PRO") {
-              const usedSeats = res?.usedSeats ?? 0;
-              return {
-                ...(res || {}),
-                planTier: "PRO",
-                planName: res?.planName || "Pro Business",
-                usedSeats,
-                maxSeats: 5,
-                remainingSeats: Math.max(0, 5 - usedSeats),
-                canAddUser: usedSeats < 5,
-              };
-            }
-          }
-        }
-      } catch (_) {}
-
       return res;
     } catch (err) {
-      // Check cached subscription tier first before assuming 0 seats
-      try {
-        const saved =
-          localStorage.getItem("bilzet_subscription_data") ||
-          localStorage.getItem("bilzet_subscription");
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          const rawPlan = String(parsed.planTier || parsed.currentPlan || "FREE").toUpperCase();
-          if (rawPlan === "PREMIUM" || rawPlan === "ENTERPRISE") {
-            return { planTier: "PREMIUM", planName: "Premium Enterprise", usedSeats: 0, maxSeats: -1, remainingSeats: -1, canAddUser: true, isUnlimited: true };
-          }
-          if (rawPlan === "PRO") {
-            return { planTier: "PRO", planName: "Pro Business", usedSeats: 0, maxSeats: 5, remainingSeats: 5, canAddUser: true };
-          }
-        }
-      } catch (_) {}
-
+      // On error, return FREE defaults. Never infer seat limits from cached localStorage.
+      // The backend is the single source of truth — stale caches must not grant paid access.
       return {
         planTier: "FREE",
         planName: "Free Starter",
@@ -453,6 +377,8 @@ export const subscriptionApi = {
     } catch (_) {}
     return res;
   },
+  getBillCredits: () => http.get("/subscription/bill-credits").then(unwrap),
+  buyBillPack: (data) => http.post("/subscription/buy-bill-pack", data).then(unwrap),
 };
 
 export const rolesApi = {

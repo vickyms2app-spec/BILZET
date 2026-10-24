@@ -706,15 +706,22 @@ export const acceptInvitation = async (caUser, rawToken) => {
     }
   }
 
-  // 2. Elevate user role to CA and associate businessId
+  // 2. Elevate user role to CA and associate businessId (only if not an existing store owner/admin)
   try {
-    await prisma.user.update({
-      where: { id: caUser.id },
-      data: {
-        role: 'CA',
-        businessId: invitation.businessId,
-      },
-    });
+    const isOwnerOrAdmin = caUser.isOwner || caUser.role === 'ADMIN' || caUser.role === 'SUPER_ADMIN';
+    const ownedStore = !isOwnerOrAdmin
+      ? await prisma.business.findFirst({ where: { ownerId: caUser.id } }).catch(() => null)
+      : true;
+
+    if (!isOwnerOrAdmin && !ownedStore) {
+      await prisma.user.update({
+        where: { id: caUser.id },
+        data: {
+          role: 'CA',
+          businessId: invitation.businessId,
+        },
+      });
+    }
   } catch (_) {}
 
   // 3. Upsert BusinessMember record for unified multi-tenant workspace access

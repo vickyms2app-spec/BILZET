@@ -7,6 +7,11 @@ import {
   verifyAndActivatePayment,
   cancelSubscription,
 } from '../services/subscription.service.mjs';
+import {
+  getBillCreditBalance,
+  purchaseBillPack,
+  getBillCreditLedger,
+} from '../services/billCredit.service.mjs';
 import { PLAN_DETAILS, FEATURE_ENTITLEMENTS } from '../config/plans.config.mjs';
 import { sendResponse } from '../utils/apiResponse.mjs';
 import { asyncHandler } from '../utils/asyncHandler.mjs';
@@ -40,6 +45,7 @@ router.get(
   asyncHandler(async (req, res) => {
     const subInfo = await getActiveSubscription(req.user.businessId, req.user.id);
     const usage = await getSubscriptionUsage(req.user.businessId, req.user.id);
+    const billCredits = await getBillCreditBalance(req.user.businessId, req.user.id);
 
     return sendResponse(
       res,
@@ -47,6 +53,7 @@ router.get(
       {
         ...subInfo,
         usage,
+        billCredits,
         currentPlan: subInfo.planTier,
       },
       'Subscription status retrieved successfully.'
@@ -61,7 +68,50 @@ router.get(
   '/usage',
   asyncHandler(async (req, res) => {
     const usage = await getSubscriptionUsage(req.user.businessId, req.user.id);
-    return sendResponse(res, 200, usage, 'Subscription usage retrieved successfully.');
+    const billCredits = await getBillCreditBalance(req.user.businessId, req.user.id);
+    return sendResponse(res, 200, { ...usage, billCredits }, 'Subscription usage retrieved successfully.');
+  })
+);
+
+/**
+ * Returns bill credit balance and consumption details for the tenant.
+ */
+router.get(
+  '/bill-credits',
+  asyncHandler(async (req, res) => {
+    const credits = await getBillCreditBalance(req.user.businessId, req.user.id);
+    return sendResponse(res, 200, credits, 'Bill credit balance retrieved successfully.');
+  })
+);
+
+/**
+ * Returns audit ledger history for bill credit grants and consumption.
+ */
+router.get(
+  '/bill-credits/ledger',
+  asyncHandler(async (req, res) => {
+    const ledger = await getBillCreditLedger(req.user.businessId, req.user.id);
+    return sendResponse(res, 200, { ledger }, 'Bill credit ledger retrieved successfully.');
+  })
+);
+
+/**
+ * Purchases and credits an additional 500-bill pack after payment verification.
+ */
+router.post(
+  '/buy-bill-pack',
+  asyncHandler(async (req, res) => {
+    const { paymentReference, amount, packSize, paymentMethod } = req.body;
+    const updated = await purchaseBillPack({
+      businessId: req.user.businessId,
+      userId: req.user.id,
+      paymentReference,
+      amount,
+      packSize: packSize ? Number(packSize) : 500,
+      paymentMethod: paymentMethod || 'UPI',
+    });
+
+    return sendResponse(res, 200, updated, '500-bill pack successfully credited to your account.');
   })
 );
 

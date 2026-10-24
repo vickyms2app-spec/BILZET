@@ -17,7 +17,7 @@ export const authorizeRoles = (...allowedRoles) => {
     }
 
     // 2. Business Owner has administrative authority over their tenant
-    if (req.user.isOwner && (allowedRoles.includes('ADMIN') || allowedRoles.includes('MANAGER'))) {
+    if ((req.user.isOwner || req.user.role === 'OWNER') && (allowedRoles.includes('ADMIN') || allowedRoles.includes('MANAGER') || allowedRoles.includes('OWNER'))) {
       return next();
     }
 

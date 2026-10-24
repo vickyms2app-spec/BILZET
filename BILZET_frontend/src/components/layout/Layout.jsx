@@ -1305,22 +1305,42 @@ export default function Layout({ children }) {
             </button>
 
 
-            {/* Direct Premium Upgrade Action in Header */}
-            {!isPremium ? (
-              <NavLink
-                to="/plans?tier=PREMIUM&redirect=/dashboard"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-bold transition shadow-xs hover:shadow active:scale-98 shrink-0"
-                title="Upgrade to Premium"
-              >
-                <Crown size={14} className="text-amber-100" />
-                <span className="hidden sm:inline">Get Premium</span>
-                <span className="sm:hidden">Premium</span>
-              </NavLink>
-            ) : (
+            {/* Subscription Plan Badge and Action in Header */}
+            {isPremium ? (
               <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200 shrink-0">
                 <Crown size={12} className="text-amber-600" />
                 <span>Premium</span>
               </span>
+            ) : isProOrHigher ? (
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                  <Sparkles size={11} className="text-blue-600" />
+                  <span>Pro</span>
+                </span>
+                <NavLink
+                  to="/plans?tier=PREMIUM&redirect=/dashboard"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-[11px] font-bold transition shadow-xs hover:shadow active:scale-98 shrink-0"
+                  title="Upgrade to Premium"
+                >
+                  <Crown size={12} className="text-amber-100" />
+                  <span className="hidden sm:inline">Upgrade</span>
+                </NavLink>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                  <span>Free</span>
+                </span>
+                <NavLink
+                  to="/plans?tier=PRO&redirect=/dashboard"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white text-xs font-bold transition shadow-xs hover:shadow active:scale-98 shrink-0"
+                  title="Upgrade to Pro"
+                >
+                  <Sparkles size={13} className="text-blue-100" />
+                  <span className="hidden sm:inline">Upgrade to Pro</span>
+                  <span className="sm:hidden">Upgrade</span>
+                </NavLink>
+              </div>
             )}
 
             {/* Primary Action: Solid blue "New Bill" button with plus icon */}
@@ -1372,23 +1392,36 @@ export default function Layout({ children }) {
                       </span>
                     </div>
 
-                    <NavLink
-                      to="/settings"
-                      onClick={() => setUserDropdown(false)}
-                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-slate-700 hover:bg-slate-50 font-medium transition"
-                    >
-                      <Settings size={14} className="text-slate-500" />
-                      <span>Business Settings</span>
-                    </NavLink>
+                    {isCA && !user?.isOwner ? (
+                      <NavLink
+                        to="/ca-portal"
+                        onClick={() => setUserDropdown(false)}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-slate-700 hover:bg-slate-50 font-medium transition"
+                      >
+                        <Shield size={14} className="text-blue-600" />
+                        <span>CA Audit Portal</span>
+                      </NavLink>
+                    ) : (
+                      <>
+                        <NavLink
+                          to="/settings"
+                          onClick={() => setUserDropdown(false)}
+                          className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-slate-700 hover:bg-slate-50 font-medium transition"
+                        >
+                          <Settings size={14} className="text-slate-500" />
+                          <span>Business Settings</span>
+                        </NavLink>
 
-                    <NavLink
-                      to="/subscription"
-                      onClick={() => setUserDropdown(false)}
-                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-slate-700 hover:bg-slate-50 font-medium transition"
-                    >
-                      <CreditCard size={14} className="text-slate-500" />
-                      <span>Subscription &amp; Plans</span>
-                    </NavLink>
+                        <NavLink
+                          to="/subscription"
+                          onClick={() => setUserDropdown(false)}
+                          className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-slate-700 hover:bg-slate-50 font-medium transition"
+                        >
+                          <CreditCard size={14} className="text-slate-500" />
+                          <span>Subscription &amp; Plans</span>
+                        </NavLink>
+                      </>
+                    )}
 
                     <NavLink
                       to="/audit-logs"

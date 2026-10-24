@@ -39,6 +39,10 @@ const attachTenantContext = async (user, requestedStoreId = null) => {
         }
         // Clear from effective context — let the fallback below resolve the real store.
         effectiveBusinessId = null;
+      } else if (existingBiz.ownerId === user.id) {
+        // User owns this specific business — they have full owner authority regardless of role
+        effectiveBusinessId = existingBiz.id;
+        isOwner = true;
       } else if (user.role === 'CA') {
         // Chartered Accountants must have ACTIVE caStoreAccess, BusinessMember status, or staff assignment
         const activeCaAccess = await prisma.caStoreAccess.findFirst({
@@ -96,6 +100,8 @@ const attachTenantContext = async (user, requestedStoreId = null) => {
     }).catch(() => null);
     if (!bizExists) {
       effectiveBusinessId = null;
+    } else if (bizExists.ownerId === user.id) {
+      isOwner = true;
     }
   }
 
@@ -109,6 +115,10 @@ const attachTenantContext = async (user, requestedStoreId = null) => {
         : null;
       if (activeMember) {
         effectiveBusinessId = activeMember.businessId;
+        const memberBiz = await prisma.business.findUnique({ where: { id: activeMember.businessId } }).catch(() => null);
+        if (memberBiz && memberBiz.ownerId === user.id) {
+          isOwner = true;
+        }
       } else {
         const owned = user.id
           ? await prisma.business.findFirst({ where: { ownerId: user.id } }).catch(() => null)
@@ -135,11 +145,27 @@ const attachTenantContext = async (user, requestedStoreId = null) => {
     }
   }
 
+  // Final check: if user owns the effective business or has owned businesses, ensure owner authority
+  if (!isOwner && user.id && effectiveBusinessId) {
+    const biz = await prisma.business.findUnique({
+      where: { id: effectiveBusinessId },
+      select: { ownerId: true },
+    }).catch(() => null);
+    if (biz && biz.ownerId === user.id) {
+      isOwner = true;
+    }
+  }
+
+  const effectiveRole = isOwner && (user.role === 'CA' || user.role === 'STAFF' || user.role === 'CASHIER' || user.role === 'NONE')
+    ? (user.role === 'SUPER_ADMIN' ? 'SUPER_ADMIN' : 'ADMIN')
+    : user.role;
+
   return {
     ...user,
     _id: user.id,
     businessId: effectiveBusinessId,
     isOwner,
+    role: effectiveRole,
   };
 };
 

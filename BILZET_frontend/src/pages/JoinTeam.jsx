@@ -330,11 +330,11 @@ export default function JoinTeam() {
         {/* Navigation Breadcrumb */}
         <div className="mb-6">
           <Link
-            to="/onboarding"
+            to="/dashboard"
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:border-slate-300 text-xs text-[#64748B] hover:text-[#172033] transition font-medium shadow-2xs"
           >
             <ChevronLeft size={14} className="text-slate-400" />
-            <span>Back to Onboarding Selection</span>
+            <span>Back to Dashboard</span>
           </Link>
         </div>
 
