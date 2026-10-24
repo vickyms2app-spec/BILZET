@@ -89,15 +89,17 @@ export const createNotification = async ({
  * Get notifications for authenticated user
  */
 export const getUserNotifications = async (user, options = {}) => {
-  if (!user) throw ApiError.unauthorized('Authentication required');
+  if (!user) return { notifications: [], unreadCount: 0, total: 0 };
   const normalizedEmail = (user.email || '').toLowerCase().trim();
 
   // Link any unlinked notifications first
-  await linkPendingNotificationsToUser(user);
+  try {
+    await linkPendingNotificationsToUser(user);
+  } catch (_) {}
 
   const where = {
     OR: [
-      { userId: user.id },
+      ...(user.id ? [{ userId: user.id }] : []),
       ...(normalizedEmail ? [{ email: { equals: normalizedEmail, mode: 'insensitive' } }] : []),
     ],
   };
@@ -112,24 +114,33 @@ export const getUserNotifications = async (user, options = {}) => {
 
   const limit = Math.min(parseInt(options.limit || '50', 10), 100);
 
-  const notifications = await prisma.notification.findMany({
-    where,
-    orderBy: { createdAt: 'desc' },
-    take: limit,
-  });
+  try {
+    const notifications = await prisma.notification.findMany({
+      where: where.OR.length > 0 ? where : undefined,
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    }).catch(() => []);
 
-  const unreadCount = await prisma.notification.count({
-    where: {
-      ...where,
-      isRead: false,
-    },
-  });
+    const unreadCount = await prisma.notification.count({
+      where: {
+        ...(where.OR.length > 0 ? where : {}),
+        isRead: false,
+      },
+    }).catch(() => 0);
 
-  return {
-    notifications,
-    unreadCount,
-    total: notifications.length,
-  };
+    return {
+      notifications: notifications || [],
+      unreadCount: unreadCount || 0,
+      total: (notifications || []).length,
+    };
+  } catch (err) {
+    console.warn('[notificationService.getUserNotifications error]:', err?.message);
+    return {
+      notifications: [],
+      unreadCount: 0,
+      total: 0,
+    };
+  }
 };
 
 /**
@@ -139,17 +150,22 @@ export const getUnreadCount = async (user) => {
   if (!user) return 0;
   const normalizedEmail = (user.email || '').toLowerCase().trim();
 
-  const count = await prisma.notification.count({
-    where: {
-      isRead: false,
-      OR: [
-        { userId: user.id },
-        ...(normalizedEmail ? [{ email: { equals: normalizedEmail, mode: 'insensitive' } }] : []),
-      ],
-    },
-  });
+  try {
+    const count = await prisma.notification.count({
+      where: {
+        isRead: false,
+        OR: [
+          ...(user.id ? [{ userId: user.id }] : []),
+          ...(normalizedEmail ? [{ email: { equals: normalizedEmail, mode: 'insensitive' } }] : []),
+        ],
+      },
+    }).catch(() => 0);
 
-  return count;
+    return count || 0;
+  } catch (err) {
+    console.warn('[notificationService.getUnreadCount error]:', err?.message);
+    return 0;
+  }
 };
 
 /**

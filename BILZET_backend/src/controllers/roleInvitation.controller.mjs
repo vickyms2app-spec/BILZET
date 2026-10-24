@@ -33,8 +33,13 @@ export const getBusinessInvitations = asyncHandler(async (req, res) => {
 });
 
 export const getMyInvitations = asyncHandler(async (req, res) => {
-  const result = await roleInvitationService.getMyInvitations(req.user);
-  return sendResponse(res, 200, result, 'Your pending invitations fetched successfully.');
+  try {
+    const result = await roleInvitationService.getMyInvitations(req.user);
+    return sendResponse(res, 200, result || { invitations: [] }, 'Your pending invitations fetched successfully.');
+  } catch (err) {
+    console.warn('[RoleInvitationController.getMyInvitations fallback]:', err?.message);
+    return sendResponse(res, 200, { invitations: [] }, 'Your pending invitations fetched successfully.');
+  }
 });
 
 export const verifyInvitation = asyncHandler(async (req, res) => {

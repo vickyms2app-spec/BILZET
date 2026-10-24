@@ -52,21 +52,26 @@ export default function NotificationBell({ theme = "light" }) {
         roleInvitationApi.getMyInvitations(),
       ]);
 
+      const notesData = notesRes.status === "fulfilled" ? notesRes.value : null;
       const fetchedNotes =
-        notesRes.status === "fulfilled" && notesRes.value?.data?.notifications
-          ? notesRes.value.data.notifications
-          : [];
+        notesData?.notifications ||
+        notesData?.data?.notifications ||
+        (Array.isArray(notesData) ? notesData : []);
       setNotifications(fetchedNotes);
 
+      const invitesData = invitesRes.status === "fulfilled" ? invitesRes.value : null;
       const fetchedInvites =
-        invitesRes.status === "fulfilled" && invitesRes.value?.data?.invitations
-          ? invitesRes.value.data.invitations
-          : [];
+        invitesData?.invitations ||
+        invitesData?.data?.invitations ||
+        (Array.isArray(invitesData) ? invitesData : []);
       setInvitations(fetchedInvites);
 
+      const unreadData = unreadRes.status === "fulfilled" ? unreadRes.value : null;
       const rawUnread =
-        unreadRes.status === "fulfilled" && typeof unreadRes.value?.data?.unreadCount === "number"
-          ? unreadRes.value.data.unreadCount
+        typeof unreadData?.unreadCount === "number"
+          ? unreadData.unreadCount
+          : typeof unreadData?.data?.unreadCount === "number"
+          ? unreadData.data.unreadCount
           : fetchedNotes.filter((n) => !n.isRead).length;
 
       // Pending invitations should also alert the user!

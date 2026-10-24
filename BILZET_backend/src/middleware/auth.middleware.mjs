@@ -26,7 +26,7 @@ const attachTenantContext = async (user, requestedStoreId = null) => {
     } else {
       const existingBiz = await prisma.business.findUnique({
         where: { id: requestedStoreId },
-      });
+      }).catch(() => null);
 
       if (!existingBiz) {
         // Store does NOT exist in DB (stale ID from reset DB, expired localStorage, or old JWT).
@@ -43,10 +43,10 @@ const attachTenantContext = async (user, requestedStoreId = null) => {
         // Chartered Accountants must have ACTIVE caStoreAccess, BusinessMember status, or staff assignment
         const activeCaAccess = await prisma.caStoreAccess.findFirst({
           where: { caUserId: user.id, businessId: existingBiz.id, status: 'ACTIVE' },
-        });
+        }).catch(() => null);
         const activeMember = await prisma.businessMember.findFirst({
           where: { userId: user.id, businessId: existingBiz.id, status: 'ACTIVE' },
-        });
+        }).catch(() => null);
         const staffAccess = user.email
           ? await prisma.staff.findFirst({
               where: {
@@ -54,7 +54,7 @@ const attachTenantContext = async (user, requestedStoreId = null) => {
                 email: { equals: user.email.trim(), mode: 'insensitive' },
                 status: 'ACTIVE',
               },
-            })
+            }).catch(() => null)
           : null;
         if (activeCaAccess || activeMember || staffAccess) {
           effectiveBusinessId = existingBiz.id;
@@ -64,7 +64,7 @@ const attachTenantContext = async (user, requestedStoreId = null) => {
       } else {
         const member = await prisma.businessMember.findFirst({
           where: { userId: user.id, businessId: existingBiz.id, status: 'ACTIVE' },
-        });
+        }).catch(() => null);
 
         if (member) {
           effectiveBusinessId = existingBiz.id;
@@ -102,18 +102,22 @@ const attachTenantContext = async (user, requestedStoreId = null) => {
   if (!effectiveBusinessId) {
     try {
       // Check if user is an active member of any business
-      const activeMember = await prisma.businessMember.findFirst({
-        where: { userId: user.id, status: 'ACTIVE' },
-      });
+      const activeMember = user.id
+        ? await prisma.businessMember.findFirst({
+            where: { userId: user.id, status: 'ACTIVE' },
+          }).catch(() => null)
+        : null;
       if (activeMember) {
         effectiveBusinessId = activeMember.businessId;
       } else {
-        const owned = await prisma.business.findFirst({ where: { ownerId: user.id } });
+        const owned = user.id
+          ? await prisma.business.findFirst({ where: { ownerId: user.id } }).catch(() => null)
+          : null;
         if (owned) {
           effectiveBusinessId = owned.id;
           isOwner = true;
         } else if (isMasterAdmin) {
-          const latestBiz = await prisma.business.findFirst({ orderBy: { createdAt: 'desc' } });
+          const latestBiz = await prisma.business.findFirst({ orderBy: { createdAt: 'desc' } }).catch(() => null);
           if (latestBiz) {
             effectiveBusinessId = latestBiz.id;
             isOwner = true;

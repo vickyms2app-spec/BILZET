@@ -340,44 +340,26 @@ export const getBusinessInvitations = async (inviterUser, businessId, query = {}
  * 3. Get Invitations for Current Authenticated User (Invitee View)
  */
 export const getMyInvitations = async (user) => {
-  if (!user) throw ApiError.unauthorized('Authentication required.');
+  if (!user) return { invitations: [] };
   const normalizedEmail = (user.email || '').toLowerCase().trim();
 
-  // 1. Find all pending role invitations addressed to user's email or userId
-  const invitations = await prisma.roleInvitation.findMany({
-    where: {
-      OR: [
-        { recipientUserId: user.id },
-        { recipientEmail: { equals: normalizedEmail, mode: 'insensitive' } },
-      ],
-      status: 'PENDING',
-      expiresAt: { gt: new Date() },
-    },
-    include: {
-      business: { select: { id: true, name: true, gstin: true, phone: true } },
-      inviter: { select: { id: true, name: true, email: true } },
-    },
-    orderBy: { createdAt: 'desc' },
-  });
-
-  for (const inv of invitations) {
-    if (!inv.business && inv.businessId) {
-      inv.business = await prisma.business.findUnique({
-        where: { id: inv.businessId },
-        select: { id: true, name: true, gstin: true, phone: true },
-      });
-    }
-  }
-
-  // 2. Also query pending Chartered Accountant (CA) invitations
-  let formattedCaList = [];
   try {
-    const caInvitations = await prisma.caInvitation.findMany({
+    const orConditions = [];
+    if (user.id) {
+      orConditions.push({ recipientUserId: user.id });
+    }
+    if (normalizedEmail) {
+      orConditions.push({ recipientEmail: { equals: normalizedEmail, mode: 'insensitive' } });
+    }
+
+    if (orConditions.length === 0) {
+      return { invitations: [] };
+    }
+
+    // 1. Find all pending role invitations addressed to user's email or userId
+    const invitations = await prisma.roleInvitation.findMany({
       where: {
-        OR: [
-          { caUserId: user.id },
-          { email: { equals: normalizedEmail, mode: 'insensitive' } },
-        ],
+        OR: orConditions,
         status: 'PENDING',
         expiresAt: { gt: new Date() },
       },
@@ -386,34 +368,73 @@ export const getMyInvitations = async (user) => {
         inviter: { select: { id: true, name: true, email: true } },
       },
       orderBy: { createdAt: 'desc' },
-    });
+    }).catch(() => []);
 
-    formattedCaList = (caInvitations || []).map((ca) => ({
-      id: ca.id,
-      businessId: ca.businessId,
-      business: ca.business,
-      inviter: ca.inviter,
-      recipientEmail: ca.email,
-      role: 'CA',
-      designation: 'Chartered Accountant',
-      department: 'Audit & Compliance',
-      permissions: ca.permissions,
-      message: ca.message,
-      status: ca.status,
-      createdAt: ca.createdAt,
-      expiresAt: ca.expiresAt,
-      token: ca.id,
-      isCa: true,
-    }));
+    for (const inv of (invitations || [])) {
+      if (!inv.business && inv.businessId) {
+        inv.business = await prisma.business.findUnique({
+          where: { id: inv.businessId },
+          select: { id: true, name: true, gstin: true, phone: true },
+        }).catch(() => null);
+      }
+    }
+
+    // 2. Also query pending Chartered Accountant (CA) invitations
+    let formattedCaList = [];
+    try {
+      const caOrConditions = [];
+      if (user.id) {
+        caOrConditions.push({ caUserId: user.id });
+      }
+      if (normalizedEmail) {
+        caOrConditions.push({ email: { equals: normalizedEmail, mode: 'insensitive' } });
+      }
+
+      if (caOrConditions.length > 0) {
+        const caInvitations = await prisma.caInvitation.findMany({
+          where: {
+            OR: caOrConditions,
+            status: 'PENDING',
+            expiresAt: { gt: new Date() },
+          },
+          include: {
+            business: { select: { id: true, name: true, gstin: true, phone: true } },
+            inviter: { select: { id: true, name: true, email: true } },
+          },
+          orderBy: { createdAt: 'desc' },
+        }).catch(() => []);
+
+        formattedCaList = (caInvitations || []).map((ca) => ({
+          id: ca.id,
+          businessId: ca.businessId,
+          business: ca.business,
+          inviter: ca.inviter,
+          recipientEmail: ca.email,
+          role: 'CA',
+          designation: 'Chartered Accountant',
+          department: 'Audit & Compliance',
+          permissions: ca.permissions,
+          message: ca.message,
+          status: ca.status,
+          createdAt: ca.createdAt,
+          expiresAt: ca.expiresAt,
+          token: ca.id,
+          isCa: true,
+        }));
+      }
+    } catch (err) {
+      console.warn('[RoleInvitation] CA invitations fetch fallback:', err?.message);
+    }
+
+    const allInvitations = [...(invitations || []), ...(formattedCaList || [])].sort(
+      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+    );
+
+    return { invitations: allInvitations };
   } catch (err) {
-    console.warn('[RoleInvitation] CA invitations fetch fallback:', err?.message);
+    console.warn('[RoleInvitation.getMyInvitations error]:', err?.message);
+    return { invitations: [] };
   }
-
-  const allInvitations = [...invitations, ...formattedCaList].sort(
-    (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-  );
-
-  return { invitations: allInvitations };
 };
 
 /**

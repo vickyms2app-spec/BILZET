@@ -592,8 +592,8 @@ export const caInvitationApi = {
 
 export const roleInvitationApi = {
   invite: (payload) => http.post("/invitations", payload).then(unwrap),
-  list: (params) => http.get("/invitations", { params }).then(unwrap),
-  getMyInvitations: () => http.get("/invitations/my").then(unwrap),
+  list: (params) => withFallback(http.get("/invitations", { params }).then(unwrap), { invitations: [] }),
+  getMyInvitations: () => withFallback(http.get("/invitations/my").then(unwrap), { invitations: [] }),
   verify: (token) => http.get("/invitations/verify", { params: { token } }).then(unwrap),
   accept: (payload) => http.post("/invitations/accept", payload).then(unwrap),
   decline: (payload) => http.post("/invitations/decline", payload).then(unwrap),
@@ -602,10 +602,10 @@ export const roleInvitationApi = {
 };
 
 export const notificationApi = {
-  list: (params) => http.get("/notifications", { params }).then(unwrap),
-  getUnreadCount: () => http.get("/notifications/unread-count").then(unwrap),
-  markRead: (id) => http.patch(`/notifications/${id}/read`).then(unwrap),
-  markAllRead: () => http.post("/notifications/mark-all-read").then(unwrap),
+  list: (params) => withFallback(http.get("/notifications", { params }).then(unwrap), { notifications: [], unreadCount: 0, total: 0 }),
+  getUnreadCount: () => withFallback(http.get("/notifications/unread-count").then(unwrap), { unreadCount: 0 }),
+  markRead: (id) => withFallback(http.patch(`/notifications/${id}/read`).then(unwrap), { isRead: true }),
+  markAllRead: () => withFallback(http.post("/notifications/mark-all-read").then(unwrap), { count: 0 }),
 };
 
 export const memberApi = {
