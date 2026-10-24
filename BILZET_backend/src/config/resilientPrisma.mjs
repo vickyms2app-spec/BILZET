@@ -5,9 +5,14 @@ import {
   SYSTEM_ROLE_DEFINITIONS,
 } from './permissions.catalog.mjs';
 
-const rawPrisma = new PrismaClient({
-  log: [],
-});
+let rawPrisma = null;
+try {
+  rawPrisma = new PrismaClient({
+    log: [],
+  });
+} catch (err) {
+  console.warn('[ResilientPrisma] Could not initialize PrismaClient; continuing with resilient in-memory storage:', err?.message);
+}
 
 let isDbAvailable = false;
 let lastDbCheck = 0;
@@ -15,6 +20,10 @@ const DB_CHECK_INTERVAL = 30000;
 
 // Non-blocking probe to test if PostgreSQL is listening
 export async function checkDbConnection() {
+  if (!rawPrisma || typeof rawPrisma.$queryRaw !== 'function') {
+    isDbAvailable = false;
+    return false;
+  }
   const now = Date.now();
   if (now - lastDbCheck < DB_CHECK_INTERVAL && !isDbAvailable) {
     return false;
@@ -1794,7 +1803,8 @@ function createModelHandler(rawModelName) {
 }
 
 // Resilient Prisma Proxy
-export const resilientPrisma = new Proxy(rawPrisma, {
+const prismaTarget = rawPrisma || {};
+export const resilientPrisma = new Proxy(prismaTarget, {
   get(target, prop, receiver) {
     if (prop === '$transaction') {
       return async (arg) => {
@@ -1819,7 +1829,7 @@ export const resilientPrisma = new Proxy(rawPrisma, {
 
     // Intercept model calls
     if (typeof prop === 'string' && !prop.startsWith('$')) {
-      const rawModel = target[prop];
+      const rawModel = rawPrisma ? rawPrisma[prop] : null;
       const fallbackModel = createModelHandler(prop);
 
       return new Proxy(rawModel || {}, {

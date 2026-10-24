@@ -1,4 +1,10 @@
-import nodemailer from 'nodemailer';
+let nodemailer = null;
+try {
+  const nodemailerModule = await import('nodemailer');
+  nodemailer = nodemailerModule.default || nodemailerModule;
+} catch (err) {
+  console.warn('[EmailService] Nodemailer not available in runtime; email will use in-memory audit store:', err?.message);
+}
 import { env } from '../config/env.mjs';
 
 /**
@@ -19,6 +25,7 @@ export const getLatestEmail = () => emailOutbox[emailOutbox.length - 1] || null;
  * Determine if SMTP provider is properly configured
  */
 export const isEmailConfigured = () => {
+  if (!nodemailer) return false;
   const host = process.env.SMTP_HOST || env.SMTP_HOST;
   const user = process.env.SMTP_USER || env.SMTP_USER;
   const pass = process.env.SMTP_PASS || env.SMTP_PASS;
@@ -39,7 +46,7 @@ const getTransporter = () => {
   const pass = process.env.SMTP_PASS || env.SMTP_PASS;
   const secure = process.env.SMTP_SECURE === 'true' || port === 465;
 
-  if (host && user && pass) {
+  if (nodemailer && host && user && pass) {
     transporter = nodemailer.createTransport({
       host,
       port,
