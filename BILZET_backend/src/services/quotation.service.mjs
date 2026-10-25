@@ -69,15 +69,31 @@ export const mapQuotation = (q) => {
 };
 
 /**
- * Generate sequential Quotation Number
+ * Generate sequential, collision-free Quotation Number
  */
 export const generateQuotationNumber = async (businessId) => {
-  const count = await prisma.quotation.count({
-    where: businessId ? { businessId } : {},
-  });
   const year = new Date().getFullYear();
-  const sequence = String(count + 1).padStart(4, '0');
-  return `QUO-${year}-${sequence}`;
+  const totalCount = await prisma.quotation.count();
+  let seq = totalCount + 1;
+  let candidate = `QUO-${year}-${String(seq).padStart(4, '0')}`;
+  
+  // Loop until an unused quotation number candidate is found
+  let attempts = 0;
+  while (attempts < 50) {
+    const existing = await prisma.quotation.findUnique({
+      where: { quotationNumber: candidate },
+    });
+    if (!existing) break;
+    seq++;
+    candidate = `QUO-${year}-${String(seq).padStart(4, '0')}`;
+    attempts++;
+  }
+
+  if (attempts >= 50) {
+    candidate = `QUO-${year}-${Date.now().toString().slice(-6)}`;
+  }
+
+  return candidate;
 };
 
 export class QuotationService {

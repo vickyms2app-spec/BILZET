@@ -83,7 +83,7 @@ export const getCustomers = asyncHandler(async (req, res) => {
         include: {
           _count: { select: { sales: true } },
           sales: {
-            select: { totalAmount: true },
+            select: { grandTotal: true },
           },
         },
       }),
@@ -91,7 +91,7 @@ export const getCustomers = asyncHandler(async (req, res) => {
     ]);
 
     const mapped = customers.map((c) => {
-      const totalPurchases = c.sales ? c.sales.reduce((sum, s) => sum + Number(s.totalAmount || 0), 0) : 0;
+      const totalPurchases = c.sales ? c.sales.reduce((sum, s) => sum + Number(s.grandTotal || 0), 0) : 0;
       const { sales, ...rest } = c;
       return {
         ...mapCustomer(rest),
@@ -148,7 +148,7 @@ export const getCustomerById = asyncHandler(async (req, res) => {
           select: {
             id: true,
             invoiceNumber: true,
-            totalAmount: true,
+            grandTotal: true,
             createdAt: true,
             paymentMethod: true,
             status: true,
@@ -173,7 +173,7 @@ export const getCustomerById = asyncHandler(async (req, res) => {
     }
   }
 
-  const totalPurchases = customer.sales ? customer.sales.reduce((sum, s) => sum + Number(s.totalAmount || 0), 0) : 0;
+  const totalPurchases = customer.sales ? customer.sales.reduce((sum, s) => sum + Number(s.grandTotal || 0), 0) : 0;
 
   return sendResponse(
     res,
@@ -183,7 +183,12 @@ export const getCustomerById = asyncHandler(async (req, res) => {
         ...mapCustomer(customer),
         totalOrders: customer._count?.sales || (customer.sales?.length || 0),
         totalPurchases,
-        recentPurchases: (customer.sales || []).map(s => ({ ...s, _id: s.id })),
+        recentPurchases: (customer.sales || []).map(s => ({
+          ...s,
+          _id: s.id,
+          totalAmount: Number(s.grandTotal || 0),
+          grandTotal: Number(s.grandTotal || 0),
+        })),
       },
     },
     'Customer fetched successfully'

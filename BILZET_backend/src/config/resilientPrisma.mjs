@@ -1567,6 +1567,34 @@ function createModelHandler(rawModelName) {
 
     async create(args = {}) {
       if (!memoryStore[modelName]) memoryStore[modelName] = [];
+
+      // Enforce unique constraints on unique model fields (Prisma P2002 parity)
+      const uniqueFieldsMap = {
+        product: ['sku', 'barcode'],
+        user: ['email', 'googleId'],
+        sale: ['invoiceNumber'],
+        quotation: ['quotationNumber'],
+        warehouse: ['code'],
+        stockTransfer: ['transferNumber'],
+      };
+      const uniqueFields = uniqueFieldsMap[modelName];
+      if (uniqueFields) {
+        for (const uf of uniqueFields) {
+          const val = args.data?.[uf];
+          if (val !== undefined && val !== null && String(val).trim() !== '') {
+            const exists = memoryStore[modelName].some((item) =>
+              String(item[uf] || '').toLowerCase() === String(val).toLowerCase()
+            );
+            if (exists) {
+              const err = new Error(`Unique constraint failed on the fields: (\`${uf}\`)`);
+              err.code = 'P2002';
+              err.meta = { target: [uf] };
+              throw err;
+            }
+          }
+        }
+      }
+
       const newRecord = {
         id: args.data?.id || `${modelName.slice(0, 4)}-${crypto.randomUUID().slice(0, 8)}`,
         isActive: args.data?.isActive !== undefined ? args.data.isActive : true,
