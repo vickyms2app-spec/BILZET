@@ -1032,6 +1032,10 @@ function matchesWhere(item, where) {
 
     if (key === 'businessId' && typeof value === 'string') {
       if (item.businessId === value) continue;
+      if (!item.businessId && item.supplierId) {
+        const supp = (memoryStore.supplier || []).find((s) => s.id === item.supplierId);
+        if (supp && supp.businessId === value) continue;
+      }
       if (!item.businessId && (value === 'busi-01' || value === 'busi-default')) continue;
       return false;
     }

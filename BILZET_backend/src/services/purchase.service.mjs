@@ -184,6 +184,7 @@ export const createPurchase = async (purchaseData, user = {}, context = {}) => {
         invoiceNumber,
         poNumber: poNumber || null,
         supplierId: targetSupplierId,
+        businessId: purchaseData.businessId || user?.businessId || null,
         warehouseId: warehouseId || null,
         subtotal,
         taxTotal,

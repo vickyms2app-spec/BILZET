@@ -15,6 +15,14 @@ export const getSalesReport = async (query = {}, businessId = null) => {
     };
   }
 
+  const returnWhere = {};
+  if (effectiveBusinessId) {
+    returnWhere.sale = { businessId: effectiveBusinessId };
+  }
+  if (where.createdAt) {
+    returnWhere.createdAt = where.createdAt;
+  }
+
   const [sales, returns] = await Promise.all([
     prisma.sale.findMany({
       where,
@@ -25,6 +33,7 @@ export const getSalesReport = async (query = {}, businessId = null) => {
       },
     }),
     prisma.salesReturn.findMany({
+      where: returnWhere,
       orderBy: { createdAt: 'desc' },
     }),
   ]);
@@ -178,13 +187,15 @@ export const getProfitReport = async (query = {}, businessId = null) => {
     };
   }
 
-  const [sales, purchases] = await Promise.all([
+  const [sales, purchases, expenses] = await Promise.all([
     prisma.sale.findMany({ where, include: { items: true } }),
     prisma.purchase.findMany({ where, include: { items: true } }),
+    prisma.expense.findMany({ where }),
   ]);
 
   let totalSales = 0;
   let totalCost = 0;
+  let totalExpenses = 0;
 
   sales.forEach((s) => {
     totalSales += Number(s.grandTotal);
@@ -194,19 +205,27 @@ export const getProfitReport = async (query = {}, businessId = null) => {
     totalCost += Number(p.grandTotal);
   });
 
-  const netProfit = round2(totalSales - totalCost);
+  expenses.forEach((e) => {
+    totalExpenses += Number(e.amount || 0);
+  });
+
+  const netProfit = round2(totalSales - totalCost - totalExpenses);
   const margin = totalSales > 0 ? Math.round((netProfit / totalSales) * 100) : 0;
 
   return {
     totalRevenue: round2(totalSales),
     totalCost: round2(totalCost),
+    totalExpenses: round2(totalExpenses),
     netProfit,
     profitMargin: margin,
   };
 };
 
-export const getInventoryReport = async () => {
+export const getInventoryReport = async (businessId = null) => {
+  const where = {};
+  if (businessId) where.businessId = businessId;
   const products = await prisma.product.findMany({
+    where,
     include: { category: true },
   });
 
@@ -277,7 +296,8 @@ export const getGstReport = async (query = {}, businessId = null) => {
   };
 };
 
-export const getAnalyticsReport = async () => {
+export const getAnalyticsReport = async (businessId = null) => {
+  const baseWhere = businessId ? { businessId } : {};
   const today = new Date();
   const startOfDay = new Date(today.setHours(0, 0, 0, 0));
   const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -295,23 +315,23 @@ export const getAnalyticsReport = async () => {
     pendingPurchases,
     onlineOrdersCount,
   ] = await Promise.all([
-    prisma.sale.aggregate({ _sum: { grandTotal: true } }),
+    prisma.sale.aggregate({ where: baseWhere, _sum: { grandTotal: true } }),
     prisma.sale.aggregate({
-      where: { createdAt: { gte: startOfDay } },
+      where: { ...baseWhere, createdAt: { gte: startOfDay } },
       _sum: { grandTotal: true },
     }),
     prisma.sale.aggregate({
-      where: { createdAt: { gte: startOfMonth } },
+      where: { ...baseWhere, createdAt: { gte: startOfMonth } },
       _sum: { grandTotal: true },
     }),
-    prisma.purchase.aggregate({ _sum: { grandTotal: true } }),
-    prisma.customer.count({ where: { isActive: true } }),
-    prisma.supplier.count({ where: { isActive: true } }),
-    prisma.product.count({ where: { isActive: true } }),
-    prisma.product.count({ where: { stock: { lte: 5 }, isActive: true } }),
-    prisma.sale.findMany({ where: { paymentStatus: { in: ['UNPAID', 'PARTIAL'] } } }),
-    prisma.purchase.findMany({ where: { paymentStatus: { in: ['UNPAID', 'PARTIAL'] } } }),
-    prisma.onlineOrder.count(),
+    prisma.purchase.aggregate({ where: baseWhere, _sum: { grandTotal: true } }),
+    prisma.customer.count({ where: { ...baseWhere, isActive: true } }),
+    prisma.supplier.count({ where: { ...baseWhere, isActive: true } }),
+    prisma.product.count({ where: { ...baseWhere, isActive: true } }),
+    prisma.product.count({ where: { ...baseWhere, stock: { lte: 5 }, isActive: true } }),
+    prisma.sale.findMany({ where: { ...baseWhere, paymentStatus: { in: ['UNPAID', 'PARTIAL'] } } }),
+    prisma.purchase.findMany({ where: { ...baseWhere, paymentStatus: { in: ['UNPAID', 'PARTIAL'] } } }),
+    prisma.onlineOrder.count({ where: baseWhere }),
   ]);
 
   const receivables = pendingSales.reduce((acc, s) => acc + (Number(s.grandTotal) - Number(s.paidAmount)), 0);

@@ -2,6 +2,7 @@ import prisma from '../config/prisma.mjs';
 import billingService from '../services/billing.service.mjs';
 import purchaseService from '../services/purchase.service.mjs';
 import quotationService from '../services/quotation.service.mjs';
+import reportService from '../services/report.service.mjs';
 import * as productController from '../controllers/product.controller.mjs';
 import * as customerController from '../controllers/customer.controller.mjs';
 import { ApiError } from '../utils/ApiError.mjs';
@@ -445,6 +446,46 @@ async function runQaTestSuite() {
     }
     assert(immutabilityGuarded, '7.2 Finalized invoices strictly immutable against arbitrary edits/deletes');
 
+    // 8. Module 8: Financial Reports, Operating Expenses & Tenant Isolation
+    console.log(`\n${colors.cyan}[Module 8: Financial Reports, P&L & Tenant Isolation]${colors.reset}`);
+    const testExpense = await prisma.expense.create({
+      data: {
+        title: 'Store Electricity Bill',
+        category: 'Utilities',
+        amount: 1500,
+        businessId: testBusinessId,
+      },
+    });
+
+    assert(testExpense && testExpense.id, '8.1 Recorded operating expense for store');
+
+    // Get sales report for testBusinessId
+    const salesRep = await reportService.getSalesReport({}, testBusinessId);
+    assert(
+      salesRep && salesRep.totalInvoices === 3 &&
+      Math.abs(salesRep.totalReturns - 1180) < 0.01 &&
+      Math.abs(salesRep.netSales - 5900) < 0.01,
+      `8.2 Sales report accurately computed: 3 Invoices, NetSales=${salesRep.netSales}, Returns=${salesRep.totalReturns}`
+    );
+
+    // Get profit and loss report for testBusinessId
+    // Total Revenue = 7080, Total Cost = 14160, Total Expenses = 1500, Net Profit = 7080 - 14160 - 1500 = -8580
+    const profitRep = await reportService.getProfitReport({}, testBusinessId);
+    assert(
+      profitRep &&
+      Math.abs(profitRep.totalRevenue - 7080) < 0.01 &&
+      Math.abs(profitRep.totalExpenses - 1500) < 0.01 &&
+      Math.abs(profitRep.netProfit - (-8580)) < 0.01,
+      `8.3 P&L report accurately incorporates direct purchase cost and operating expenses (Expenses=${profitRep.totalExpenses}, NetProfit=${profitRep.netProfit})`
+    );
+
+    // Verify tenant isolation in reports: other store must have 0 revenue and 0 expenses
+    const otherRep = await reportService.getSalesReport({}, otherBusinessId);
+    assert(
+      otherRep && otherRep.totalInvoices === 0 && otherRep.totalSales === 0,
+      '8.4 Confirmed zero cross-tenant report leakage: other business has 0 invoices and ₹0 sales'
+    );
+
   } catch (error) {
     console.error(`\n${colors.red}Critical test failure:${colors.reset}`, error);
     failed++;
@@ -460,6 +501,7 @@ async function runQaTestSuite() {
       await prisma.quotation.deleteMany({ where: { businessId: testBusinessId } });
       await prisma.purchaseItem.deleteMany({ where: { purchase: { businessId: testBusinessId } } });
       await prisma.purchase.deleteMany({ where: { businessId: testBusinessId } });
+      await prisma.expense.deleteMany({ where: { businessId: testBusinessId } });
       await prisma.stockTransaction.deleteMany({ where: { product: { businessId: testBusinessId } } });
       await prisma.product.deleteMany({ where: { businessId: testBusinessId } });
       await prisma.customer.deleteMany({ where: { businessId: testBusinessId } });
