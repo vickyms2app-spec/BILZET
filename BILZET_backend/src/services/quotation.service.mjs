@@ -98,6 +98,13 @@ export const generateQuotationNumber = async (businessId) => {
 
 export class QuotationService {
   /**
+   * Generates next unique collision-free quotation number
+   */
+  async generateQuotationNumber(businessId) {
+    return generateQuotationNumber(businessId);
+  }
+
+  /**
    * Fetch paginated list of quotations
    */
   async getQuotations(query = {}, user) {

@@ -8,6 +8,7 @@ router.use(authMiddleware);
 
 // Quotation Endpoints
 router.get('/', quotationController.getQuotations);
+router.get('/next-number', quotationController.getNextQuotationNumber);
 router.post('/', quotationController.createQuotation);
 router.get('/:id', quotationController.getQuotationById);
 router.patch('/:id', quotationController.updateQuotation);

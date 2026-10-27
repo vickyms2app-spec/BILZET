@@ -116,7 +116,6 @@ const navSections = [
     key: "sales",
     items: [
       { label: "New Bill / POS", path: "/billing", icon: FilePlus, highlight: true },
-      { label: "Quotations", path: "/quotations", icon: FileSpreadsheet },
       { label: "Sales Invoices", path: "/invoices", icon: FileText },
       { label: "Delivery Challans", path: "/sales/challans", icon: FileCheck },
       { label: "Sales Returns", path: "/sales/returns", icon: RotateCcw },

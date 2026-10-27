@@ -7,6 +7,12 @@ export const getQuotations = asyncHandler(async (req, res) => {
   return sendResponse(res, 200, { quotations }, 'Quotations fetched successfully', meta);
 });
 
+export const getNextQuotationNumber = asyncHandler(async (req, res) => {
+  const businessId = req.query.businessId || req.user?.businessId || 'busi-01';
+  const quotationNumber = await quotationService.generateQuotationNumber(businessId);
+  return sendResponse(res, 200, { quotationNumber }, 'Next quotation number generated');
+});
+
 export const getQuotationById = asyncHandler(async (req, res) => {
   const quotation = await quotationService.getQuotationById(req.params.id, req.user);
   return sendResponse(res, 200, { quotation }, 'Quotation fetched successfully');
@@ -39,6 +45,7 @@ export const deleteQuotation = asyncHandler(async (req, res) => {
 
 export default {
   getQuotations,
+  getNextQuotationNumber,
   getQuotationById,
   createQuotation,
   updateQuotation,

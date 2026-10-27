@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   Plus,
   ChevronDown,
@@ -23,8 +23,12 @@ import {
   EyeOff,
   ShoppingBag,
   RotateCcw,
+  FileSpreadsheet,
+  Share2,
+  ArrowRight,
+  Send,
 } from "lucide-react";
-import { settingsApi, productsApi, customersApi, salesApi, subscriptionApi } from "../api";
+import { settingsApi, productsApi, customersApi, salesApi, subscriptionApi, quotationsApi } from "../api";
 import TaxInvoice from "../components/invoice/TaxInvoice";
 import UpiPaymentModal from "../components/payment/UpiPaymentModal";
 import BarcodeScannerModal from "../components/pos/BarcodeScannerModal";
@@ -55,12 +59,44 @@ const INDIAN_STATES = [
 
 export default function Billing() {
   const nav = useNavigate();
+  const location = useLocation();
+
+  // Document Type Selector: 'invoice' | 'quotation'
+  const [documentType, setDocumentType] = useState(() => {
+    const params = new URLSearchParams(location.search);
+    return params.get("type") === "quotation" || location.state?.type === "quotation"
+      ? "quotation"
+      : "invoice";
+  });
 
   // Invoice identifiers
   const [billNumber, setBillNumber] = useState(
     `INV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`
   );
   const [billDate, setBillDate] = useState(new Date().toISOString().split("T")[0]);
+
+  // Quotation specific identifiers & properties
+  const [quotationNumber, setQuotationNumber] = useState(
+    `QUO-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`
+  );
+  const [quotationValidityDate, setQuotationValidityDate] = useState(() => {
+    const d = new Date(Date.now() + 15 * 86400000);
+    return d.toISOString().split("T")[0];
+  });
+  const [quotationStatus, setQuotationStatus] = useState("DRAFT");
+  const [quotationNotes, setQuotationNotes] = useState(
+    "Quotation valid for 15 days from date of issue."
+  );
+  const [quotationTerms, setQuotationTerms] = useState(
+    "1. Prices are valid until quotation expiry date.\n2. Payment terms as agreed upon invoice creation.\n3. Taxes as applicable at time of invoicing."
+  );
+
+  // Conversion & Editing references
+  const [sourceQuotationId, setSourceQuotationId] = useState(null);
+  const [referenceQuotationNumber, setReferenceQuotationNumber] = useState(null);
+  const [editingQuotationId, setEditingQuotationId] = useState(null);
+  const [savedQuotationRecord, setSavedQuotationRecord] = useState(null);
+  const [showQuotationActionsModal, setShowQuotationActionsModal] = useState(false);
 
   // Customer Information
   const [customerName, setCustomerName] = useState("");
@@ -217,12 +253,178 @@ export default function Billing() {
     }
   }, [shopSettings]);
 
+  // Fetch sequential quotation number from backend
+  const fetchNextQuotationNumber = useCallback(async () => {
+    try {
+      const activeStoreId = localStorage.getItem("bilzet_active_store_id") || undefined;
+      const res = await quotationsApi.getNextNumber({ businessId: activeStoreId });
+      if (res?.quotationNumber) {
+        setQuotationNumber(res.quotationNumber);
+        return res.quotationNumber;
+      }
+    } catch (_) {}
+    const fallback = `QUO-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+    setQuotationNumber(fallback);
+    return fallback;
+  }, []);
+
+  useEffect(() => {
+    fetchNextQuotationNumber();
+  }, [fetchNextQuotationNumber]);
+
+  // Helper: Populate quotation details into billing flow for conversion to tax invoice
+  const applyQuotationForConversion = useCallback((quote) => {
+    if (!quote) return;
+    setDocumentType("invoice");
+    setBillNumber(`INV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`);
+    setBillDate(new Date().toISOString().split("T")[0]);
+    setSourceQuotationId(quote.id || quote._id);
+    setReferenceQuotationNumber(quote.quotationNumber);
+
+    if (quote.customerName) setCustomerName(quote.customerName);
+    if (quote.customerPhone) setMobileNumber(quote.customerPhone);
+    if (quote.customerGstin) {
+      setCustomerGstin(quote.customerGstin);
+      setShowGstOptions(true);
+      setSaleType("B2B — Registered Business");
+    }
+    if (quote.customerAddress) {
+      setCustomerAddress(quote.customerAddress);
+      setShowGstOptions(true);
+    }
+    if (quote.placeOfSupply) {
+      const matchState = INDIAN_STATES.find((s) =>
+        s.toLowerCase().includes(String(quote.placeOfSupply).toLowerCase())
+      );
+      if (matchState) setPlaceOfSupply(matchState);
+    }
+
+    if (Array.isArray(quote.items) && quote.items.length > 0) {
+      setItems(
+        quote.items.map((i, idx) => ({
+          id: i.productId || i.id || `converted-item-${idx + 1}`,
+          productId: i.productId || undefined,
+          name: i.name || "Quoted Product",
+          sku: i.sku || "",
+          hsn: i.hsnCode || i.hsn || "1904",
+          unit: i.unit || "piece",
+          qty: Number(i.quantity !== undefined ? i.quantity : (i.qty || 1)),
+          rate: Number(i.rate !== undefined ? i.rate : (i.price || i.unitPrice || 0)),
+          discount: Number(i.discount || 0),
+          gstRate: Number(i.gstRate !== undefined ? i.gstRate : 18),
+          isTaxInclusive: Boolean(i.isTaxInclusive || i.pricingMethod === "INCLUSIVE"),
+        }))
+      );
+    }
+
+    notify(
+      "success",
+      `Quotation #${quote.quotationNumber} loaded for conversion into Invoice. Review details before issuing.`
+    );
+  }, []);
+
+  // Helper: Populate quotation details into billing flow for editing
+  const applyQuotationForEditing = useCallback((quote) => {
+    if (!quote) return;
+    setDocumentType("quotation");
+    setEditingQuotationId(quote.id || quote._id);
+    setQuotationNumber(quote.quotationNumber);
+    if (quote.quotationDate) setBillDate(quote.quotationDate.split("T")[0]);
+    if (quote.expiryDate) setQuotationValidityDate(quote.expiryDate.split("T")[0]);
+    if (quote.status) setQuotationStatus(quote.status);
+    if (quote.notes) setQuotationNotes(quote.notes);
+    if (quote.terms) setQuotationTerms(quote.terms);
+
+    if (quote.customerName) setCustomerName(quote.customerName);
+    if (quote.customerPhone) setMobileNumber(quote.customerPhone);
+    if (quote.customerGstin) {
+      setCustomerGstin(quote.customerGstin);
+      setShowGstOptions(true);
+    }
+    if (quote.customerAddress) {
+      setCustomerAddress(quote.customerAddress);
+      setShowGstOptions(true);
+    }
+
+    if (Array.isArray(quote.items) && quote.items.length > 0) {
+      setItems(
+        quote.items.map((i, idx) => ({
+          id: i.productId || i.id || `edit-quote-item-${idx + 1}`,
+          productId: i.productId || undefined,
+          name: i.name || "Quoted Product",
+          sku: i.sku || "",
+          hsn: i.hsnCode || i.hsn || "1904",
+          unit: i.unit || "piece",
+          qty: Number(i.quantity !== undefined ? i.quantity : (i.qty || 1)),
+          rate: Number(i.rate !== undefined ? i.rate : (i.price || i.unitPrice || 0)),
+          discount: Number(i.discount || 0),
+          gstRate: Number(i.gstRate !== undefined ? i.gstRate : 18),
+          isTaxInclusive: Boolean(i.isTaxInclusive || i.pricingMethod === "INCLUSIVE"),
+        }))
+      );
+    }
+
+    notify("success", `Quotation #${quote.quotationNumber} loaded for editing.`);
+  }, []);
+
+  // Handle Quotation Conversion or Editing from Navigation State / Query Params
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const convertQuotationId = params.get("convertQuotation");
+    const editQuotationId = params.get("editQuotation") || params.get("quotationId");
+    const quoteToConvert = location.state?.quotationToConvert;
+    const quoteToEdit = location.state?.editQuotation;
+
+    if (quoteToConvert) {
+      applyQuotationForConversion(quoteToConvert);
+    } else if (convertQuotationId) {
+      quotationsApi
+        .get(convertQuotationId)
+        .then((res) => {
+          const q = res?.quotation || res?.data?.quotation || res;
+          if (q) applyQuotationForConversion(q);
+        })
+        .catch(() => {});
+    } else if (quoteToEdit) {
+      applyQuotationForEditing(quoteToEdit);
+    } else if (editQuotationId) {
+      quotationsApi
+        .get(editQuotationId)
+        .then((res) => {
+          const q = res?.quotation || res?.data?.quotation || res;
+          if (q) applyQuotationForEditing(q);
+        })
+        .catch(() => {});
+    } else if (params.get("type") === "quotation") {
+      setDocumentType("quotation");
+    }
+  }, [location.search, location.state, applyQuotationForConversion, applyQuotationForEditing]);
+
+  // Document Type Switching handler
+  const handleSwitchDocumentType = async (type) => {
+    if (type === documentType) return;
+    if (type === "quotation") {
+      if (!quotationNumber) {
+        await fetchNextQuotationNumber();
+      }
+      setDocumentType("quotation");
+      notify("success", "Switched to Quotation mode.");
+    } else {
+      setDocumentType("invoice");
+      notify("success", "Switched to Invoice mode.");
+    }
+  };
+
   // Product-wise GST and Taxable value calculations using shared taxCalculation service
   const calculatedItems = useMemo(() => {
     return items.map((i) => {
       const rate = Number(i.rate || 0);
       const qty = Number(i.qty || 1);
-      const discount = Number(i.discount || 0);
+      // Support both item.discountPercent and item.discount
+      const discount =
+        i.discountPercent !== undefined
+          ? Number(((rate * qty * Number(i.discountPercent)) / 100).toFixed(2))
+          : Number(i.discount || 0);
       const gstRate = Number(i.gst !== undefined ? i.gst : (i.gstRate || 0));
       const isItemInclusive =
         i.isTaxInclusive !== undefined ? Boolean(i.isTaxInclusive) : taxInclusive;
@@ -238,6 +440,7 @@ export default function Billing() {
 
       return {
         ...i,
+        discount,
         taxable: taxResult.taxable,
         tax: taxResult.tax,
         total: taxResult.total,
@@ -258,8 +461,8 @@ export default function Billing() {
     [calculatedItems]
   );
   const totalDiscount = useMemo(
-    () => Number(items.reduce((acc, i) => acc + Number(i.discount || 0), 0).toFixed(2)),
-    [items]
+    () => Number(calculatedItems.reduce((acc, i) => acc + Number(i.discount || 0), 0).toFixed(2)),
+    [calculatedItems]
   );
 
   const rawGrandTotal = Number((subtotal + taxAmount).toFixed(2));
@@ -399,7 +602,8 @@ export default function Billing() {
       notify("error", "Please provide a valid product or item name.");
       return;
     }
-    if (Number(itemForm.quantity) <= 0) {
+    const parsedQty = parseFloat(itemForm.quantity);
+    if (isNaN(parsedQty) || parsedQty <= 0) {
       notify("error", "Quantity must be greater than 0.");
       return;
     }
@@ -411,10 +615,10 @@ export default function Billing() {
       sku: itemForm.sku || undefined,
       hsn: itemForm.hsn || "1904",
       unit: itemForm.unit || "piece",
-      qty: Number(itemForm.quantity),
-      rate: Math.max(0, Number(itemForm.rate || 0)),
-      discount: Math.max(0, Number(itemForm.discount || 0)),
-      gst: Math.max(0, Number(itemForm.taxRate || 0)),
+      qty: parsedQty,
+      rate: Math.max(0, parseFloat(itemForm.rate) || 0),
+      discount: Math.max(0, parseFloat(itemForm.discount) || 0),
+      gst: Math.max(0, parseFloat(itemForm.taxRate) || 0),
       isTaxInclusive: Boolean(itemForm.isTaxInclusive),
       stock: itemForm.stock,
     };
@@ -589,20 +793,31 @@ export default function Billing() {
     }
   };
 
-  // Helper to build complete invoice snapshot
+  // Helper to build complete invoice/quotation snapshot for live preview and printing
   const generateCurrentInvoiceSnapshot = () => ({
-    invoiceNumber: billNumber,
+    documentType,
+    type: documentType,
+    isQuotation: documentType === "quotation",
+    invoiceNumber: documentType === "quotation" ? quotationNumber : billNumber,
+    billNumber: documentType === "quotation" ? quotationNumber : billNumber,
+    quotationNumber: documentType === "quotation" ? quotationNumber : (referenceQuotationNumber || null),
     createdAt: billDate,
     date: billDate,
+    quotationDate: billDate,
+    expiryDate: quotationValidityDate,
+    validUntil: quotationValidityDate,
+    status: documentType === "quotation" ? quotationStatus : "COMPLETED",
+    notes: documentType === "quotation" ? quotationNotes : (shopSettings?.notes || undefined),
+    terms: documentType === "quotation" ? quotationTerms : (shopSettings?.terms || undefined),
     saleType,
     placeOfSupply,
-    paymentStatus,
+    paymentStatus: documentType === "quotation" ? quotationStatus : paymentStatus,
     paymentMethod: paymentMode,
     customer: {
-      name: customerName || "Walk-in Retail Customer",
+      name: customerName || (documentType === "quotation" ? "Prospective Customer" : "Walk-in Retail Customer"),
       phone: mobileNumber || "+91 98000 00000",
-      address: customerAddress || "Counter Sale / Walk-in Customer",
-      gstin: customerGstin || "N/A",
+      address: customerAddress || (documentType === "quotation" ? "" : "Counter Sale / Walk-in Customer"),
+      gstin: customerGstin || "",
       state: placeOfSupply.split(" - ")[1] || "Tamil Nadu",
       stateCode: placeOfSupply.split(" - ")[0] || "33",
     },
@@ -613,7 +828,7 @@ export default function Billing() {
       hsnCode: i.hsn || "1904",
       qty: i.qty,
       quantity: i.qty,
-      unit: i.unit || "pcs",
+      unit: i.unit || "piece",
       rate: i.rate,
       discount: i.discount || 0,
       gst: i.gst !== undefined ? i.gst : (i.gstRate || 0),
@@ -629,20 +844,20 @@ export default function Billing() {
     subtotal,
     discountTotal: totalDiscount,
     taxTotal: taxAmount,
-    roundOff,
-    grandTotal,
+    roundOff: documentType === "quotation" ? 0 : roundOff,
+    grandTotal: documentType === "quotation" ? Number(grandTotal.toFixed(2)) : grandTotal,
     cgst,
     sgst,
     igst,
-    paidAmount: paymentStatus === "Paid" ? grandTotal : amountReceived,
-    received: paymentStatus === "Paid" ? grandTotal : amountReceived,
-    balanceDue,
-    changeDue,
+    paidAmount: documentType === "quotation" ? 0 : (paymentStatus === "Paid" ? grandTotal : amountReceived),
+    received: documentType === "quotation" ? 0 : (paymentStatus === "Paid" ? grandTotal : amountReceived),
+    balanceDue: documentType === "quotation" ? 0 : balanceDue,
+    changeDue: documentType === "quotation" ? 0 : changeDue,
     taxInclusive,
     pricingMethod: taxInclusive ? "INCLUSIVE" : "EXCLUSIVE",
   });
 
-  // Save Bill & Complete Sale
+  // Save Bill & Complete Sale (Invoice Workflow)
   const handleSaveBill = async (openPrintModal = false) => {
     if (billCredits && !billCredits.isUnlimited && billCredits.totalRemaining <= 0) {
       notify(
@@ -675,6 +890,8 @@ export default function Billing() {
         pricingMethod: taxInclusive ? "INCLUSIVE" : "EXCLUSIVE",
         enableRoundOff: true,
         roundOff,
+        quotationId: sourceQuotationId || undefined,
+        referenceQuotationNumber: referenceQuotationNumber || undefined,
         items: calculatedItems.map((i) => ({
           productId: i.productId || undefined,
           name: i.name,
@@ -708,8 +925,15 @@ export default function Billing() {
         persisted: true,
       };
 
-      notify("success", `Invoice ${finalInvoiceNumber} permanently saved in database!`);
+      const msg = sourceQuotationId
+        ? `Quotation #${referenceQuotationNumber} converted to Official Invoice #${finalInvoiceNumber}!`
+        : `Invoice ${finalInvoiceNumber} permanently saved in database!`;
+
+      notify("success", msg);
       subscriptionApi.getBillCredits().then(setBillCredits).catch(() => {});
+
+      setSourceQuotationId(null);
+      setReferenceQuotationNumber(null);
 
       if (openPrintModal) {
         setCompletedInvoice(invoiceData);
@@ -724,23 +948,151 @@ export default function Billing() {
     }
   };
 
+  // Save Quotation (Quotation Workflow — Never deducts stock or creates final invoice)
+  const handleSaveQuotation = async (action = "modal") => {
+    if (!customerName.trim()) {
+      notify("error", "Please enter customer name for the quotation.");
+      if (customerSectionRef.current) {
+        customerSectionRef.current.scrollIntoView({ behavior: "smooth" });
+      }
+      return;
+    }
+
+    if (items.length === 0) {
+      notify("error", "Please add at least one item to the quotation before saving.");
+      return;
+    }
+
+    if (savingBill) return;
+    setSavingBill(true);
+
+    try {
+      const activeStoreId = localStorage.getItem("bilzet_active_store_id") || undefined;
+      const quotationPayload = {
+        quotationNumber,
+        quotationDate: billDate,
+        expiryDate: quotationValidityDate,
+        businessId: activeStoreId,
+        status: quotationStatus,
+        customerName: customerName.trim(),
+        customerPhone: mobileNumber.trim() || undefined,
+        customerAddress: customerAddress || undefined,
+        customerGstin: customerGstin || undefined,
+        notes: quotationNotes,
+        terms: quotationTerms,
+        taxInclusive,
+        items: calculatedItems.map((i) => ({
+          productId: i.productId || undefined,
+          name: i.name,
+          sku: i.sku || i.code || undefined,
+          hsn: i.hsn || "1904",
+          hsnCode: i.hsn || "1904",
+          unit: i.unit || "piece",
+          quantity: i.qty,
+          rate: i.rate,
+          discount: i.discount || 0,
+          gstRate: i.gst !== undefined ? i.gst : (i.gstRate || 18),
+          isTaxInclusive: i.isTaxInclusive,
+          pricingMethod: i.isTaxInclusive ? "INCLUSIVE" : "EXCLUSIVE",
+        })),
+        subtotal,
+        discountTotal,
+        taxTotal: taxAmount,
+        grandTotal,
+      };
+
+      let savedQuote;
+      if (editingQuotationId) {
+        const res = await quotationsApi.update(editingQuotationId, quotationPayload);
+        savedQuote = res?.quotation || res?.data?.quotation || res;
+        notify("success", `Quotation #${quotationNumber} updated successfully!`);
+      } else {
+        const res = await quotationsApi.create(quotationPayload);
+        savedQuote = res?.quotation || res?.data?.quotation || res;
+        notify("success", `Quotation #${quotationNumber} saved successfully!`);
+      }
+
+      setSavedQuotationRecord(savedQuote);
+      const snapshot = {
+        ...generateCurrentInvoiceSnapshot(),
+        id: savedQuote?.id || savedQuote?._id,
+        _id: savedQuote?.id || savedQuote?._id,
+      };
+      setCompletedInvoice(snapshot);
+
+      if (action === "print") {
+        setShowInvoiceModal(true);
+      } else {
+        setShowQuotationActionsModal(true);
+      }
+    } catch (err) {
+      notify("error", err?.response?.data?.message || err?.message || "Failed to save quotation");
+    } finally {
+      setSavingBill(false);
+    }
+  };
+
+  // Convert loaded quotation into an official invoice with review
+  const handleConvertLoadedQuotationToInvoice = (quote) => {
+    const q = quote || savedQuotationRecord;
+    if (!q) return;
+
+    setDocumentType("invoice");
+    setBillNumber(`INV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`);
+    setBillDate(new Date().toISOString().split("T")[0]);
+    setSourceQuotationId(q.id || q._id);
+    setReferenceQuotationNumber(q.quotationNumber);
+    setEditingQuotationId(null);
+
+    notify(
+      "success",
+      `Quotation #${q.quotationNumber} converted to Invoice mode! Review details below and click 'Save & Print Invoice' to finalize.`
+    );
+  };
+
+  // Share Quotation via WhatsApp, Native Share, or Clipboard
+  const handleShareQuotation = (quote) => {
+    const q = quote || savedQuotationRecord;
+    const qNum = q?.quotationNumber || quotationNumber;
+    const shareText = `Quotation #${qNum} from ${shopSettings?.shopName || "BILZET"}\nCustomer: ${customerName || "Valued Customer"}\nTotal Quoted Amount: ₹${grandTotal.toFixed(2)}\nValidity: Valid until ${quotationValidityDate}\nStatus: ${quotationStatus}`;
+
+    if (navigator.share) {
+      navigator
+        .share({
+          title: `Quotation #${qNum}`,
+          text: shareText,
+          url: window.location.href,
+        })
+        .catch(() => {});
+    } else {
+      navigator.clipboard.writeText(shareText);
+      notify("success", "Quotation summary copied to clipboard! You can share via WhatsApp or Email.");
+    }
+  };
+
   // Global Billing Shortcuts: Ctrl+S to save draft/bill, F2 for new bill, F4 for hold bill
   useEffect(() => {
     const handleBillingShortcuts = (e) => {
       if ((e.ctrlKey || e.metaKey) && (e.key === "s" || e.key === "S")) {
         e.preventDefault();
-        handleSaveBill(false);
+        if (documentType === "quotation") {
+          handleSaveQuotation("modal");
+        } else {
+          handleSaveBill(false);
+        }
       } else if (e.key === "F2") {
         e.preventDefault();
         handleStartNewBill(true);
       } else if (e.key === "F4") {
         e.preventDefault();
-        handleHoldBill();
+        if (documentType === "invoice") {
+          handleHoldBill();
+        }
       }
     };
     window.addEventListener("keydown", handleBillingShortcuts);
     return () => window.removeEventListener("keydown", handleBillingShortcuts);
-  }, [items, savingBill, billNumber, billDate, customerName, mobileNumber, customerAddress, customerGstin, saleType, taxInclusive, roundOff, calculatedItems, subtotal, taxAmount, grandTotal, amountReceived, paymentMode, paymentStatus]);
+  }, [items, savingBill, documentType, quotationNumber, billNumber, billDate, customerName, mobileNumber, customerAddress, customerGstin, saleType, taxInclusive, roundOff, calculatedItems, subtotal, taxAmount, grandTotal, amountReceived, paymentMode, paymentStatus]);
 
   return (
     <>
@@ -751,47 +1103,106 @@ export default function Billing() {
         {/* ── 1. POS Page Header ── */}
         <header className="bg-white rounded-2xl border border-[#E5E5EA] px-5 py-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)] flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-[#F5F5F7] border border-[#E5E5EA] flex items-center justify-center text-[#007AFF]">
-              <Receipt size={20} strokeWidth={2} />
+            <div
+              className={`w-10 h-10 rounded-xl border flex items-center justify-center transition ${
+                documentType === "quotation"
+                  ? "bg-purple-50 border-purple-200 text-purple-600"
+                  : "bg-[#F5F5F7] border-[#E5E5EA] text-[#007AFF]"
+              }`}
+            >
+              {documentType === "quotation" ? (
+                <FileSpreadsheet size={20} strokeWidth={2} />
+              ) : (
+                <Receipt size={20} strokeWidth={2} />
+              )}
             </div>
             <div>
               <div className="flex items-center gap-2.5 flex-wrap">
                 <h1 className="text-lg sm:text-xl font-semibold text-[#1D1D1F] tracking-tight">
-                  Point of Sale &amp; New Bill
+                  {documentType === "quotation" ? "Create Quotation" : "Point of Sale & New Bill"}
                 </h1>
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#EDF8F0] text-[#248A3D] text-[11px] font-medium border border-[#CCE8D4]">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#248A3D] animate-pulse" />
-                  <span>Active POS</span>
-                </div>
+                {documentType === "quotation" ? (
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-purple-50 text-purple-700 text-[11px] font-semibold border border-purple-200">
+                    <span className="w-1.5 h-1.5 rounded-full bg-purple-600 animate-pulse" />
+                    <span>Quotation Mode</span>
+                  </div>
+                ) : (
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#EDF8F0] text-[#248A3D] text-[11px] font-medium border border-[#CCE8D4]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#248A3D] animate-pulse" />
+                    <span>Active POS</span>
+                  </div>
+                )}
               </div>
               <div className="flex items-center gap-3 text-xs text-[#6E6E73] mt-0.5 font-normal">
-                <span>Invoice #{billNumber}</span>
+                <span>
+                  {documentType === "quotation"
+                    ? `Quotation #${quotationNumber}`
+                    : `Invoice #${billNumber}`}
+                </span>
                 <span>&bull;</span>
                 <span>Date: {billDate}</span>
+                {documentType === "quotation" && (
+                  <>
+                    <span>&bull;</span>
+                    <span>Valid Until: {quotationValidityDate}</span>
+                  </>
+                )}
               </div>
             </div>
           </div>
 
-          {/* Action buttons */}
-          <div className="flex flex-wrap items-center gap-2 self-start md:self-center">
-            {/* Held Bills button */}
-            <button
-              type="button"
-              onClick={() => setShowHeldBillsModal(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border border-[#E5E5EA] bg-white text-[#1D1D1F] hover:bg-[#F5F5F7] transition cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.03)]"
-              title="View & Resume Parked Bills"
-            >
-              <Clock
-                size={14}
-                className={heldBills.length > 0 ? "text-[#9A6700]" : "text-[#6E6E73]"}
-              />
-              <span>Held Bills</span>
-              {heldBills.length > 0 && (
-                <span className="px-1.5 py-0.2 rounded-full bg-[#9A6700] text-white text-[10px] font-bold">
-                  {heldBills.length}
-                </span>
-              )}
-            </button>
+          {/* Action buttons & Document Type Selector */}
+          <div className="flex flex-wrap items-center gap-2.5 self-start md:self-center">
+            {/* Document Type Segmented Control */}
+            <div className="inline-flex p-1 bg-[#F5F5F7] rounded-xl border border-[#E5E5EA] shadow-2xs">
+              <button
+                type="button"
+                id="doc-type-invoice-btn"
+                onClick={() => handleSwitchDocumentType("invoice")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                  documentType === "invoice"
+                    ? "bg-white text-[#007AFF] shadow-xs"
+                    : "text-[#6E6E73] hover:text-[#1D1D1F]"
+                }`}
+              >
+                <Receipt size={13} />
+                <span>Invoice</span>
+              </button>
+              <button
+                type="button"
+                id="doc-type-quotation-btn"
+                onClick={() => handleSwitchDocumentType("quotation")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                  documentType === "quotation"
+                    ? "bg-white text-purple-700 shadow-xs"
+                    : "text-[#6E6E73] hover:text-[#1D1D1F]"
+                }`}
+              >
+                <FileSpreadsheet size={13} />
+                <span>Quotation</span>
+              </button>
+            </div>
+
+            {/* Held Bills button (Invoices only) */}
+            {documentType === "invoice" && (
+              <button
+                type="button"
+                onClick={() => setShowHeldBillsModal(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border border-[#E5E5EA] bg-white text-[#1D1D1F] hover:bg-[#F5F5F7] transition cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.03)]"
+                title="View & Resume Parked Bills"
+              >
+                <Clock
+                  size={14}
+                  className={heldBills.length > 0 ? "text-[#9A6700]" : "text-[#6E6E73]"}
+                />
+                <span>Held Bills</span>
+                {heldBills.length > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full bg-[#9A6700] text-white text-[10px] font-bold">
+                    {heldBills.length}
+                  </span>
+                )}
+              </button>
+            )}
 
             {/* Scan Barcode button */}
             <button
@@ -804,28 +1215,55 @@ export default function Billing() {
               <span>Scan Barcode</span>
             </button>
 
-            {/* New Bill button */}
+            {/* New Bill / Fresh Document button */}
             <button
               type="button"
               onClick={() => handleStartNewBill(true)}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border border-[#E5E5EA] bg-white text-[#1D1D1F] hover:bg-[#F5F5F7] transition cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.03)]"
-              title="Start a fresh blank invoice"
+              title={documentType === "quotation" ? "Start a fresh blank quotation" : "Start a fresh blank invoice"}
             >
               <FilePlus size={14} className="text-[#6E6E73]" />
-              <span>New Bill</span>
+              <span>{documentType === "quotation" ? "New Quotation" : "New Bill"}</span>
             </button>
 
             {/* Add Item button (Primary Action in Header) */}
             <button
               type="button"
               onClick={handleOpenAddItem}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-[#007AFF] hover:bg-[#0062CC] text-white transition cursor-pointer shadow-[0_1px_2px_rgba(0,122,255,0.25)]"
+              className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-white transition cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.15)] ${
+                documentType === "quotation"
+                  ? "bg-purple-600 hover:bg-purple-700"
+                  : "bg-[#007AFF] hover:bg-[#0062CC]"
+              }`}
             >
               <Plus size={15} strokeWidth={2.5} />
               <span>Add Item</span>
             </button>
           </div>
         </header>
+
+        {/* Quotation Conversion Banner */}
+        {sourceQuotationId && documentType === "invoice" && (
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 rounded-2xl border border-blue-200 bg-blue-50 text-blue-900 shadow-xs text-xs animate-in fade-in">
+            <div className="flex items-center gap-2.5">
+              <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
+              <span>
+                <strong>Converting Quotation #{referenceQuotationNumber} into Tax Invoice.</strong> Customer details and items are pre-filled below. Review and edit any items or prices, then click <em>Save &amp; Print Invoice</em> to issue the invoice.
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setSourceQuotationId(null);
+                setReferenceQuotationNumber(null);
+                notify("info", "Disconnected quotation conversion reference.");
+              }}
+              className="text-blue-700 hover:text-blue-900 font-semibold underline text-[11px] cursor-pointer"
+            >
+              Cancel Conversion Link
+            </button>
+          </div>
+        )}
 
         {/* Free Plan Bill Credits Quota Banner */}
         {billCredits && !billCredits.isUnlimited && (
@@ -889,10 +1327,10 @@ export default function Billing() {
           </div>
         )}
 
-        {/* ── 2-Column Responsive Layout ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-          {/* LEFT COLUMN: Customer Info, Items & Products, Payment & Settlement */}
-          <div className="lg:col-span-7 xl:col-span-8 space-y-5">
+        {/* ── 50:50 Responsive POS Layout ── */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 items-start">
+          {/* LEFT 50%: Customer Info, Items & Products, Payment & Settlement */}
+          <div className="space-y-5 min-w-0">
             {/* ── 2. Customer Information Section ── */}
             <section
               ref={customerSectionRef}
@@ -1087,58 +1525,28 @@ export default function Billing() {
             {/* ── 3. Items & Products Section ── */}
             <section className="bg-white rounded-2xl border border-[#E5E5EA] p-5 sm:p-6 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
               {/* Header */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-[#E5E5EA]">
-                <div>
-                  <h2 className="text-sm sm:text-base font-semibold text-[#1D1D1F] tracking-tight">
-                    Items &amp; Products
-                  </h2>
-                  <p className="text-xs text-[#6E6E73] font-normal mt-0.5">
-                    Scan barcodes, search inventory or add custom line items
-                  </p>
-                </div>
-
-                {/* Exclusive / Inclusive pricing toggle (Round toggle completely removed) */}
-                <div className="inline-flex items-center bg-[#F5F5F7] p-1 rounded-xl border border-[#E5E5EA] text-xs self-start sm:self-auto">
-                  <button
-                    type="button"
-                    onClick={() => setTaxInclusive(false)}
-                    className={`px-3 py-1 rounded-lg font-medium transition cursor-pointer ${
-                      !taxInclusive
-                        ? "bg-white text-[#007AFF] shadow-[0_1px_2px_rgba(0,0,0,0.06)] font-semibold"
-                        : "text-[#6E6E73] hover:text-[#1D1D1F]"
-                    }`}
-                    title="Tax calculated on top of unit rate"
-                  >
-                    Exclusive (Std)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setTaxInclusive(true)}
-                    className={`px-3 py-1 rounded-lg font-medium transition cursor-pointer ${
-                      taxInclusive
-                        ? "bg-white text-[#007AFF] shadow-[0_1px_2px_rgba(0,0,0,0.06)] font-semibold"
-                        : "text-[#6E6E73] hover:text-[#1D1D1F]"
-                    }`}
-                    title="Unit rate already includes GST (MRP)"
-                  >
-                    Inclusive (MRP)
-                  </button>
-                </div>
+              <div className="mb-4 pb-3 border-b border-[#E5E5EA]">
+                <h2 className="text-sm sm:text-base font-semibold text-[#1D1D1F] tracking-tight">
+                  Items &amp; Products
+                </h2>
+                <p className="text-xs text-[#6E6E73] font-normal mt-0.5">
+                  Scan barcodes, search inventory or add custom line items
+                </p>
               </div>
 
-              {/* Clean Horizontal Toolbar */}
+              {/* 1. Single Row Product Search & Toolbar */}
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 mb-4">
-                {/* Instant Product Search Field */}
-                <div className="relative flex-1">
-                  <div className="relative">
+                {/* Search Input consuming flexible width */}
+                <div className="relative flex-1 min-w-0">
+                  <div className="relative flex items-center">
                     <Search
                       size={15}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6E6E73]"
+                      className="absolute left-3.5 text-[#6E6E73] pointer-events-none"
                     />
                     <input
                       ref={searchInputRef}
                       type="text"
-                      placeholder="Search product by name, SKU or barcode..."
+                      placeholder="Search products by name, code or scan barcode..."
                       value={productSearchQuery}
                       onChange={(e) => {
                         setProductSearchQuery(e.target.value);
@@ -1147,20 +1555,31 @@ export default function Billing() {
                       onFocus={() => {
                         if (productSearchQuery.trim()) setShowProductSearchResults(true);
                       }}
-                      className="w-full pl-9 pr-8 py-2 text-xs sm:text-[13px] border border-[#E5E5EA] rounded-xl outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/15 transition bg-white text-[#1D1D1F] placeholder-[#6E6E73]/60"
+                      className="w-full h-10 pl-9 pr-16 text-xs sm:text-[13px] border border-[#E5E5EA] rounded-xl outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/15 transition bg-white text-[#1D1D1F] placeholder-[#6E6E73]/60 shadow-2xs"
                     />
-                    {productSearchQuery && (
+                    <div className="absolute right-2 flex items-center gap-1">
+                      {productSearchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setProductSearchQuery("");
+                            setShowProductSearchResults(false);
+                          }}
+                          className="p-1 text-[#6E6E73] hover:text-[#1D1D1F] rounded transition cursor-pointer"
+                          title="Clear search"
+                        >
+                          <X size={14} />
+                        </button>
+                      )}
                       <button
                         type="button"
-                        onClick={() => {
-                          setProductSearchQuery("");
-                          setShowProductSearchResults(false);
-                        }}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#6E6E73] hover:text-[#1D1D1F] p-0.5"
+                        onClick={() => setShowBarcodeScanner(true)}
+                        className="p-1 text-[#007AFF] hover:bg-blue-50 rounded transition cursor-pointer"
+                        title="Scan barcode with camera"
                       >
-                        <X size={14} />
+                        <Scan size={15} />
                       </button>
-                    )}
+                    </div>
                   </div>
 
                   {/* Search Results Popover */}
@@ -1210,30 +1629,48 @@ export default function Billing() {
                   )}
                 </div>
 
-                {/* Toolbar Buttons: Scan Barcode & Add Item */}
-                <div className="flex items-center gap-2">
+                {/* Pricing Mode Selector (Inclusive MRP vs Exclusive Std) */}
+                <div className="h-10 inline-flex items-center p-1 bg-[#F5F5F7] rounded-xl border border-[#E5E5EA] text-xs shrink-0 shadow-2xs">
                   <button
                     type="button"
-                    onClick={() => setShowBarcodeScanner(true)}
-                    className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-medium border border-[#E5E5EA] bg-white text-[#1D1D1F] hover:bg-[#F5F5F7] transition cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.03)]"
-                    title="Scan barcode with camera"
+                    onClick={() => setTaxInclusive(true)}
+                    className={`h-8 px-3 rounded-lg font-medium transition cursor-pointer text-xs ${
+                      taxInclusive
+                        ? "bg-white text-[#007AFF] shadow-xs font-semibold"
+                        : "text-[#6E6E73] hover:text-[#1D1D1F]"
+                    }`}
+                    title="Unit rate already includes GST (MRP)"
                   >
-                    <Scan size={14} className="text-[#007AFF]" />
-                    <span>Scan Barcode</span>
+                    Inclusive (MRP)
                   </button>
-
                   <button
                     type="button"
-                    onClick={handleOpenAddItem}
-                    className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#007AFF] hover:bg-[#0062CC] text-white transition cursor-pointer shadow-[0_1px_2px_rgba(0,122,255,0.25)]"
+                    onClick={() => setTaxInclusive(false)}
+                    className={`h-8 px-3 rounded-lg font-medium transition cursor-pointer text-xs ${
+                      !taxInclusive
+                        ? "bg-white text-[#007AFF] shadow-xs font-semibold"
+                        : "text-[#6E6E73] hover:text-[#1D1D1F]"
+                    }`}
+                    title="Tax calculated on top of unit rate"
                   >
-                    <Plus size={14} strokeWidth={2.5} />
-                    <span>Add Item</span>
+                    Exclusive (Std)
                   </button>
                 </div>
+
+                {/* Primary Blue "Add Item" Button */}
+                <button
+                  type="button"
+                  id="primary-add-item-btn"
+                  onClick={handleOpenAddItem}
+                  className="h-10 px-4 rounded-xl bg-[#007AFF] hover:bg-[#0062CC] text-white text-xs font-semibold shrink-0 inline-flex items-center justify-center gap-1.5 shadow-[0_1px_2px_rgba(0,122,255,0.25)] transition cursor-pointer"
+                  title="Add custom line item or select from inventory"
+                >
+                  <Plus size={15} strokeWidth={2.5} />
+                  <span>Add Item</span>
+                </button>
               </div>
 
-              {/* Product Table or Empty State */}
+              {/* 2. Product Table or Empty State */}
               {items.length === 0 ? (
                 <div className="py-12 px-4 text-center border border-dashed border-[#E5E5EA] rounded-2xl bg-[#F5F5F7]/40 space-y-3">
                   <div className="w-11 h-11 rounded-2xl bg-white border border-[#E5E5EA] text-[#007AFF] flex items-center justify-center mx-auto shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
@@ -1275,23 +1712,21 @@ export default function Billing() {
                       onComplete: () => searchInputRef.current?.focus(),
                     })
                   }
-                  className="overflow-x-auto rounded-xl border border-[#E5E5EA]"
+                  className="overflow-x-auto rounded-xl border border-[#E5E5EA] bg-white"
                 >
-                  <table className="w-full text-xs text-left">
-                    <thead className="bg-[#F5F5F7] border-b border-[#E5E5EA] text-[#6E6E73] font-semibold text-[11px]">
+                  <table className="w-full text-xs text-left border-collapse">
+                    <thead className="bg-[#F8F9FA] border-b border-[#E5E5EA] text-[#6E6E73] font-semibold text-[11px]">
                       <tr>
-                        <th className="py-2.5 px-3">Product Name</th>
-                        <th className="py-2.5 px-2 text-center w-16">SKU / HSN</th>
+                        <th className="py-2.5 px-2 text-center w-8">#</th>
+                        <th className="py-2.5 px-3 min-w-[170px]">Product / Description</th>
+                        <th className="py-2.5 px-2 text-center w-20">HSN/SAC</th>
+                        <th className="py-2.5 px-2 text-center w-24">Qty</th>
                         <th className="py-2.5 px-2 text-center w-16">Unit</th>
-                        <th className="py-2.5 px-2 text-center w-28">Quantity</th>
-                        <th className="py-2.5 px-2 text-right w-20">Price (₹)</th>
-                        <th className="py-2.5 px-2 text-center w-20">GST Mode</th>
-                        <th className="py-2.5 px-2 text-center w-16">GST (%)</th>
-                        <th className="py-2.5 px-2 text-center w-16">Disc (₹)</th>
-                        <th className="py-2.5 px-2 text-right w-20">Taxable (₹)</th>
-                        <th className="py-2.5 px-2 text-right w-16">GST (₹)</th>
-                        <th className="py-2.5 px-3 text-right w-24">Total (₹)</th>
-                        <th className="py-2.5 px-1.5 text-center w-8"></th>
+                        <th className="py-2.5 px-2 text-right w-22">Rate (₹)</th>
+                        <th className="py-2.5 px-2 text-center w-18">Disc. (%)</th>
+                        <th className="py-2.5 px-2 text-center w-20">GST (%)</th>
+                        <th className="py-2.5 px-3 text-right w-24">Amount (₹)</th>
+                        <th className="py-2.5 px-2 text-center w-10">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#E5E5EA] bg-white">
@@ -1300,46 +1735,78 @@ export default function Billing() {
                         const isLowStock =
                           item.stock !== undefined && item.stock > 0 && item.qty > item.stock;
 
+                        const discountPctValue =
+                          item.discountPercent !== undefined
+                            ? item.discountPercent
+                            : item.rate && item.qty
+                            ? Number(((Number(item.discount || 0) / (item.rate * item.qty)) * 100).toFixed(1))
+                            : 0;
+
                         return (
                           <tr
                             key={item.id || idx}
-                            className="text-[#1D1D1F] hover:bg-[#F5F5F7]/50 transition"
+                            className="text-[#1D1D1F] hover:bg-[#F8F9FA]/60 transition"
                           >
+                            {/* 1. # */}
+                            <td className="py-2.5 px-2 text-center text-[#8E8E93] font-mono text-[11px]">
+                              {idx + 1}
+                            </td>
+
+                            {/* 2. Product / Description */}
                             <td className="py-2.5 px-3">
-                              <p className="font-semibold text-[#1D1D1F] truncate max-w-[150px]">
-                                {item.name}
-                              </p>
-                              <div className="flex items-center gap-1.5 text-[10px] text-[#6E6E73]">
-                                {item.sku && <span>SKU: {item.sku}</span>}
-                                {isLowStock && (
-                                  <span className="text-[#9A6700] font-medium bg-[#FFF8EB] px-1 py-0.2 rounded text-[9px]">
-                                    Stock: {item.stock}
-                                  </span>
-                                )}
+                              <div className="flex items-center gap-2">
+                                {item.imageUrl ? (
+                                  <img
+                                    src={item.imageUrl}
+                                    alt={item.name}
+                                    className="w-7 h-7 rounded-md object-cover border border-[#E5E5EA] shrink-0"
+                                  />
+                                ) : null}
+                                <div className="min-w-0 flex-1">
+                                  <p
+                                    className="font-medium text-[#1D1D1F] truncate text-xs"
+                                    title={item.name}
+                                  >
+                                    {item.name}
+                                  </p>
+                                  <div className="flex items-center gap-1.5 text-[10px] text-[#8E8E93] font-mono">
+                                    <span>{item.sku || item.code || `PRD-${idx + 1}`}</span>
+                                    {isLowStock && (
+                                      <span className="text-[#9A6700] font-medium bg-[#FFF8EB] px-1 rounded text-[9px]">
+                                        Stock: {item.stock}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
                               </div>
                             </td>
 
-                            <td className="py-2.5 px-2 text-center font-mono text-[11px] text-[#6E6E73]">
-                              {item.hsn || item.sku || "1904"}
+                            {/* 3. HSN/SAC */}
+                            <td className="py-2.5 px-2 text-center">
+                              <input
+                                type="text"
+                                value={item.hsn || ""}
+                                placeholder="1904"
+                                onChange={(e) => {
+                                  const updated = [...items];
+                                  updated[idx].hsn = e.target.value;
+                                  setItems(updated);
+                                }}
+                                className="w-16 h-7 text-center font-mono text-[11px] border border-[#E5E5EA] rounded-lg outline-none focus:border-[#007AFF] bg-white text-[#1D1D1F] placeholder-[#8E8E93]"
+                              />
                             </td>
 
-                            {/* Unit column */}
+                            {/* 4. Qty */}
                             <td className="py-2.5 px-2 text-center">
-                              <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700 capitalize border border-slate-200/60">
-                                {item.unit || "piece"}
-                              </span>
-                            </td>
-
-                            {/* Quantity column with - / + buttons (Requirements 3 & 6) */}
-                            <td className="py-2.5 px-2 text-center">
-                              <div className="inline-flex items-center border border-[#E5E5EA] rounded-lg bg-white overflow-hidden shadow-2xs">
+                              <div className="inline-flex items-center border border-[#E5E5EA] rounded-lg bg-white overflow-hidden h-7 shadow-2xs">
                                 <button
                                   type="button"
                                   onClick={() => {
                                     const updated = [...items];
+                                    const current = parseFloat(updated[idx].qty) || 1;
                                     const step = isDecimalUnit(item.unit) ? 0.5 : 1;
                                     const minVal = isDecimalUnit(item.unit) ? 0.001 : 1;
-                                    const newQty = Math.max(minVal, Number((Number(updated[idx].qty || 1) - step).toFixed(3)));
+                                    const newQty = Math.max(minVal, Number((current - step).toFixed(3)));
                                     updated[idx].qty = newQty;
                                     setItems(updated);
                                   }}
@@ -1350,29 +1817,44 @@ export default function Billing() {
                                 </button>
                                 <input
                                   type="number"
-                                  step={isDecimalUnit(item.unit) ? "any" : "1"}
-                                  min="0.001"
+                                  step="any"
+                                  min="0.0001"
                                   data-table-row={idx}
                                   data-table-col={0}
                                   value={item.qty}
                                   onChange={(e) => {
-                                    const minVal = isDecimalUnit(item.unit) ? 0.001 : 1;
-                                    const val = Math.max(minVal, Number(e.target.value));
+                                    const val = e.target.value;
                                     const updated = [...items];
-                                    if (item.stock && val > item.stock) {
-                                      notify("warning", `Sale quantity (${val}) exceeds available stock (${item.stock})`);
+                                    if (val === "") {
+                                      updated[idx].qty = "";
+                                    } else {
+                                      const num = Number(val);
+                                      if (item.stock && num > item.stock) {
+                                        notify("warning", `Sale quantity (${num}) exceeds available stock (${item.stock})`);
+                                      }
+                                      updated[idx].qty = val;
                                     }
-                                    updated[idx].qty = val;
                                     setItems(updated);
                                   }}
-                                  className="w-12 h-7 text-center font-bold text-[#1D1D1F] outline-none border-x border-[#E5E5EA] bg-transparent text-xs"
+                                  onBlur={() => {
+                                    const updated = [...items];
+                                    const num = parseFloat(item.qty);
+                                    if (isNaN(num) || num <= 0) {
+                                      updated[idx].qty = isDecimalUnit(item.unit) ? 0.5 : 1;
+                                    } else {
+                                      updated[idx].qty = num;
+                                    }
+                                    setItems(updated);
+                                  }}
+                                  className="w-10 h-7 text-center font-bold text-[#1D1D1F] outline-none border-x border-[#E5E5EA] bg-transparent text-xs"
                                 />
                                 <button
                                   type="button"
                                   onClick={() => {
                                     const updated = [...items];
+                                    const current = parseFloat(updated[idx].qty) || 1;
                                     const step = isDecimalUnit(item.unit) ? 0.5 : 1;
-                                    const newQty = Number((Number(updated[idx].qty || 1) + step).toFixed(3));
+                                    const newQty = Number((current + step).toFixed(3));
                                     if (item.stock && newQty > item.stock) {
                                       notify("warning", `Sale quantity (${newQty}) exceeds available inventory (${item.stock})`);
                                     }
@@ -1387,7 +1869,30 @@ export default function Billing() {
                               </div>
                             </td>
 
-                            {/* Price */}
+                            {/* 5. Unit */}
+                            <td className="py-2.5 px-2 text-center">
+                              <select
+                                value={item.unit || "piece"}
+                                onChange={(e) => {
+                                  const updated = [...items];
+                                  updated[idx].unit = e.target.value;
+                                  setItems(updated);
+                                }}
+                                className="h-7 px-1.5 text-[11px] font-medium border border-[#E5E5EA] rounded-lg bg-white outline-none focus:border-[#007AFF] text-[#1D1D1F] text-center capitalize cursor-pointer"
+                              >
+                                <option value="piece">Pcs</option>
+                                <option value="kg">kg</option>
+                                <option value="gram">g</option>
+                                <option value="litre">L</option>
+                                <option value="ml">ml</option>
+                                <option value="meter">m</option>
+                                <option value="box">Box</option>
+                                <option value="pack">Pack</option>
+                                <option value="set">Set</option>
+                              </select>
+                            </td>
+
+                            {/* 6. Rate (₹) */}
                             <td className="py-2.5 px-2 text-right">
                               <input
                                 type="number"
@@ -1401,74 +1906,69 @@ export default function Billing() {
                                   updated[idx].rate = Math.max(0, Number(e.target.value));
                                   setItems(updated);
                                 }}
-                                className="w-16 py-1 px-1 border border-[#E5E5EA] rounded-lg text-right font-mono text-[#1D1D1F] outline-none focus:border-[#007AFF] bg-white text-xs"
+                                className="w-20 h-7 px-2 border border-[#E5E5EA] rounded-lg text-right font-mono font-medium text-[#1D1D1F] outline-none focus:border-[#007AFF] bg-white text-xs"
                               />
                             </td>
 
-                            {/* GST Mode Badge */}
-                            <td className="py-2.5 px-2 text-center">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const updated = [...items];
-                                  updated[idx].isTaxInclusive = !calculated?.isTaxInclusive;
-                                  setItems(updated);
-                                }}
-                                className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider cursor-pointer border transition ${
-                                  calculated?.isTaxInclusive
-                                    ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
-                                    : "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
-                                }`}
-                                title="Click to toggle Inclusive/Exclusive GST calculation"
-                              >
-                                {calculated?.isTaxInclusive ? "Inc (MRP)" : "Exc (+Tax)"}
-                              </button>
-                            </td>
-
-                            {/* GST Rate */}
-                            <td className="py-2.5 px-2 text-center text-[#6E6E73] font-medium font-mono text-xs">
-                              {item.gst}%
-                            </td>
-
-                            {/* Discount */}
+                            {/* 7. Disc. (%) */}
                             <td className="py-2.5 px-2 text-center">
                               <input
                                 type="number"
                                 min="0"
-                                step="0.01"
+                                max="100"
+                                step="0.1"
+                                placeholder="0"
                                 data-table-row={idx}
                                 data-table-col={2}
-                                value={item.discount}
+                                value={discountPctValue}
                                 onChange={(e) => {
+                                  const pct = Math.min(100, Math.max(0, Number(e.target.value) || 0));
                                   const updated = [...items];
-                                  updated[idx].discount = Math.max(0, Number(e.target.value));
+                                  updated[idx].discountPercent = pct;
+                                  const gross = Number(updated[idx].rate || 0) * Number(updated[idx].qty || 1);
+                                  updated[idx].discount = Number(((gross * pct) / 100).toFixed(2));
                                   setItems(updated);
                                 }}
-                                className="w-14 py-1 px-1 border border-[#E5E5EA] rounded-lg text-center font-mono text-[#1D1D1F] outline-none focus:border-[#007AFF] bg-white text-xs"
+                                className="w-14 h-7 px-1 border border-[#E5E5EA] rounded-lg text-center font-mono text-[#1D1D1F] outline-none focus:border-[#007AFF] bg-white text-xs"
                               />
                             </td>
 
-                            {/* Taxable Amount */}
-                            <td className="py-2.5 px-2 text-right font-mono text-[#6E6E73] text-[11px]">
-                              ₹{calculated ? calculated.taxable.toFixed(2) : "0.00"}
+                            {/* 8. GST (%) */}
+                            <td className="py-2.5 px-2 text-center">
+                              <select
+                                value={item.gst !== undefined ? item.gst : (item.gstRate !== undefined ? item.gstRate : 18)}
+                                data-table-row={idx}
+                                data-table-col={3}
+                                onChange={(e) => {
+                                  const updated = [...items];
+                                  const r = Number(e.target.value);
+                                  updated[idx].gst = r;
+                                  updated[idx].gstRate = r;
+                                  setItems(updated);
+                                }}
+                                className="h-7 px-1.5 border border-[#E5E5EA] rounded-lg text-center font-mono font-medium text-[#1D1D1F] outline-none focus:border-[#007AFF] bg-white text-xs cursor-pointer"
+                              >
+                                <option value="0">0%</option>
+                                <option value="3">3%</option>
+                                <option value="5">5%</option>
+                                <option value="12">12%</option>
+                                <option value="18">18%</option>
+                                <option value="28">28%</option>
+                              </select>
                             </td>
 
-                            {/* GST Amount */}
-                            <td className="py-2.5 px-2 text-right font-mono text-[#6E6E73] text-[11px]">
-                              ₹{calculated ? calculated.tax.toFixed(2) : "0.00"}
-                            </td>
-
-                            {/* Line Total */}
-                            <td className="py-2.5 px-3 text-right font-bold text-[#1D1D1F] font-mono text-xs">
+                            {/* 9. Amount (₹) */}
+                            <td className="py-2.5 px-3 text-right font-bold text-[#1D1D1F] font-mono text-xs tabular-nums">
                               ₹{calculated ? calculated.total.toFixed(2) : "0.00"}
                             </td>
 
-                            <td className="py-2.5 px-1.5 text-center">
+                            {/* 10. Actions */}
+                            <td className="py-2.5 px-2 text-center">
                               <button
                                 type="button"
                                 onClick={() => handleRemoveItem(idx)}
-                                className="p-1.5 text-[#6E6E73] hover:text-[#D70015] hover:bg-[#FFF2F2] rounded-lg transition cursor-pointer"
-                                title="Remove line item"
+                                className="w-7 h-7 flex items-center justify-center text-[#8E8E93] hover:text-[#D70015] hover:bg-[#FFF2F2] rounded-lg transition cursor-pointer mx-auto"
+                                title="Remove item"
                               >
                                 <Trash2 size={13} />
                               </button>
@@ -1480,153 +1980,331 @@ export default function Billing() {
                   </table>
                 </div>
               )}
+
+              {/* 3 & 4. Bottom Row: Left = Add another item, Right = Compact Billing Summary */}
+              {items.length > 0 && (
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pt-4 mt-3 border-t border-[#E5E5EA]/70">
+                  {/* Bottom Left: Add Another Item Button (Requirement 3) */}
+                  <div>
+                    <button
+                      type="button"
+                      id="add-another-item-btn"
+                      onClick={handleOpenAddItem}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-blue-200 bg-blue-50/70 hover:bg-blue-100/80 text-[#007AFF] text-xs font-semibold transition cursor-pointer shadow-2xs"
+                      title="Add another line item to bill"
+                    >
+                      <Plus size={14} strokeWidth={2.5} />
+                      <span>Add another item</span>
+                    </button>
+                  </div>
+
+                  {/* Bottom Right: Compact Billing Summary Card (Requirement 4) */}
+                  <div className="w-full sm:w-72 sm:ml-auto bg-white rounded-xl border border-[#E5E5EA] p-3.5 shadow-2xs space-y-2 text-xs">
+                    {/* Subtotal */}
+                    <div className="flex items-center justify-between text-[#6E6E73]">
+                      <span>Subtotal</span>
+                      <span className="font-mono text-[#1D1D1F] tabular-nums">
+                        ₹{subtotal.toFixed(2)}
+                      </span>
+                    </div>
+
+                    {/* Discount */}
+                    {totalDiscount > 0 && (
+                      <div className="flex items-center justify-between text-[#248A3D]">
+                        <span>Discount</span>
+                        <span className="font-mono tabular-nums">
+                          -₹{totalDiscount.toFixed(2)}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Taxable Amount */}
+                    <div className="flex items-center justify-between text-[#6E6E73]">
+                      <span>Taxable Amount</span>
+                      <span className="font-mono text-[#1D1D1F] tabular-nums">
+                        ₹{subtotal.toFixed(2)}
+                      </span>
+                    </div>
+
+                    {/* GST Breakdown: CGST + SGST (Intra-state) or IGST (Inter-state) */}
+                    {isInterState ? (
+                      <div className="flex items-center justify-between text-[#6E6E73]">
+                        <span>IGST</span>
+                        <span className="font-mono text-[#1D1D1F] tabular-nums">
+                          ₹{igst.toFixed(2)}
+                        </span>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex items-center justify-between text-[#6E6E73]">
+                          <span>CGST</span>
+                          <span className="font-mono text-[#1D1D1F] tabular-nums">
+                            ₹{cgst.toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-[#6E6E73]">
+                          <span>SGST</span>
+                          <span className="font-mono text-[#1D1D1F] tabular-nums">
+                            ₹{sgst.toFixed(2)}
+                          </span>
+                        </div>
+                      </>
+                    )}
+
+                    {/* Highlighted Grand Total Row with light-blue background and bold text */}
+                    <div className="flex items-center justify-between p-2 rounded-lg bg-blue-50/90 border border-blue-200/70 text-blue-950 font-bold mt-1 shadow-2xs">
+                      <span className="text-xs uppercase tracking-wide">
+                        Grand Total
+                      </span>
+                      <span className="text-sm sm:text-base font-mono tabular-nums text-blue-700">
+                        ₹{grandTotal.toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </section>
 
-            {/* ── 4. Payment & Settlement Section ── */}
-            <section className="bg-white rounded-2xl border border-[#E5E5EA] p-5 sm:p-6 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-              <div className="flex items-center justify-between mb-4 pb-3 border-b border-[#E5E5EA]">
-                <div>
-                  <h2 className="text-sm sm:text-base font-semibold text-[#1D1D1F] tracking-tight">
-                    Payment &amp; Settlement
-                  </h2>
-                  <p className="text-xs text-[#6E6E73] font-normal mt-0.5">
-                    Select tender method, record amount received, or generate UPI QR
-                  </p>
+            {/* ── 4. Payment & Settlement Section (Invoice) OR Quotation Details & Validity (Quotation) ── */}
+            {documentType === "quotation" ? (
+              <section className="bg-white rounded-2xl border border-purple-200/80 p-5 sm:p-6 shadow-[0_1px_3px_rgba(0,0,0,0.04)] space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-[#E5E5EA]">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-purple-600 animate-pulse" />
+                      <h2 className="text-sm sm:text-base font-semibold text-[#1D1D1F] tracking-tight">
+                        Quotation Validity, Notes &amp; Terms
+                      </h2>
+                    </div>
+                    <p className="text-xs text-[#6E6E73] font-normal mt-0.5">
+                      Configure proposal validity period, customer notes, and commercial terms
+                    </p>
+                  </div>
+                  <span className="text-[11px] font-semibold text-purple-700 bg-purple-50 border border-purple-200 px-2.5 py-1 rounded-lg">
+                    Status: {quotationStatus}
+                  </span>
                 </div>
-              </div>
 
-              {/* Quick tender mode shortcuts */}
-              <div className="flex flex-wrap items-center gap-2 mb-4">
-                <button
-                  type="button"
-                  onClick={() => handleQuickPayment("Cash", "Paid")}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-medium transition cursor-pointer border ${
-                    paymentMode === "Cash" && paymentStatus === "Paid"
-                      ? "bg-[#007AFF] text-white border-[#007AFF] shadow-xs"
-                      : "bg-white text-[#1D1D1F] border-[#E5E5EA] hover:bg-[#F5F5F7]"
-                  }`}
-                >
-                  ✓ Cash Paid
-                </button>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Validity Date */}
+                  <div>
+                    <label className="block text-xs font-medium text-[#1D1D1F] mb-1.5">
+                      Valid Until Date
+                    </label>
+                    <input
+                      type="date"
+                      value={quotationValidityDate}
+                      onChange={(e) => setQuotationValidityDate(e.target.value)}
+                      className="w-full px-3 py-2 text-xs sm:text-[13px] border border-[#E5E5EA] rounded-xl outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-600/15 transition bg-white text-[#1D1D1F]"
+                    />
+                  </div>
 
-                <button
-                  type="button"
-                  onClick={() => handleQuickPayment("UPI", "Paid")}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-medium transition cursor-pointer border ${
-                    paymentMode === "UPI" && paymentStatus === "Paid"
-                      ? "bg-[#007AFF] text-white border-[#007AFF] shadow-xs"
-                      : "bg-white text-[#1D1D1F] border-[#E5E5EA] hover:bg-[#F5F5F7]"
-                  }`}
-                >
-                  ✓ UPI Paid
-                </button>
+                  {/* Quotation Status */}
+                  <div>
+                    <label className="block text-xs font-medium text-[#1D1D1F] mb-1.5">
+                      Quotation Status
+                    </label>
+                    <select
+                      value={quotationStatus}
+                      onChange={(e) => setQuotationStatus(e.target.value)}
+                      className="w-full px-3 py-2 text-xs sm:text-[13px] border border-[#E5E5EA] rounded-xl outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-600/15 transition bg-white text-[#1D1D1F]"
+                    >
+                      <option value="DRAFT">Draft</option>
+                      <option value="SENT">Sent to Customer</option>
+                      <option value="ACCEPTED">Accepted by Customer</option>
+                      <option value="REJECTED">Rejected</option>
+                      <option value="EXPIRED">Expired</option>
+                    </select>
+                  </div>
 
-                <button
-                  type="button"
-                  onClick={() => setShowUpiModal(true)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border border-[#E5E5EA] bg-white text-[#007AFF] hover:bg-[#F5F5F7] transition cursor-pointer"
-                >
-                  <QrCode size={14} className="text-[#007AFF]" />
-                  <span>Request UPI (QR)</span>
-                </button>
+                  {/* Customer Notes */}
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-medium text-[#1D1D1F] mb-1.5">
+                      Customer Notes
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Quotation valid for 15 days from date of issue."
+                      value={quotationNotes}
+                      onChange={(e) => setQuotationNotes(e.target.value)}
+                      className="w-full px-3 py-2 text-xs sm:text-[13px] border border-[#E5E5EA] rounded-xl outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-600/15 transition bg-white text-[#1D1D1F]"
+                    />
+                  </div>
 
-                <button
-                  type="button"
-                  onClick={() => setShowBarcodeScanner(true)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border border-[#E5E5EA] bg-white text-[#1D1D1F] hover:bg-[#F5F5F7] transition cursor-pointer"
-                >
-                  <Scan size={14} className="text-[#6E6E73]" />
-                  <span>Barcode Scanner</span>
-                </button>
-              </div>
+                  {/* Terms & Conditions */}
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-medium text-[#1D1D1F] mb-1.5">
+                      Terms &amp; Conditions
+                    </label>
+                    <textarea
+                      rows={3}
+                      placeholder="Commercial terms, payment requirements, delivery timeline..."
+                      value={quotationTerms}
+                      onChange={(e) => setQuotationTerms(e.target.value)}
+                      className="w-full px-3 py-2 text-xs sm:text-[13px] border border-[#E5E5EA] rounded-xl outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-600/15 transition bg-white text-[#1D1D1F] resize-none"
+                    />
+                  </div>
+                </div>
 
-              {/* Form Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-                {/* Payment Status */}
-                <div>
-                  <label className="block text-xs font-medium text-[#1D1D1F] mb-1.5">
-                    Payment Status
-                  </label>
-                  <select
-                    value={paymentStatus}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setPaymentStatus(val);
-                      if (val === "Paid") setAmountReceived(grandTotal);
-                      else if (val === "Unpaid") setAmountReceived(0);
-                    }}
-                    className="w-full px-3 py-2 text-xs sm:text-[13px] border border-[#E5E5EA] rounded-xl bg-white outline-none focus:border-[#007AFF] text-[#1D1D1F]"
+                {/* Educational Notice */}
+                <div className="p-3 bg-purple-50/70 border border-purple-200 rounded-xl text-xs text-purple-900 flex items-start gap-2.5">
+                  <div className="p-1 rounded-lg bg-purple-200/60 text-purple-800 shrink-0 mt-0.5">
+                    <FileSpreadsheet size={14} />
+                  </div>
+                  <div>
+                    <strong className="font-semibold block">Quotation Notice — Not a Tax Invoice</strong>
+                    <span className="text-[11px] text-purple-800">
+                      Saving this quotation does not record payments, generate tax liabilities, or reduce inventory stock. Once accepted by the customer, you can convert it to an official Tax Invoice with a single click.
+                    </span>
+                  </div>
+                </div>
+              </section>
+            ) : (
+              <section className="bg-white rounded-2xl border border-[#E5E5EA] p-5 sm:p-6 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+                <div className="flex items-center justify-between mb-4 pb-3 border-b border-[#E5E5EA]">
+                  <div>
+                    <h2 className="text-sm sm:text-base font-semibold text-[#1D1D1F] tracking-tight">
+                      Payment &amp; Settlement
+                    </h2>
+                    <p className="text-xs text-[#6E6E73] font-normal mt-0.5">
+                      Select tender method, record amount received, or generate UPI QR
+                    </p>
+                  </div>
+                </div>
+
+                {/* Quick tender mode shortcuts */}
+                <div className="flex flex-wrap items-center gap-2 mb-4">
+                  <button
+                    type="button"
+                    onClick={() => handleQuickPayment("Cash", "Paid")}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-medium transition cursor-pointer border ${
+                      paymentMode === "Cash" && paymentStatus === "Paid"
+                        ? "bg-[#007AFF] text-white border-[#007AFF] shadow-xs"
+                        : "bg-white text-[#1D1D1F] border-[#E5E5EA] hover:bg-[#F5F5F7]"
+                    }`}
                   >
-                    <option value="Paid">Fully Paid</option>
-                    <option value="Partially Paid">Partially Paid</option>
-                    <option value="Unpaid">Unpaid / Credit</option>
-                  </select>
-                </div>
+                    ✓ Cash Paid
+                  </button>
 
-                {/* Payment Mode */}
-                <div>
-                  <label className="block text-xs font-medium text-[#1D1D1F] mb-1.5">
-                    Payment Mode
-                  </label>
-                  <select
-                    value={paymentMode}
-                    onChange={(e) => setPaymentMode(e.target.value)}
-                    className="w-full px-3 py-2 text-xs sm:text-[13px] border border-[#E5E5EA] rounded-xl bg-white outline-none focus:border-[#007AFF] text-[#1D1D1F]"
+                  <button
+                    type="button"
+                    onClick={() => handleQuickPayment("UPI", "Paid")}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-medium transition cursor-pointer border ${
+                      paymentMode === "UPI" && paymentStatus === "Paid"
+                        ? "bg-[#007AFF] text-white border-[#007AFF] shadow-xs"
+                        : "bg-white text-[#1D1D1F] border-[#E5E5EA] hover:bg-[#F5F5F7]"
+                    }`}
                   >
-                    <option value="Cash">Cash</option>
-                    <option value="UPI">UPI / QR</option>
-                    <option value="Card">Debit / Credit Card</option>
-                    <option value="Bank Transfer">Bank Transfer / NEFT</option>
-                  </select>
+                    ✓ UPI Paid
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowUpiModal(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border border-[#E5E5EA] bg-white text-[#007AFF] hover:bg-[#F5F5F7] transition cursor-pointer"
+                  >
+                    <QrCode size={14} className="text-[#007AFF]" />
+                    <span>Request UPI (QR)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowBarcodeScanner(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border border-[#E5E5EA] bg-white text-[#1D1D1F] hover:bg-[#F5F5F7] transition cursor-pointer"
+                  >
+                    <Scan size={14} className="text-[#6E6E73]" />
+                    <span>Barcode Scanner</span>
+                  </button>
                 </div>
 
-                {/* Amount Received */}
-                <div>
-                  <label className="block text-xs font-medium text-[#1D1D1F] mb-1.5">
-                    Amount Received (₹)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={amountReceived}
-                    onChange={(e) => setAmountReceived(Number(e.target.value))}
-                    className="w-full px-3 py-2 text-xs sm:text-[13px] border border-[#E5E5EA] rounded-xl font-mono font-medium outline-none focus:border-[#007AFF] bg-white text-[#1D1D1F]"
-                  />
-                </div>
-              </div>
+                {/* Form Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                  {/* Payment Status */}
+                  <div>
+                    <label className="block text-xs font-medium text-[#1D1D1F] mb-1.5">
+                      Payment Status
+                    </label>
+                    <select
+                      value={paymentStatus}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setPaymentStatus(val);
+                        if (val === "Paid") setAmountReceived(grandTotal);
+                        else if (val === "Unpaid") setAmountReceived(0);
+                      }}
+                      className="w-full px-3 py-2 text-xs sm:text-[13px] border border-[#E5E5EA] rounded-xl bg-white outline-none focus:border-[#007AFF] text-[#1D1D1F]"
+                    >
+                      <option value="Paid">Fully Paid</option>
+                      <option value="Partially Paid">Partially Paid</option>
+                      <option value="Unpaid">Unpaid / Credit</option>
+                    </select>
+                  </div>
 
-              {/* Tender Balance Indicators */}
-              <div className="mt-4 pt-3.5 border-t border-[#E5E5EA] flex flex-wrap items-center justify-between gap-2 text-xs">
-                {changeDue > 0 ? (
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#EDF8F0] border border-[#CCE8D4] text-[#248A3D] font-medium">
-                    <span>Change Due to Customer:</span>
-                    <strong className="font-mono font-bold">₹{changeDue.toFixed(2)}</strong>
+                  {/* Payment Mode */}
+                  <div>
+                    <label className="block text-xs font-medium text-[#1D1D1F] mb-1.5">
+                      Payment Mode
+                    </label>
+                    <select
+                      value={paymentMode}
+                      onChange={(e) => setPaymentMode(e.target.value)}
+                      className="w-full px-3 py-2 text-xs sm:text-[13px] border border-[#E5E5EA] rounded-xl bg-white outline-none focus:border-[#007AFF] text-[#1D1D1F]"
+                    >
+                      <option value="Cash">Cash</option>
+                      <option value="UPI">UPI / QR</option>
+                      <option value="Card">Debit / Credit Card</option>
+                      <option value="Bank Transfer">Bank Transfer / NEFT</option>
+                    </select>
                   </div>
-                ) : balanceDue > 0 ? (
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#FFF8EB] border border-[#FBE3B5] text-[#9A6700] font-medium">
-                    <span>Balance Remaining Due:</span>
-                    <strong className="font-mono font-bold">₹{balanceDue.toFixed(2)}</strong>
+
+                  {/* Amount Received */}
+                  <div>
+                    <label className="block text-xs font-medium text-[#1D1D1F] mb-1.5">
+                      Amount Received (₹)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={amountReceived}
+                      onChange={(e) => setAmountReceived(Number(e.target.value))}
+                      className="w-full px-3 py-2 text-xs sm:text-[13px] border border-[#E5E5EA] rounded-xl font-mono font-medium outline-none focus:border-[#007AFF] bg-white text-[#1D1D1F]"
+                    />
                   </div>
-                ) : (
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#EDF8F0] border border-[#CCE8D4] text-[#248A3D] font-medium">
-                    <span>✓ Bill fully settled</span>
-                  </div>
-                )}
-                <span className="text-[11px] text-[#6E6E73]">
-                  Selected tender: <strong>{paymentMode}</strong> ({paymentStatus})
-                </span>
-              </div>
-            </section>
+                </div>
+
+                {/* Tender Balance Indicators */}
+                <div className="mt-4 pt-3.5 border-t border-[#E5E5EA] flex flex-wrap items-center justify-between gap-2 text-xs">
+                  {changeDue > 0 ? (
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#EDF8F0] border border-[#CCE8D4] text-[#248A3D] font-medium">
+                      <span>Change Due to Customer:</span>
+                      <strong className="font-mono font-bold">₹{changeDue.toFixed(2)}</strong>
+                    </div>
+                  ) : balanceDue > 0 ? (
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#FFF8EB] border border-[#FBE3B5] text-[#9A6700] font-medium">
+                      <span>Balance Remaining Due:</span>
+                      <strong className="font-mono font-bold">₹{balanceDue.toFixed(2)}</strong>
+                    </div>
+                  ) : (
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#EDF8F0] border border-[#CCE8D4] text-[#248A3D] font-medium">
+                      <span>✓ Bill fully settled</span>
+                    </div>
+                  )}
+                  <span className="text-[11px] text-[#6E6E73]">
+                    Selected tender: <strong>{paymentMode}</strong> ({paymentStatus})
+                  </span>
+                </div>
+              </section>
+            )}
           </div>
 
-          {/* RIGHT COLUMN: Bill Summary, Primary Checkout Actions, Live Invoice Preview */}
-          <div className="lg:col-span-5 xl:col-span-4 sticky top-6 space-y-4">
-            {/* ── 5. Bill Summary Card ── */}
+          {/* RIGHT 50%: Document Summary, Checkout Actions, Live Document Preview */}
+          <div className="sticky top-6 space-y-4 min-w-0">
+            {/* ── 5. Document Summary Card ── */}
             <section className="bg-white rounded-2xl border border-[#E5E5EA] p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] space-y-3.5">
               <div className="flex items-center justify-between pb-2.5 border-b border-[#E5E5EA]">
                 <h2 className="text-sm font-semibold text-[#1D1D1F] tracking-tight">
-                  Bill Summary
+                  {documentType === "quotation" ? "Quotation Summary" : "Bill Summary"}
                 </h2>
                 <span className="text-[11px] text-[#6E6E73]">
                   {items.length} {items.length === 1 ? "item" : "items"}
@@ -1670,7 +2348,7 @@ export default function Billing() {
                   </>
                 )}
 
-                {roundOff !== 0 && (
+                {documentType === "invoice" && roundOff !== 0 && (
                   <div className="flex justify-between text-[#6E6E73]">
                     <span>Round Off</span>
                     <span className="font-mono text-[#1D1D1F]">
@@ -1684,7 +2362,7 @@ export default function Billing() {
               <div className="pt-3 border-t border-[#E5E5EA] flex items-baseline justify-between">
                 <div>
                   <span className="text-xs font-semibold uppercase tracking-wider text-[#6E6E73] block">
-                    Grand Total
+                    {documentType === "quotation" ? "Quotation Total" : "Grand Total"}
                   </span>
                   <span className="text-[11px] text-[#6E6E73]">
                     {taxInclusive ? "Tax Inclusive (MRP)" : "Tax Exclusive"}
@@ -1698,79 +2376,168 @@ export default function Billing() {
               </div>
             </section>
 
-            {/* ── 6. Primary Checkout Actions Bar ── */}
+            {/* ── 6. Primary Checkout / Quotation Actions Bar ── */}
             <div className="bg-white rounded-2xl border border-[#E5E5EA] p-3 shadow-[0_1px_3px_rgba(0,0,0,0.04)] space-y-2">
-              {/* Primary action: Save & Print */}
-              <button
-                type="button"
-                onClick={() => handleSaveBill(true)}
-                disabled={savingBill || items.length === 0}
-                className="w-full py-2.5 px-4 rounded-xl bg-[#007AFF] hover:bg-[#0062CC] disabled:opacity-40 text-white text-xs sm:text-[13px] font-semibold transition cursor-pointer shadow-[0_1px_2px_rgba(0,122,255,0.25)] flex items-center justify-center gap-2"
-                title="Save sale permanently to database and open printable Tax Invoice"
-              >
-                <Printer size={15} />
-                <span>{savingBill ? "Processing Invoice..." : "Save & Print Invoice"}</span>
-              </button>
+              {documentType === "quotation" ? (
+                <>
+                  {/* Quotation Primary Action: Save & Print */}
+                  <button
+                    type="button"
+                    id="save-print-quotation-btn"
+                    onClick={() => handleSaveQuotation("print")}
+                    disabled={savingBill || items.length === 0}
+                    className="w-full py-2.5 px-4 rounded-xl bg-purple-600 hover:bg-purple-700 disabled:opacity-40 text-white text-xs sm:text-[13px] font-semibold transition cursor-pointer shadow-[0_1px_2px_rgba(147,51,234,0.25)] flex items-center justify-center gap-2"
+                    title="Save quotation and open printable document"
+                  >
+                    <Printer size={15} />
+                    <span>{savingBill ? "Saving Quotation..." : "Save & Print Quotation"}</span>
+                  </button>
 
-              {/* Secondary action: Complete Sale (Save without print modal) */}
-              <button
-                type="button"
-                onClick={() => handleSaveBill(false)}
-                disabled={savingBill || items.length === 0}
-                className="w-full py-2 px-3 rounded-xl border border-[#E5E5EA] bg-[#F5F5F7] hover:bg-[#E5E5EA] disabled:opacity-40 text-[#1D1D1F] text-xs font-medium transition cursor-pointer flex items-center justify-center gap-1.5"
-                title="Save sale and prepare fresh bill"
-              >
-                <Check size={14} className="text-[#248A3D]" />
-                <span>Complete Sale (Quick Save)</span>
-              </button>
+                  {/* Quotation Secondary Action: Save Quotation */}
+                  <button
+                    type="button"
+                    id="save-quotation-btn"
+                    onClick={() => handleSaveQuotation("modal")}
+                    disabled={savingBill || items.length === 0}
+                    className="w-full py-2 px-3 rounded-xl border border-purple-200 bg-purple-50 hover:bg-purple-100 disabled:opacity-40 text-purple-800 text-xs font-medium transition cursor-pointer flex items-center justify-center gap-1.5"
+                    title="Save quotation draft/proposal without immediate print"
+                  >
+                    <Check size={14} className="text-purple-600" />
+                    <span>Save Quotation (View Options)</span>
+                  </button>
 
-              {/* Utility Row: Hold Bill, PDF View, Clear */}
-              <div className="grid grid-cols-3 gap-1.5 pt-1">
-                <button
-                  type="button"
-                  onClick={handleHoldBill}
-                  disabled={items.length === 0}
-                  className="py-1.5 px-2 rounded-lg border border-[#E5E5EA] bg-white hover:bg-[#F5F5F7] disabled:opacity-40 text-[#9A6700] text-[11px] font-medium transition cursor-pointer flex items-center justify-center gap-1"
-                  title="Hold bill to serve next customer without losing cart"
-                >
-                  <Clock size={13} />
-                  <span>Hold</span>
-                </button>
+                  {/* Convert to Invoice Button if quotation was saved or editing */}
+                  {(editingQuotationId || savedQuotationRecord) && (
+                    <button
+                      type="button"
+                      id="convert-quote-to-invoice-btn"
+                      onClick={() => handleConvertLoadedQuotationToInvoice(savedQuotationRecord)}
+                      className="w-full py-2 px-3 rounded-xl border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1.5"
+                      title="Convert this quotation into an active Tax Invoice"
+                    >
+                      <ArrowRight size={14} className="text-blue-600" />
+                      <span>Convert to Tax Invoice &rarr;</span>
+                    </button>
+                  )}
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    const snapshot = generateCurrentInvoiceSnapshot();
-                    setCompletedInvoice(snapshot);
-                    setShowInvoiceModal(true);
-                  }}
-                  disabled={items.length === 0}
-                  className="py-1.5 px-2 rounded-lg border border-[#E5E5EA] bg-white hover:bg-[#F5F5F7] disabled:opacity-40 text-[#007AFF] text-[11px] font-medium transition cursor-pointer flex items-center justify-center gap-1"
-                  title="View PDF preview modal"
-                >
-                  <Eye size={13} />
-                  <span>PDF View</span>
-                </button>
+                  {/* Quotation Utility Row: Preview, Share, Clear */}
+                  <div className="grid grid-cols-3 gap-1.5 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const snapshot = generateCurrentInvoiceSnapshot();
+                        setCompletedInvoice(snapshot);
+                        setShowInvoiceModal(true);
+                      }}
+                      disabled={items.length === 0}
+                      className="py-1.5 px-2 rounded-lg border border-[#E5E5EA] bg-white hover:bg-[#F5F5F7] disabled:opacity-40 text-purple-700 text-[11px] font-medium transition cursor-pointer flex items-center justify-center gap-1"
+                      title="Preview quotation document"
+                    >
+                      <Eye size={13} />
+                      <span>Preview</span>
+                    </button>
 
-                <button
-                  type="button"
-                  onClick={() => handleStartNewBill(true)}
-                  className="py-1.5 px-2 rounded-lg border border-[#E5E5EA] bg-white hover:bg-[#FFF2F2] text-[#D70015] text-[11px] font-medium transition cursor-pointer flex items-center justify-center gap-1"
-                  title="Clear current invoice"
-                >
-                  <RotateCcw size={13} />
-                  <span>Clear</span>
-                </button>
-              </div>
+                    <button
+                      type="button"
+                      onClick={() => handleShareQuotation()}
+                      disabled={items.length === 0}
+                      className="py-1.5 px-2 rounded-lg border border-[#E5E5EA] bg-white hover:bg-[#F5F5F7] disabled:opacity-40 text-[#007AFF] text-[11px] font-medium transition cursor-pointer flex items-center justify-center gap-1"
+                      title="Share quotation via WhatsApp or copy details"
+                    >
+                      <Share2 size={13} />
+                      <span>Share</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleStartNewBill(true)}
+                      className="py-1.5 px-2 rounded-lg border border-[#E5E5EA] bg-white hover:bg-[#FFF2F2] text-[#D70015] text-[11px] font-medium transition cursor-pointer flex items-center justify-center gap-1"
+                      title="Clear current quotation form"
+                    >
+                      <RotateCcw size={13} />
+                      <span>Clear</span>
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Primary action: Save & Print */}
+                  <button
+                    type="button"
+                    onClick={() => handleSaveBill(true)}
+                    disabled={savingBill || items.length === 0}
+                    className="w-full py-2.5 px-4 rounded-xl bg-[#007AFF] hover:bg-[#0062CC] disabled:opacity-40 text-white text-xs sm:text-[13px] font-semibold transition cursor-pointer shadow-[0_1px_2px_rgba(0,122,255,0.25)] flex items-center justify-center gap-2"
+                    title="Save sale permanently to database and open printable Tax Invoice"
+                  >
+                    <Printer size={15} />
+                    <span>{savingBill ? "Processing Invoice..." : "Save & Print Invoice"}</span>
+                  </button>
+
+                  {/* Secondary action: Complete Sale (Save without print modal) */}
+                  <button
+                    type="button"
+                    onClick={() => handleSaveBill(false)}
+                    disabled={savingBill || items.length === 0}
+                    className="w-full py-2 px-3 rounded-xl border border-[#E5E5EA] bg-[#F5F5F7] hover:bg-[#E5E5EA] disabled:opacity-40 text-[#1D1D1F] text-xs font-medium transition cursor-pointer flex items-center justify-center gap-1.5"
+                    title="Save sale and prepare fresh bill"
+                  >
+                    <Check size={14} className="text-[#248A3D]" />
+                    <span>Complete Sale (Quick Save)</span>
+                  </button>
+
+                  {/* Utility Row: Hold Bill, PDF View, Clear */}
+                  <div className="grid grid-cols-3 gap-1.5 pt-1">
+                    <button
+                      type="button"
+                      onClick={handleHoldBill}
+                      disabled={items.length === 0}
+                      className="py-1.5 px-2 rounded-lg border border-[#E5E5EA] bg-white hover:bg-[#F5F5F7] disabled:opacity-40 text-[#9A6700] text-[11px] font-medium transition cursor-pointer flex items-center justify-center gap-1"
+                      title="Hold bill to serve next customer without losing cart"
+                    >
+                      <Clock size={13} />
+                      <span>Hold</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const snapshot = generateCurrentInvoiceSnapshot();
+                        setCompletedInvoice(snapshot);
+                        setShowInvoiceModal(true);
+                      }}
+                      disabled={items.length === 0}
+                      className="py-1.5 px-2 rounded-lg border border-[#E5E5EA] bg-white hover:bg-[#F5F5F7] disabled:opacity-40 text-[#007AFF] text-[11px] font-medium transition cursor-pointer flex items-center justify-center gap-1"
+                      title="View PDF preview modal"
+                    >
+                      <Eye size={13} />
+                      <span>PDF View</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleStartNewBill(true)}
+                      className="py-1.5 px-2 rounded-lg border border-[#E5E5EA] bg-white hover:bg-[#FFF2F2] text-[#D70015] text-[11px] font-medium transition cursor-pointer flex items-center justify-center gap-1"
+                      title="Clear current invoice"
+                    >
+                      <RotateCcw size={13} />
+                      <span>Clear</span>
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
 
-            {/* ── 7. Live Bill Preview Card ── */}
+            {/* ── 7. Live Document Preview Card ── */}
             <div className="bg-white rounded-2xl border border-[#E5E5EA] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
               <div className="px-4 py-3 bg-[#F5F5F7] border-b border-[#E5E5EA] flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-[#248A3D] animate-pulse" />
+                  <span
+                    className={`w-2 h-2 rounded-full animate-pulse ${
+                      documentType === "quotation" ? "bg-purple-600" : "bg-[#248A3D]"
+                    }`}
+                  />
                   <span className="text-xs font-semibold text-[#1D1D1F]">
-                    Live Bill Preview
+                    {documentType === "quotation" ? "Live Quotation Preview" : "Live Bill Preview"}
                   </span>
                 </div>
                 <button
@@ -1888,16 +2655,22 @@ export default function Billing() {
                     </label>
                     <input
                       type="number"
-                      min="0.001"
-                      step={isDecimalUnit(itemForm.unit) ? "any" : "1"}
+                      min="0.0001"
+                      step="any"
                       required
                       value={itemForm.quantity}
                       onChange={(e) =>
                         setItemForm({
                           ...itemForm,
-                          quantity: Math.max(0.001, Number(e.target.value)),
+                          quantity: e.target.value,
                         })
                       }
+                      onBlur={() => {
+                        const parsed = parseFloat(itemForm.quantity);
+                        if (isNaN(parsed) || parsed <= 0) {
+                          setItemForm({ ...itemForm, quantity: 1 });
+                        }
+                      }}
                       className="w-full px-3 py-2 rounded-xl border border-[#E5E5EA] font-semibold bg-white text-[#1D1D1F] outline-none focus:border-[#007AFF]"
                     />
                   </div>
@@ -1911,12 +2684,18 @@ export default function Billing() {
                     <input
                       type="number"
                       min="0"
-                      step="0.01"
+                      step="any"
                       required
                       value={itemForm.rate}
                       onChange={(e) =>
-                        setItemForm({ ...itemForm, rate: Number(e.target.value) })
+                        setItemForm({ ...itemForm, rate: e.target.value })
                       }
+                      onBlur={() => {
+                        const parsed = parseFloat(itemForm.rate);
+                        if (isNaN(parsed) || parsed < 0) {
+                          setItemForm({ ...itemForm, rate: 0 });
+                        }
+                      }}
                       className="w-full px-3 py-2 rounded-xl border border-[#E5E5EA] font-mono bg-white text-[#1D1D1F] outline-none focus:border-[#007AFF]"
                     />
                   </div>
@@ -1926,11 +2705,17 @@ export default function Billing() {
                     <input
                       type="number"
                       min="0"
-                      step="0.01"
+                      step="any"
                       value={itemForm.discount}
                       onChange={(e) =>
-                        setItemForm({ ...itemForm, discount: Number(e.target.value) })
+                        setItemForm({ ...itemForm, discount: e.target.value })
                       }
+                      onBlur={() => {
+                        const parsed = parseFloat(itemForm.discount);
+                        if (isNaN(parsed) || parsed < 0) {
+                          setItemForm({ ...itemForm, discount: 0 });
+                        }
+                      }}
                       className="w-full px-3 py-2 rounded-xl border border-[#E5E5EA] font-mono bg-white text-[#1D1D1F] outline-none focus:border-[#007AFF]"
                     />
                   </div>
@@ -1941,11 +2726,17 @@ export default function Billing() {
                       type="number"
                       min="0"
                       max="100"
-                      step="0.01"
+                      step="any"
                       value={itemForm.taxRate}
                       onChange={(e) =>
-                        setItemForm({ ...itemForm, taxRate: Number(e.target.value) })
+                        setItemForm({ ...itemForm, taxRate: e.target.value })
                       }
+                      onBlur={() => {
+                        const parsed = parseFloat(itemForm.taxRate);
+                        if (isNaN(parsed) || parsed < 0) {
+                          setItemForm({ ...itemForm, taxRate: 0 });
+                        }
+                      }}
                       className="w-full px-3 py-2 rounded-xl border border-[#E5E5EA] font-mono font-semibold bg-white text-[#1D1D1F] outline-none focus:border-[#007AFF]"
                     />
                     <div className="flex flex-wrap gap-1 mt-1.5">
@@ -1955,7 +2746,7 @@ export default function Billing() {
                           type="button"
                           onClick={() => setItemForm({ ...itemForm, taxRate: rate })}
                           className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition cursor-pointer ${
-                            itemForm.taxRate === rate
+                            Number(itemForm.taxRate) === rate
                               ? "bg-[#007AFF] text-white"
                               : "bg-[#F5F5F7] text-[#6E6E73] hover:text-[#1D1D1F]"
                           }`}
@@ -1973,8 +2764,8 @@ export default function Billing() {
                   <span className="font-semibold text-[#1D1D1F] font-mono text-sm">
                     ₹
                     {(
-                      (itemForm.rate * itemForm.quantity - itemForm.discount) *
-                      (1 + itemForm.taxRate / 100)
+                      (Math.max(0, parseFloat(itemForm.rate) || 0) * (parseFloat(itemForm.quantity) || 0) - Math.max(0, parseFloat(itemForm.discount) || 0)) *
+                      (1 + Math.max(0, parseFloat(itemForm.taxRate) || 0) / 100)
                     ).toFixed(2)}
                   </span>
                 </div>
@@ -2034,6 +2825,156 @@ export default function Billing() {
           onDeleteHeldBill={handleDeleteHeldBill}
           onClearAllHeld={handleClearAllHeld}
         />
+        {/* ── Quotation Actions Modal ── */}
+        {showQuotationActionsModal && savedQuotationRecord && (
+          <div className="fixed inset-0 z-50 overflow-y-auto p-4 flex items-center justify-center bg-black/45 backdrop-blur-xs animate-in fade-in">
+            <div className="relative w-full max-w-lg bg-white rounded-2xl p-6 shadow-2xl border border-[#E5E5EA] space-y-5 animate-in zoom-in-95">
+              <div className="flex items-start justify-between pb-3.5 border-b border-[#E5E5EA]">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center">
+                    <CheckCircle2 size={22} />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-[#1D1D1F] text-base">
+                      Quotation Saved Successfully!
+                    </h3>
+                    <p className="text-xs text-[#6E6E73] mt-0.5">
+                      Proposal #{savedQuotationRecord.quotationNumber} is securely saved in the system.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowQuotationActionsModal(false)}
+                  className="p-1 rounded-lg text-[#6E6E73] hover:text-[#1D1D1F] hover:bg-[#F5F5F7] transition cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Quotation Quick Details Card */}
+              <div className="p-4 bg-purple-50/60 rounded-xl border border-purple-100 text-xs space-y-1.5">
+                <div className="flex justify-between text-purple-950">
+                  <span className="font-medium">Quotation Number:</span>
+                  <strong className="font-mono">{savedQuotationRecord.quotationNumber}</strong>
+                </div>
+                <div className="flex justify-between text-purple-950">
+                  <span className="font-medium">Customer:</span>
+                  <span>{savedQuotationRecord.customerName || customerName}</span>
+                </div>
+                <div className="flex justify-between text-purple-950">
+                  <span className="font-medium">Quoted Total:</span>
+                  <strong className="font-mono text-sm">₹{grandTotal.toFixed(2)}</strong>
+                </div>
+                <div className="flex justify-between text-purple-950">
+                  <span className="font-medium">Valid Until:</span>
+                  <span>{quotationValidityDate}</span>
+                </div>
+                <div className="flex justify-between text-purple-950">
+                  <span className="font-medium">Current Status:</span>
+                  <span className="font-semibold px-2 py-0.5 rounded bg-purple-100 text-purple-800 text-[10px]">
+                    {quotationStatus}
+                  </span>
+                </div>
+              </div>
+
+              {/* Actions Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {/* 1. Preview & Download PDF */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowQuotationActionsModal(false);
+                    setShowInvoiceModal(true);
+                  }}
+                  className="p-3 rounded-xl border border-[#E5E5EA] hover:border-[#007AFF] bg-white hover:bg-[#F5F5F7] transition cursor-pointer text-left flex items-center gap-3 group"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-blue-50 text-[#007AFF] group-hover:bg-[#007AFF] group-hover:text-white transition flex items-center justify-center shrink-0">
+                    <Eye size={16} />
+                  </div>
+                  <div>
+                    <strong className="text-xs font-semibold text-[#1D1D1F] block">Preview &amp; PDF</strong>
+                    <span className="text-[10px] text-[#6E6E73]">Inspect document or download PDF</span>
+                  </div>
+                </button>
+
+                {/* 2. Print Quotation */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowQuotationActionsModal(false);
+                    setShowInvoiceModal(true);
+                  }}
+                  className="p-3 rounded-xl border border-[#E5E5EA] hover:border-purple-600 bg-white hover:bg-[#F5F5F7] transition cursor-pointer text-left flex items-center gap-3 group"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-700 group-hover:bg-purple-600 group-hover:text-white transition flex items-center justify-center shrink-0">
+                    <Printer size={16} />
+                  </div>
+                  <div>
+                    <strong className="text-xs font-semibold text-[#1D1D1F] block">Print Quotation</strong>
+                    <span className="text-[10px] text-[#6E6E73]">Send to printer or save to PDF</span>
+                  </div>
+                </button>
+
+                {/* 3. Share Quotation */}
+                <button
+                  type="button"
+                  onClick={() => handleShareQuotation(savedQuotationRecord)}
+                  className="p-3 rounded-xl border border-[#E5E5EA] hover:border-emerald-600 bg-white hover:bg-[#F5F5F7] transition cursor-pointer text-left flex items-center gap-3 group"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 group-hover:bg-emerald-600 group-hover:text-white transition flex items-center justify-center shrink-0">
+                    <Share2 size={16} />
+                  </div>
+                  <div>
+                    <strong className="text-xs font-semibold text-[#1D1D1F] block">Share Proposal</strong>
+                    <span className="text-[10px] text-[#6E6E73]">WhatsApp, email, or copy link</span>
+                  </div>
+                </button>
+
+                {/* 4. Convert to Tax Invoice */}
+                <button
+                  type="button"
+                  id="modal-convert-invoice-btn"
+                  onClick={() => {
+                    setShowQuotationActionsModal(false);
+                    handleConvertLoadedQuotationToInvoice(savedQuotationRecord);
+                  }}
+                  className="p-3 rounded-xl border border-blue-200 bg-blue-50/80 hover:bg-blue-100 transition cursor-pointer text-left flex items-center gap-3 group"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0">
+                    <ArrowRight size={16} />
+                  </div>
+                  <div>
+                    <strong className="text-xs font-semibold text-blue-900 block">Convert to Invoice</strong>
+                    <span className="text-[10px] text-blue-700">Pre-fill details into POS for sale</span>
+                  </div>
+                </button>
+              </div>
+
+              {/* Footer buttons */}
+              <div className="flex items-center justify-between pt-3 border-t border-[#E5E5EA]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowQuotationActionsModal(false);
+                    handleStartNewBill(true);
+                  }}
+                  className="text-xs font-medium text-purple-700 hover:text-purple-900 hover:underline cursor-pointer flex items-center gap-1"
+                >
+                  <Plus size={13} />
+                  <span>Create Another Quotation</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowQuotationActionsModal(false)}
+                  className="px-4 py-1.5 text-xs font-semibold rounded-xl bg-[#F5F5F7] hover:bg-[#E5E5EA] text-[#1D1D1F] transition cursor-pointer"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ══════════════════════════════════════════════════

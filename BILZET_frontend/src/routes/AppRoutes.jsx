@@ -315,11 +315,7 @@ export default function AppRoutes() {
       />
       <Route
         path="/quotations"
-        element={
-          <Protected roles={["ADMIN", "SUPER_ADMIN", "OWNER", "MANAGER", "STAFF", "CASHIER"]}>
-            <Quotations />
-          </Protected>
-        }
+        element={<Navigate to="/invoices?tab=quotations" replace />}
       />
       <Route
         path="/invoices"

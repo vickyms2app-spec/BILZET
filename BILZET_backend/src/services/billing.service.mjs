@@ -730,6 +730,8 @@ export const createSale = async (saleData, user, context = {}) => {
         status: 'COMPLETED',
         createdById: user ? user.id : null,
         createdAt,
+        referenceQuotationNumber: saleData.referenceQuotationNumber || null,
+        quotationId: saleData.quotationId || null,
         items: {
           create: calculatedItems,
         },
@@ -741,6 +743,22 @@ export const createSale = async (saleData, user, context = {}) => {
         returns: { include: { items: true } },
       },
     });
+
+    // 3B. If converted from a quotation, link the sale and mark quotation as ACCEPTED
+    if (saleData.quotationId) {
+      try {
+        await tx.quotation.update({
+          where: { id: saleData.quotationId },
+          data: {
+            status: 'ACCEPTED',
+            convertedToInvoiceId: sale.id,
+            invoiceNumber: sale.invoiceNumber,
+            convertedToInvoice: true,
+            convertedAt: new Date(),
+          },
+        });
+      } catch (_) {}
+    }
 
     // 4. Create Payment record if paid amount > 0
     if (Number(paidAmount) > 0) {

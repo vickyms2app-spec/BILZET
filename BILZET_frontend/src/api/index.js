@@ -91,6 +91,11 @@ export const salesApi = {
 
 export const quotationsApi = {
   list: (p) => withFallback(http.get("/quotations", { params: p }).then((r) => r.data), { quotations: [], total: 0 }),
+  getNextNumber: (p) =>
+    http
+      .get("/quotations/next-number", { params: p })
+      .then(unwrap)
+      .catch(() => ({ quotationNumber: `QUO-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}` })),
   get: (id) => http.get(`/quotations/${id}`).then(unwrap),
   create: (p) => http.post("/quotations", p).then(unwrap),
   update: (id, p) => http.patch(`/quotations/${id}`, p).then(unwrap),

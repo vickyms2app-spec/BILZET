@@ -257,6 +257,7 @@ export default function TaxInvoice({
   const isQuotationDoc = Boolean(
     invoice?.quotationNumber ||
     invoice?.documentType === "quotation" ||
+    invoice?.type === "quotation" ||
     settings.documentType === "quotation"
   );
 
@@ -277,12 +278,12 @@ export default function TaxInvoice({
 
   // Sanitize and clean document title
   const rawTitle = isQuotationDoc
-    ? (settings.quotationTitle || "QUOTATION / ESTIMATE")
+    ? (settings.quotationTitle || "QUOTATION")
     : (settings.invoiceTitle || "TAX INVOICE");
   const displayTitle =
     rawTitle.includes("TAX INVOICESUPER") || rawTitle.includes("SUPER TAX INVOICE")
       ? "TAX INVOICE"
-      : rawTitle.trim() || (isQuotationDoc ? "QUOTATION / ESTIMATE" : "TAX INVOICE");
+      : rawTitle.trim() || (isQuotationDoc ? "QUOTATION" : "TAX INVOICE");
 
   // Subscription Plan & Watermark Enforcements (Free tier bills always carry fixed BILZET watermark)
   const tierUpper = String(
@@ -512,11 +513,32 @@ export default function TaxInvoice({
       ? Number(invoice.outstandingBalance)
       : Math.max(0, netPayableVal - receivedVal);
 
-  const invNumber = invoice?.invoiceNumber || invoice?.billNumber || `${settings.invoicePrefix || "INV-2026-"}0001`;
+  const invNumber = isQuotationDoc
+    ? (invoice?.quotationNumber || invoice?.number || invoice?.billNumber || `${settings.quotationPrefix || "QUO-2026-"}0001`)
+    : (invoice?.invoiceNumber || invoice?.billNumber || `${settings.invoicePrefix || "INV-2026-"}0001`);
+
+  // Quotation Validity Formatted
+  const quotationValidityFormatted = () => {
+    const raw = invoice?.expiryDate || invoice?.validUntil;
+    if (!raw) return "15 Days from Date of Issue";
+    try {
+      const d = new Date(raw);
+      if (isNaN(d.getTime())) return String(raw);
+      return d.toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
+    } catch {
+      return String(raw);
+    }
+  };
+
+  const quotationStatus = (invoice?.status || "DRAFT").toUpperCase();
 
   // Formatted Date & Time
   const formattedDateTime = () => {
-    const raw = invoice?.createdAt || invoice?.date || invoice?.invoiceDate;
+    const raw = invoice?.createdAt || invoice?.date || invoice?.invoiceDate || invoice?.quotationDate;
     if (!raw) {
       const now = new Date();
       return `${now.toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" })}, ${now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}`;
@@ -557,7 +579,7 @@ export default function TaxInvoice({
     (invoice?.payments && invoice.payments.length > 0 ? invoice.payments[0].id : null) ||
     "";
 
-  // Customer Details: Strictly Customer Name and Customer Number (Phone)
+  // Customer Details
   const customerName =
     invoice?.customer?.name ||
     invoice?.customerName ||
@@ -569,6 +591,19 @@ export default function TaxInvoice({
     invoice?.customerPhone ||
     invoice?.phone ||
     "Not Provided";
+
+  const customerGstin =
+    invoice?.customer?.gstin ||
+    invoice?.customerGstin ||
+    invoice?.gstin ||
+    "";
+
+  const customerAddress =
+    invoice?.customer?.address ||
+    invoice?.customerAddress ||
+    invoice?.billingAddress ||
+    invoice?.address ||
+    "";
 
   // UPI payment QR URL using actual configured UPI ID & store details
   const upiPayUrl = `upi://pay?pa=${encodeURIComponent(settings.upiId || "bilzet@hdfcbank")}&pn=${encodeURIComponent(storeName)}&am=${netPayableVal.toFixed(2)}&cu=INR&tn=${encodeURIComponent(invNumber)}`;
@@ -627,8 +662,8 @@ export default function TaxInvoice({
         heightLeft -= pageHeight;
       }
 
-      const safeInvNum = (invNumber || "TAX_INVOICE").replace(/[^a-zA-Z0-9_-]/g, "_");
-      pdf.save(`BILZET_Invoice_${safeInvNum}.pdf`);
+      const safeDocNum = (invNumber || (isQuotationDoc ? "QUOTATION" : "TAX_INVOICE")).replace(/[^a-zA-Z0-9_-]/g, "_");
+      pdf.save(`BILZET_${isQuotationDoc ? "Quotation" : "Invoice"}_${safeDocNum}.pdf`);
     } catch (err) {
       console.error("PDF generation failed:", err);
       window.print();
@@ -809,47 +844,77 @@ export default function TaxInvoice({
             </div>
           </div>
 
-          {/* ── 3. Invoice Title & Payment Status Header Row ── */}
+          {/* ── 3. Document Title & Status Header Row ── */}
           <div className="flex items-center justify-between gap-3 pt-1">
-            {/* Left: Document Title & Recipient Badge */}
+            {/* Left: Document Title & Notice Badge */}
             <div className="min-w-0">
               <h1 className="text-xl sm:text-2xl font-black text-[#0F2747] tracking-tight uppercase leading-tight truncate">
-                {displayTitle}
+                {isQuotationDoc ? "QUOTATION" : displayTitle}
               </h1>
-              <span className="inline-block px-2.5 py-0.5 mt-1 rounded bg-[#EFF6FF] text-[#1E40AF] text-[10px] font-bold uppercase tracking-wider border border-[#BFDBFE]">
-                Original for Recipient
-              </span>
-            </div>
-
-            {/* Right: Payment Status Badge */}
-            <div
-              className={`px-3 py-1.5 rounded-xl border text-center shrink-0 shadow-2xs whitespace-nowrap ${
-                paymentStatus === "PAID"
-                  ? "bg-[#ECFDF5] border-[#A7F3D0] text-[#047857]"
-                  : paymentStatus === "PARTIALLY PAID"
-                  ? "bg-[#FFFBEB] border-[#FDE68A] text-[#B45309]"
-                  : "bg-[#FEF2F2] border-[#FECACA] text-[#B91C1C]"
-              }`}
-            >
-              <div className="flex items-center justify-center gap-1.5 font-black text-xs uppercase tracking-wider">
-                {paymentStatus === "PAID" && <CheckCircle2 size={13} />}
-                {paymentStatus === "PARTIALLY PAID" && <AlertCircle size={13} />}
-                <span>{paymentStatus}</span>
-              </div>
-              {paymentRef && (
-                <div className="text-[9px] font-mono text-slate-500 mt-0.5 truncate max-w-[110px]">
-                  Ref: {paymentRef}
-                </div>
+              {isQuotationDoc ? (
+                <span className="inline-block px-3 py-1 mt-1 rounded bg-amber-50 text-amber-800 text-[10px] font-black uppercase tracking-wider border border-amber-300 shadow-2xs">
+                  QUOTATION — NOT A TAX INVOICE
+                </span>
+              ) : (
+                <span className="inline-block px-2.5 py-0.5 mt-1 rounded bg-[#EFF6FF] text-[#1E40AF] text-[10px] font-bold uppercase tracking-wider border border-[#BFDBFE]">
+                  Original for Recipient
+                </span>
               )}
             </div>
+
+            {/* Right: Status Badge (Quotation Status vs Invoice Payment Status) */}
+            {isQuotationDoc ? (
+              <div
+                className={`px-3 py-1.5 rounded-xl border text-center shrink-0 shadow-2xs whitespace-nowrap ${
+                  quotationStatus === "ACCEPTED"
+                    ? "bg-[#ECFDF5] border-[#A7F3D0] text-[#047857]"
+                    : quotationStatus === "SENT"
+                    ? "bg-[#EFF6FF] border-[#BFDBFE] text-[#1D4ED8]"
+                    : quotationStatus === "REJECTED"
+                    ? "bg-[#FEF2F2] border-[#FECACA] text-[#B91C1C]"
+                    : quotationStatus === "EXPIRED"
+                    ? "bg-[#FFFBEB] border-[#FDE68A] text-[#B45309]"
+                    : "bg-slate-50 border-slate-200 text-slate-700"
+                }`}
+              >
+                <div className="flex items-center justify-center gap-1.5 font-black text-xs uppercase tracking-wider">
+                  <FileText size={13} />
+                  <span>STATUS: {quotationStatus}</span>
+                </div>
+                <div className="text-[9px] font-mono text-slate-500 mt-0.5">
+                  Valid Until: {quotationValidityFormatted()}
+                </div>
+              </div>
+            ) : (
+              <div
+                className={`px-3 py-1.5 rounded-xl border text-center shrink-0 shadow-2xs whitespace-nowrap ${
+                  paymentStatus === "PAID"
+                    ? "bg-[#ECFDF5] border-[#A7F3D0] text-[#047857]"
+                    : paymentStatus === "PARTIALLY PAID"
+                    ? "bg-[#FFFBEB] border-[#FDE68A] text-[#B45309]"
+                    : "bg-[#FEF2F2] border-[#FECACA] text-[#B91C1C]"
+                }`}
+              >
+                <div className="flex items-center justify-center gap-1.5 font-black text-xs uppercase tracking-wider">
+                  {paymentStatus === "PAID" && <CheckCircle2 size={13} />}
+                  {paymentStatus === "PARTIALLY PAID" && <AlertCircle size={13} />}
+                  <span>{paymentStatus}</span>
+                </div>
+                {paymentRef && (
+                  <div className="text-[9px] font-mono text-slate-500 mt-0.5 truncate max-w-[110px]">
+                    Ref: {paymentRef}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
-          {/* ── 3B. Aligned Invoice Metadata Card (4 Fields) ── */}
+          {/* ── 3B. Aligned Document Metadata Card ── */}
           <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl px-4 py-2.5 text-xs shadow-2xs">
             <div className="grid grid-cols-2 @2xl:grid-cols-4 print:grid-cols-4 gap-x-4 gap-y-2">
               <div className="flex items-center gap-1.5 whitespace-nowrap min-w-0">
                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0">
-                  Invoice No:
+                  {isQuotationDoc ? "Quotation No:" : "Invoice No:"}
                 </span>
                 <span className="font-mono font-extrabold text-[#0F2747] text-xs truncate">
                   {invNumber}
@@ -858,51 +923,93 @@ export default function TaxInvoice({
 
               <div className="flex items-center gap-1.5 whitespace-nowrap min-w-0">
                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0">
-                  Date:
+                  {isQuotationDoc ? "Quotation Date:" : "Date:"}
                 </span>
                 <span className="font-mono text-slate-800 text-[11px] truncate">
                   {formattedDateTime()}
                 </span>
               </div>
 
-              <div className="flex items-center gap-1.5 whitespace-nowrap min-w-0">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0">
-                  Payment:
-                </span>
-                <span className="font-bold text-slate-900 uppercase text-[11px] truncate">
-                  {paymentMode}
-                </span>
-              </div>
+              {isQuotationDoc ? (
+                <>
+                  <div className="flex items-center gap-1.5 whitespace-nowrap min-w-0">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0">
+                      Valid Until:
+                    </span>
+                    <span className="font-bold text-amber-700 text-[11px] truncate">
+                      {quotationValidityFormatted()}
+                    </span>
+                  </div>
 
-              <div className="flex items-center gap-1.5 whitespace-nowrap min-w-0">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0">
-                  Order Type:
-                </span>
-                <span className="text-slate-800 text-[11px] truncate">
-                  {orderType || "Retail Sale / POS"}
-                </span>
-              </div>
+                  <div className="flex items-center gap-1.5 whitespace-nowrap min-w-0">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0">
+                      Doc Type:
+                    </span>
+                    <span className="text-slate-800 font-bold uppercase text-[11px] truncate">
+                      Official Quotation
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-1.5 whitespace-nowrap min-w-0">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0">
+                      Payment:
+                    </span>
+                    <span className="font-bold text-slate-900 uppercase text-[11px] truncate">
+                      {paymentMode}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 whitespace-nowrap min-w-0">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0">
+                      Order Type:
+                    </span>
+                    <span className="text-slate-800 text-[11px] truncate">
+                      {orderType || "Retail Sale / POS"}
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
-          {/* ── 4. Customer Details Section (Name & Number ONLY) ── */}
-          <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl px-4 py-2 text-xs shadow-2xs space-y-1 @lg:space-y-0 @lg:flex @lg:items-center @lg:justify-between print:space-y-0 print:flex print:items-center print:justify-between">
-            <div className="flex items-center gap-1.5 min-w-0">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0 whitespace-nowrap">
-                Customer Name:
-              </span>
-              <span className="font-bold text-slate-900 truncate">
-                {customerName && customerName.trim() ? customerName : "Walk-in Retail Customer"}
-              </span>
+          {/* ── 4. Customer Details Section (Name, Contact, GSTIN, Address) ── */}
+          <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl px-4 py-2.5 text-xs shadow-2xs space-y-1.5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0 whitespace-nowrap">
+                  Customer Name:
+                </span>
+                <span className="font-bold text-slate-900 truncate">
+                  {customerName && customerName.trim() ? customerName : "Walk-in Retail Customer"}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0 whitespace-nowrap">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0 whitespace-nowrap">
+                  Contact Number:
+                </span>
+                <span className="font-mono font-bold text-slate-900 tracking-wide whitespace-nowrap">
+                  {customerPhone && customerPhone.trim() ? customerPhone : "+91 98000 00000"}
+                </span>
+              </div>
             </div>
-            <div className="flex items-center gap-1.5 shrink-0 whitespace-nowrap">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0 whitespace-nowrap">
-                Customer Number:
-              </span>
-              <span className="font-mono font-bold text-slate-900 tracking-wide whitespace-nowrap">
-                {customerPhone && customerPhone.trim() ? customerPhone : "+91 98000 00000"}
-              </span>
-            </div>
+            {(customerGstin || customerAddress) && (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 border-t border-slate-200/70 text-[11px]">
+                {customerGstin && (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Customer GSTIN:</span>
+                    <span className="font-mono font-bold text-[#0F2747]">{customerGstin}</span>
+                  </div>
+                )}
+                {customerAddress && (
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0">Billing Address:</span>
+                    <span className="text-slate-700 truncate">{customerAddress}</span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* ── 5. Itemized Invoice Table with Navy Header & BILZET Watermark ── */}
@@ -990,35 +1097,41 @@ export default function TaxInvoice({
 
           {/* ── 6. Notes and Bill Summary (Two Column Layout) ── */}
           <div className="grid grid-cols-1 @lg:grid-cols-2 print:grid-cols-2 gap-4 items-start pt-1">
-            {/* Left Column: Notes & UPI Payment Panel */}
+            {/* Left Column: Notes & Settlement Panel */}
             <div className="space-y-3">
               {/* Notes Panel */}
               <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl p-3 text-xs space-y-1">
                 <p className="font-bold uppercase tracking-wider text-[10px] text-slate-500">
-                  Notes &amp; Remarks:
+                  {isQuotationDoc ? "Quotation Notes & Remarks:" : "Notes & Remarks:"}
                 </p>
                 <p className="text-[11px] text-slate-700 leading-relaxed whitespace-pre-line">
-                  {settings.notes || settings.thankYouMessage || "Thank you for choosing BILZET. Please visit us again."}
+                  {invoice?.notes ||
+                    (isQuotationDoc
+                      ? "Thank you for considering our proposal. Valid for 15 days from date of issue."
+                      : settings.notes || settings.thankYouMessage || "Thank you for choosing BILZET. Please visit us again.")}
                 </p>
-                {settings.terms && (
+                {(invoice?.terms || settings.terms) && (
                   <div className="pt-1.5 border-t border-slate-200 mt-1.5">
                     <p className="font-bold uppercase tracking-wider text-[9px] text-slate-500">
                       Terms &amp; Conditions:
                     </p>
                     <p className="text-[10px] text-slate-500 leading-relaxed whitespace-pre-line">
-                      {settings.terms}
+                      {invoice?.terms ||
+                        (isQuotationDoc
+                          ? "1. Prices are valid until quotation expiry date.\n2. Payment terms as agreed upon invoice creation.\n3. Taxes as applicable at time of invoicing."
+                          : settings.terms)}
                     </p>
                   </div>
                 )}
               </div>
 
-              {/* Payment Details Panel (Real UPI QR & Bank Settlement) */}
+              {/* Settlement Panel (Bank Details for Invoices with UPI QR; Bank Info only for Quotations) */}
               {settings.showBankDetails !== false && (
                 <div className="bg-[#F0F7FF] border border-[#BFDBFE] rounded-xl p-3 flex items-center justify-between text-xs text-slate-700 shadow-2xs">
                   <div className="space-y-1 pr-2 min-w-0">
                     <p className="font-bold uppercase tracking-wider text-[#0F2747] text-[10px] flex items-center gap-1.5">
                       <Building2 size={12} className="text-[#1E3A8A]" />
-                      <span>Bank &amp; UPI Settlement</span>
+                      <span>{isQuotationDoc ? "Settlement Account Details" : "Bank & UPI Settlement"}</span>
                     </p>
                     <div className="space-y-0.5 text-[11px]">
                       <p className="truncate">
@@ -1033,14 +1146,16 @@ export default function TaxInvoice({
                         <span className="font-semibold text-slate-700">IFSC:</span>{" "}
                         <span className="font-mono text-slate-900">{settings.ifsc || "HDFC0001234"}</span>
                       </p>
-                      <p className="truncate">
-                        <span className="font-semibold text-slate-700">UPI ID:</span>{" "}
-                        <span className="font-mono font-bold text-[#1E3A8A]">{settings.upiId || "bilzet@hdfcbank"}</span>
-                      </p>
+                      {!isQuotationDoc && (
+                        <p className="truncate">
+                          <span className="font-semibold text-slate-700">UPI ID:</span>{" "}
+                          <span className="font-mono font-bold text-[#1E3A8A]">{settings.upiId || "bilzet@hdfcbank"}</span>
+                        </p>
+                      )}
                     </div>
                   </div>
 
-                  {settings.showQrCode !== false && (
+                  {!isQuotationDoc && settings.showQrCode !== false && (
                     <div className="text-center shrink-0 pl-2 border-l border-blue-200">
                       <img
                         src={qrImgSrc}
@@ -1146,24 +1261,26 @@ export default function TaxInvoice({
                   {numberToWordsINR(netPayableVal)}
                 </div>
 
-                {/* Payments & Balance */}
-                <div className="pt-2 border-t border-slate-200 space-y-1">
-                  <div className="flex justify-between text-slate-700 text-[11px]">
-                    <span className="font-medium">Amount Paid</span>
-                    <span className="font-mono font-bold text-emerald-700">
-                      ₹{receivedVal.toFixed(2)}
-                    </span>
-                  </div>
-
-                  {balanceDueVal > 0 && (
-                    <div className="flex justify-between text-rose-700 font-bold text-[11px]">
-                      <span>Balance Due</span>
-                      <span className="font-mono">
-                        ₹{balanceDueVal.toFixed(2)}
+                {/* Payments & Balance (Invoices Only) */}
+                {!isQuotationDoc && (
+                  <div className="pt-2 border-t border-slate-200 space-y-1">
+                    <div className="flex justify-between text-slate-700 text-[11px]">
+                      <span className="font-medium">Amount Paid</span>
+                      <span className="font-mono font-bold text-emerald-700">
+                        ₹{receivedVal.toFixed(2)}
                       </span>
                     </div>
-                  )}
-                </div>
+
+                    {balanceDueVal > 0 && (
+                      <div className="flex justify-between text-rose-700 font-bold text-[11px]">
+                        <span>Balance Due</span>
+                        <span className="font-mono">
+                          ₹{balanceDueVal.toFixed(2)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
