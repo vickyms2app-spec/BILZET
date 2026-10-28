@@ -171,33 +171,33 @@ export default function StaffDashboard({ defaultTab }) {
       )}
 
       {/* ── COMPACT APPLE-INSPIRED HEADER ── */}
-      <div className="bg-white rounded-2xl border border-[#E5EAF1] p-5 sm:p-6 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+      <div className="bg-white rounded-2xl border border-[#E3EDF8] p-5 sm:p-6 shadow-xs">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-xl sm:text-2xl font-semibold text-[#172033] tracking-tight">
+            <h1 className="text-xl sm:text-2xl font-semibold text-[#526B87] tracking-tight">
               Team &amp; Sub-Users
             </h1>
-            <p className="text-sm text-[#64748B] mt-0.5">
+            <p className="text-sm text-[#7188A3] mt-0.5">
               Manage your team members, roles, and permissions.
             </p>
           </div>
 
           {/* Digital Clock & Shift Status Component */}
-          <div className="flex items-center gap-3.5 bg-[#F5F7FA] border border-[#E5EAF1] rounded-xl px-3.5 py-2 shrink-0 self-start md:self-auto">
-            <div className="flex items-center gap-2 text-xs font-medium text-[#64748B]">
-              <Clock className="w-3.5 h-3.5 text-[#64748B]" />
-              <span className="font-mono text-[#172033] font-semibold text-xs tracking-wide">
+          <div className="flex items-center gap-3.5 bg-[#F4F9FF] border border-[#E3EDF8] rounded-xl px-3.5 py-2 shrink-0 self-start md:self-auto">
+            <div className="flex items-center gap-2 text-xs font-medium text-[#7188A3]">
+              <Clock className="w-3.5 h-3.5 text-[#8AAED8]" />
+              <span className="font-mono text-[#526B87] font-semibold text-xs tracking-wide">
                 {currentTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
               </span>
             </div>
-            <div className="h-3.5 w-px bg-[#E5EAF1]" />
+            <div className="h-3.5 w-px bg-[#E3EDF8]" />
             <div className="flex items-center gap-1.5">
               <span
                 className={`w-2 h-2 rounded-full ${
-                  isCheckedIn ? "bg-[#10B981] animate-pulse" : isShiftCompleted ? "bg-[#0A66FF]" : "bg-[#F59E0B]"
+                  isCheckedIn ? "bg-emerald-500 animate-pulse" : isShiftCompleted ? "bg-[#2563EB]" : "bg-amber-500"
                 }`}
               />
-              <span className="text-xs font-medium text-[#172033]">
+              <span className="text-xs font-medium text-[#526B87]">
                 {isCheckedIn ? "On Duty" : isShiftCompleted ? "Shift Done" : "Not Started"}
               </span>
             </div>
@@ -205,15 +205,15 @@ export default function StaffDashboard({ defaultTab }) {
         </div>
 
         {/* ── WORKSPACE NAVIGATION TABS (macOS Segmented Style) ── */}
-        <div className="flex items-center gap-1.5 mt-5 pt-4 border-t border-[#E5EAF1] overflow-x-auto">
+        <div className="flex items-center gap-1.5 mt-5 pt-4 border-t border-[#EDF3FA] overflow-x-auto">
           {canManageTeam && (
             <button
               type="button"
               onClick={() => setActiveTab("users")}
               className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer flex items-center gap-1.5 ${
                 activeTab === "users"
-                  ? "bg-[#0A66FF] text-white shadow-xs font-semibold"
-                  : "text-[#64748B] hover:text-[#172033] hover:bg-[#F5F7FA]"
+                  ? "bg-[#EEF7FF] text-[#2563EB] border border-[#C7E1FF] font-semibold shadow-xs"
+                  : "text-[#7188A3] hover:text-[#526B87] hover:bg-[#F4F9FF]"
               }`}
             >
               <Users className="w-3.5 h-3.5" />
@@ -226,8 +226,8 @@ export default function StaffDashboard({ defaultTab }) {
             onClick={() => setActiveTab("clock")}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer flex items-center gap-1.5 ${
               activeTab === "clock"
-                ? "bg-[#0A66FF] text-white shadow-xs font-semibold"
-                : "text-[#64748B] hover:text-[#172033] hover:bg-[#F5F7FA]"
+                ? "bg-[#EEF7FF] text-[#2563EB] border border-[#C7E1FF] font-semibold shadow-xs"
+                : "text-[#7188A3] hover:text-[#526B87] hover:bg-[#F4F9FF]"
             }`}
           >
             <Clock className="w-3.5 h-3.5" />
@@ -239,8 +239,8 @@ export default function StaffDashboard({ defaultTab }) {
             onClick={() => setActiveTab("sales")}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer flex items-center gap-1.5 ${
               activeTab === "sales"
-                ? "bg-[#0A66FF] text-white shadow-xs font-semibold"
-                : "text-[#64748B] hover:text-[#172033] hover:bg-[#F5F7FA]"
+                ? "bg-[#EEF7FF] text-[#2563EB] border border-[#C7E1FF] font-semibold shadow-xs"
+                : "text-[#7188A3] hover:text-[#526B87] hover:bg-[#F4F9FF]"
             }`}
           >
             <DollarSign className="w-3.5 h-3.5" />
@@ -253,8 +253,8 @@ export default function StaffDashboard({ defaultTab }) {
               onClick={() => setActiveTab("my_permissions")}
               className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer flex items-center gap-1.5 ${
                 activeTab === "my_permissions"
-                  ? "bg-[#0A66FF] text-white shadow-xs font-semibold"
-                  : "text-[#64748B] hover:text-[#172033] hover:bg-[#F5F7FA]"
+                  ? "bg-[#EEF7FF] text-[#2563EB] border border-[#C7E1FF] font-semibold shadow-xs"
+                  : "text-[#7188A3] hover:text-[#526B87] hover:bg-[#F4F9FF]"
               }`}
             >
               <Shield className="w-3.5 h-3.5" />

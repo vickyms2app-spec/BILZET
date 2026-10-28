@@ -41,23 +41,23 @@ export default function SuperAdminLogin() {
   }
 
   return (
-    <div className="min-h-screen bg-[#060a17] text-white flex flex-col justify-between p-6 relative overflow-hidden">
-      {/* Background Glows */}
-      <div className="absolute top-0 right-1/4 w-96 h-96 rounded-full bg-cyan-500/10 blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-10 left-1/4 w-96 h-96 rounded-full bg-blue-600/10 blur-[120px] pointer-events-none" />
+    <div className="min-h-screen bg-[#F7FBFF] text-[#526B87] flex flex-col justify-between p-6 relative overflow-hidden">
+      {/* Background Soft Gradients */}
+      <div className="absolute top-0 right-1/4 w-96 h-96 rounded-full bg-[#D8EBFF]/40 blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-10 left-1/4 w-96 h-96 rounded-full bg-[#EEF7FF]/60 blur-[120px] pointer-events-none" />
 
       {/* Header */}
       <div className="flex items-center justify-between max-w-6xl w-full mx-auto z-10">
         <div className="flex items-center gap-3">
-          <Logo variant="full" theme="dark" size="md" />
-          <span className="text-[10px] font-bold tracking-widest uppercase px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+          <Logo variant="full" theme="light" size="md" />
+          <span className="text-[10px] font-bold tracking-widest uppercase px-2 py-0.5 rounded-full bg-[#EEF7FF] text-[#2563EB] border border-[#D8EBFF]">
             Master Admin
           </span>
         </div>
 
         <a
           href="/login"
-          className="text-xs font-semibold text-slate-400 hover:text-white transition flex items-center gap-1"
+          className="text-xs font-semibold text-[#7188A3] hover:text-[#2563EB] transition flex items-center gap-1"
         >
           Regular Shop Login →
         </a>
@@ -65,23 +65,23 @@ export default function SuperAdminLogin() {
 
       {/* Main Form Card */}
       <div className="max-w-md w-full mx-auto my-auto z-10 py-10">
-        <div className="rounded-3xl bg-[#0c1427]/80 border border-white/10 backdrop-blur-2xl p-8 shadow-2xl shadow-black/80">
+        <div className="rounded-3xl bg-white border border-[#E3EDF8] p-8 shadow-xl shadow-blue-500/5">
           <div className="mb-7 text-center">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-semibold mb-3">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EEF7FF] border border-[#D8EBFF] text-[#2563EB] text-xs font-semibold mb-3">
               <ShieldCheck size={14} />
               Platform Command Center
             </div>
-            <h1 className="text-2xl font-bold tracking-tight text-white font-['Plus_Jakarta_Sans']">
+            <h1 className="text-2xl font-bold tracking-tight text-[#526B87] font-['Plus_Jakarta_Sans']">
               Application Master Admin
             </h1>
-            <p className="text-xs text-slate-400 mt-1.5">
+            <p className="text-xs text-[#7188A3] mt-1.5">
               Secure authentication for platform-wide control.
             </p>
           </div>
 
           {error && (
-            <div className="mb-5 p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-medium flex items-start gap-2.5">
-              <ShieldAlert size={16} className="shrink-0 text-rose-400 mt-0.5" />
+            <div className="mb-5 p-3.5 rounded-xl bg-[#FFF0F2] border border-[#FECDD3] text-[#991B1B] text-xs font-medium flex items-start gap-2.5">
+              <ShieldAlert size={16} className="shrink-0 text-[#EF4444] mt-0.5" />
               <span>{error}</span>
             </div>
           )}
@@ -90,10 +90,10 @@ export default function SuperAdminLogin() {
             {/* Master Email Field */}
             <div className="space-y-1.5">
               <div className="flex justify-between items-center">
-                <label className="text-xs font-semibold text-slate-300">
+                <label className="text-xs font-semibold text-[#526B87]">
                   Authorized Admin Email
                 </label>
-                <span className="text-[11px] font-bold text-cyan-400 font-mono">
+                <span className="text-[11px] font-bold text-[#2563EB] font-mono">
                   Username: admin
                 </span>
               </div>
@@ -102,17 +102,17 @@ export default function SuperAdminLogin() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/10 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition"
+                className="w-full px-4 py-3 rounded-xl bg-[#F4F9FF] border border-[#E3EDF8] text-[#526B87] placeholder-[#94A8BE] text-sm focus:outline-none focus:border-[#8AAED8] focus:ring-1 focus:ring-[#8AAED8] transition"
                 placeholder="vickyms2app@gmail.com"
               />
-              <p className="text-[11px] text-slate-500">
+              <p className="text-[11px] text-[#94A8BE]">
                 Contact number not required for super admin.
               </p>
             </div>
 
             {/* Password Field */}
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-300">
+              <label className="text-xs font-semibold text-[#526B87]">
                 Master Password
               </label>
               <div className="relative">
@@ -121,13 +121,13 @@ export default function SuperAdminLogin() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/10 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition pr-11"
+                  className="w-full px-4 py-3 rounded-xl bg-[#F4F9FF] border border-[#E3EDF8] text-[#526B87] placeholder-[#94A8BE] text-sm focus:outline-none focus:border-[#8AAED8] focus:ring-1 focus:ring-[#8AAED8] transition pr-11"
                   placeholder="Enter master password"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPwd(!showPwd)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#94A8BE] hover:text-[#526B87] transition"
                 >
                   {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
@@ -138,11 +138,11 @@ export default function SuperAdminLogin() {
             <button
               type="submit"
               disabled={busy}
-              className="w-full flex items-center justify-center gap-2 py-3.5 px-4 rounded-xl font-bold text-sm bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 text-white shadow-lg shadow-cyan-500/25 hover:brightness-110 active:scale-[0.98] transition-all mt-6 disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-2 py-3.5 px-4 rounded-xl font-bold text-sm bg-[#D8EBFF] hover:bg-[#C7E1FF] text-[#2563EB] shadow-sm hover:brightness-105 active:scale-[0.98] transition-all mt-6 disabled:opacity-50"
             >
               {busy ? (
                 <>
-                  <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                  <span className="w-4 h-4 rounded-full border-2 border-[#2563EB]/30 border-t-[#2563EB] animate-spin" />
                   Verifying Master Keys…
                 </>
               ) : (
@@ -155,10 +155,10 @@ export default function SuperAdminLogin() {
           </form>
 
           {/* Initial credentials reminder badge */}
-          <div className="mt-6 pt-5 border-t border-white/10 text-center">
-            <span className="text-[11px] text-slate-400">
+          <div className="mt-6 pt-5 border-t border-[#EDF3FA] text-center">
+            <span className="text-[11px] text-[#7188A3]">
               Initial Master Password:{" "}
-              <code className="bg-white/10 px-2 py-0.5 rounded text-cyan-300 font-mono">
+              <code className="bg-[#EEF7FF] text-[#2563EB] border border-[#D8EBFF] px-2 py-0.5 rounded font-mono">
                 AdminPassword123!
               </code>
             </span>
@@ -167,7 +167,7 @@ export default function SuperAdminLogin() {
       </div>
 
       {/* Footer */}
-      <div className="text-center text-xs text-slate-500 z-10">
+      <div className="text-center text-xs text-[#94A8BE] z-10">
         BILZET Multi-Tenant Infrastructure · Platform Super Admin Operations
       </div>
     </div>

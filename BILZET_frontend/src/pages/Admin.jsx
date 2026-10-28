@@ -928,7 +928,7 @@ export default function Admin() {
           TAB 5: CA REFERRALS & PAYOUTS
       ══════════════════════════════════════════════════ */}
       {activeTab === "referrals" && (
-        <div className="bg-[#060b18] -mx-4 sm:-mx-6 -mb-6 p-4 rounded-3xl border border-slate-800 shadow-xl">
+        <div className="bg-[#F7FBFF] -mx-4 sm:-mx-6 -mb-6 p-4 rounded-2xl border border-[#E3EDF8]">
           <SuperAdminReferrals />
         </div>
       )}

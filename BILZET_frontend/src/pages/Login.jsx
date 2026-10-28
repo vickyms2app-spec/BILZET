@@ -180,9 +180,9 @@ export default function Login({ initialMode = "login" }) {
 
   return (
     <div
-      className="min-h-screen w-full relative overflow-x-hidden font-macos antialiased text-[#111827] flex flex-col lg:flex-row"
+      className="min-h-screen w-full relative overflow-x-hidden font-macos antialiased text-[#526B87] flex flex-col lg:flex-row"
       style={{
-        background: "linear-gradient(135deg, #F8FAFD 0%, #EAF4FF 40%, #E0EFFE 100%)",
+        background: "#F7FBFF",
       }}
     >
       {/* Full-bleed layered flowing SVG waves spanning across the entire desktop viewport */}
@@ -194,34 +194,34 @@ export default function Login({ initialMode = "login" }) {
         >
           <defs>
             <linearGradient id="loginTopCircleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#EAF4FF" stopOpacity="0.95" />
-              <stop offset="60%" stopColor="#BFDCFE" stopOpacity="0.8" />
-              <stop offset="100%" stopColor="#80C8FF" stopOpacity="0.5" />
+              <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.95" />
+              <stop offset="60%" stopColor="#EEF7FF" stopOpacity="0.85" />
+              <stop offset="100%" stopColor="#D8EBFF" stopOpacity="0.6" />
             </linearGradient>
 
             <linearGradient id="loginWaveMainFlowGrad" x1="100%" y1="15%" x2="15%" y2="95%">
-              <stop offset="0%" stopColor="#35C6F4" />
-              <stop offset="25%" stopColor="#0878F9" />
-              <stop offset="70%" stopColor="#0647B5" />
-              <stop offset="100%" stopColor="#082D73" />
+              <stop offset="0%" stopColor="#EEF7FF" />
+              <stop offset="25%" stopColor="#E0EFFE" />
+              <stop offset="70%" stopColor="#D8EBFF" />
+              <stop offset="100%" stopColor="#C7E1FF" />
             </linearGradient>
 
             <linearGradient id="loginWaveMidDeepGrad" x1="100%" y1="40%" x2="25%" y2="95%">
-              <stop offset="0%" stopColor="#0878F9" />
-              <stop offset="50%" stopColor="#0647B5" />
-              <stop offset="100%" stopColor="#082D73" />
+              <stop offset="0%" stopColor="#D8EBFF" />
+              <stop offset="50%" stopColor="#C7E1FF" />
+              <stop offset="100%" stopColor="#B3D7FF" />
             </linearGradient>
 
             <linearGradient id="loginWaveDeepNavyGrad" x1="100%" y1="65%" x2="40%" y2="98%">
-              <stop offset="0%" stopColor="#0647B5" />
-              <stop offset="55%" stopColor="#082D73" />
-              <stop offset="100%" stopColor="#041B48" />
+              <stop offset="0%" stopColor="#EAF4FF" />
+              <stop offset="55%" stopColor="#D8EBFF" />
+              <stop offset="100%" stopColor="#C7E1FF" />
             </linearGradient>
 
             <linearGradient id="loginWaveRimHighlight" x1="100%" y1="20%" x2="25%" y2="95%">
-              <stop offset="0%" stopColor="#EAF4FF" stopOpacity="0.9" />
-              <stop offset="50%" stopColor="#35C6F4" stopOpacity="0.75" />
-              <stop offset="100%" stopColor="#0878F9" stopOpacity="0.15" />
+              <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.95" />
+              <stop offset="50%" stopColor="#D8EBFF" stopOpacity="0.85" />
+              <stop offset="100%" stopColor="#2563EB" stopOpacity="0.25" />
             </linearGradient>
           </defs>
 
@@ -266,24 +266,24 @@ export default function Login({ initialMode = "login" }) {
             <BrandHeader logoHeight="h-10" />
 
             {/* Small pill matching reference: “Smart Billing · Inventory · GST · CA Connect” */}
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EAF4FF]/95 border border-[#BFDBFE]/80 text-[11.5px] font-semibold tracking-tight shadow-xs mt-3 select-none font-macos">
-              <span className="text-[#0878F9] text-xs leading-none">✧</span>
-              <span className="text-[#0878F9]">Smart Billing</span>
-              <span className="text-[#64748B]">&middot; Inventory &middot; GST &middot; CA Connect</span>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EEF7FF] border border-[#D8EBFF] text-[11.5px] font-semibold tracking-tight shadow-2xs mt-3 select-none font-macos">
+              <span className="text-[#2563EB] text-xs leading-none">✧</span>
+              <span className="text-[#2563EB]">Smart Billing</span>
+              <span className="text-[#7188A3]">&middot; Inventory &middot; GST &middot; CA Connect</span>
             </div>
           </div>
 
           {/* Main Headline & Supporting Paragraph with Apple / macOS Typography */}
           <div className="my-auto py-2">
-            <h1 className="text-3xl sm:text-4xl lg:text-[42px] font-extrabold tracking-tight leading-[1.12] text-[#111827] mb-3.5 font-macos">
+            <h1 className="text-3xl sm:text-4xl lg:text-[42px] font-extrabold tracking-tight leading-[1.12] text-[#526B87] mb-3.5 font-macos">
               Manage Billing,<br />
               Inventory and GST<br />
-              <span className="bg-gradient-to-r from-[#0878F9] to-[#35C6F4] bg-clip-text text-transparent font-black">
+              <span className="bg-gradient-to-r from-[#2563EB] to-[#8AAED8] bg-clip-text text-transparent font-black">
                 in One Place.
               </span>
             </h1>
 
-            <p className="text-[14.5px] sm:text-[15.5px] text-[#64748B] leading-relaxed font-normal mb-7 lg:mb-8 max-w-md font-macos">
+            <p className="text-[14.5px] sm:text-[15.5px] text-[#7188A3] leading-relaxed font-normal mb-7 lg:mb-8 max-w-md font-macos">
               A simple and powerful platform to run your business, stay GST compliant and collaborate with your team and CA — all in one place.
             </p>
 
@@ -291,14 +291,14 @@ export default function Login({ initialMode = "login" }) {
             <div className="space-y-3.5 lg:space-y-4">
               {/* Feature 1: GST Ready Invoicing */}
               <div className="flex items-start gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-[#EAF4FF] border border-[#BFDBFE]/70 flex items-center justify-center shrink-0">
-                  <FileText size={18} className="text-[#0878F9]" strokeWidth={2} />
+                <div className="w-10 h-10 rounded-xl bg-[#EEF7FF] border border-[#D8EBFF] flex items-center justify-center shrink-0">
+                  <FileText size={18} className="text-[#2563EB]" strokeWidth={2} />
                 </div>
                 <div className="pt-0.5">
-                  <h2 className="text-[14.5px] font-bold text-[#111827] tracking-tight leading-snug font-macos">
+                  <h2 className="text-[14.5px] font-bold text-[#526B87] tracking-tight leading-snug font-macos">
                     GST Ready Invoicing
                   </h2>
-                  <p className="text-[13px] text-[#64748B] leading-normal mt-0.5 font-macos">
+                  <p className="text-[13px] text-[#7188A3] leading-normal mt-0.5 font-macos">
                     Create and share GST-compliant invoices in seconds.
                   </p>
                 </div>
@@ -306,14 +306,14 @@ export default function Login({ initialMode = "login" }) {
 
               {/* Feature 2: Inventory Management */}
               <div className="flex items-start gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-[#ECFDF5] border border-[#A7F3D0]/70 flex items-center justify-center shrink-0">
-                  <Box size={18} className="text-[#10B981]" strokeWidth={2} />
+                <div className="w-10 h-10 rounded-xl bg-[#ECF9F1] border border-[#C8E6C9] flex items-center justify-center shrink-0">
+                  <Box size={18} className="text-[#166534]" strokeWidth={2} />
                 </div>
                 <div className="pt-0.5">
-                  <h2 className="text-[14.5px] font-bold text-[#111827] tracking-tight leading-snug font-macos">
+                  <h2 className="text-[14.5px] font-bold text-[#526B87] tracking-tight leading-snug font-macos">
                     Inventory Management
                   </h2>
-                  <p className="text-[13px] text-[#64748B] leading-normal mt-0.5 font-macos">
+                  <p className="text-[13px] text-[#7188A3] leading-normal mt-0.5 font-macos">
                     Track stock, purchases and sales easily.
                   </p>
                 </div>
@@ -321,14 +321,14 @@ export default function Login({ initialMode = "login" }) {
 
               {/* Feature 3: CA Connect */}
               <div className="flex items-start gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-[#F3E8FF] border border-[#DDD6FE]/70 flex items-center justify-center shrink-0">
-                  <Users size={18} className="text-[#9333EA]" strokeWidth={2} />
+                <div className="w-10 h-10 rounded-xl bg-[#F0F7FF] border border-[#D8EBFF] flex items-center justify-center shrink-0">
+                  <Users size={18} className="text-[#2563EB]" strokeWidth={2} />
                 </div>
                 <div className="pt-0.5">
-                  <h2 className="text-[14.5px] font-bold text-[#111827] tracking-tight leading-snug font-macos">
+                  <h2 className="text-[14.5px] font-bold text-[#526B87] tracking-tight leading-snug font-macos">
                     CA Connect
                   </h2>
-                  <p className="text-[13px] text-[#64748B] leading-normal mt-0.5 font-macos">
+                  <p className="text-[13px] text-[#7188A3] leading-normal mt-0.5 font-macos">
                     Share data and reports with your CA without manual work.
                   </p>
                 </div>
@@ -336,14 +336,14 @@ export default function Login({ initialMode = "login" }) {
 
               {/* Feature 4: Secure & Reliable */}
               <div className="flex items-start gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-[#FEF3C7] border border-[#FDE68A]/70 flex items-center justify-center shrink-0">
-                  <ShieldCheck size={18} className="text-[#D97706]" strokeWidth={2} />
+                <div className="w-10 h-10 rounded-xl bg-[#FFF6E9] border border-[#FDE68A] flex items-center justify-center shrink-0">
+                  <ShieldCheck size={18} className="text-[#B45309]" strokeWidth={2} />
                 </div>
                 <div className="pt-0.5">
-                  <h2 className="text-[14.5px] font-bold text-[#111827] tracking-tight leading-snug font-macos">
+                  <h2 className="text-[14.5px] font-bold text-[#526B87] tracking-tight leading-snug font-macos">
                     Secure &amp; Reliable
                   </h2>
-                  <p className="text-[13px] text-[#64748B] leading-normal mt-0.5 font-macos">
+                  <p className="text-[13px] text-[#7188A3] leading-normal mt-0.5 font-macos">
                     Your business data is safe and always accessible.
                   </p>
                 </div>
@@ -352,21 +352,21 @@ export default function Login({ initialMode = "login" }) {
           </div>
 
           {/* Left Panel Footer with Small Outline Icons Matching Reference Image */}
-          <div className="pt-5 border-t border-white/50 flex flex-wrap items-center justify-between gap-3 text-xs text-[#64748B] font-macos">
+          <div className="pt-5 border-t border-[#E3EDF8] flex flex-wrap items-center justify-between gap-3 text-xs text-[#7188A3] font-macos">
             <span>&copy; {new Date().getFullYear()} BILZET. All rights reserved.</span>
-            <div className="flex items-center gap-3 text-[11.5px] font-medium text-[#0878F9]">
+            <div className="flex items-center gap-3 text-[11.5px] font-medium text-[#2563EB]">
               <span className="flex items-center gap-1.5">
-                <ShieldCheck size={14} className="text-[#0878F9]" strokeWidth={2} />
+                <ShieldCheck size={14} className="text-[#2563EB]" strokeWidth={2} />
                 GST Ready
               </span>
-              <span className="text-blue-300/80">|</span>
+              <span className="text-[#8AAED8]">|</span>
               <span className="flex items-center gap-1.5">
-                <Landmark size={14} className="text-[#0878F9]" strokeWidth={2} />
+                <Landmark size={14} className="text-[#2563EB]" strokeWidth={2} />
                 Bank Grade Security
               </span>
-              <span className="text-blue-300/80">|</span>
+              <span className="text-[#8AAED8]">|</span>
               <span className="flex items-center gap-1.5">
-                <Cloud size={14} className="text-[#0878F9]" strokeWidth={2} />
+                <Cloud size={14} className="text-[#2563EB]" strokeWidth={2} />
                 Cloud Access
               </span>
             </div>
@@ -380,13 +380,13 @@ export default function Login({ initialMode = "login" }) {
           ══════════════════════════════════════════════════════════════ */}
       <div className="w-full lg:w-[41%] xl:w-[40%] relative z-10 flex flex-col justify-center items-center lg:items-end p-4 sm:p-6 lg:pr-12 lg:py-8 min-h-screen">
         {/* Floating Centered White Form Card */}
-        <div className="w-full max-w-[460px] bg-white rounded-[26px] border border-[#DCE5F0] shadow-[0_20px_50px_-15px_rgba(8,71,181,0.14),0_1px_3px_rgba(0,0,0,0.04)] p-6 sm:p-7 relative font-macos">
+        <div className="w-full max-w-[460px] bg-white rounded-[26px] border border-[#E3EDF8] shadow-xl p-6 sm:p-7 relative font-macos">
           {/* Top Brand Logo */}
           <div className="flex items-center justify-between mb-4">
             <BrandHeader logoHeight="h-7.5" />
             <Link
               to="/sign-up"
-              className="text-[12px] font-bold text-[#0878F9] hover:text-[#0647B5] hover:underline transition-colors font-macos"
+              className="text-[12px] font-bold text-[#2563EB] hover:text-[#1D4ED8] hover:underline transition-colors font-macos"
             >
               Create Account &rarr;
             </Link>
@@ -394,10 +394,10 @@ export default function Login({ initialMode = "login" }) {
 
           {/* Heading and Supporting Text */}
           <div className="mb-6">
-            <h1 className="text-2xl sm:text-[26px] font-bold text-[#111827] tracking-tight leading-tight mb-1 font-macos">
+            <h1 className="text-2xl sm:text-[26px] font-bold text-[#526B87] tracking-tight leading-tight mb-1 font-macos">
               Sign in to your account
             </h1>
-            <p className="text-[13px] text-[#64748B] leading-normal font-normal font-macos">
+            <p className="text-[13px] text-[#7188A3] leading-normal font-normal font-macos">
               Enter your credentials to access your store workspace.
             </p>
           </div>
@@ -406,9 +406,9 @@ export default function Login({ initialMode = "login" }) {
           {error && (
             <div
               role="alert"
-              className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-xs sm:text-[13px] flex items-start gap-2.5 animate-fadeIn font-macos"
+              className="mb-4 p-3 rounded-lg bg-[#FFF0F2] border border-[#FECDD3] text-[#991B1B] text-xs sm:text-[13px] flex items-start gap-2.5 animate-fadeIn font-macos"
             >
-              <AlertCircle size={15} className="shrink-0 text-red-600 mt-0.5" />
+              <AlertCircle size={15} className="shrink-0 text-[#EF4444] mt-0.5" />
               <div className="flex-1 font-medium">{error}</div>
             </div>
           )}
@@ -416,9 +416,9 @@ export default function Login({ initialMode = "login" }) {
           {success && (
             <div
               role="alert"
-              className="mb-4 p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs sm:text-[13px] flex items-start gap-2.5 animate-fadeIn font-macos"
+              className="mb-4 p-3 rounded-lg bg-[#ECF9F1] border border-[#C8E6C9] text-[#166534] text-xs sm:text-[13px] flex items-start gap-2.5 animate-fadeIn font-macos"
             >
-              <Check size={15} className="shrink-0 text-emerald-600 mt-0.5" />
+              <Check size={15} className="shrink-0 text-[#166534] mt-0.5" />
               <div className="flex-1 font-medium">{success}</div>
             </div>
           )}
@@ -429,12 +429,12 @@ export default function Login({ initialMode = "login" }) {
             <div>
               <label
                 htmlFor="signin-email"
-                className="block text-xs font-semibold text-[#111827] mb-1.5 font-macos"
+                className="block text-xs font-semibold text-[#526B87] mb-1.5 font-macos"
               >
-                Email address <span className="text-red-500">*</span>
+                Email address <span className="text-[#EF4444]">*</span>
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#64748B]">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#8AAED8]">
                   <Mail size={16} strokeWidth={1.8} />
                 </div>
                 <input
@@ -445,7 +445,7 @@ export default function Login({ initialMode = "login" }) {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@company.com"
-                  className="w-full h-[42px] pl-9 pr-3.5 rounded-[9px] border border-[#DCE5F0] bg-white text-[13px] text-[#111827] placeholder:text-slate-400 focus:outline-none focus:border-[#0878F9] focus:ring-2 focus:ring-[#0878F9]/15 transition-all font-macos"
+                  className="w-full h-[42px] pl-9 pr-3.5 rounded-[9px] border border-[#E3EDF8] bg-[#F4F9FF] text-[13px] text-[#526B87] placeholder:text-[#94A8BE] focus:outline-none focus:border-[#8AAED8] focus:ring-2 focus:ring-[#8AAED8]/15 transition-all font-macos"
                 />
               </div>
             </div>
@@ -455,13 +455,13 @@ export default function Login({ initialMode = "login" }) {
               <div className="flex items-center justify-between mb-1.5">
                 <label
                   htmlFor="signin-password"
-                  className="block text-xs font-semibold text-[#111827] font-macos"
+                  className="block text-xs font-semibold text-[#526B87] font-macos"
                 >
-                  Password <span className="text-red-500">*</span>
+                  Password <span className="text-[#EF4444]">*</span>
                 </label>
               </div>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#64748B]">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#8AAED8]">
                   <Lock size={15} strokeWidth={1.8} />
                 </div>
                 <input
@@ -471,14 +471,14 @@ export default function Login({ initialMode = "login" }) {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
-                  className="w-full h-[42px] pl-9 pr-10 rounded-[9px] border border-[#DCE5F0] bg-white text-[13px] text-[#111827] placeholder:text-slate-400 focus:outline-none focus:border-[#0878F9] focus:ring-2 focus:ring-[#0878F9]/15 transition-all font-macos"
+                  className="w-full h-[42px] pl-9 pr-10 rounded-[9px] border border-[#E3EDF8] bg-[#F4F9FF] text-[13px] text-[#526B87] placeholder:text-[#94A8BE] focus:outline-none focus:border-[#8AAED8] focus:ring-2 focus:ring-[#8AAED8]/15 transition-all font-macos"
                 />
                 <button
                   type="button"
                   id="toggle-password-visibility"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-[#94A3B8] hover:text-[#64748B] transition-colors focus:outline-none cursor-pointer"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-[#94A8BE] hover:text-[#526B87] transition-colors focus:outline-none cursor-pointer"
                 >
                   {showPassword ? <Eye size={16} /> : <EyeOff size={16} />}
                 </button>
@@ -493,15 +493,15 @@ export default function Login({ initialMode = "login" }) {
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-4 h-4 rounded text-[#0878F9] border-[#DCE5F0] focus:ring-[#0878F9] cursor-pointer"
+                  className="w-4 h-4 rounded text-[#2563EB] border-[#E3EDF8] focus:ring-[#8AAED8] cursor-pointer"
                 />
-                <span className="text-xs text-[#64748B] font-medium font-macos">Remember my device</span>
+                <span className="text-xs text-[#7188A3] font-medium font-macos">Remember my device</span>
               </label>
 
               <button
                 type="button"
                 onClick={() => setError("Please contact your Store Administrator or support@bilzet.app to reset your credentials.")}
-                className="text-xs font-semibold text-[#0878F9] hover:text-[#0647B5] hover:underline focus:outline-none font-macos"
+                className="text-xs font-semibold text-[#2563EB] hover:text-[#1D4ED8] hover:underline focus:outline-none font-macos"
               >
                 Forgot password?
               </button>
@@ -530,9 +530,9 @@ export default function Login({ initialMode = "login" }) {
             {/* ─── Divider: "or" ─── */}
             <div className="relative flex items-center justify-center my-2.5">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-[#DCE5F0]" />
+                <div className="w-full border-t border-[#EDF3FA]" />
               </div>
-              <span className="relative px-3 bg-white text-[11px] text-[#64748B] lowercase font-medium font-macos">
+              <span className="relative px-3 bg-white text-[11px] text-[#94A8BE] lowercase font-medium font-macos">
                 or
               </span>
             </div>
@@ -557,7 +557,7 @@ export default function Login({ initialMode = "login" }) {
                     setError("Google sign-in is initializing. Please try again in a moment.");
                   }
                 }}
-                className="w-full h-[42px] rounded-[9px] border border-[#DCE5F0] bg-white hover:bg-slate-50 active:bg-slate-100 text-[#111827] text-[13px] font-medium transition-all flex items-center justify-center gap-2.5 cursor-pointer font-macos"
+                className="w-full h-[42px] rounded-[9px] border border-[#E3EDF8] bg-white hover:bg-[#F4F9FF] text-[#526B87] text-[13px] font-medium transition-all flex items-center justify-center gap-2.5 cursor-pointer font-macos"
               >
                 <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                   <path
@@ -585,9 +585,9 @@ export default function Login({ initialMode = "login" }) {
             <button
               type="button"
               onClick={handleSkipLogin}
-              className="w-full flex items-center justify-center gap-2 rounded-[9px] py-2 text-xs font-semibold transition-all duration-200 border border-[#DCE5F0] bg-slate-50 text-slate-700 hover:bg-slate-100 cursor-pointer font-macos"
+              className="w-full flex items-center justify-center gap-2 rounded-[9px] py-2 text-xs font-semibold transition-all duration-200 border border-[#E3EDF8] bg-[#F4F9FF] text-[#526B87] hover:bg-[#EEF7FF] cursor-pointer font-macos"
             >
-              <Zap size={14} className="text-[#0878F9]" />
+              <Zap size={14} className="text-[#2563EB]" />
               <span>Instant Demo — Continue as Guest</span>
             </button>
           </form>

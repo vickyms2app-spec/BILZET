@@ -235,7 +235,7 @@ export default function Onboarding() {
   return (
     <div
       className="min-h-screen bg-[#F7F8FA] text-[#172033] flex flex-col justify-between selection:bg-blue-100 selection:text-blue-900"
-      style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif' }}
+      style={{ fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}
     >
       {/* 1. Header (Clean White Navigation Bar) */}
       <header className="bg-white border-b border-[#E2E8F0] sticky top-0 z-30">

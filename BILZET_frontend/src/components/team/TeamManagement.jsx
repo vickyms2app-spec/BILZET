@@ -683,7 +683,7 @@ export default function TeamManagement() {
           </div>
           <button
             onClick={() => navigate("/plans?tier=PRO")}
-            className="px-3.5 py-1.5 bg-[#0A66FF] hover:bg-[#0854d4] text-white font-semibold rounded-lg shrink-0 transition cursor-pointer shadow-xs"
+            className="px-3.5 py-1.5 bg-[#D8EBFF] hover:bg-[#C7E1FF] text-[#2563EB] font-semibold rounded-lg shrink-0 transition cursor-pointer shadow-xs"
           >
             Upgrade to Pro
           </button>
@@ -693,37 +693,37 @@ export default function TeamManagement() {
       {/* ── SIMPLIFIED STATISTICS (3 COMPACT CARDS IN ONE ROW) ── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* Total Members */}
-        <div className="bg-white rounded-xl border border-[#E5EAF1] p-4 shadow-[0_1px_2px_rgba(0,0,0,0.03)] flex items-center justify-between">
+        <div className="bg-white rounded-xl border border-[#E3EDF8] p-4 shadow-xs flex items-center justify-between">
           <div>
-            <p className="text-xs font-medium text-[#64748B]">Total Members</p>
-            <p className="text-2xl font-semibold text-[#172033] mt-1 tracking-tight">
+            <p className="text-xs font-medium text-[#7188A3]">Total Members</p>
+            <p className="text-2xl font-semibold text-[#526B87] mt-1 tracking-tight">
               {users.length}
             </p>
           </div>
-          <div className="w-9 h-9 rounded-lg bg-[#F5F7FA] border border-[#E5EAF1] flex items-center justify-center text-[#64748B]">
-            <Users className="w-4 h-4 text-[#0A66FF]" />
+          <div className="w-9 h-9 rounded-lg bg-[#F4F9FF] border border-[#E3EDF8] flex items-center justify-center text-[#8AAED8]">
+            <Users className="w-4 h-4 text-[#2563EB]" />
           </div>
         </div>
 
         {/* Active Members */}
-        <div className="bg-white rounded-xl border border-[#E5EAF1] p-4 shadow-[0_1px_2px_rgba(0,0,0,0.03)] flex items-center justify-between">
+        <div className="bg-white rounded-xl border border-[#E3EDF8] p-4 shadow-xs flex items-center justify-between">
           <div>
-            <p className="text-xs font-medium text-[#64748B]">Active Members</p>
-            <p className="text-2xl font-semibold text-[#172033] mt-1 tracking-tight">
+            <p className="text-xs font-medium text-[#7188A3]">Active Members</p>
+            <p className="text-2xl font-semibold text-[#526B87] mt-1 tracking-tight">
               {users.filter((u) => u.isActive !== false).length}
             </p>
           </div>
-          <div className="w-9 h-9 rounded-lg bg-[#F5F7FA] border border-[#E5EAF1] flex items-center justify-center text-[#64748B]">
-            <UserCheck className="w-4 h-4 text-[#10B981]" />
+          <div className="w-9 h-9 rounded-lg bg-[#F4F9FF] border border-[#E3EDF8] flex items-center justify-center text-[#8AAED8]">
+            <UserCheck className="w-4 h-4 text-emerald-600" />
           </div>
         </div>
 
         {/* Team Members Quota */}
-        <div className="bg-white rounded-xl border border-[#E5EAF1] p-4 shadow-[0_1px_2px_rgba(0,0,0,0.03)] flex items-center justify-between">
+        <div className="bg-white rounded-xl border border-[#E3EDF8] p-4 shadow-xs flex items-center justify-between">
           <div>
-            <p className="text-xs font-medium text-[#64748B]">Team Seats Quota</p>
+            <p className="text-xs font-medium text-[#7188A3]">Team Seats Quota</p>
             <div className="flex items-center gap-2 mt-1">
-              <p className="text-2xl font-semibold text-[#172033] tracking-tight">
+              <p className="text-2xl font-semibold text-[#526B87] tracking-tight">
                 {isUnlimited ? "Unlimited" : isFree ? "0" : `${effectiveUsedSeats} / ${effectiveMaxSeats}`}
               </p>
               {isFree && (
@@ -732,30 +732,30 @@ export default function TeamManagement() {
                 </span>
               )}
               {isPro && !isUnlimited && (
-                <span className="text-[11px] text-[#64748B] font-medium">
+                <span className="text-[11px] text-[#7188A3] font-medium">
                   ({effectiveRemainingSeats} left)
                 </span>
               )}
             </div>
           </div>
-          <div className="w-9 h-9 rounded-lg bg-[#F5F7FA] border border-[#E5EAF1] flex items-center justify-center text-[#64748B]">
+          <div className="w-9 h-9 rounded-lg bg-[#F4F9FF] border border-[#E3EDF8] flex items-center justify-center text-[#8AAED8]">
             {isUnlimited ? (
-              <Sparkles className="w-4 h-4 text-[#0A66FF]" />
+              <Sparkles className="w-4 h-4 text-[#2563EB]" />
             ) : isFree ? (
               <Lock className="w-4 h-4 text-amber-600" />
             ) : (
-              <Users className="w-4 h-4 text-[#0A66FF]" />
+              <Users className="w-4 h-4 text-[#2563EB]" />
             )}
           </div>
         </div>
       </div>
 
       {/* ── CLEAN TEAM MANAGEMENT TOOLBAR ── */}
-      <div className="bg-white rounded-xl border border-[#E5EAF1] p-3 shadow-[0_1px_2px_rgba(0,0,0,0.03)] flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+      <div className="bg-white rounded-xl border border-[#E3EDF8] p-3 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2.5 flex-1">
           {/* Search Input */}
           <div className="relative flex-1 min-w-[200px] sm:max-w-xs">
-            <Search className="w-4 h-4 text-[#64748B] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <Search className="w-4 h-4 text-[#8AAED8] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
               placeholder="Search team members..."
@@ -764,7 +764,7 @@ export default function TeamManagement() {
                 setSearch(e.target.value);
                 setCurrentPage(1);
               }}
-              className="w-full h-9 pl-9 pr-3 text-xs bg-white border border-[#E5EAF1] rounded-lg text-[#172033] placeholder-[#64748B] focus:outline-none focus:border-[#0A66FF] focus:ring-1 focus:ring-[#0A66FF] transition"
+              className="w-full h-9 pl-9 pr-3 text-xs bg-[#F4F9FF] border border-[#E3EDF8] rounded-lg text-[#526B87] placeholder-[#94A8BE] focus:outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] transition"
             />
           </div>
 
@@ -775,7 +775,7 @@ export default function TeamManagement() {
               setRoleFilter(e.target.value);
               setCurrentPage(1);
             }}
-            className="h-9 px-3 text-xs bg-white border border-[#E5EAF1] rounded-lg text-[#172033] font-medium focus:outline-none focus:border-[#0A66FF] focus:ring-1 focus:ring-[#0A66FF] transition"
+            className="h-9 px-3 text-xs bg-[#F4F9FF] border border-[#E3EDF8] rounded-lg text-[#526B87] font-medium focus:outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] transition"
           >
             <option value="ALL">All Roles</option>
             <option value="ADMIN">Admin / Owner</option>
@@ -793,7 +793,7 @@ export default function TeamManagement() {
               setStatusFilter(e.target.value);
               setCurrentPage(1);
             }}
-            className="h-9 px-3 text-xs bg-white border border-[#E5EAF1] rounded-lg text-[#172033] font-medium focus:outline-none focus:border-[#0A66FF] focus:ring-1 focus:ring-[#0A66FF] transition"
+            className="h-9 px-3 text-xs bg-[#F4F9FF] border border-[#E3EDF8] rounded-lg text-[#526B87] font-medium focus:outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] transition"
           >
             <option value="ALL">All Status</option>
             <option value="ACTIVE">Active</option>
@@ -807,7 +807,7 @@ export default function TeamManagement() {
             type="button"
             onClick={loadData}
             title="Refresh list"
-            className="h-9 w-9 flex items-center justify-center bg-white border border-[#E5EAF1] rounded-lg text-[#64748B] hover:text-[#172033] hover:bg-[#F5F7FA] transition cursor-pointer"
+            className="h-9 w-9 flex items-center justify-center bg-[#F4F9FF] border border-[#E3EDF8] rounded-lg text-[#7188A3] hover:text-[#526B87] hover:bg-[#EEF7FF] transition cursor-pointer"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
           </button>
@@ -819,7 +819,7 @@ export default function TeamManagement() {
             className={`h-9 px-3.5 text-xs font-semibold rounded-lg flex items-center gap-1.5 shadow-xs transition cursor-pointer ${
               isFree
                 ? "bg-amber-50 border border-amber-300 text-amber-800 hover:bg-amber-100"
-                : "bg-[#0A66FF] hover:bg-[#0854d4] text-white"
+                : "bg-[#D8EBFF] hover:bg-[#C7E1FF] text-[#2563EB]"
             }`}
           >
             {isFree ? (
@@ -839,11 +839,11 @@ export default function TeamManagement() {
       </div>
 
       {/* ── PROFESSIONAL TEAM MEMBERS TABLE ── */}
-      <div className="bg-white rounded-xl border border-[#E5EAF1] shadow-[0_1px_2px_rgba(0,0,0,0.03)] overflow-hidden">
+      <div className="bg-white rounded-xl border border-[#E3EDF8] shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-[#E5EAF1] bg-[#F8FAFC] text-[11px] font-semibold text-[#64748B] uppercase tracking-wider">
+              <tr className="border-b border-[#E3EDF8] bg-[#EAF4FF] text-[11px] font-semibold text-[#526B87] uppercase tracking-wider">
                 <th className="py-3 px-4">Member</th>
                 <th className="py-3 px-4">Contact</th>
                 <th className="py-3 px-4">Role</th>
@@ -852,17 +852,17 @@ export default function TeamManagement() {
                 <th className="py-3 px-4 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#E5EAF1] text-xs">
+            <tbody className="divide-y divide-[#E3EDF8] text-xs">
               {filteredUsers.length === 0 ? (
                 /* ── MINIMAL EMPTY STATE ── */
                 <tr>
                   <td colSpan={6} className="py-12 px-4 text-center">
                     <div className="max-w-xs mx-auto flex flex-col items-center">
-                      <div className="w-10 h-10 rounded-full bg-[#F5F7FA] border border-[#E5EAF1] flex items-center justify-center text-[#64748B] mb-3">
-                        <Users className="w-5 h-5 text-[#64748B]" />
+                      <div className="w-10 h-10 rounded-full bg-[#F4F9FF] border border-[#E3EDF8] flex items-center justify-center text-[#8AAED8] mb-3">
+                        <Users className="w-5 h-5 text-[#8AAED8]" />
                       </div>
-                      <p className="text-sm font-semibold text-[#172033]">No team members yet</p>
-                      <p className="text-xs text-[#64748B] mt-1 mb-4">
+                      <p className="text-sm font-semibold text-[#526B87]">No team members yet</p>
+                      <p className="text-xs text-[#7188A3] mt-1 mb-4">
                         {search || roleFilter !== "ALL" || statusFilter !== "ALL"
                           ? "No members match the current filter criteria."
                           : "Add your first team member to get started."}
@@ -874,7 +874,7 @@ export default function TeamManagement() {
                           className={`h-8 px-3.5 text-xs font-semibold rounded-lg flex items-center gap-1.5 shadow-xs transition cursor-pointer ${
                             isFree
                               ? "bg-amber-50 border border-amber-300 text-amber-800 hover:bg-amber-100"
-                              : "bg-[#0A66FF] hover:bg-[#0854d4] text-white"
+                              : "bg-[#D8EBFF] hover:bg-[#C7E1FF] text-[#2563EB]"
                           }`}
                         >
                           {isFree ? (
@@ -898,7 +898,7 @@ export default function TeamManagement() {
                 filteredUsers
                   .slice((currentPage - 1) * pageSize, currentPage * pageSize)
                   .map((u) => (
-                    <tr key={u.id || u._id} className="hover:bg-[#F8FAFC] transition group">
+                    <tr key={u.id || u._id} className="hover:bg-[#F4F9FF] transition group">
                       {/* Member Column */}
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-3">
@@ -906,13 +906,13 @@ export default function TeamManagement() {
                             className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold text-xs uppercase shrink-0 ${
                               u.isOwner
                                 ? "bg-amber-50 text-amber-700 border border-amber-200"
-                                : "bg-blue-50 text-[#0A66FF] border border-blue-200"
+                                : "bg-[#EEF7FF] text-[#2563EB] border border-[#C7E1FF]"
                             }`}
                           >
                             {u.name?.slice(0, 2) || "U"}
                           </div>
                           <div className="min-w-0">
-                            <div className="font-semibold text-[#172033] flex items-center gap-1.5 truncate">
+                            <div className="font-semibold text-[#526B87] flex items-center gap-1.5 truncate">
                               <span>{u.name}</span>
                               {u.isOwner && (
                                 <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 shrink-0">
@@ -920,20 +920,20 @@ export default function TeamManagement() {
                                 </span>
                               )}
                             </div>
-                            <div className="text-[11px] text-[#64748B] truncate">{u.email}</div>
+                            <div className="text-[11px] text-[#7188A3] truncate">{u.email}</div>
                           </div>
                         </div>
                       </td>
 
                       {/* Contact Column */}
-                      <td className="py-3 px-4 text-[#64748B]">
-                        {u.phone || <span className="text-slate-400 italic">—</span>}
+                      <td className="py-3 px-4 text-[#7188A3]">
+                        {u.phone || <span className="text-[#94A8BE] italic">—</span>}
                       </td>
 
                       {/* Role Column */}
                       <td className="py-3 px-4">
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-[#F5F7FA] text-[#172033] border border-[#E5EAF1]">
-                          <Shield className="w-3 h-3 text-[#64748B]" />
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-[#F4F9FF] text-[#526B87] border border-[#E3EDF8]">
+                          <Shield className="w-3 h-3 text-[#8AAED8]" />
                           {u.roleName || u.role}
                         </span>
                       </td>
@@ -950,12 +950,12 @@ export default function TeamManagement() {
                             onClick={() => handleOpenPermissions(u)}
                             className={`text-xs font-medium flex items-center gap-1.5 border px-2.5 py-1 rounded-lg transition cursor-pointer ${
                               isPremium
-                                ? "text-[#0A66FF] hover:text-[#0854d4] bg-blue-50/50 hover:bg-blue-50 border-blue-200"
-                                : "text-[#64748B] hover:text-[#172033] bg-[#F5F7FA] border-[#E5EAF1]"
+                                ? "text-[#2563EB] hover:text-[#1d4ed8] bg-[#EEF7FF] hover:bg-[#D8EBFF] border-[#C7E1FF]"
+                                : "text-[#7188A3] hover:text-[#526B87] bg-[#F4F9FF] border-[#E3EDF8]"
                             }`}
                             title="Configure permission overrides"
                           >
-                            <Key className="w-3 h-3 text-[#0A66FF]" />
+                            <Key className="w-3 h-3 text-[#2563EB]" />
                             <span>
                               {u.overridesCount > 0 ? `${u.overridesCount} Overrides` : "Standard Access"}
                             </span>
@@ -968,13 +968,13 @@ export default function TeamManagement() {
                         <span
                           className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${
                             u.isActive !== false
-                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                              : "bg-slate-100 text-slate-500 border border-slate-200"
+                              ? "bg-[#ECF9F1] text-[#166534] border border-[#BBF7D0]"
+                              : "bg-[#FFF0F2] text-[#991B1B] border border-[#FECDD3]"
                           }`}
                         >
                           <span
                             className={`w-1.5 h-1.5 rounded-full ${
-                              u.isActive !== false ? "bg-emerald-500" : "bg-slate-400"
+                              u.isActive !== false ? "bg-emerald-500" : "bg-rose-400"
                             }`}
                           />
                           {u.isActive !== false ? "Active" : "Inactive"}
@@ -990,7 +990,7 @@ export default function TeamManagement() {
                                 type="button"
                                 onClick={() => handleOpenEdit(u)}
                                 title="Edit user"
-                                className="p-1.5 text-[#64748B] hover:text-[#0A66FF] hover:bg-[#F5F7FA] rounded-md transition cursor-pointer"
+                                className="p-1.5 text-[#7188A3] hover:text-[#2563EB] hover:bg-[#EEF7FF] rounded-md transition cursor-pointer"
                               >
                                 <Edit2 className="w-3.5 h-3.5" />
                               </button>
@@ -1001,7 +1001,7 @@ export default function TeamManagement() {
                                 title={u.isActive !== false ? "Deactivate user" : "Activate user"}
                                 className={`p-1.5 rounded-md transition cursor-pointer ${
                                   u.isActive !== false
-                                    ? "text-[#64748B] hover:text-amber-600 hover:bg-amber-50"
+                                    ? "text-[#7188A3] hover:text-amber-600 hover:bg-amber-50"
                                     : "text-emerald-600 hover:bg-emerald-50"
                                 }`}
                               >
@@ -1012,7 +1012,7 @@ export default function TeamManagement() {
                                 type="button"
                                 onClick={() => handleDeleteUser(u)}
                                 title="Delete user"
-                                className="p-1.5 text-[#64748B] hover:text-rose-600 hover:bg-rose-50 rounded-md transition cursor-pointer"
+                                className="p-1.5 text-[#7188A3] hover:text-rose-600 hover:bg-rose-50 rounded-md transition cursor-pointer"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
@@ -1029,13 +1029,13 @@ export default function TeamManagement() {
 
         {/* ── PAGINATION CONTROLS ── */}
         {filteredUsers.length > 0 && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-white border-t border-[#E5EAF1] text-xs text-[#64748B]">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-white border-t border-[#E3EDF8] text-xs text-[#7188A3]">
             <div>
-              Showing <span className="font-semibold text-[#172033]">{(currentPage - 1) * pageSize + 1}</span> to{" "}
-              <span className="font-semibold text-[#172033]">
+              Showing <span className="font-semibold text-[#526B87]">{(currentPage - 1) * pageSize + 1}</span> to{" "}
+              <span className="font-semibold text-[#526B87]">
                 {Math.min(currentPage * pageSize, filteredUsers.length)}
               </span>{" "}
-              of <span className="font-semibold text-[#172033]">{filteredUsers.length}</span> members
+              of <span className="font-semibold text-[#526B87]">{filteredUsers.length}</span> members
             </div>
             {Math.ceil(filteredUsers.length / pageSize) > 1 && (
               <div className="flex items-center gap-1.5">
@@ -1043,11 +1043,11 @@ export default function TeamManagement() {
                   type="button"
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
-                  className="px-2.5 py-1 border border-[#E5EAF1] rounded-md hover:bg-[#F5F7FA] disabled:opacity-40 disabled:pointer-events-none text-[#172033] font-medium transition cursor-pointer"
+                  className="px-2.5 py-1 border border-[#E3EDF8] rounded-md hover:bg-[#F4F9FF] disabled:opacity-40 disabled:pointer-events-none text-[#526B87] font-medium transition cursor-pointer"
                 >
                   Previous
                 </button>
-                <span className="px-2 font-medium text-[#172033]">
+                <span className="px-2 font-medium text-[#526B87]">
                   {currentPage} / {Math.ceil(filteredUsers.length / pageSize)}
                 </span>
                 <button
@@ -1058,7 +1058,7 @@ export default function TeamManagement() {
                     )
                   }
                   disabled={currentPage === Math.ceil(filteredUsers.length / pageSize)}
-                  className="px-2.5 py-1 border border-[#E5EAF1] rounded-md hover:bg-[#F5F7FA] disabled:opacity-40 disabled:pointer-events-none text-[#172033] font-medium transition cursor-pointer"
+                  className="px-2.5 py-1 border border-[#E3EDF8] rounded-md hover:bg-[#F4F9FF] disabled:opacity-40 disabled:pointer-events-none text-[#526B87] font-medium transition cursor-pointer"
                 >
                   Next
                 </button>

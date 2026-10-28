@@ -493,7 +493,7 @@ export default function Dashboard() {
     <div
       className="space-y-6 pb-12 max-w-[1600px] mx-auto text-slate-800"
       style={{
-        fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", sans-serif',
+        fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
       }}
     >
       {/* ════════════════════════════════════════════════════════════
@@ -516,7 +516,7 @@ export default function Dashboard() {
               </span>
             </div>
 
-            <h1 className="text-xl sm:text-2xl font-semibold text-slate-900 tracking-tight">
+            <h1 className="text-[20px] sm:text-[22px] font-semibold text-slate-900 tracking-normal">
               Dashboard — <span className="text-slate-700">{userName || "Vicky"}</span>
             </h1>
 
@@ -555,7 +555,7 @@ export default function Dashboard() {
             <button
               onClick={() => refreshAllData(true)}
               disabled={isRefreshing}
-              className="inline-flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-slate-50 active:scale-98 text-slate-700 border border-slate-200 rounded-lg text-xs font-medium transition shadow-xs cursor-pointer disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-50 active:scale-98 text-slate-700 border border-slate-200 rounded-lg text-xs font-medium transition shadow-xs cursor-pointer disabled:opacity-50"
               title="Refresh ledger records"
             >
               <RefreshCw size={14} strokeWidth={1.8} className={isRefreshing ? "animate-spin text-blue-600" : "text-slate-500"} />
@@ -564,7 +564,7 @@ export default function Dashboard() {
 
             <button
               onClick={() => setShowAddCustomerModal(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-slate-50 active:scale-98 text-slate-700 border border-slate-200 rounded-lg text-xs font-medium transition shadow-xs cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-50 active:scale-98 text-slate-700 border border-slate-200 rounded-lg text-xs font-medium transition shadow-xs cursor-pointer"
             >
               <UserPlus size={14} strokeWidth={1.8} className="text-slate-500" />
               <span>Add Customer</span>
@@ -572,7 +572,7 @@ export default function Dashboard() {
 
             <button
               onClick={() => setShowAddProductModal(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-slate-50 active:scale-98 text-slate-700 border border-slate-200 rounded-lg text-xs font-medium transition shadow-xs cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-50 active:scale-98 text-slate-700 border border-slate-200 rounded-lg text-xs font-medium transition shadow-xs cursor-pointer"
             >
               <PackagePlus size={14} strokeWidth={1.8} className="text-slate-500" />
               <span>Add Product</span>
@@ -580,7 +580,7 @@ export default function Dashboard() {
 
             <button
               onClick={() => setShowRecordPaymentModal(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-slate-50 active:scale-98 text-slate-700 border border-slate-200 rounded-lg text-xs font-medium transition shadow-xs cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-50 active:scale-98 text-slate-700 border border-slate-200 rounded-lg text-xs font-medium transition shadow-xs cursor-pointer"
             >
               <CreditCard size={14} strokeWidth={1.8} className="text-slate-500" />
               <span>Record Payment</span>
@@ -588,9 +588,9 @@ export default function Dashboard() {
 
             <button
               onClick={() => nav("/billing")}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 active:scale-98 text-white rounded-lg text-xs font-semibold transition shadow-xs cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 active:scale-98 text-white rounded-lg text-xs font-medium transition shadow-xs cursor-pointer"
             >
-              <Plus size={15} strokeWidth={2} />
+              <Plus size={14} strokeWidth={2} />
               <span>New Bill / POS</span>
             </button>
           </div>
@@ -621,123 +621,123 @@ export default function Dashboard() {
       {/* ════════════════════════════════════════════════════════════
           2. KPI CARDS (4 CLEAN, COMPACT, EQUAL-HEIGHT CARDS)
       ════════════════════════════════════════════════════════════ */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
         {/* KPI 1: Today's Sales */}
-        <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200/80 shadow-xs flex flex-col justify-between">
+        <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200/80 shadow-xs flex flex-col justify-between">
           <div>
-            <div className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+            <div className="text-[12px] font-medium text-slate-500 uppercase tracking-normal">
               Today's Sales
             </div>
-            <div className="text-2xl font-semibold text-slate-900 mt-1.5 font-mono">
+            <div className="text-[22px] sm:text-[24px] font-semibold text-slate-900 mt-1 font-mono">
               ₹ {metrics.todaySales.toLocaleString("en-IN")}
             </div>
-            <div className="mt-2 text-xs text-slate-500 flex items-center gap-2">
-              <span className="font-medium text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">
+            <div className="mt-1.5 text-xs text-slate-500 flex items-center gap-2">
+              <span className="font-medium text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 text-[11px]">
                 {metrics.todayInvoices} bills
               </span>
               <span className="text-slate-300">·</span>
-              <span>Average ₹{metrics.avgBillValue.toLocaleString("en-IN")}/bill</span>
+              <span className="text-[12px]">Avg ₹{metrics.avgBillValue.toLocaleString("en-IN")}/bill</span>
             </div>
           </div>
-          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-            <span className="text-slate-400">POS Register</span>
+          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs">
+            <span className="text-slate-400 text-[11px]">POS Register</span>
             <button
               onClick={() => nav("/billing")}
-              className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 font-medium transition cursor-pointer"
+              className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 font-medium transition cursor-pointer text-xs"
             >
               <span>Open POS</span>
-              <ArrowUpRight size={14} strokeWidth={1.8} />
+              <ArrowUpRight size={13} strokeWidth={1.8} />
             </button>
           </div>
         </div>
 
         {/* KPI 2: Balance Due (Khata) */}
-        <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200/80 shadow-xs flex flex-col justify-between">
+        <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200/80 shadow-xs flex flex-col justify-between">
           <div>
-            <div className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+            <div className="text-[12px] font-medium text-slate-500 uppercase tracking-normal">
               Balance Due (Khata)
             </div>
-            <div className="text-2xl font-semibold text-slate-900 mt-1.5 font-mono">
+            <div className="text-[22px] sm:text-[24px] font-semibold text-slate-900 mt-1 font-mono">
               ₹ {metrics.totalReceivable.toLocaleString("en-IN")}
             </div>
-            <div className="mt-2 text-xs text-slate-500 flex items-center gap-2">
-              <span className="font-medium text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-100">
+            <div className="mt-1.5 text-xs text-slate-500 flex items-center gap-2">
+              <span className="font-medium text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-100 text-[11px]">
                 Pending Collection
               </span>
               <span className="text-slate-300">·</span>
-              <span>From trade clients</span>
+              <span className="text-[12px]">From trade clients</span>
             </div>
           </div>
-          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs">
             <button
               onClick={() => setShowRecordPaymentModal(true)}
-              className="inline-flex items-center gap-1 text-slate-600 hover:text-slate-900 font-medium transition cursor-pointer"
+              className="inline-flex items-center gap-1 text-slate-600 hover:text-slate-900 font-medium transition cursor-pointer text-xs"
             >
               <CreditCard size={13} strokeWidth={1.8} className="text-slate-400" />
               <span>Record Payment</span>
             </button>
             <button
               onClick={() => nav("/customers")}
-              className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 font-medium transition cursor-pointer"
+              className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 font-medium transition cursor-pointer text-xs"
             >
               <span>View Khata</span>
-              <ArrowUpRight size={14} strokeWidth={1.8} />
+              <ArrowUpRight size={13} strokeWidth={1.8} />
             </button>
           </div>
         </div>
 
         {/* KPI 3: Purchases & OPEX */}
-        <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200/80 shadow-xs flex flex-col justify-between">
+        <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200/80 shadow-xs flex flex-col justify-between">
           <div>
-            <div className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+            <div className="text-[12px] font-medium text-slate-500 uppercase tracking-normal">
               Purchases &amp; OPEX
             </div>
-            <div className="text-2xl font-semibold text-slate-900 mt-1.5 font-mono">
+            <div className="text-[22px] sm:text-[24px] font-semibold text-slate-900 mt-1 font-mono">
               ₹ {(metrics.todayPurchases + metrics.todayExpenses).toLocaleString("en-IN")}
             </div>
-            <div className="mt-2 text-xs text-slate-500 flex items-center gap-2">
-              <span className="font-medium text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-100">
+            <div className="mt-1.5 text-xs text-slate-500 flex items-center gap-2">
+              <span className="font-medium text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-100 text-[11px]">
                 Inward Stock
               </span>
               <span className="text-slate-300">·</span>
-              <span>₹{metrics.todayPurchases.toLocaleString("en-IN")} purchases</span>
+              <span className="text-[12px]">₹{metrics.todayPurchases.toLocaleString("en-IN")} purchases</span>
             </div>
           </div>
-          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-            <span className="text-slate-400">Supplier Ledger</span>
+          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs">
+            <span className="text-slate-400 text-[11px]">Supplier Ledger</span>
             <button
               onClick={() => nav("/purchases")}
-              className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 font-medium transition cursor-pointer"
+              className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 font-medium transition cursor-pointer text-xs"
             >
               <span>Purchases</span>
-              <ArrowUpRight size={14} strokeWidth={1.8} />
+              <ArrowUpRight size={13} strokeWidth={1.8} />
             </button>
           </div>
         </div>
 
         {/* KPI 4: Inventory Alerts */}
-        <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200/80 shadow-xs flex flex-col justify-between">
+        <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200/80 shadow-xs flex flex-col justify-between">
           <div>
-            <div className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+            <div className="text-[12px] font-medium text-slate-500 uppercase tracking-normal">
               Inventory Alerts
             </div>
-            <div className="text-2xl font-semibold text-slate-900 mt-1.5 font-mono">
+            <div className="text-[22px] sm:text-[24px] font-semibold text-slate-900 mt-1 font-mono">
               {metrics.lowStockCount}{" "}
-              <span className="text-base font-normal text-slate-500">Items Low</span>
+              <span className="text-sm font-normal text-slate-500">Items Low</span>
             </div>
-            <div className="mt-2 text-xs text-slate-500 flex items-center gap-2">
-              <span className="font-medium text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-100">
+            <div className="mt-1.5 text-xs text-slate-500 flex items-center gap-2">
+              <span className="font-medium text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-100 text-[11px]">
                 Critical
               </span>
               <span className="text-slate-300">·</span>
-              <span>Reorder threshold reached</span>
+              <span className="text-[12px]">Reorder threshold reached</span>
             </div>
           </div>
-          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-            <span className="text-slate-400">Stock Reorder</span>
+          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs">
+            <span className="text-slate-400 text-[11px]">Stock Reorder</span>
             <button
               onClick={() => nav("/inventory")}
-              className="inline-flex items-center gap-1 text-rose-600 hover:text-rose-700 font-medium transition cursor-pointer"
+              className="inline-flex items-center gap-1 text-rose-600 hover:text-rose-700 font-medium transition cursor-pointer text-xs"
             >
               <span>Restock Items</span>
               <ArrowUpRight size={14} strokeWidth={1.8} />
@@ -767,11 +767,11 @@ export default function Dashboard() {
                 {/* Clean Text Legend */}
                 <div className="flex items-center gap-3 text-xs font-medium text-slate-600">
                   <span className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-xs bg-blue-600 inline-block" />
+                    <span className="w-2.5 h-2.5 rounded-xs bg-[#9CC8FF] inline-block" />
                     Sales
                   </span>
                   <span className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-xs bg-purple-600 inline-block" />
+                    <span className="w-2.5 h-2.5 rounded-xs bg-[#D4C2FF] inline-block" />
                     Purchases
                   </span>
                 </div>
@@ -813,21 +813,21 @@ export default function Dashboard() {
             </div>
 
             {/* Metric Summary Bar */}
-            <div className="grid grid-cols-3 gap-2 my-3 p-2.5 rounded-lg bg-slate-50 border border-slate-100 text-center text-xs">
+            <div className="grid grid-cols-3 gap-2 my-3 p-2.5 rounded-lg bg-[#F4F9FF] border border-[#E3EDF8] text-center text-xs">
               <div>
-                <span className="text-[11px] text-slate-500">Period Sales</span>
-                <p className="font-semibold text-slate-900 font-mono mt-0.5">
+                <span className="text-[11px] text-[#7188A3]">Period Sales</span>
+                <p className="font-semibold text-[#526B87] font-mono mt-0.5">
                   ₹{trendSummary.totalSales.toLocaleString("en-IN")}
                 </p>
               </div>
               <div>
-                <span className="text-[11px] text-slate-500">Period Procurement</span>
-                <p className="font-semibold text-slate-900 font-mono mt-0.5">
+                <span className="text-[11px] text-[#7188A3]">Period Procurement</span>
+                <p className="font-semibold text-[#526B87] font-mono mt-0.5">
                   ₹{trendSummary.totalPurchases.toLocaleString("en-IN")}
                 </p>
               </div>
               <div>
-                <span className="text-[11px] text-slate-500">Gross Margin</span>
+                <span className="text-[11px] text-[#7188A3]">Gross Margin</span>
                 <p className="font-semibold text-emerald-700 font-mono mt-0.5">
                   +{trendSummary.grossMargin}%
                 </p>
@@ -837,14 +837,14 @@ export default function Dashboard() {
             {/* Chart Canvas */}
             <div className="h-64 sm:h-72 w-full mt-2">
               {!hasTransactionData ? (
-                <div className="h-full flex flex-col items-center justify-center text-center p-6 bg-slate-50/50 rounded-lg border border-dashed border-slate-200">
-                  <p className="text-xs font-medium text-slate-700">No Transactions Recorded</p>
-                  <p className="text-[11px] text-slate-500 max-w-xs mt-0.5 mb-3">
+                <div className="h-full flex flex-col items-center justify-center text-center p-6 bg-[#F7FBFF] rounded-lg border border-dashed border-[#E3EDF8]">
+                  <p className="text-xs font-medium text-[#526B87]">No Transactions Recorded</p>
+                  <p className="text-[11px] text-[#7188A3] max-w-xs mt-0.5 mb-3">
                     No customer sales or supplier purchases logged during this period.
                   </p>
                   <button
                     onClick={() => nav("/billing")}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition shadow-xs cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#D8EBFF] hover:bg-[#C7E1FF] text-[#2563EB] text-xs font-medium rounded-lg transition shadow-xs cursor-pointer"
                   >
                     <FileText size={14} strokeWidth={1.8} />
                     <span>Create New Bill</span>
@@ -853,15 +853,15 @@ export default function Dashboard() {
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={trendData} barGap={4} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#EDF3FA" />
                     <XAxis
                       dataKey="day"
-                      tick={{ fontSize: 11, fill: "#64748b" }}
-                      axisLine={{ stroke: "#e2e8f0" }}
+                      tick={{ fontSize: 11, fill: "#7188A3" }}
+                      axisLine={{ stroke: "#E3EDF8" }}
                       tickLine={false}
                     />
                     <YAxis
-                      tick={{ fontSize: 11, fill: "#64748b" }}
+                      tick={{ fontSize: 11, fill: "#7188A3" }}
                       axisLine={false}
                       tickLine={false}
                       tickFormatter={(v) => (v >= 1000 ? `₹${Math.round(v / 1000)}k` : `₹${v}`)}
@@ -873,15 +873,16 @@ export default function Dashboard() {
                       ]}
                       labelFormatter={(label) => `Period: ${label}`}
                       contentStyle={{
-                        background: "#0f172a",
-                        border: "1px solid #1e293b",
+                        background: "#FFFFFF",
+                        border: "1px solid #E3EDF8",
                         borderRadius: "8px",
-                        color: "#fff",
+                        color: "#526B87",
                         fontSize: "12px",
+                        boxShadow: "0 4px 12px rgba(82, 107, 135, 0.08)",
                       }}
                     />
-                    <Bar dataKey="sales" fill="#2563eb" radius={[3, 3, 0, 0]} maxBarSize={20} isAnimationActive={false} />
-                    <Bar dataKey="purchases" fill="#7c3aed" radius={[3, 3, 0, 0]} maxBarSize={20} isAnimationActive={false} />
+                    <Bar dataKey="sales" fill="#9CC8FF" radius={[3, 3, 0, 0]} maxBarSize={20} isAnimationActive={false} />
+                    <Bar dataKey="purchases" fill="#D4C2FF" radius={[3, 3, 0, 0]} maxBarSize={20} isAnimationActive={false} />
                   </BarChart>
                 </ResponsiveContainer>
               )}
@@ -938,11 +939,12 @@ export default function Dashboard() {
                   <Tooltip
                     formatter={(val, name) => [`₹${Number(val).toLocaleString("en-IN")}`, name]}
                     contentStyle={{
-                      background: "#0f172a",
-                      border: "1px solid #1e293b",
+                      background: "#FFFFFF",
+                      border: "1px solid #E3EDF8",
                       borderRadius: "6px",
-                      color: "#fff",
+                      color: "#526B87",
                       fontSize: "11px",
+                      boxShadow: "0 4px 12px rgba(82, 107, 135, 0.08)",
                     }}
                   />
                 </PieChart>

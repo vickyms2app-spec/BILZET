@@ -691,10 +691,10 @@ export default function TaxInvoice({
             TOP ACTION BAR (Hidden in print)
         ══════════════════════════════════════════════════ */}
         {showActions && (
-          <div className="bg-[#0F2747] text-white px-5 sm:px-6 py-2.5 flex items-center justify-between print:hidden shrink-0 border-b border-slate-800 select-none">
+          <div className="bg-[#F4F9FF] text-[#526B87] px-5 sm:px-6 py-2.5 flex items-center justify-between print:hidden shrink-0 border-b border-[#E3EDF8] select-none">
             <div className="flex items-center gap-2.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-100">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-xs font-bold uppercase tracking-wider text-[#526B87]">
                 {settings.invoiceTitle || "TAX INVOICE"} &middot; {invNumber}
               </span>
             </div>
@@ -703,7 +703,7 @@ export default function TaxInvoice({
               <button
                 type="button"
                 onClick={handlePrint}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white shadow-xs transition active:scale-95 cursor-pointer"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold bg-[#D8EBFF] hover:bg-[#C7E1FF] text-[#1E40AF] border border-[#C7E1FF] shadow-2xs transition active:scale-95 cursor-pointer"
                 title="Print Invoice"
               >
                 <Printer size={13} />
@@ -714,12 +714,12 @@ export default function TaxInvoice({
                 type="button"
                 onClick={handleDownloadPdf}
                 disabled={downloadingPdf}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition active:scale-95 cursor-pointer disabled:opacity-60"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold bg-white hover:bg-[#F4F9FF] text-[#526B87] border border-[#E3EDF8] transition active:scale-95 cursor-pointer disabled:opacity-60 shadow-2xs"
                 title="Download official PDF file"
               >
                 {downloadingPdf ? (
                   <>
-                    <Loader2 size={13} className="animate-spin" />
+                    <Loader2 size={13} className="animate-spin text-[#2563EB]" />
                     <span>Generating...</span>
                   </>
                 ) : (
@@ -734,7 +734,7 @@ export default function TaxInvoice({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition ml-1 cursor-pointer"
+                  className="p-1.5 rounded-lg text-[#8AAED8] hover:text-[#526B87] hover:bg-[#EEF7FF] transition ml-1 cursor-pointer"
                   title="Close Preview"
                 >
                   <X size={17} />
@@ -759,7 +759,7 @@ export default function TaxInvoice({
               : ""
           }`}
           style={{
-            fontFamily: "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif",
+            fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
             color: "#0F172A",
           }}
         >

@@ -833,7 +833,7 @@ export default function StaffManagement({ defaultTab = "directory" }) {
 
   return (
     <div
-      style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif' }}
+      style={{ fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}
       className="space-y-4 max-w-7xl mx-auto fade-up pb-12 text-[#1D1D1F]"
     >
       {/* ── Page Header ── */}

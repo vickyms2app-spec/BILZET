@@ -273,7 +273,7 @@ export default function JoinTeam() {
   return (
     <div
       className="min-h-screen bg-slate-50/80 text-[#172033] flex flex-col justify-between selection:bg-blue-100 selection:text-blue-900 relative overflow-x-hidden"
-      style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}
+      style={{ fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}
     >
       {/* Subtle Background Lighting for warmth & depth */}
       <div className="absolute inset-0 pointer-events-none -z-0 overflow-hidden" aria-hidden="true">

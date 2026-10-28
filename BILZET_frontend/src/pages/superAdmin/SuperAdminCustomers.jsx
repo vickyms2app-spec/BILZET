@@ -43,18 +43,18 @@ export default function SuperAdminCustomers() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-white tracking-tight flex items-center gap-2">
-            <Contact className="text-cyan-400" />
+          <h1 className="text-2xl font-black text-[#526B87] tracking-tight flex items-center gap-2">
+            <Contact className="text-[#2563EB]" />
             Global Customers Directory
           </h1>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-[#7188A3] mt-1">
             Platform-wide directory of client records created across all tenant shops.
           </p>
         </div>
 
         <button
           onClick={loadCustomers}
-          className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-xs font-bold text-slate-300 transition w-fit border border-white/10"
+          className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#F0F7FF] hover:bg-[#D8EBFF] text-xs font-bold text-[#526B87] transition w-fit border border-[#E3EDF8]"
         >
           <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
           Refresh
@@ -62,9 +62,9 @@ export default function SuperAdminCustomers() {
       </div>
 
       {/* Search Bar */}
-      <div className="p-4 rounded-2xl bg-[#0b1329] border border-white/[0.08] flex items-center justify-between">
+      <div className="p-4 rounded-2xl bg-white border border-[#E3EDF8] shadow-2xs flex items-center justify-between">
         <div className="relative w-full max-w-md">
-          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8AAED8]" />
           <input
             type="text"
             placeholder="Search customer by name, phone, email, or GSTIN…"
@@ -73,19 +73,19 @@ export default function SuperAdminCustomers() {
               setSearch(e.target.value);
               setPage(1);
             }}
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#F4F9FF] border border-[#E3EDF8] text-xs text-[#526B87] placeholder-[#94A8BE] focus:outline-none focus:border-[#8AAED8]"
           />
         </div>
-        <span className="text-xs text-slate-400 font-semibold hidden sm:inline">
-          Total Records: <strong className="text-white font-mono">{total}</strong>
+        <span className="text-xs text-[#7188A3] font-semibold hidden sm:inline">
+          Total Records: <strong className="text-[#526B87] font-mono">{total}</strong>
         </span>
       </div>
 
       {/* Customers Table */}
-      <div className="rounded-2xl bg-[#0b1329] border border-white/[0.08] overflow-hidden">
+      <div className="rounded-2xl bg-white border border-[#E3EDF8] shadow-2xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-white/[0.02] text-[11px] uppercase tracking-wider text-slate-400 border-b border-white/[0.06]">
+            <thead className="bg-[#EAF4FF] text-[11px] uppercase tracking-wider text-[#526B87] font-bold border-b border-[#E3EDF8]">
               <tr>
                 <th className="py-3.5 px-4">Customer Name</th>
                 <th className="py-3.5 px-4">Contact</th>
@@ -95,37 +95,37 @@ export default function SuperAdminCustomers() {
                 <th className="py-3.5 px-4">Created Date</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/[0.04]">
+            <tbody className="divide-y divide-[#EDF3FA]">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-slate-400">
+                  <td colSpan={6} className="py-12 text-center text-[#7188A3]">
                     <RefreshCw className="animate-spin inline-block mr-2" size={16} />
                     Loading customer records…
                   </td>
                 </tr>
               ) : !customers.length ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-slate-500">
+                  <td colSpan={6} className="py-12 text-center text-[#94A8BE]">
                     No customer records found.
                   </td>
                 </tr>
               ) : (
                 customers.map((c) => (
-                  <tr key={c.id} className="hover:bg-white/[0.02] transition">
-                    <td className="py-3.5 px-4 font-bold text-white">
+                  <tr key={c.id} className="hover:bg-[#F4F9FF] transition">
+                    <td className="py-3.5 px-4 font-bold text-[#526B87]">
                       {c.name}
                     </td>
 
                     <td className="py-3.5 px-4 space-y-0.5">
                       {c.phone && (
-                        <p className="flex items-center gap-1.5 text-slate-300 font-mono text-[11px]">
-                          <Phone size={11} className="text-slate-500" />
+                        <p className="flex items-center gap-1.5 text-[#7188A3] font-mono text-[11px]">
+                          <Phone size={11} className="text-[#8AAED8]" />
                           {c.phone}
                         </p>
                       )}
                       {c.email && (
-                        <p className="flex items-center gap-1.5 text-slate-400 text-[10px]">
-                          <Mail size={11} className="text-slate-500" />
+                        <p className="flex items-center gap-1.5 text-[#94A8BE] text-[10px]">
+                          <Mail size={11} className="text-[#8AAED8]" />
                           {c.email}
                         </p>
                       )}
@@ -133,18 +133,18 @@ export default function SuperAdminCustomers() {
 
                     <td className="py-3.5 px-4">
                       {c.gstin ? (
-                        <span className="font-mono text-cyan-300 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20 text-[10px] font-bold">
+                        <span className="font-mono text-[#2563EB] bg-[#EEF7FF] px-2 py-0.5 rounded border border-[#D8EBFF] text-[10px] font-bold">
                           {c.gstin}
                         </span>
                       ) : (
-                        <span className="text-slate-500 text-[11px]">—</span>
+                        <span className="text-[#94A8BE] text-[11px]">—</span>
                       )}
                     </td>
 
-                    <td className="py-3.5 px-4 text-slate-400 text-[11px] max-w-xs truncate">
+                    <td className="py-3.5 px-4 text-[#7188A3] text-[11px] max-w-xs truncate">
                       {c.address ? (
                         <span className="flex items-center gap-1">
-                          <MapPin size={11} className="text-slate-500 shrink-0" />
+                          <MapPin size={11} className="text-[#8AAED8] shrink-0" />
                           {c.address}
                         </span>
                       ) : (
@@ -153,12 +153,12 @@ export default function SuperAdminCustomers() {
                     </td>
 
                     <td className="py-3.5 px-4 font-mono font-bold">
-                      <span className={Number(c.balanceDue || 0) > 0 ? "text-amber-400" : "text-emerald-400"}>
+                      <span className={Number(c.balanceDue || 0) > 0 ? "text-[#B45309]" : "text-[#166534]"}>
                         ₹{Number(c.balanceDue || 0).toLocaleString("en-IN")}
                       </span>
                     </td>
 
-                    <td className="py-3.5 px-4 text-slate-400 text-[11px]">
+                    <td className="py-3.5 px-4 text-[#94A8BE] text-[11px]">
                       {new Date(c.createdAt).toLocaleDateString()}
                     </td>
                   </tr>

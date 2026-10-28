@@ -68,31 +68,31 @@ export default function SuperAdminSettings() {
     <div className="space-y-8 max-w-4xl">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-black text-white tracking-tight flex items-center gap-2">
-          <Sliders className="text-cyan-400" />
+        <h1 className="text-2xl font-black text-[#526B87] tracking-tight flex items-center gap-2">
+          <Sliders className="text-[#2563EB]" />
           Global Platform Settings
         </h1>
-        <p className="text-xs text-slate-400 mt-1">
+        <p className="text-xs text-[#7188A3] mt-1">
           Master controls for global system announcements, maintenance mode, and master credentials.
         </p>
       </div>
 
       {statusMsg && (
-        <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold flex items-center gap-2">
+        <div className="p-4 rounded-xl bg-[#ECF9F1] border border-[#C8E6C9] text-[#166534] text-xs font-bold flex items-center gap-2">
           <CheckCircle size={16} />
           {statusMsg}
         </div>
       )}
 
       {/* Broadcast Announcement Banner Settings */}
-      <div className="p-6 rounded-2xl bg-[#0b1329] border border-white/[0.08] space-y-5">
+      <div className="p-6 rounded-2xl bg-white border border-[#E3EDF8] shadow-2xs space-y-5">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-cyan-500/10 border border-cyan-500/30 grid place-items-center text-cyan-400">
+          <div className="w-9 h-9 rounded-xl bg-[#EEF7FF] border border-[#D8EBFF] grid place-items-center text-[#2563EB]">
             <Bell size={18} />
           </div>
           <div>
-            <h2 className="text-sm font-bold text-white">System Announcement Broadcast</h2>
-            <p className="text-xs text-slate-400">
+            <h2 className="text-sm font-bold text-[#526B87]">System Announcement Broadcast</h2>
+            <p className="text-xs text-[#7188A3]">
               Display a global alert banner across all tenant shops and dashboards.
             </p>
           </div>
@@ -100,7 +100,7 @@ export default function SuperAdminSettings() {
 
         <form onSubmit={handleSaveConfig} className="space-y-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-300">
+            <label className="text-xs font-semibold text-[#526B87]">
               Announcement Message
             </label>
             <textarea
@@ -108,17 +108,17 @@ export default function SuperAdminSettings() {
               value={config.announcementText}
               onChange={(e) => setConfig({ ...config, announcementText: e.target.value })}
               placeholder="e.g. Scheduled GST compliance server maintenance tonight from 2:00 AM to 3:00 AM IST."
-              className="w-full px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+              className="w-full px-4 py-2.5 rounded-xl bg-[#F4F9FF] border border-[#E3EDF8] text-xs text-[#526B87] placeholder-[#94A8BE] focus:outline-none focus:border-[#8AAED8]"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-300">Banner Notice Type</label>
+              <label className="text-xs font-semibold text-[#526B87]">Banner Notice Type</label>
               <select
                 value={config.announcementType}
                 onChange={(e) => setConfig({ ...config, announcementType: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/10 text-xs text-white focus:outline-none focus:border-cyan-500"
+                className="w-full px-4 py-2.5 rounded-xl bg-[#F4F9FF] border border-[#E3EDF8] text-xs text-[#526B87] focus:outline-none focus:border-[#8AAED8]"
               >
                 <option value="info">Informational (Blue)</option>
                 <option value="warning">Important Alert (Amber)</option>
@@ -127,7 +127,7 @@ export default function SuperAdminSettings() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-300">
+              <label className="text-xs font-semibold text-[#526B87]">
                 Maintenance Mode Lock
               </label>
               <div className="flex items-center gap-3 pt-2">
@@ -136,9 +136,9 @@ export default function SuperAdminSettings() {
                   id="maint"
                   checked={config.maintenanceMode}
                   onChange={(e) => setConfig({ ...config, maintenanceMode: e.target.checked })}
-                  className="w-4 h-4 rounded text-cyan-500 focus:ring-cyan-500 focus:ring-offset-0 bg-white/10 border-white/20"
+                  className="w-4 h-4 rounded text-[#2563EB] focus:ring-[#8AAED8] focus:ring-offset-0 bg-[#F4F9FF] border-[#E3EDF8]"
                 />
-                <label htmlFor="maint" className="text-xs font-bold text-rose-300 cursor-pointer">
+                <label htmlFor="maint" className="text-xs font-bold text-[#EF4444] cursor-pointer">
                   Activate Platform Maintenance Mode
                 </label>
               </div>
@@ -149,7 +149,7 @@ export default function SuperAdminSettings() {
             <button
               type="submit"
               disabled={saving}
-              className="px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs flex items-center gap-2 transition disabled:opacity-50"
+              className="px-5 py-2.5 rounded-xl bg-[#D8EBFF] hover:bg-[#C7E1FF] text-[#2563EB] font-bold text-xs flex items-center gap-2 transition disabled:opacity-50"
             >
               <Save size={14} />
               {saving ? "Saving…" : "Save Platform Settings"}
@@ -159,35 +159,35 @@ export default function SuperAdminSettings() {
       </div>
 
       {/* Super Admin Security Information */}
-      <div className="p-6 rounded-2xl bg-[#0b1329] border border-white/[0.08] space-y-4">
+      <div className="p-6 rounded-2xl bg-white border border-[#E3EDF8] shadow-2xs space-y-4">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/30 grid place-items-center text-blue-400">
+          <div className="w-9 h-9 rounded-xl bg-[#EEF7FF] border border-[#D8EBFF] grid place-items-center text-[#2563EB]">
             <ShieldCheck size={18} />
           </div>
           <div>
-            <h2 className="text-sm font-bold text-white">Master Super Admin Identity</h2>
-            <p className="text-xs text-slate-400">
+            <h2 className="text-sm font-bold text-[#526B87]">Master Super Admin Identity</h2>
+            <p className="text-xs text-[#7188A3]">
               Designated platform credentials with absolute authority.
             </p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
-          <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-            <p className="text-[11px] uppercase tracking-wider text-slate-400 font-bold">Username</p>
-            <p className="text-sm font-mono font-bold text-white mt-1">admin</p>
+          <div className="p-3.5 rounded-xl bg-[#F4F9FF] border border-[#E3EDF8]">
+            <p className="text-[11px] uppercase tracking-wider text-[#94A8BE] font-bold">Username</p>
+            <p className="text-sm font-mono font-bold text-[#526B87] mt-1">admin</p>
           </div>
 
-          <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-            <p className="text-[11px] uppercase tracking-wider text-slate-400 font-bold">Authorized Email</p>
-            <p className="text-sm font-mono font-bold text-cyan-300 mt-1 truncate">
+          <div className="p-3.5 rounded-xl bg-[#F4F9FF] border border-[#E3EDF8]">
+            <p className="text-[11px] uppercase tracking-wider text-[#94A8BE] font-bold">Authorized Email</p>
+            <p className="text-sm font-mono font-bold text-[#2563EB] mt-1 truncate">
               Vickyms2app@gmail.com
             </p>
           </div>
 
-          <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-            <p className="text-[11px] uppercase tracking-wider text-slate-400 font-bold">Contact Number</p>
-            <p className="text-xs font-semibold text-slate-400 mt-1">Not Required</p>
+          <div className="p-3.5 rounded-xl bg-[#F4F9FF] border border-[#E3EDF8]">
+            <p className="text-[11px] uppercase tracking-wider text-[#94A8BE] font-bold">Contact Number</p>
+            <p className="text-xs font-semibold text-[#7188A3] mt-1">Not Required</p>
           </div>
         </div>
       </div>

@@ -103,23 +103,23 @@ export default function SuperAdminDashboard() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-[11px] font-extrabold uppercase tracking-widest text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">
+            <span className="text-[11px] font-extrabold uppercase tracking-widest text-[#2563EB] bg-[#EEF7FF] px-2 py-0.5 rounded border border-[#D8EBFF]">
               Master Control Center
             </span>
           </div>
-          <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">
+          <h1 className="text-2xl md:text-3xl font-black text-[#526B87] tracking-tight">
             Platform Overview
           </h1>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-[#94A8BE] mt-1">
             Full authority view of tenant shops, subscriptions, and system health.
           </p>
         </div>
 
         <button
           onClick={loadData}
-          className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-xs font-bold text-slate-300 transition w-fit border border-white/10"
+          className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white hover:bg-[#F4F9FF] text-xs font-bold text-[#526B87] transition w-fit border border-[#E3EDF8] shadow-2xs"
         >
-          <RefreshCw size={14} />
+          <RefreshCw size={14} className="text-[#8AAED8]" />
           Refresh Stats
         </button>
       </div>
@@ -132,24 +132,24 @@ export default function SuperAdminDashboard() {
             <Link
               key={idx}
               to={kpi.link}
-              className="p-5 rounded-2xl bg-[#0b1329] border border-white/[0.08] hover:border-cyan-500/40 transition-all duration-200 group flex flex-col justify-between"
+              className="p-5 rounded-2xl bg-white border border-[#E3EDF8] hover:border-[#D8EBFF] transition-all duration-200 group flex flex-col justify-between shadow-2xs"
             >
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  <span className="text-xs font-bold text-[#94A8BE] uppercase tracking-wider">
                     {kpi.label}
                   </span>
-                  <div className={`w-9 h-9 rounded-xl bg-gradient-to-tr ${kpi.color} grid place-items-center text-white shadow-md`}>
+                  <div className="w-9 h-9 rounded-xl bg-[#EEF7FF] border border-[#D8EBFF] grid place-items-center text-[#2563EB] shadow-2xs">
                     <Icon size={17} />
                   </div>
                 </div>
-                <div className="text-2xl font-black text-white tracking-tight group-hover:text-cyan-300 transition">
+                <div className="text-2xl font-black text-[#526B87] tracking-tight group-hover:text-[#2563EB] transition">
                   {kpi.value}
                 </div>
               </div>
-              <div className="mt-4 pt-3 border-t border-white/[0.06] flex items-center justify-between text-[11px] text-slate-400">
+              <div className="mt-4 pt-3 border-t border-[#EDF3FA] flex items-center justify-between text-[11px] text-[#94A8BE]">
                 <span>{kpi.sub}</span>
-                <ArrowRight size={13} className="text-slate-500 group-hover:translate-x-1 group-hover:text-cyan-400 transition" />
+                <ArrowRight size={13} className="text-[#8AAED8] group-hover:translate-x-1 group-hover:text-[#2563EB] transition" />
               </div>
             </Link>
           );
@@ -159,33 +159,33 @@ export default function SuperAdminDashboard() {
       {/* Subscriptions & Plan Distribution */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Tier Distribution Card */}
-        <div className="lg:col-span-1 p-6 rounded-2xl bg-[#0b1329] border border-white/[0.08] space-y-5">
+        <div className="lg:col-span-1 p-6 rounded-2xl bg-white border border-[#E3EDF8] space-y-5 shadow-2xs">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold text-white flex items-center gap-2">
-              <CreditCard size={17} className="text-cyan-400" />
+            <h2 className="text-base font-bold text-[#526B87] flex items-center gap-2">
+              <CreditCard size={17} className="text-[#8AAED8]" />
               Subscription Tiers
             </h2>
-            <Link to="/app-admin/subscriptions" className="text-xs font-bold text-cyan-400 hover:underline">
+            <Link to="/app-admin/subscriptions" className="text-xs font-bold text-[#2563EB] hover:underline">
               Manage →
             </Link>
           </div>
 
           <div className="space-y-3">
             {[
-              { tier: "FREE", name: "Free Starter", count: data?.tierCounts?.FREE || 0, price: "₹0 / mo", color: "bg-slate-500" },
-              { tier: "PRO", name: "Pro Suite", count: data?.tierCounts?.PRO || 0, price: "₹999 / mo", color: "bg-cyan-500" },
+              { tier: "FREE", name: "Free Starter", count: data?.tierCounts?.FREE || 0, price: "₹0 / mo", color: "bg-slate-400" },
+              { tier: "PRO", name: "Pro Suite", count: data?.tierCounts?.PRO || 0, price: "₹999 / mo", color: "bg-[#2563EB]" },
               { tier: "ENTERPRISE", name: "Enterprise Business", count: data?.tierCounts?.ENTERPRISE || 0, price: "₹2,499 / mo", color: "bg-indigo-500" },
             ].map((p) => (
-              <div key={p.tier} className="p-3.5 rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-between">
+              <div key={p.tier} className="p-3.5 rounded-xl bg-[#F4F9FF] border border-[#E3EDF8] flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <span className={`w-2.5 h-2.5 rounded-full ${p.color}`} />
                   <div>
-                    <p className="text-xs font-bold text-white">{p.name}</p>
-                    <p className="text-[10px] text-slate-400">{p.price}</p>
+                    <p className="text-xs font-bold text-[#526B87]">{p.name}</p>
+                    <p className="text-[10px] text-[#94A8BE]">{p.price}</p>
                   </div>
                 </div>
-                <span className="text-sm font-black text-cyan-300 font-mono">
-                  {p.count} <span className="text-[10px] font-normal text-slate-400">shops</span>
+                <span className="text-sm font-black text-[#2563EB] font-mono">
+                  {p.count} <span className="text-[10px] font-normal text-[#94A8BE]">shops</span>
                 </span>
               </div>
             ))}
@@ -193,47 +193,47 @@ export default function SuperAdminDashboard() {
         </div>
 
         {/* Recent Registrations Table */}
-        <div className="lg:col-span-2 p-6 rounded-2xl bg-[#0b1329] border border-white/[0.08] space-y-4">
+        <div className="lg:col-span-2 p-6 rounded-2xl bg-white border border-[#E3EDF8] space-y-4 shadow-2xs">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold text-white flex items-center gap-2">
-              <Users size={17} className="text-cyan-400" />
+            <h2 className="text-base font-bold text-[#526B87] flex items-center gap-2">
+              <Users size={17} className="text-[#8AAED8]" />
               Recent Registered Shops
             </h2>
-            <Link to="/app-admin/users" className="text-xs font-bold text-cyan-400 hover:underline">
+            <Link to="/app-admin/users" className="text-xs font-bold text-[#2563EB] hover:underline">
               View All ({data?.totalUsers || 0}) →
             </Link>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="text-[11px] uppercase tracking-wider text-slate-400 border-b border-white/[0.06]">
+              <thead className="text-[11px] uppercase tracking-wider text-[#526B87] border-b border-[#E3EDF8] bg-[#EAF4FF]">
                 <tr>
-                  <th className="pb-3">User / Shop</th>
-                  <th className="pb-3">Role</th>
-                  <th className="pb-3">Status</th>
-                  <th className="pb-3">Registered</th>
+                  <th className="py-2.5 px-3">User / Shop</th>
+                  <th className="py-2.5 px-3">Role</th>
+                  <th className="py-2.5 px-3">Status</th>
+                  <th className="py-2.5 px-3">Registered</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/[0.04]">
+              <tbody className="divide-y divide-[#EDF3FA]">
                 {data?.recentUsers?.map((u) => (
-                  <tr key={u.id} className="hover:bg-white/[0.02]">
-                    <td className="py-3">
-                      <p className="font-bold text-white">{u.name}</p>
-                      <p className="text-[11px] text-slate-400">{u.email}</p>
+                  <tr key={u.id} className="hover:bg-[#F4F9FF] transition">
+                    <td className="py-3 px-3">
+                      <p className="font-bold text-[#526B87]">{u.name}</p>
+                      <p className="text-[11px] text-[#94A8BE]">{u.email}</p>
                     </td>
-                    <td className="py-3">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-white/[0.06] text-slate-300">
+                    <td className="py-3 px-3">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#EEF7FF] text-[#1E40AF] border border-[#D8EBFF]">
                         {u.role}
                       </span>
                     </td>
-                    <td className="py-3">
+                    <td className="py-3 px-3">
                       <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                        u.isActive ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400"
+                        u.isActive ? "bg-[#ECF9F1] text-[#166534] border border-[#C8E6C9]" : "bg-[#FFF0F2] text-[#991B1B] border border-[#FECDD3]"
                       }`}>
                         {u.isActive ? "Active" : "Suspended"}
                       </span>
                     </td>
-                    <td className="py-3 text-slate-400 text-[11px]">
+                    <td className="py-3 px-3 text-[#94A8BE] text-[11px]">
                       {new Date(u.createdAt).toLocaleDateString()}
                     </td>
                   </tr>
@@ -245,19 +245,19 @@ export default function SuperAdminDashboard() {
       </div>
 
       {/* System Infrastructure Telemetry */}
-      <div className="p-6 rounded-2xl bg-gradient-to-r from-[#0c1836] to-[#0a1226] border border-cyan-500/20 flex flex-col md:flex-row items-center justify-between gap-6">
+      <div className="p-6 rounded-2xl bg-[#F0F7FF] border border-[#D8EBFF] flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xs">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 grid place-items-center text-cyan-400">
+          <div className="w-12 h-12 rounded-2xl bg-white border border-[#D8EBFF] grid place-items-center text-[#2563EB] shadow-2xs">
             <Server size={24} />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
+            <h3 className="text-sm font-bold text-[#526B87] flex items-center gap-2">
               PostgreSQL NeonDB Infrastructure
-              <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-bold">
+              <span className="px-2 py-0.5 rounded-full bg-[#ECF9F1] text-[#166534] border border-[#C8E6C9] text-[10px] font-bold">
                 Online &amp; Healthy
               </span>
             </h3>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-xs text-[#94A8BE] mt-0.5">
               Host: ep-orange-silence-b5w238xv-pooler · AWS US-East-2 Serverless Cluster
             </p>
           </div>
@@ -266,7 +266,7 @@ export default function SuperAdminDashboard() {
         <div className="flex items-center gap-3">
           <Link
             to="/app-admin/settings"
-            className="px-4 py-2 rounded-xl bg-cyan-500 text-slate-950 font-bold text-xs hover:bg-cyan-400 transition"
+            className="px-4 py-2 rounded-xl bg-[#D8EBFF] hover:bg-[#C7E1FF] text-[#1E40AF] font-bold text-xs border border-[#C7E1FF] shadow-2xs transition"
           >
             Manage System Broadcasts
           </Link>

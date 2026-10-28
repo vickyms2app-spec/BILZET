@@ -123,7 +123,9 @@ export const getCustomers = asyncHandler(async (req, res) => {
     }
     const fallbackMapped = filtered.map(c => ({
       ...c,
-      totalPurchases: c.totalPurchases || (c.totalOrders ? c.totalOrders * 3500 : 0)
+
+
+
     }));
     return sendResponse(
       res,

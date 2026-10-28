@@ -1118,22 +1118,22 @@ export default function Billing() {
             </div>
             <div>
               <div className="flex items-center gap-2.5 flex-wrap">
-                <h1 className="text-lg sm:text-xl font-semibold text-[#1D1D1F] tracking-tight">
+                <h1 className="text-[20px] sm:text-[22px] font-semibold text-[#111827] tracking-normal leading-[1.3]">
                   {documentType === "quotation" ? "Create Quotation" : "Point of Sale & New Bill"}
                 </h1>
                 {documentType === "quotation" ? (
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-purple-50 text-purple-700 text-[11px] font-semibold border border-purple-200">
+                  <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 text-[11px] font-medium border border-purple-200">
                     <span className="w-1.5 h-1.5 rounded-full bg-purple-600 animate-pulse" />
                     <span>Quotation Mode</span>
                   </div>
                 ) : (
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#EDF8F0] text-[#248A3D] text-[11px] font-medium border border-[#CCE8D4]">
+                  <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#EDF8F0] text-[#248A3D] text-[11px] font-medium border border-[#CCE8D4]">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#248A3D] animate-pulse" />
                     <span>Active POS</span>
                   </div>
                 )}
               </div>
-              <div className="flex items-center gap-3 text-xs text-[#6E6E73] mt-0.5 font-normal">
+              <div className="flex items-center gap-2.5 text-[12px] leading-[1.5] text-[#4B5563] mt-0.5 font-normal">
                 <span>
                   {documentType === "quotation"
                     ? `Quotation #${quotationNumber}`

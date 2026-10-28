@@ -660,7 +660,7 @@ export default function Purchases({ defaultTab = "invoices" }) {
   return (
     <div
       className="space-y-6 max-w-7xl mx-auto pb-12 fade-up text-[#1D1D1F]"
-      style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif" }}
+      style={{ fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}
     >
       {/* ── Page Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 sm:p-6 rounded-2xl border border-[#E5E5EA] shadow-[0_1px_3px_rgba(0,0,0,0.04)]">

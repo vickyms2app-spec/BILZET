@@ -586,7 +586,7 @@ export default function Layout({ children }) {
   };
 
   return (
-    <div className="h-screen w-screen overflow-hidden flex bg-[#f8fafc] text-slate-800 antialiased font-sans selection:bg-blue-600 selection:text-white">
+    <div className="h-screen w-screen overflow-hidden flex bg-[#F7FBFF] text-[#7188A3] antialiased font-sans selection:bg-[#D8EBFF] selection:text-[#1E40AF]">
       {/* ══════════════════════════════════════════════════
           DESKTOP & TABLET SIDEBAR
       ══════════════════════════════════════════════════ */}
@@ -595,21 +595,21 @@ export default function Layout({ children }) {
           sidebarOpen ? "w-[264px]" : "w-[72px]"
         }`}
         style={{
-          backgroundColor: "#0A1628",
-          borderRight: "1px solid rgba(255,255,255,0.08)",
+          background: "linear-gradient(180deg, #F5FAFF 0%, #E8F4FF 50%, #D9ECFF 100%)",
+          borderRight: "1px solid #DCEBFA",
         }}
       >
         {/* Brand Header */}
         <div
-          className={`flex items-center h-16 px-4 border-b border-white/[0.08] shrink-0 ${
+          className={`flex items-center h-16 px-4 border-b border-[#DCEBFA] shrink-0 ${
             sidebarOpen ? "justify-between" : "justify-center"
           }`}
         >
-          <Logo collapsed={!sidebarOpen} theme="dark" size="md" />
+          <Logo collapsed={!sidebarOpen} theme="light" size="md" />
           {sidebarOpen && (
             <button
               onClick={() => setSidebarOpen(false)}
-              className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-white/[0.08] transition duration-150 cursor-pointer"
+              className="text-[#648CB8] hover:text-[#111827] p-1.5 rounded-lg hover:bg-[#E3F1FF] transition duration-150 cursor-pointer"
               title="Collapse sidebar"
               aria-label="Collapse sidebar"
             >
@@ -619,7 +619,7 @@ export default function Layout({ children }) {
           {!sidebarOpen && (
             <button
               onClick={() => setSidebarOpen(true)}
-              className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-white/[0.08] transition duration-150 cursor-pointer"
+              className="text-[#648CB8] hover:text-[#111827] p-1.5 rounded-lg hover:bg-[#E3F1FF] transition duration-150 cursor-pointer"
               title="Expand sidebar"
               aria-label="Expand sidebar"
             >
@@ -635,34 +635,34 @@ export default function Layout({ children }) {
               <div className="space-y-1.5">
                 <NavLink
                   to="/ca-portal/dashboard"
-                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg font-semibold text-xs text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-xs group"
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-[8px] font-semibold text-[13px] text-[#111827] bg-[#D4E9FF] hover:bg-[#C7E1FF] border border-[#DCEBFA] transition-colors shadow-2xs group"
                 >
                   <div className="flex items-center gap-2">
-                    <ShieldCheck size={16} className="text-white shrink-0" />
+                    <ShieldCheck size={16} className="text-[#3978B8] shrink-0" />
                     <span>CA Audit Suite</span>
                   </div>
-                  <span className="px-1.5 py-0.5 rounded bg-white/20 text-[10px] font-mono tracking-tight text-white/90">
+                  <span className="px-1.5 py-0.5 rounded bg-white/70 text-[10px] font-mono tracking-tight text-[#111827]">
                     AUDIT
                   </span>
                 </NavLink>
                 <NavLink
                   to="/dashboard"
-                  className="w-full flex items-center justify-center gap-1.5 py-1 px-2 text-[11px] font-medium text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition"
+                  className="w-full flex items-center justify-center gap-1.5 py-1 px-2 text-[11px] font-medium text-[#374151] hover:text-[#111827] bg-white/50 hover:bg-[#E3F1FF] rounded-[8px] transition border border-[#DCEBFA]"
                 >
-                  <ArrowRightLeft size={12} className="text-cyan-300" />
+                  <ArrowRightLeft size={12} className="text-[#648CB8]" />
                   <span>Exit to Shop Dashboard</span>
                 </NavLink>
               </div>
             ) : (
               <NavLink
                 to="/billing"
-                className="w-full flex items-center justify-between px-3 py-2 rounded-lg font-semibold text-xs text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-xs group"
+                className="w-full flex items-center justify-between px-3 py-2 rounded-[8px] font-semibold text-[13px] text-[#111827] bg-[#D4E9FF] hover:bg-[#C7E1FF] border border-[#DCEBFA] transition-colors shadow-2xs group"
               >
                 <div className="flex items-center gap-2">
-                  <Plus size={16} className="text-white shrink-0" />
+                  <Plus size={16} className="text-[#3978B8] shrink-0" />
                   <span>New Bill</span>
                 </div>
-                <span className="px-1.5 py-0.5 rounded bg-white/20 text-[10px] font-mono tracking-wide text-white/90">
+                <span className="px-1.5 py-0.5 rounded bg-white/70 text-[10px] font-mono tracking-wide text-[#111827]">
                   F2
                 </span>
               </NavLink>
@@ -675,25 +675,25 @@ export default function Layout({ children }) {
                 <NavLink
                   to="/ca-portal/dashboard"
                   title="CA Audit Suite"
-                  className="w-10 h-10 rounded-lg flex items-center justify-center text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-xs"
+                  className="w-10 h-10 rounded-[8px] flex items-center justify-center text-[#111827] bg-[#D4E9FF] hover:bg-[#C7E1FF] border border-[#DCEBFA] transition-colors shadow-2xs"
                 >
-                  <ShieldCheck size={18} />
+                  <ShieldCheck size={18} className="text-[#3978B8]" />
                 </NavLink>
                 <NavLink
                   to="/dashboard"
                   title="Exit to Shop Dashboard"
-                  className="w-10 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 transition-colors"
+                  className="w-10 h-8 rounded-[8px] flex items-center justify-center text-[#374151] hover:text-[#111827] bg-white/50 hover:bg-[#E3F1FF] border border-[#DCEBFA] transition-colors"
                 >
-                  <ArrowRightLeft size={14} className="text-cyan-300" />
+                  <ArrowRightLeft size={14} className="text-[#648CB8]" />
                 </NavLink>
               </>
             ) : (
               <NavLink
                 to="/billing"
                 title="New Bill (F2)"
-                className="w-10 h-10 rounded-lg flex items-center justify-center text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-xs"
+                className="w-10 h-10 rounded-[8px] flex items-center justify-center text-[#111827] bg-[#D4E9FF] hover:bg-[#C7E1FF] border border-[#DCEBFA] transition-colors shadow-2xs"
               >
-                <Plus size={18} />
+                <Plus size={18} className="text-[#3978B8]" />
               </NavLink>
             )}
           </div>
@@ -701,8 +701,8 @@ export default function Layout({ children }) {
 
         {/* Navigation list */}
         {isCA ? (
-          <div className="flex-1 flex flex-col justify-between overflow-y-auto px-3 py-2 scrollbar-thin scrollbar-thumb-white/10 hover:scrollbar-thumb-white/20">
-            {/* Main navigation (1. CA Dashboard, 2. Clients, 3. GST & Tax, 4. Audit & Workpapers, 5. Documents) */}
+          <div className="flex-1 flex flex-col justify-between overflow-y-auto px-3 py-2 scrollbar-thin scrollbar-thumb-[#D8EBFF] hover:scrollbar-thumb-[#8AAED8]">
+            {/* Main navigation */}
             <nav className="space-y-1">
               {caMainNavItems.map((item) => {
                 const Icon = item.icon;
@@ -713,16 +713,16 @@ export default function Layout({ children }) {
                     key={item.path}
                     to={item.path}
                     title={!sidebarOpen ? item.label : undefined}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-colors relative group ${
+                    className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-[7px] text-[13px] font-medium transition-[background-color,color] duration-180 relative group ${
                       isActive
-                        ? "bg-blue-600 text-white font-semibold shadow-xs"
-                        : "text-slate-300 hover:text-white hover:bg-white/[0.06]"
-                    } ${!sidebarOpen ? "justify-center px-0 py-2.5" : ""}`}
+                        ? "bg-[#D4E9FF] text-[#111827] font-medium"
+                        : "text-[#111827] hover:bg-[#E3F1FF]"
+                    } ${!sidebarOpen ? "justify-center px-0 py-2" : ""}`}
                   >
                     <Icon
-                      size={16}
-                      className={`shrink-0 transition-transform duration-150 group-hover:scale-105 ${
-                        isActive ? "text-white" : "text-slate-400 group-hover:text-slate-200"
+                      size={15}
+                      className={`shrink-0 transition-colors duration-180 ${
+                        isActive ? "text-[#3978B8]" : "text-[#648CB8] group-hover:text-[#3978B8]"
                       }`}
                       strokeWidth={isActive ? 2.2 : 1.8}
                     />
@@ -732,8 +732,8 @@ export default function Layout({ children }) {
               })}
             </nav>
 
-            {/* Bottom navigation (6. Refer & Earn, 7. Settings) */}
-            <div className="pt-3 border-t border-white/[0.08] mt-auto space-y-1 shrink-0">
+            {/* Bottom navigation */}
+            <div className="pt-2.5 border-t border-[#DCEBFA] mt-auto space-y-0.5 shrink-0">
               {caBottomNavItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = isCaItemActive(item.path);
@@ -743,16 +743,16 @@ export default function Layout({ children }) {
                     key={item.path}
                     to={item.path}
                     title={!sidebarOpen ? item.label : undefined}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-colors relative group ${
+                    className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-[7px] text-[13px] font-medium transition-[background-color,color] duration-180 relative group ${
                       isActive
-                        ? "bg-blue-600 text-white font-semibold shadow-xs"
-                        : "text-slate-300 hover:text-white hover:bg-white/[0.06]"
-                    } ${!sidebarOpen ? "justify-center px-0 py-2.5" : ""}`}
+                        ? "bg-[#D4E9FF] text-[#111827] font-medium"
+                        : "text-[#111827] hover:bg-[#E3F1FF]"
+                    } ${!sidebarOpen ? "justify-center px-0 py-2" : ""}`}
                   >
                     <Icon
-                      size={16}
-                      className={`shrink-0 transition-transform duration-150 group-hover:scale-105 ${
-                        isActive ? "text-white" : "text-slate-400 group-hover:text-slate-200"
+                      size={15}
+                      className={`shrink-0 transition-colors duration-180 ${
+                        isActive ? "text-[#3978B8]" : "text-[#648CB8] group-hover:text-[#3978B8]"
                       }`}
                       strokeWidth={isActive ? 2.2 : 1.8}
                     />
@@ -763,7 +763,7 @@ export default function Layout({ children }) {
             </div>
           </div>
         ) : (
-          <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-2.5 scrollbar-thin scrollbar-thumb-white/10 hover:scrollbar-thumb-white/20">
+          <nav className="flex-1 overflow-y-auto px-2.5 py-1.5 space-y-1.5 scrollbar-thin scrollbar-thumb-[#D8EBFF] hover:scrollbar-thumb-[#8AAED8]">
             {displayedNavSections.map((section, sIdx) => {
               const isSectionCollapsed = !!collapsedSections[section.key];
 
@@ -772,18 +772,18 @@ export default function Layout({ children }) {
                   {sidebarOpen ? (
                     <button
                       onClick={() => toggleSection(section.key)}
-                      className="w-full flex items-center justify-between px-2.5 pt-2.5 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400/80 hover:text-slate-200 transition cursor-pointer"
+                      className="w-full flex items-center justify-between px-2 pt-2 pb-0.5 text-[11px] font-medium uppercase tracking-[0.25px] text-[#374151] hover:text-[#111827] transition cursor-pointer"
                     >
                       <span className="truncate">{section.title}</span>
                       <ChevronDown
                         size={12}
-                        className={`text-slate-500 transition-transform duration-200 ${
+                        className={`text-[#648CB8] transition-transform duration-200 ${
                           isSectionCollapsed ? "-rotate-90" : ""
                         }`}
                       />
                     </button>
                   ) : (
-                    sIdx > 0 && <div className="mx-2 my-2 border-t border-white/[0.08]" />
+                    sIdx > 0 && <div className="mx-2 my-1.5 border-t border-[#DCEBFA]" />
                   )}
 
                   {(!isSectionCollapsed || !sidebarOpen) && (
@@ -805,16 +805,16 @@ export default function Layout({ children }) {
                             key={item.path}
                             to={item.path}
                             title={!sidebarOpen ? item.label : undefined}
-                            className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-colors relative group ${
+                            className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-[7px] text-[13px] font-normal sm:font-medium transition-[background-color,color] duration-180 relative group ${
                               isActive
-                                ? "bg-blue-600 text-white font-semibold shadow-xs"
-                                : "text-slate-300 hover:text-white hover:bg-white/[0.06]"
-                            } ${!sidebarOpen ? "justify-center px-0 py-2.5" : ""}`}
+                                ? "bg-[#D4E9FF] text-[#111827] font-medium"
+                                : "text-[#111827] hover:bg-[#E3F1FF]"
+                            } ${!sidebarOpen ? "justify-center px-0 py-2" : ""}`}
                           >
                             <Icon
-                              size={16}
-                              className={`shrink-0 transition-transform duration-150 group-hover:scale-105 ${
-                                isActive ? "text-white" : "text-slate-400 group-hover:text-slate-200"
+                              size={15}
+                              className={`shrink-0 transition-colors duration-180 ${
+                                isActive ? "text-[#3978B8]" : "text-[#648CB8] group-hover:text-[#3978B8]"
                               }`}
                               strokeWidth={isActive ? 2.2 : 1.8}
                             />
@@ -832,31 +832,38 @@ export default function Layout({ children }) {
 
         {/* Admin Console & Vault — Only Bottom Item for non-CA */}
         {isAuthorizedAdmin && !isCA && (
-          <div className="p-3 border-t border-white/[0.08] bg-[#0A1628] shrink-0">
+          <div className="p-2.5 border-t border-[#DCEBFA] shrink-0">
             {sidebarOpen ? (
               <NavLink
                 to="/admin"
                 className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                  `flex items-center gap-2.5 px-2.5 py-1.5 rounded-[7px] text-[13px] font-normal sm:font-medium transition-[background-color,color] duration-180 ${
                     isActive || location.pathname === "/app-admin"
-                      ? "bg-blue-600 text-white font-semibold shadow-xs"
-                      : "text-slate-300 hover:text-white hover:bg-white/[0.06]"
+                      ? "bg-[#D4E9FF] text-[#111827] font-medium"
+                      : "text-[#111827] hover:bg-[#E3F1FF]"
                   }`
                 }
               >
-                <Shield size={16} className="shrink-0" />
-                <span className="truncate">Admin Console & Vault</span>
+                <Shield
+                  size={16}
+                  className={`shrink-0 transition-colors duration-180 ${
+                    location.pathname === "/admin" || location.pathname === "/app-admin"
+                      ? "text-[#3978B8]"
+                      : "text-[#648CB8]"
+                  }`}
+                />
+                <span className="truncate">Admin Console &amp; Vault</span>
               </NavLink>
             ) : (
               <div className="flex justify-center">
                 <NavLink
                   to="/admin"
-                  title="Admin Console & Vault"
+                  title="Admin Console &amp; Vault"
                   className={({ isActive }) =>
-                    `w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
+                    `w-10 h-10 rounded-[8px] flex items-center justify-center transition-[background-color,color] duration-180 ${
                       isActive || location.pathname === "/app-admin"
-                        ? "bg-blue-600 text-white shadow-xs"
-                        : "text-slate-400 hover:text-white hover:bg-white/[0.06]"
+                        ? "bg-[#D4E9FF] text-[#111827]"
+                        : "text-[#648CB8] hover:text-[#111827] hover:bg-[#E3F1FF]"
                     }`
                   }
                 >
@@ -874,18 +881,20 @@ export default function Layout({ children }) {
       {mobileDrawer && (
         <div className="fixed inset-0 z-50 md:hidden flex">
           <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+            className="fixed inset-0 bg-[#526B87]/40 backdrop-blur-xs animate-in fade-in duration-200"
             onClick={() => setMobileDrawer(false)}
           />
           <div
-            className="relative w-72 max-w-[85vw] h-full flex flex-col z-10 p-4 overflow-y-auto animate-in slide-in-from-left duration-250 shadow-2xl"
-            style={{ backgroundColor: "#0A1628" }}
+            className="relative w-72 max-w-[85vw] h-full flex flex-col z-10 p-4 overflow-y-auto animate-in slide-in-from-left duration-250 shadow-2xl border-r border-[#DCEBFA]"
+            style={{
+              background: "linear-gradient(180deg, #F5FAFF 0%, #E8F4FF 50%, #D9ECFF 100%)",
+            }}
           >
-            <div className="flex items-center justify-between pb-3.5 border-b border-white/[0.08]">
-              <Logo variant="full" theme="dark" size="md" />
+            <div className="flex items-center justify-between pb-3.5 border-b border-[#DCEBFA]">
+              <Logo variant="full" theme="light" size="md" />
               <button
                 onClick={() => setMobileDrawer(false)}
-                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-white/10 transition cursor-pointer"
+                className="p-1.5 text-[#648CB8] hover:text-[#111827] rounded-lg hover:bg-[#E3F1FF] transition cursor-pointer"
                 aria-label="Close Navigation"
               >
                 <X size={18} />
@@ -895,21 +904,21 @@ export default function Layout({ children }) {
             <div className="pt-3 pb-2 shrink-0">
               {isCA ? (
                 <div className="space-y-1.5">
-                  <div className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg font-semibold text-xs text-white bg-blue-600 shadow-xs">
+                  <div className="w-full flex items-center justify-between px-3 py-2.5 rounded-[8px] font-semibold text-[13px] text-[#111827] bg-[#D4E9FF] border border-[#DCEBFA] shadow-2xs">
                     <div className="flex items-center gap-2">
-                      <ShieldCheck size={16} className="text-white shrink-0" />
+                      <ShieldCheck size={16} className="text-[#3978B8] shrink-0" />
                       <span>CA Audit Suite</span>
                     </div>
-                    <span className="px-1.5 py-0.5 rounded bg-white/20 text-[10px] font-mono tracking-tight text-white/90">
+                    <span className="px-1.5 py-0.5 rounded bg-white/70 text-[10px] font-mono tracking-tight text-[#111827]">
                       AUDIT
                     </span>
                   </div>
                   <NavLink
                     to="/dashboard"
                     onClick={() => setMobileDrawer(false)}
-                    className="w-full flex items-center justify-center gap-1.5 py-1.5 px-2 text-[11px] font-medium text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition"
+                    className="w-full flex items-center justify-center gap-1.5 py-1.5 px-2 text-[11px] font-medium text-[#374151] hover:text-[#111827] bg-white/50 hover:bg-[#E3F1FF] rounded-[8px] transition border border-[#DCEBFA]"
                   >
-                    <ArrowRightLeft size={12} className="text-cyan-300" />
+                    <ArrowRightLeft size={12} className="text-[#648CB8]" />
                     <span>Exit to Shop Dashboard</span>
                   </NavLink>
                 </div>
@@ -917,13 +926,13 @@ export default function Layout({ children }) {
                 <NavLink
                   to="/billing"
                   onClick={() => setMobileDrawer(false)}
-                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg font-semibold text-xs text-white bg-blue-600 hover:bg-blue-700 shadow-xs transition"
+                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-[8px] font-semibold text-[13px] text-[#111827] bg-[#D4E9FF] hover:bg-[#C7E1FF] border border-[#DCEBFA] shadow-2xs transition"
                 >
                   <div className="flex items-center gap-2">
-                    <Plus size={16} />
+                    <Plus size={16} className="text-[#3978B8]" />
                     <span>New Bill</span>
                   </div>
-                  <span className="px-1.5 py-0.5 rounded bg-white/20 text-[10px] font-mono tracking-wide text-white/90">
+                  <span className="px-1.5 py-0.5 rounded bg-white/70 text-[10px] font-mono tracking-wide text-[#111827]">
                     F2
                   </span>
                 </NavLink>
@@ -943,15 +952,15 @@ export default function Layout({ children }) {
                         key={item.path}
                         to={item.path}
                         onClick={() => setMobileDrawer(false)}
-                        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition ${
+                        className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-[7px] text-[13px] font-medium transition-[background-color,color] duration-180 ${
                           isActive
-                            ? "bg-blue-600 text-white font-semibold shadow-xs"
-                            : "text-slate-300 hover:text-white hover:bg-white/[0.06]"
+                            ? "bg-[#D4E9FF] text-[#111827] font-medium"
+                            : "text-[#111827] hover:bg-[#E3F1FF]"
                         }`}
                       >
                         <Icon
-                          size={16}
-                          className={isActive ? "text-white" : "text-slate-400"}
+                          size={15}
+                          className={isActive ? "text-[#3978B8]" : "text-[#648CB8]"}
                           strokeWidth={isActive ? 2.2 : 1.8}
                         />
                         <span>{item.label}</span>
@@ -960,7 +969,7 @@ export default function Layout({ children }) {
                   })}
                 </nav>
 
-                <div className="pt-3 border-t border-white/[0.08] mt-auto space-y-1">
+                <div className="pt-2.5 border-t border-[#DCEBFA] mt-auto space-y-0.5">
                   {caBottomNavItems.map((item) => {
                     const Icon = item.icon;
                     const isActive = isCaItemActive(item.path);
@@ -970,15 +979,15 @@ export default function Layout({ children }) {
                         key={item.path}
                         to={item.path}
                         onClick={() => setMobileDrawer(false)}
-                        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition ${
+                        className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-[7px] text-[13px] font-medium transition-[background-color,color] duration-180 ${
                           isActive
-                            ? "bg-blue-600 text-white font-semibold shadow-xs"
-                            : "text-slate-300 hover:text-white hover:bg-white/[0.06]"
+                            ? "bg-[#D4E9FF] text-[#111827] font-medium"
+                            : "text-[#111827] hover:bg-[#E3F1FF]"
                         }`}
                       >
                         <Icon
-                          size={16}
-                          className={isActive ? "text-white" : "text-slate-400"}
+                          size={15}
+                          className={isActive ? "text-[#3978B8]" : "text-[#648CB8]"}
                           strokeWidth={isActive ? 2.2 : 1.8}
                         />
                         <span>{item.label}</span>
@@ -988,10 +997,10 @@ export default function Layout({ children }) {
                 </div>
               </div>
             ) : (
-              <nav className="flex-1 overflow-y-auto py-2 space-y-2.5">
+              <nav className="flex-1 overflow-y-auto py-2 space-y-1.5">
                 {displayedNavSections.map((section) => (
                   <div key={section.title} className="space-y-0.5">
-                    <div className="px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400/80">
+                    <div className="px-2.5 pt-1.5 pb-0.5 text-[11px] font-medium uppercase tracking-[0.25px] text-[#374151]">
                       {section.title}
                     </div>
                     {section.items.map((item) => {
@@ -1005,15 +1014,15 @@ export default function Layout({ children }) {
                           key={item.path}
                           to={item.path}
                           onClick={() => setMobileDrawer(false)}
-                          className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${
+                          className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-[7px] text-[13px] font-normal sm:font-medium transition-[background-color,color] duration-180 ${
                             isActive
-                              ? "bg-blue-600 text-white font-semibold shadow-xs"
-                              : "text-slate-300 hover:text-white hover:bg-white/[0.06]"
+                              ? "bg-[#D4E9FF] text-[#111827] font-medium"
+                              : "text-[#111827] hover:bg-[#E3F1FF]"
                           }`}
                         >
                           <Icon
-                            size={16}
-                            className={isActive ? "text-white" : "text-slate-400"}
+                            size={15}
+                            className={isActive ? "text-[#3978B8]" : "text-[#648CB8]"}
                             strokeWidth={isActive ? 2.2 : 1.8}
                           />
                           <span>{item.label}</span>
@@ -1026,14 +1035,14 @@ export default function Layout({ children }) {
             )}
 
             {/* User Profile Summary & Actions at bottom of Mobile Drawer */}
-            <div className="pt-3 border-t border-white/[0.08] shrink-0 space-y-2">
-              <div className="flex items-center gap-3 px-2 py-1.5 rounded-xl bg-white/[0.04]">
-                <div className="w-9 h-9 rounded-xl bg-blue-600 text-white font-bold text-xs flex items-center justify-center shrink-0">
+            <div className="pt-2.5 border-t border-[#DCEBFA] shrink-0 space-y-1.5">
+              <div className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-[7px] bg-white/60 border border-[#DCEBFA]">
+                <div className="w-8 h-8 rounded-full bg-[#D4E9FF] text-[#111827] font-semibold text-xs flex items-center justify-center shrink-0 border border-[#DCEBFA]">
                   {userInitials}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-bold text-white truncate">{displayName}</p>
-                  <p className="text-[10px] text-slate-400 truncate">{displayRole}</p>
+                  <p className="text-xs font-semibold text-[#111827] truncate">{displayName}</p>
+                  <p className="text-[10px] text-[#4B5563] truncate">{displayRole}</p>
                 </div>
               </div>
 
@@ -1042,14 +1051,14 @@ export default function Layout({ children }) {
                   to="/admin"
                   onClick={() => setMobileDrawer(false)}
                   className={({ isActive }) =>
-                    `flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition ${
+                    `flex items-center gap-2.5 px-2.5 py-1.5 rounded-[7px] text-[13px] font-normal sm:font-medium transition-[background-color,color] duration-180 ${
                       isActive || location.pathname === "/app-admin"
-                        ? "bg-blue-600 text-white font-semibold shadow-xs"
-                        : "text-slate-300 hover:text-white hover:bg-white/[0.06]"
+                        ? "bg-[#D4E9FF] text-[#111827] font-medium"
+                        : "text-[#111827] hover:bg-[#E3F1FF]"
                     }`
                   }
                 >
-                  <Shield size={16} />
+                  <Shield size={15} className={location.pathname === "/admin" || location.pathname === "/app-admin" ? "text-[#3978B8]" : "text-[#648CB8]"} />
                   <span>Admin Console &amp; Vault</span>
                 </NavLink>
               )}
@@ -1060,7 +1069,7 @@ export default function Layout({ children }) {
                   setMobileDrawer(false);
                   handleLogout();
                 }}
-                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition cursor-pointer min-h-[44px]"
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-semibold text-rose-500 hover:text-rose-600 hover:bg-[#FFF0F2] transition cursor-pointer min-h-[44px]"
               >
                 <LogOut size={16} />
                 <span>Log Out</span>
@@ -1075,14 +1084,14 @@ export default function Layout({ children }) {
       ══════════════════════════════════════════════════ */}
       <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
         {/* ── Top Header Bar ── */}
-        <header className="h-16 shrink-0 bg-white border-b border-slate-200 px-4 sm:px-6 flex items-center justify-between gap-4 z-20">
+        <header className="h-16 shrink-0 bg-white border-b border-[#E3EDF8] px-4 sm:px-6 flex items-center justify-between gap-4 z-20">
           {/* Left: Mobile trigger & Global Search with Ctrl+K */}
           <div className="flex items-center gap-2.5 min-w-0 flex-1 max-w-md">
             {/* Simple Hamburger Menu on the left */}
             <button
               type="button"
               onClick={() => setMobileDrawer(true)}
-              className="md:hidden p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition shrink-0 cursor-pointer"
+              className="md:hidden p-2 rounded-lg text-[#8AAED8] hover:text-[#526B87] hover:bg-[#F4F9FF] transition shrink-0 cursor-pointer"
               aria-label="Open Navigation"
             >
               <Menu size={18} />
@@ -1091,7 +1100,7 @@ export default function Layout({ children }) {
             <button
               type="button"
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="hidden md:flex p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition shrink-0 cursor-pointer"
+              className="hidden md:flex p-2 rounded-lg text-[#8AAED8] hover:text-[#526B87] hover:bg-[#F4F9FF] transition shrink-0 cursor-pointer"
               title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
               aria-label="Toggle Sidebar"
             >
@@ -1100,8 +1109,8 @@ export default function Layout({ children }) {
 
             {/* Compact Customer Search Bar with Ctrl+K */}
             <div className="relative w-full">
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-400 w-full focus-within:border-blue-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-500/10 transition">
-                <Search size={14} className="text-slate-400 shrink-0" />
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-[#F4F9FF] border border-[#E3EDF8] rounded-lg text-xs text-[#94A8BE] w-full focus-within:border-[#8AAED8] focus-within:bg-white focus-within:ring-2 focus-within:ring-[#D8EBFF] transition">
+                <Search size={14} className="text-[#8AAED8] shrink-0" />
                 <input
                   ref={searchInputRef}
                   type="text"
@@ -1111,7 +1120,7 @@ export default function Layout({ children }) {
                     if (searchQuery.trim()) setSearchOpen(true);
                   }}
                   placeholder="Search customers, products, bills..."
-                  className="bg-transparent outline-none w-full text-slate-800 text-xs placeholder:text-slate-400 font-normal"
+                  className="bg-transparent outline-none w-full text-[#526B87] text-xs placeholder:text-[#94A8BE] font-normal"
                 />
                 {searchQuery ? (
                   <button
@@ -1120,12 +1129,12 @@ export default function Layout({ children }) {
                       setSearchQuery("");
                       setSearchOpen(false);
                     }}
-                    className="text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                    className="text-[#94A8BE] hover:text-[#526B87] p-0.5 cursor-pointer"
                   >
                     <X size={13} />
                   </button>
                 ) : (
-                  <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 text-[10px] font-mono font-medium text-slate-400 bg-white border border-slate-200 rounded shrink-0 select-none">
+                  <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 text-[10px] font-mono font-medium text-[#94A8BE] bg-white border border-[#E3EDF8] rounded shrink-0 select-none">
                     Ctrl K
                   </kbd>
                 )}
@@ -1138,10 +1147,10 @@ export default function Layout({ children }) {
                     className="fixed inset-0 z-30"
                     onClick={() => setSearchOpen(false)}
                   />
-                  <div className="absolute left-0 right-0 mt-2 bg-white rounded-2xl p-3 shadow-2xl border border-slate-200 z-40 max-h-[80vh] overflow-y-auto animate-in fade-in zoom-in-95">
+                  <div className="absolute left-0 right-0 mt-2 bg-white rounded-2xl p-3 shadow-2xl border border-[#E3EDF8] z-40 max-h-[80vh] overflow-y-auto animate-in fade-in zoom-in-95">
                     {searchLoading ? (
-                      <div className="py-6 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
-                        <RefreshCw size={14} className="animate-spin text-blue-600" />
+                      <div className="py-6 text-center text-xs text-[#94A8BE] flex items-center justify-center gap-2">
+                        <RefreshCw size={14} className="animate-spin text-[#2563EB]" />
                         <span>Searching records…</span>
                       </div>
                     ) : (
@@ -1149,7 +1158,7 @@ export default function Layout({ children }) {
                         {/* CUSTOMERS */}
                         {searchResults.customers.length > 0 && (
                           <div>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2 mb-1.5">
+                            <p className="text-[10px] font-bold text-[#94A8BE] uppercase tracking-wider px-2 mb-1.5">
                               Customers ({searchResults.customers.length})
                             </p>
                             <div className="space-y-1">
@@ -1160,18 +1169,18 @@ export default function Layout({ children }) {
                                     setSearchOpen(false);
                                     nav(`/customers`);
                                   }}
-                                  className="flex items-center justify-between p-2 rounded-xl hover:bg-blue-50/70 cursor-pointer transition text-xs"
+                                  className="flex items-center justify-between p-2 rounded-xl hover:bg-[#F4F9FF] cursor-pointer transition text-xs"
                                 >
                                   <div className="flex items-center gap-2">
-                                    <div className="w-7 h-7 rounded-lg bg-blue-100/60 text-blue-700 flex items-center justify-center font-bold text-[11px]">
+                                    <div className="w-7 h-7 rounded-lg bg-[#D8EBFF] text-[#1E40AF] flex items-center justify-center font-bold text-[11px] border border-[#C7E1FF]">
                                       {c.name?.[0] || "C"}
                                     </div>
                                     <div>
-                                      <p className="font-semibold text-slate-800">{c.name}</p>
-                                      <p className="text-[10px] text-slate-400">{c.phone || "No phone"}</p>
+                                      <p className="font-semibold text-[#526B87]">{c.name}</p>
+                                      <p className="text-[10px] text-[#94A8BE]">{c.phone || "No phone"}</p>
                                     </div>
                                   </div>
-                                  <span className="text-[11px] font-mono font-bold text-slate-600">
+                                  <span className="text-[11px] font-mono font-bold text-[#526B87]">
                                     ₹{Number(c.balance || 0).toLocaleString("en-IN")}
                                   </span>
                                 </div>
@@ -1183,7 +1192,7 @@ export default function Layout({ children }) {
                         {/* PRODUCTS */}
                         {searchResults.products.length > 0 && (
                           <div>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2 mb-1.5">
+                            <p className="text-[10px] font-bold text-[#94A8BE] uppercase tracking-wider px-2 mb-1.5">
                               Products ({searchResults.products.length})
                             </p>
                             <div className="space-y-1">
@@ -1194,18 +1203,18 @@ export default function Layout({ children }) {
                                     setSearchOpen(false);
                                     nav(`/products`);
                                   }}
-                                  className="flex items-center justify-between p-2 rounded-xl hover:bg-emerald-50/70 cursor-pointer transition text-xs"
+                                  className="flex items-center justify-between p-2 rounded-xl hover:bg-[#ECF9F1] cursor-pointer transition text-xs"
                                 >
                                   <div className="flex items-center gap-2">
-                                    <div className="w-7 h-7 rounded-lg bg-emerald-100/60 text-emerald-700 flex items-center justify-center">
+                                    <div className="w-7 h-7 rounded-lg bg-[#ECF9F1] text-[#166534] flex items-center justify-center border border-[#C8E6C9]">
                                       <Package size={14} />
                                     </div>
                                     <div>
-                                      <p className="font-semibold text-slate-800">{p.name}</p>
-                                      <p className="text-[10px] text-slate-400">Stock: {p.stock ?? 0} {p.unit || ""}</p>
+                                      <p className="font-semibold text-[#526B87]">{p.name}</p>
+                                      <p className="text-[10px] text-[#94A8BE]">Stock: {p.stock ?? 0} {p.unit || ""}</p>
                                     </div>
                                   </div>
-                                  <span className="text-[11px] font-mono font-bold text-emerald-700">
+                                  <span className="text-[11px] font-mono font-bold text-[#166534]">
                                     ₹{p.sellingPrice}
                                   </span>
                                 </div>
@@ -1217,7 +1226,7 @@ export default function Layout({ children }) {
                         {/* INVOICES */}
                         {searchResults.invoices.length > 0 && (
                           <div>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2 mb-1.5">
+                            <p className="text-[10px] font-bold text-[#94A8BE] uppercase tracking-wider px-2 mb-1.5">
                               Invoices ({searchResults.invoices.length})
                             </p>
                             <div className="space-y-1">
@@ -1228,18 +1237,18 @@ export default function Layout({ children }) {
                                     setSearchOpen(false);
                                     nav(`/invoices`);
                                   }}
-                                  className="flex items-center justify-between p-2 rounded-xl hover:bg-purple-50/70 cursor-pointer transition text-xs"
+                                  className="flex items-center justify-between p-2 rounded-xl hover:bg-[#EEF7FF] cursor-pointer transition text-xs"
                                 >
                                   <div className="flex items-center gap-2">
-                                    <div className="w-7 h-7 rounded-lg bg-purple-100/60 text-purple-700 flex items-center justify-center font-mono text-[10px] font-bold">
+                                    <div className="w-7 h-7 rounded-lg bg-[#D8EBFF] text-[#1E40AF] flex items-center justify-center font-mono text-[10px] font-bold border border-[#C7E1FF]">
                                       INV
                                     </div>
                                     <div>
-                                      <p className="font-semibold text-slate-800">{inv.invoiceNumber}</p>
-                                      <p className="text-[10px] text-slate-400">{inv.customer?.name || "Walk-in"}</p>
+                                      <p className="font-semibold text-[#526B87]">{inv.invoiceNumber}</p>
+                                      <p className="text-[10px] text-[#94A8BE]">{inv.customer?.name || "Walk-in"}</p>
                                     </div>
                                   </div>
-                                  <span className="text-[11px] font-mono font-bold text-slate-700">
+                                  <span className="text-[11px] font-mono font-bold text-[#526B87]">
                                     ₹{Number(inv.grandTotal || 0).toLocaleString("en-IN")}
                                   </span>
                                 </div>
@@ -1251,7 +1260,7 @@ export default function Layout({ children }) {
                         {searchResults.customers.length === 0 &&
                           searchResults.products.length === 0 &&
                           searchResults.invoices.length === 0 && (
-                            <div className="py-6 text-center text-xs text-slate-400 italic">
+                            <div className="py-6 text-center text-xs text-[#94A8BE] italic">
                               No matching records found for &quot;{searchQuery}&quot;
                             </div>
                           )}
@@ -1269,13 +1278,13 @@ export default function Layout({ children }) {
             <StoreSwitcher variant="header" />
 
             {/* Subtle Divider */}
-            <div className="h-5 w-px bg-slate-200 hidden sm:block" />
+            <div className="h-5 w-px bg-[#EDF3FA] hidden sm:block" />
 
-            {/* Online Status: Small green dot with subtle text, no large bordered badge */}
+            {/* Online Status: Small green dot with subtle text */}
             {connStatus === "online" ? (
-              <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-500 select-none px-1">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                <span className="text-[11px] font-medium text-slate-600">Online</span>
+              <div className="hidden sm:flex items-center gap-1.5 text-xs text-[#7188A3] select-none px-1">
+                <span className="w-2 h-2 rounded-full bg-[#16A34A] shrink-0" />
+                <span className="text-[11px] font-medium text-[#526B87]">Online</span>
               </div>
             ) : (
               <button
@@ -1296,84 +1305,83 @@ export default function Layout({ children }) {
             <button
               type="button"
               onClick={() => setShowShortcutsModal(true)}
-              className="p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition cursor-pointer relative"
+              className="p-2 rounded-lg text-[#8AAED8] hover:text-[#526B87] hover:bg-[#F4F9FF] transition cursor-pointer relative"
               title="Keyboard Shortcuts (Ctrl + / or ?)"
               aria-label="Keyboard Shortcuts"
             >
               <Keyboard size={18} />
             </button>
 
-
             {/* Subscription Plan Badge and Action in Header */}
             {isPremium ? (
-              <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200 shrink-0">
+              <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#FFF6E9] text-[#92400E] border border-[#FDE68A] shrink-0">
                 <Crown size={12} className="text-amber-600" />
                 <span>Premium</span>
               </span>
             ) : isProOrHigher ? (
               <div className="flex items-center gap-1.5 shrink-0">
-                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#EEF7FF] text-[#1D4ED8] border border-[#D8EBFF]">
                   <Sparkles size={11} className="text-blue-600" />
                   <span>Pro</span>
                 </span>
                 <NavLink
                   to="/plans?tier=PREMIUM&redirect=/dashboard"
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-[11px] font-bold transition shadow-xs hover:shadow active:scale-98 shrink-0"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#D8EBFF] hover:bg-[#C7E1FF] text-[#1E40AF] text-[11px] font-bold transition border border-[#C7E1FF] shadow-2xs shrink-0"
                   title="Upgrade to Premium"
                 >
-                  <Crown size={12} className="text-amber-100" />
+                  <Crown size={12} className="text-amber-600" />
                   <span className="hidden sm:inline">Upgrade</span>
                 </NavLink>
               </div>
             ) : (
               <div className="flex items-center gap-1.5 shrink-0">
-                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#F4F9FF] text-[#7188A3] border border-[#E3EDF8]">
                   <span>Free</span>
                 </span>
                 <NavLink
                   to="/plans?tier=PRO&redirect=/dashboard"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white text-xs font-bold transition shadow-xs hover:shadow active:scale-98 shrink-0"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#D8EBFF] hover:bg-[#C7E1FF] text-[#1E40AF] text-xs font-bold transition border border-[#C7E1FF] shadow-2xs shrink-0"
                   title="Upgrade to Pro"
                 >
-                  <Sparkles size={13} className="text-blue-100" />
+                  <Sparkles size={13} className="text-[#2563EB]" />
                   <span className="hidden sm:inline">Upgrade to Pro</span>
                   <span className="sm:hidden">Upgrade</span>
                 </NavLink>
               </div>
             )}
 
-            {/* Primary Action: Solid blue "New Bill" button with plus icon */}
+            {/* Primary Action: Light Powder Blue "New Bill" button */}
             <NavLink
               to="/billing"
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition shadow-xs hover:shadow active:scale-98 shrink-0"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#D8EBFF] hover:bg-[#C7E1FF] text-[#1E40AF] text-xs font-bold transition border border-[#C7E1FF] shadow-2xs active:scale-98 shrink-0"
             >
-              <Plus size={15} className="shrink-0" />
+              <Plus size={15} className="text-[#2563EB] shrink-0" />
               <span>New Bill</span>
             </NavLink>
 
             {/* Subtle Divider */}
-            <div className="h-5 w-px bg-slate-200 hidden sm:block" />
+            <div className="h-5 w-px bg-[#EDF3FA] hidden sm:block" />
 
             {/* Profile Section: Avatar, name, and dropdown together in one compact profile section */}
             <div className="relative">
               <button
                 type="button"
                 onClick={() => setUserDropdown(!userDropdown)}
-                className="flex items-center gap-2 p-1 sm:px-2 py-1 rounded-lg hover:bg-slate-100 transition cursor-pointer text-left group"
+                className="flex items-center gap-2 p-1 sm:px-2 py-1 rounded-lg hover:bg-[#F4F9FF] transition cursor-pointer text-left group border border-transparent hover:border-[#E3EDF8]"
                 title="Account & Profile"
               >
-                <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
+                <div className="w-8 h-8 rounded-full bg-[#D8EBFF] text-[#1E40AF] flex items-center justify-center font-bold text-xs shrink-0 border border-[#C7E1FF]">
                   {userInitials}
                 </div>
                 <div className="hidden lg:flex flex-col text-left leading-tight">
-                  <span className="text-xs font-semibold text-slate-800 truncate max-w-[120px]">
+                  <span className="text-xs font-semibold text-[#526B87] truncate max-w-[120px]">
                     {displayName}
                   </span>
-                  <span className="text-[10px] text-slate-400 capitalize">
+                  <span className="text-[10px] text-[#94A8BE] capitalize">
                     {displayRole}
                   </span>
                 </div>
-                <ChevronDown size={14} className="text-slate-400 group-hover:text-slate-600 transition shrink-0" />
+                <ChevronDown size={14} className="text-[#8AAED8] group-hover:text-[#526B87] transition shrink-0" />
               </button>
 
               {userDropdown && (
@@ -1382,11 +1390,11 @@ export default function Layout({ children }) {
                     className="fixed inset-0 z-40"
                     onClick={() => setUserDropdown(false)}
                   />
-                  <div className="absolute right-0 mt-2 w-60 bg-white rounded-2xl p-2 shadow-xl border border-slate-200 z-50 animate-in fade-in zoom-in-95">
-                    <div className="px-3 py-2 border-b border-slate-100 mb-1">
-                      <p className="text-xs font-bold text-slate-900 truncate">{displayName}</p>
-                      <p className="text-[11px] text-slate-500 truncate">{user?.email || "owner@bilzet.com"}</p>
-                      <span className="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-100">
+                  <div className="absolute right-0 mt-2 w-60 bg-white rounded-2xl p-2 shadow-xl border border-[#E3EDF8] z-50 animate-in fade-in zoom-in-95">
+                    <div className="px-3 py-2 border-b border-[#EDF3FA] mb-1">
+                      <p className="text-xs font-bold text-[#526B87] truncate">{displayName}</p>
+                      <p className="text-[11px] text-[#94A8BE] truncate">{user?.email || "owner@bilzet.com"}</p>
+                      <span className="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#EEF7FF] text-[#1D4ED8] border border-[#D8EBFF]">
                         {displayRole}
                       </span>
                     </div>
@@ -1395,9 +1403,9 @@ export default function Layout({ children }) {
                       <NavLink
                         to="/ca-portal"
                         onClick={() => setUserDropdown(false)}
-                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-slate-700 hover:bg-slate-50 font-medium transition"
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-[#7188A3] hover:text-[#526B87] hover:bg-[#F4F9FF] font-medium transition"
                       >
-                        <Shield size={14} className="text-blue-600" />
+                        <Shield size={14} className="text-[#8AAED8]" />
                         <span>CA Audit Portal</span>
                       </NavLink>
                     ) : (
@@ -1405,18 +1413,18 @@ export default function Layout({ children }) {
                         <NavLink
                           to="/settings"
                           onClick={() => setUserDropdown(false)}
-                          className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-slate-700 hover:bg-slate-50 font-medium transition"
+                          className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-[#7188A3] hover:text-[#526B87] hover:bg-[#F4F9FF] font-medium transition"
                         >
-                          <Settings size={14} className="text-slate-500" />
+                          <Settings size={14} className="text-[#8AAED8]" />
                           <span>Business Settings</span>
                         </NavLink>
 
                         <NavLink
                           to="/subscription"
                           onClick={() => setUserDropdown(false)}
-                          className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-slate-700 hover:bg-slate-50 font-medium transition"
+                          className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-[#7188A3] hover:text-[#526B87] hover:bg-[#F4F9FF] font-medium transition"
                         >
-                          <CreditCard size={14} className="text-slate-500" />
+                          <CreditCard size={14} className="text-[#8AAED8]" />
                           <span>Subscription &amp; Plans</span>
                         </NavLink>
                       </>
@@ -1425,9 +1433,9 @@ export default function Layout({ children }) {
                     <NavLink
                       to="/audit-logs"
                       onClick={() => setUserDropdown(false)}
-                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-slate-700 hover:bg-slate-50 font-medium transition"
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-[#7188A3] hover:text-[#526B87] hover:bg-[#F4F9FF] font-medium transition"
                     >
-                      <History size={14} className="text-slate-500" />
+                      <History size={14} className="text-[#8AAED8]" />
                       <span>Security Logs</span>
                     </NavLink>
 
@@ -1436,9 +1444,9 @@ export default function Layout({ children }) {
                       <NavLink
                         to="/admin"
                         onClick={() => setUserDropdown(false)}
-                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-purple-700 bg-purple-50/70 hover:bg-purple-100/70 font-semibold transition mt-1"
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-[#1E40AF] bg-[#EEF7FF] hover:bg-[#D8EBFF] font-semibold transition mt-1 border border-[#D8EBFF]"
                       >
-                        <Shield size={14} className="text-purple-600" />
+                        <Shield size={14} className="text-[#2563EB]" />
                         <span>Admin Console &amp; Vault</span>
                       </NavLink>
                     )}
@@ -1451,35 +1459,19 @@ export default function Layout({ children }) {
                           toggleAdminReveal();
                           setUserDropdown(false);
                         }}
-                        className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs text-slate-700 hover:bg-slate-50 font-medium transition"
+                        className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs text-[#7188A3] hover:text-[#526B87] hover:bg-[#F4F9FF] font-medium transition"
                       >
                         <span className="flex items-center gap-2.5">
                           {adminRevealed ? (
                             <Unlock size={14} className="text-amber-600" />
                           ) : (
-                            <Lock size={14} className="text-purple-600" />
+                            <Lock size={14} className="text-[#8AAED8]" />
                           )}
                           <span>{adminRevealed ? "Vault Unmasked" : "Secure Masked"}</span>
                         </span>
-                        <span className="text-[10px] text-slate-400 font-mono">Toggle</span>
+                        <span className="text-[10px] text-[#94A8BE] font-mono">Toggle</span>
                       </button>
                     )}
-
-                    {/* Preserved Theme Toggle */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        toggleTheme();
-                        setUserDropdown(false);
-                      }}
-                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs text-slate-700 hover:bg-slate-50 font-medium transition"
-                    >
-                      <span className="flex items-center gap-2.5">
-                        {isDark ? <Sun size={14} className="text-amber-500" /> : <Moon size={14} className="text-slate-500" />}
-                        <span>{isDark ? "Light Mode" : "Dark Mode"}</span>
-                      </span>
-                      <span className="text-[10px] text-slate-400">Theme</span>
-                    </button>
 
                     {/* Preserved Quick Punch */}
                     {user && (
@@ -1490,7 +1482,7 @@ export default function Layout({ children }) {
                           setUserDropdown(false);
                         }}
                         disabled={headerPunching || Boolean(headerAttendance?.checkIn && headerAttendance?.checkOut)}
-                        className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs text-slate-700 hover:bg-slate-50 font-medium transition"
+                        className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs text-[#7188A3] hover:text-[#526B87] hover:bg-[#F4F9FF] font-medium transition"
                       >
                         <span className="flex items-center gap-2.5">
                           <span className={`w-2 h-2 rounded-full ${
@@ -1498,7 +1490,7 @@ export default function Layout({ children }) {
                               ? "bg-emerald-500 animate-pulse"
                               : headerAttendance?.checkIn && headerAttendance?.checkOut
                               ? "bg-slate-400"
-                              : "bg-blue-500"
+                              : "bg-[#2563EB]"
                           }`} />
                           <span>
                             {headerPunching
@@ -1513,14 +1505,14 @@ export default function Layout({ children }) {
                       </button>
                     )}
 
-                    <div className="border-t border-slate-100 my-1" />
+                    <div className="border-t border-[#EDF3FA] my-1" />
 
                     <button
                       onClick={() => {
                         setUserDropdown(false);
                         handleLogout();
                       }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-rose-600 hover:bg-rose-50 font-semibold transition"
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-rose-600 hover:bg-[#FFF0F2] font-semibold transition"
                     >
                       <LogOut size={14} />
                       <span>Log Out</span>
@@ -1533,18 +1525,18 @@ export default function Layout({ children }) {
         </header>
 
         {/* ── Main Content Canvas with Independent Vertical Scroll ── */}
-        <main key={storeRevision} className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8 bg-[#F8FAFC]">
+        <main key={storeRevision} className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8 bg-[#F7FBFF]">
           <div className="max-w-[1600px] w-full mx-auto pb-8">
             {children}
           </div>
         </main>
 
         {/* ── Fixed Clean Footer ── */}
-        <footer className="h-10 shrink-0 bg-white border-t border-slate-200 border-l-4 border-l-emerald-600 px-4 sm:px-6 flex items-center z-10">
+        <footer className="h-10 shrink-0 bg-white border-t border-[#E3EDF8] border-l-4 border-l-[#8AAED8] px-4 sm:px-6 flex items-center z-10">
           <div className="flex items-center gap-2.5 sm:gap-3 text-xs">
-            <span className="font-bold text-emerald-800 tracking-tight">Garden Greens</span>
-            <span className="h-3.5 w-px bg-slate-300" aria-hidden="true" />
-            <span className="text-slate-500 font-normal">© 2026 All rights reserved.</span>
+            <span className="font-bold text-[#526B87] tracking-tight">Garden Greens</span>
+            <span className="h-3.5 w-px bg-[#EDF3FA]" aria-hidden="true" />
+            <span className="text-[#94A8BE] font-normal">© 2026 All rights reserved.</span>
           </div>
         </footer>
       </div>

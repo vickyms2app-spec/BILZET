@@ -477,7 +477,7 @@ export default function Inventory() {
 
   return (
     <div
-      style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif' }}
+      style={{ fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}
       className="space-y-4 pb-12 fade-up text-[#1D1D1F]"
     >
       {/* ══════════════════════════════════════════════════

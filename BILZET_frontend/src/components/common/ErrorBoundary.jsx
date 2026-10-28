@@ -43,7 +43,7 @@ export class ErrorBoundary extends Component {
           justifyContent: "center",
           background: "#081028",
           color: "#fff",
-          fontFamily: "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif",
+          fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
           padding: "24px",
         }}>
           <div style={{

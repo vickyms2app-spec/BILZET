@@ -272,9 +272,9 @@ export default function Signup() {
 
   return (
     <div
-      className="min-h-screen w-full relative overflow-x-hidden font-macos antialiased text-[#111827] flex flex-col lg:flex-row"
+      className="min-h-screen w-full relative overflow-x-hidden font-macos antialiased text-[#526B87] flex flex-col lg:flex-row"
       style={{
-        background: "linear-gradient(135deg, #F8FAFD 0%, #EAF4FF 40%, #E0EFFE 100%)",
+        background: "#F7FBFF",
       }}
     >
       {/* Full-bleed layered flowing SVG waves spanning across the entire desktop viewport */}
@@ -286,34 +286,34 @@ export default function Signup() {
         >
           <defs>
             <linearGradient id="fullTopCircleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#EAF4FF" stopOpacity="0.95" />
-              <stop offset="60%" stopColor="#BFDCFE" stopOpacity="0.8" />
-              <stop offset="100%" stopColor="#80C8FF" stopOpacity="0.5" />
+              <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.95" />
+              <stop offset="60%" stopColor="#EEF7FF" stopOpacity="0.85" />
+              <stop offset="100%" stopColor="#D8EBFF" stopOpacity="0.6" />
             </linearGradient>
 
             <linearGradient id="fullWaveMainFlowGrad" x1="100%" y1="15%" x2="15%" y2="95%">
-              <stop offset="0%" stopColor="#35C6F4" />
-              <stop offset="25%" stopColor="#0878F9" />
-              <stop offset="70%" stopColor="#0647B5" />
-              <stop offset="100%" stopColor="#082D73" />
+              <stop offset="0%" stopColor="#EEF7FF" />
+              <stop offset="25%" stopColor="#E0EFFE" />
+              <stop offset="70%" stopColor="#D8EBFF" />
+              <stop offset="100%" stopColor="#C7E1FF" />
             </linearGradient>
 
             <linearGradient id="fullWaveMidDeepGrad" x1="100%" y1="40%" x2="25%" y2="95%">
-              <stop offset="0%" stopColor="#0878F9" />
-              <stop offset="50%" stopColor="#0647B5" />
-              <stop offset="100%" stopColor="#082D73" />
+              <stop offset="0%" stopColor="#D8EBFF" />
+              <stop offset="50%" stopColor="#C7E1FF" />
+              <stop offset="100%" stopColor="#B3D7FF" />
             </linearGradient>
 
             <linearGradient id="fullWaveDeepNavyGrad" x1="100%" y1="65%" x2="40%" y2="98%">
-              <stop offset="0%" stopColor="#0647B5" />
-              <stop offset="55%" stopColor="#082D73" />
-              <stop offset="100%" stopColor="#041B48" />
+              <stop offset="0%" stopColor="#EAF4FF" />
+              <stop offset="55%" stopColor="#D8EBFF" />
+              <stop offset="100%" stopColor="#C7E1FF" />
             </linearGradient>
 
             <linearGradient id="fullWaveRimHighlight" x1="100%" y1="20%" x2="25%" y2="95%">
-              <stop offset="0%" stopColor="#EAF4FF" stopOpacity="0.9" />
-              <stop offset="50%" stopColor="#35C6F4" stopOpacity="0.75" />
-              <stop offset="100%" stopColor="#0878F9" stopOpacity="0.15" />
+              <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.95" />
+              <stop offset="50%" stopColor="#D8EBFF" stopOpacity="0.85" />
+              <stop offset="100%" stopColor="#2563EB" stopOpacity="0.25" />
             </linearGradient>
           </defs>
 
@@ -358,24 +358,24 @@ export default function Signup() {
             <BrandHeader logoHeight="h-10" />
 
             {/* Small pill matching reference: “Smart Billing · Inventory · GST · CA Connect” */}
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EAF4FF]/95 border border-[#BFDBFE]/80 text-[11.5px] font-semibold tracking-tight shadow-xs mt-3 select-none font-macos">
-              <span className="text-[#0878F9] text-xs leading-none">✧</span>
-              <span className="text-[#0878F9]">Smart Billing</span>
-              <span className="text-[#64748B]">&middot; Inventory &middot; GST &middot; CA Connect</span>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EEF7FF] border border-[#D8EBFF] text-[11.5px] font-semibold tracking-tight shadow-2xs mt-3 select-none font-macos">
+              <span className="text-[#2563EB] text-xs leading-none">✧</span>
+              <span className="text-[#2563EB]">Smart Billing</span>
+              <span className="text-[#7188A3]">&middot; Inventory &middot; GST &middot; CA Connect</span>
             </div>
           </div>
 
           {/* Main Headline & Supporting Paragraph with Apple / macOS Typography */}
           <div className="my-auto py-2">
-            <h1 className="text-3xl sm:text-4xl lg:text-[42px] font-extrabold tracking-tight leading-[1.12] text-[#111827] mb-3.5 font-macos">
+            <h1 className="text-3xl sm:text-4xl lg:text-[42px] font-extrabold tracking-tight leading-[1.12] text-[#526B87] mb-3.5 font-macos">
               Manage Billing,<br />
               Inventory and GST<br />
-              <span className="bg-gradient-to-r from-[#0878F9] to-[#35C6F4] bg-clip-text text-transparent font-black">
+              <span className="bg-gradient-to-r from-[#2563EB] to-[#8AAED8] bg-clip-text text-transparent font-black">
                 in One Place.
               </span>
             </h1>
 
-            <p className="text-[14.5px] sm:text-[15.5px] text-[#64748B] leading-relaxed font-normal mb-7 lg:mb-8 max-w-md font-macos">
+            <p className="text-[14.5px] sm:text-[15.5px] text-[#7188A3] leading-relaxed font-normal mb-7 lg:mb-8 max-w-md font-macos">
               A simple and powerful platform to run your business, stay GST compliant and collaborate with your team and CA — all in one place.
             </p>
 
@@ -383,14 +383,14 @@ export default function Signup() {
             <div className="space-y-3.5 lg:space-y-4">
               {/* Feature 1: GST Ready Invoicing */}
               <div className="flex items-start gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-[#EAF4FF] border border-[#BFDBFE]/70 flex items-center justify-center shrink-0">
-                  <FileText size={18} className="text-[#0878F9]" strokeWidth={2} />
+                <div className="w-10 h-10 rounded-xl bg-[#EEF7FF] border border-[#D8EBFF] flex items-center justify-center shrink-0">
+                  <FileText size={18} className="text-[#2563EB]" strokeWidth={2} />
                 </div>
                 <div className="pt-0.5">
-                  <h2 className="text-[14.5px] font-bold text-[#111827] tracking-tight leading-snug font-macos">
+                  <h2 className="text-[14.5px] font-bold text-[#526B87] tracking-tight leading-snug font-macos">
                     GST Ready Invoicing
                   </h2>
-                  <p className="text-[13px] text-[#64748B] leading-normal mt-0.5 font-macos">
+                  <p className="text-[13px] text-[#7188A3] leading-normal mt-0.5 font-macos">
                     Create and share GST-compliant invoices in seconds.
                   </p>
                 </div>
@@ -398,14 +398,14 @@ export default function Signup() {
 
               {/* Feature 2: Inventory Management */}
               <div className="flex items-start gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-[#ECFDF5] border border-[#A7F3D0]/70 flex items-center justify-center shrink-0">
-                  <Box size={18} className="text-[#10B981]" strokeWidth={2} />
+                <div className="w-10 h-10 rounded-xl bg-[#ECF9F1] border border-[#C8E6C9] flex items-center justify-center shrink-0">
+                  <Box size={18} className="text-[#166534]" strokeWidth={2} />
                 </div>
                 <div className="pt-0.5">
-                  <h2 className="text-[14.5px] font-bold text-[#111827] tracking-tight leading-snug font-macos">
+                  <h2 className="text-[14.5px] font-bold text-[#526B87] tracking-tight leading-snug font-macos">
                     Inventory Management
                   </h2>
-                  <p className="text-[13px] text-[#64748B] leading-normal mt-0.5 font-macos">
+                  <p className="text-[13px] text-[#7188A3] leading-normal mt-0.5 font-macos">
                     Track stock, purchases and sales easily.
                   </p>
                 </div>
@@ -413,14 +413,14 @@ export default function Signup() {
 
               {/* Feature 3: CA Connect */}
               <div className="flex items-start gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-[#F3E8FF] border border-[#DDD6FE]/70 flex items-center justify-center shrink-0">
-                  <Users size={18} className="text-[#9333EA]" strokeWidth={2} />
+                <div className="w-10 h-10 rounded-xl bg-[#F0F7FF] border border-[#D8EBFF] flex items-center justify-center shrink-0">
+                  <Users size={18} className="text-[#2563EB]" strokeWidth={2} />
                 </div>
                 <div className="pt-0.5">
-                  <h2 className="text-[14.5px] font-bold text-[#111827] tracking-tight leading-snug font-macos">
+                  <h2 className="text-[14.5px] font-bold text-[#526B87] tracking-tight leading-snug font-macos">
                     CA Connect
                   </h2>
-                  <p className="text-[13px] text-[#64748B] leading-normal mt-0.5 font-macos">
+                  <p className="text-[13px] text-[#7188A3] leading-normal mt-0.5 font-macos">
                     Share data and reports with your CA without manual work.
                   </p>
                 </div>
@@ -428,14 +428,14 @@ export default function Signup() {
 
               {/* Feature 4: Secure & Reliable */}
               <div className="flex items-start gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-[#FEF3C7] border border-[#FDE68A]/70 flex items-center justify-center shrink-0">
-                  <ShieldCheck size={18} className="text-[#D97706]" strokeWidth={2} />
+                <div className="w-10 h-10 rounded-xl bg-[#FFF6E9] border border-[#FDE68A] flex items-center justify-center shrink-0">
+                  <ShieldCheck size={18} className="text-[#B45309]" strokeWidth={2} />
                 </div>
                 <div className="pt-0.5">
-                  <h2 className="text-[14.5px] font-bold text-[#111827] tracking-tight leading-snug font-macos">
+                  <h2 className="text-[14.5px] font-bold text-[#526B87] tracking-tight leading-snug font-macos">
                     Secure &amp; Reliable
                   </h2>
-                  <p className="text-[13px] text-[#64748B] leading-normal mt-0.5 font-macos">
+                  <p className="text-[13px] text-[#7188A3] leading-normal mt-0.5 font-macos">
                     Your business data is safe and always accessible.
                   </p>
                 </div>
@@ -444,21 +444,21 @@ export default function Signup() {
           </div>
 
           {/* Left Panel Footer with Small Outline Icons Matching Reference Image */}
-          <div className="pt-5 border-t border-white/50 flex flex-wrap items-center justify-between gap-3 text-xs text-[#64748B] font-macos">
+          <div className="pt-5 border-t border-[#E3EDF8] flex flex-wrap items-center justify-between gap-3 text-xs text-[#7188A3] font-macos">
             <span>&copy; {new Date().getFullYear()} BILZET. All rights reserved.</span>
-            <div className="flex items-center gap-3 text-[11.5px] font-medium text-[#0878F9]">
+            <div className="flex items-center gap-3 text-[11.5px] font-medium text-[#2563EB]">
               <span className="flex items-center gap-1.5">
-                <ShieldCheck size={14} className="text-[#0878F9]" strokeWidth={2} />
+                <ShieldCheck size={14} className="text-[#2563EB]" strokeWidth={2} />
                 GST Ready
               </span>
-              <span className="text-blue-300/80">|</span>
+              <span className="text-[#8AAED8]">|</span>
               <span className="flex items-center gap-1.5">
-                <Landmark size={14} className="text-[#0878F9]" strokeWidth={2} />
+                <Landmark size={14} className="text-[#2563EB]" strokeWidth={2} />
                 Bank Grade Security
               </span>
-              <span className="text-blue-300/80">|</span>
+              <span className="text-[#8AAED8]">|</span>
               <span className="flex items-center gap-1.5">
-                <Cloud size={14} className="text-[#0878F9]" strokeWidth={2} />
+                <Cloud size={14} className="text-[#2563EB]" strokeWidth={2} />
                 Cloud Access
               </span>
             </div>
@@ -472,17 +472,17 @@ export default function Signup() {
           ══════════════════════════════════════════════════════════════ */}
       <div className="w-full lg:w-[41%] xl:w-[40%] relative z-10 flex flex-col justify-center items-center lg:items-end p-4 sm:p-6 lg:pr-12 lg:py-8 min-h-screen">
         {/* Floating Centered White Registration Card */}
-        <div className="w-full max-w-[475px] bg-white rounded-[26px] border border-[#DCE5F0] shadow-[0_20px_50px_-15px_rgba(8,71,181,0.14),0_1px_3px_rgba(0,0,0,0.04)] p-6 sm:p-7 relative font-macos">
+        <div className="w-full max-w-[475px] bg-white rounded-[26px] border border-[#E3EDF8] shadow-xl p-6 sm:p-7 relative font-macos">
           {/* Top Header: Logo on Left, Login Link on Top-Right */}
           <div className="flex items-center justify-between mb-4">
             <BrandHeader logoHeight="h-7.5" />
             <div className="text-right">
-              <span className="text-[12px] text-[#64748B]">
+              <span className="text-[12px] text-[#7188A3]">
                 Already have an account?{" "}
               </span>
               <Link
                 to="/sign-in"
-                className="text-[12px] font-bold text-[#0878F9] hover:text-[#0647B5] hover:underline transition-colors"
+                className="text-[12px] font-bold text-[#2563EB] hover:text-[#1D4ED8] hover:underline transition-colors"
               >
                 Log in
               </Link>
@@ -491,21 +491,21 @@ export default function Signup() {
 
           {/* Heading and Supporting Text */}
           <div className="mb-4">
-            <h1 className="text-xl sm:text-[23px] font-bold text-[#111827] tracking-tight leading-tight mb-1 font-macos">
+            <h1 className="text-xl sm:text-[23px] font-bold text-[#526B87] tracking-tight leading-tight mb-1 font-macos">
               Create your account
             </h1>
-            <p className="text-[12.5px] text-[#64748B] leading-normal font-normal font-macos">
+            <p className="text-[12.5px] text-[#7188A3] leading-normal font-normal font-macos">
               Get started with BILZET and manage your business smarter.
             </p>
           </div>
 
           {/* Referral Badge if Active */}
           {referralCode && (
-            <div className="mb-4 px-3.5 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center justify-between font-macos">
+            <div className="mb-4 px-3.5 py-2 rounded-xl bg-[#ECF9F1] border border-[#C8E6C9] text-[#166534] text-xs font-semibold flex items-center justify-between font-macos">
               <span>
                 Referral code applied: <strong>{referralCode}</strong>
               </span>
-              <span className="bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
+              <span className="bg-[#166534] text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
                 10% Discount
               </span>
             </div>
@@ -515,9 +515,9 @@ export default function Signup() {
           {error && (
             <div
               role="alert"
-              className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-xs sm:text-[13px] flex items-start gap-2.5 animate-fadeIn font-macos"
+              className="mb-4 p-3 rounded-lg bg-[#FFF0F2] border border-[#FECDD3] text-[#991B1B] text-xs sm:text-[13px] flex items-start gap-2.5 animate-fadeIn font-macos"
             >
-              <AlertCircle size={15} className="shrink-0 text-red-600 mt-0.5" />
+              <AlertCircle size={15} className="shrink-0 text-[#EF4444] mt-0.5" />
               <div className="flex-1 font-medium">{error}</div>
             </div>
           )}
@@ -525,9 +525,9 @@ export default function Signup() {
           {success && (
             <div
               role="alert"
-              className="mb-4 p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs sm:text-[13px] flex items-start gap-2.5 animate-fadeIn font-macos"
+              className="mb-4 p-3 rounded-lg bg-[#ECF9F1] border border-[#C8E6C9] text-[#166534] text-xs sm:text-[13px] flex items-start gap-2.5 animate-fadeIn font-macos"
             >
-              <Check size={15} className="shrink-0 text-emerald-600 mt-0.5" />
+              <Check size={15} className="shrink-0 text-[#166534] mt-0.5" />
               <div className="flex-1 font-medium">{success}</div>
             </div>
           )}
@@ -536,7 +536,7 @@ export default function Signup() {
           <form onSubmit={handleSubmit} noValidate className="space-y-2.5 font-macos">
             {/* ─── Account Type Selector (Exact 3 Cards in 1 Row) ─── */}
             <div>
-              <label className="block text-[11.5px] font-semibold text-[#111827] mb-1.5 font-macos">
+              <label className="block text-[11.5px] font-semibold text-[#526B87] mb-1.5 font-macos">
                 Account type
               </label>
               <div className="grid grid-cols-3 gap-2">
@@ -547,8 +547,8 @@ export default function Signup() {
                   onClick={() => setAccountType("BUSINESS_OWNER")}
                   className={`relative flex flex-col items-center justify-center pt-2.5 pb-2 px-1 rounded-[10px] transition-all text-center select-none cursor-pointer border ${
                     accountType === "BUSINESS_OWNER"
-                      ? "border-[#0878F9] bg-[#EAF4FF] text-[#0878F9]"
-                      : "border-[#DCE5F0] bg-white text-[#64748B] hover:border-slate-300 hover:bg-slate-50/60"
+                      ? "border-[#8AAED8] bg-[#EEF7FF] text-[#2563EB]"
+                      : "border-[#E3EDF8] bg-white text-[#7188A3] hover:border-[#8AAED8] hover:bg-[#F4F9FF]"
                   }`}
                 >
                   {/* Top-left Radio Indicator */}
@@ -556,8 +556,8 @@ export default function Signup() {
                     <div
                       className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-colors ${
                         accountType === "BUSINESS_OWNER"
-                          ? "border-[#0878F9] bg-white"
-                          : "border-[#DCE5F0] bg-white"
+                          ? "border-[#2563EB] bg-white"
+                          : "border-[#E3EDF8] bg-white"
                       }`}
                     >
                       {accountType === "BUSINESS_OWNER" && (
@@ -586,8 +586,8 @@ export default function Signup() {
                   onClick={() => setAccountType("TAX_CONSULTANT")}
                   className={`relative flex flex-col items-center justify-center pt-2.5 pb-2 px-1 rounded-[10px] transition-all text-center select-none cursor-pointer border ${
                     accountType === "TAX_CONSULTANT"
-                      ? "border-[#0878F9] bg-[#EAF4FF] text-[#0878F9]"
-                      : "border-[#DCE5F0] bg-white text-[#64748B] hover:border-slate-300 hover:bg-slate-50/60"
+                      ? "border-[#8AAED8] bg-[#EEF7FF] text-[#2563EB]"
+                      : "border-[#E3EDF8] bg-white text-[#7188A3] hover:border-[#8AAED8] hover:bg-[#F4F9FF]"
                   }`}
                 >
                   {/* Top-left Radio Indicator */}
@@ -595,12 +595,12 @@ export default function Signup() {
                     <div
                       className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-colors ${
                         accountType === "TAX_CONSULTANT"
-                          ? "border-[#0878F9] bg-white"
-                          : "border-[#DCE5F0] bg-white"
+                          ? "border-[#2563EB] bg-white"
+                          : "border-[#E3EDF8] bg-white"
                       }`}
                     >
                       {accountType === "TAX_CONSULTANT" && (
-                        <div className="w-2 h-2 rounded-full bg-[#0878F9]" />
+                        <div className="w-2 h-2 rounded-full bg-[#2563EB]" />
                       )}
                     </div>
                   </div>
@@ -609,11 +609,11 @@ export default function Signup() {
                   <UserCheck
                     size={18}
                     className={`mb-1 mt-0.5 ${
-                      accountType === "TAX_CONSULTANT" ? "text-[#0878F9]" : "text-[#64748B]"
+                      accountType === "TAX_CONSULTANT" ? "text-[#2563EB]" : "text-[#8AAED8]"
                     }`}
                     strokeWidth={1.8}
                   />
-                  <span className="text-[11px] font-medium text-[#111827] leading-tight font-macos">
+                  <span className="text-[11px] font-medium text-[#526B87] leading-tight font-macos">
                     Tax Consultant / CA
                   </span>
                 </button>
@@ -625,8 +625,8 @@ export default function Signup() {
                   onClick={() => setAccountType("STAFF")}
                   className={`relative flex flex-col items-center justify-center pt-2.5 pb-2 px-1 rounded-[10px] transition-all text-center select-none cursor-pointer border ${
                     accountType === "STAFF"
-                      ? "border-[#0878F9] bg-[#EAF4FF] text-[#0878F9]"
-                      : "border-[#DCE5F0] bg-white text-[#64748B] hover:border-slate-300 hover:bg-slate-50/60"
+                      ? "border-[#8AAED8] bg-[#EEF7FF] text-[#2563EB]"
+                      : "border-[#E3EDF8] bg-white text-[#7188A3] hover:border-[#8AAED8] hover:bg-[#F4F9FF]"
                   }`}
                 >
                   {/* Top-left Radio Indicator */}
@@ -634,12 +634,12 @@ export default function Signup() {
                     <div
                       className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-colors ${
                         accountType === "STAFF"
-                          ? "border-[#0878F9] bg-white"
-                          : "border-[#DCE5F0] bg-white"
+                          ? "border-[#2563EB] bg-white"
+                          : "border-[#E3EDF8] bg-white"
                       }`}
                     >
                       {accountType === "STAFF" && (
-                        <div className="w-2 h-2 rounded-full bg-[#0878F9]" />
+                        <div className="w-2 h-2 rounded-full bg-[#2563EB]" />
                       )}
                     </div>
                   </div>
@@ -648,11 +648,11 @@ export default function Signup() {
                   <Users
                     size={18}
                     className={`mb-1 mt-0.5 ${
-                      accountType === "STAFF" ? "text-[#0878F9]" : "text-[#64748B]"
+                      accountType === "STAFF" ? "text-[#2563EB]" : "text-[#8AAED8]"
                     }`}
                     strokeWidth={1.8}
                   />
-                  <span className="text-[11px] font-medium text-[#111827] leading-tight font-macos">
+                  <span className="text-[11px] font-medium text-[#526B87] leading-tight font-macos">
                     Staff / Other Role
                   </span>
                 </button>
@@ -661,7 +661,7 @@ export default function Signup() {
 
             {/* ─── Field 1: Business / Company Name ─── */}
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#64748B]">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#8AAED8]">
                 <Building2 size={15} strokeWidth={1.8} />
               </div>
               <input
@@ -670,13 +670,13 @@ export default function Signup() {
                 value={businessName}
                 onChange={(e) => setBusinessName(e.target.value)}
                 placeholder={getBusinessFieldPlaceholder()}
-                className="w-full h-[42px] pl-9 pr-3.5 rounded-[9px] border border-[#DCE5F0] bg-white text-[13px] text-[#111827] placeholder:text-slate-400 focus:outline-none focus:border-[#0878F9] focus:ring-2 focus:ring-[#0878F9]/15 transition-all font-macos"
+                className="w-full h-[42px] pl-9 pr-3.5 rounded-[9px] border border-[#E3EDF8] bg-[#F4F9FF] text-[13px] text-[#526B87] placeholder:text-[#94A8BE] focus:outline-none focus:border-[#8AAED8] focus:ring-2 focus:ring-[#8AAED8]/15 transition-all font-macos"
               />
             </div>
 
             {/* ─── Field 2: Full Name ─── */}
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#64748B]">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#8AAED8]">
                 <User size={15} strokeWidth={1.8} />
               </div>
               <input
@@ -685,13 +685,13 @@ export default function Signup() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Full Name"
-                className="w-full h-[42px] pl-9 pr-3.5 rounded-[9px] border border-[#DCE5F0] bg-white text-[13px] text-[#111827] placeholder:text-slate-400 focus:outline-none focus:border-[#0878F9] focus:ring-2 focus:ring-[#0878F9]/15 transition-all font-macos"
+                className="w-full h-[42px] pl-9 pr-3.5 rounded-[9px] border border-[#E3EDF8] bg-[#F4F9FF] text-[13px] text-[#526B87] placeholder:text-[#94A8BE] focus:outline-none focus:border-[#8AAED8] focus:ring-2 focus:ring-[#8AAED8]/15 transition-all font-macos"
               />
             </div>
 
             {/* ─── Field 3: Email Address ─── */}
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#64748B]">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#8AAED8]">
                 <Mail size={15} strokeWidth={1.8} />
               </div>
               <input
@@ -700,13 +700,13 @@ export default function Signup() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Email address"
-                className="w-full h-[42px] pl-9 pr-3.5 rounded-[9px] border border-[#DCE5F0] bg-white text-[13px] text-[#111827] placeholder:text-slate-400 focus:outline-none focus:border-[#0878F9] focus:ring-2 focus:ring-[#0878F9]/15 transition-all font-macos"
+                className="w-full h-[42px] pl-9 pr-3.5 rounded-[9px] border border-[#E3EDF8] bg-[#F4F9FF] text-[13px] text-[#526B87] placeholder:text-[#94A8BE] focus:outline-none focus:border-[#8AAED8] focus:ring-2 focus:ring-[#8AAED8]/15 transition-all font-macos"
               />
             </div>
 
             {/* ─── Field 4: Combined Mobile Number with Country Code ─── */}
-            <div className="flex h-[42px] rounded-[9px] border border-[#DCE5F0] bg-white overflow-hidden focus-within:border-[#0878F9] focus-within:ring-2 focus-within:ring-[#0878F9]/15 transition-all">
-              <div className="relative flex items-center pl-3 pr-2 shrink-0 border-r border-[#DCE5F0] text-[#64748B] gap-2">
+            <div className="flex h-[42px] rounded-[9px] border border-[#E3EDF8] bg-[#F4F9FF] overflow-hidden focus-within:border-[#8AAED8] focus-within:ring-2 focus-within:ring-[#8AAED8]/15 transition-all">
+              <div className="relative flex items-center pl-3 pr-2 shrink-0 border-r border-[#E3EDF8] text-[#7188A3] gap-2">
                 <Phone size={14} strokeWidth={1.8} />
                 <IndiaFlag />
                 <select
@@ -714,7 +714,7 @@ export default function Signup() {
                   aria-label="Country Code"
                   value={countryCode}
                   onChange={(e) => setCountryCode(e.target.value)}
-                  className="bg-transparent text-[13px] font-semibold text-[#111827] focus:outline-none cursor-pointer pr-3.5 font-macos appearance-none"
+                  className="bg-transparent text-[13px] font-semibold text-[#526B87] focus:outline-none cursor-pointer pr-3.5 font-macos appearance-none"
                 >
                   {COUNTRY_CODES.map((c) => (
                     <option key={c.code} value={c.code}>
@@ -722,7 +722,7 @@ export default function Signup() {
                     </option>
                   ))}
                 </select>
-                <ChevronDown size={12} className="text-[#64748B] pointer-events-none absolute right-1" />
+                <ChevronDown size={12} className="text-[#8AAED8] pointer-events-none absolute right-1" />
               </div>
               <input
                 id="signup-phone"
@@ -730,13 +730,13 @@ export default function Signup() {
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="Mobile Number"
-                className="w-full h-full px-3 text-[13px] text-[#111827] placeholder:text-slate-400 focus:outline-none font-macos"
+                className="w-full h-full px-3 text-[13px] text-[#526B87] placeholder:text-[#94A8BE] focus:outline-none font-macos"
               />
             </div>
 
             {/* ─── Field 5: Password with Show/Hide Control ─── */}
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#64748B]">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#8AAED8]">
                 <Lock size={15} strokeWidth={1.8} />
               </div>
               <input
@@ -745,14 +745,14 @@ export default function Signup() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Password"
-                className="w-full h-[42px] pl-9 pr-10 rounded-[9px] border border-[#DCE5F0] bg-white text-[13px] text-[#111827] placeholder:text-slate-400 focus:outline-none focus:border-[#0878F9] focus:ring-2 focus:ring-[#0878F9]/15 transition-all font-macos"
+                className="w-full h-[42px] pl-9 pr-10 rounded-[9px] border border-[#E3EDF8] bg-[#F4F9FF] text-[13px] text-[#526B87] placeholder:text-[#94A8BE] focus:outline-none focus:border-[#8AAED8] focus:ring-2 focus:ring-[#8AAED8]/15 transition-all font-macos"
               />
               <button
                 type="button"
                 id="toggle-password-visibility"
                 aria-label={showPassword ? "Hide password" : "Show password"}
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-[#94A3B8] hover:text-[#64748B] transition-colors focus:outline-none cursor-pointer"
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-[#94A8BE] hover:text-[#526B87] transition-colors focus:outline-none cursor-pointer"
               >
                 {showPassword ? <Eye size={16} /> : <EyeOff size={16} />}
               </button>
@@ -762,14 +762,14 @@ export default function Signup() {
             <div className="grid grid-cols-2 gap-2.5">
               {/* Country */}
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#64748B]">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#8AAED8]">
                   <Globe size={14} strokeWidth={1.8} />
                 </div>
                 <select
                   id="signup-country"
                   value={country}
                   onChange={(e) => handleCountryChange(e.target.value)}
-                  className="w-full h-[42px] pl-8.5 pr-7 rounded-[9px] border border-[#DCE5F0] bg-white text-[13px] font-semibold text-[#111827] focus:outline-none focus:border-[#0878F9] focus:ring-2 focus:ring-[#0878F9]/15 transition-all appearance-none cursor-pointer font-macos"
+                  className="w-full h-[42px] pl-8.5 pr-7 rounded-[9px] border border-[#E3EDF8] bg-[#F4F9FF] text-[13px] font-semibold text-[#526B87] focus:outline-none focus:border-[#8AAED8] focus:ring-2 focus:ring-[#8AAED8]/15 transition-all appearance-none cursor-pointer font-macos"
                 >
                   {getCountries().map((c) => (
                     <option key={c.name} value={c.name}>
@@ -777,21 +777,21 @@ export default function Signup() {
                     </option>
                   ))}
                 </select>
-                <div className="absolute inset-y-0 right-0 pr-2.5 flex items-center pointer-events-none text-[#64748B]">
+                <div className="absolute inset-y-0 right-0 pr-2.5 flex items-center pointer-events-none text-[#8AAED8]">
                   <ChevronDown size={13} />
                 </div>
               </div>
 
               {/* State */}
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#64748B]">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#8AAED8]">
                   <MapPin size={14} strokeWidth={1.8} />
                 </div>
                 <select
                   id="signup-state"
                   value={state}
                   onChange={(e) => setState(e.target.value)}
-                  className="w-full h-[42px] pl-8.5 pr-7 rounded-[9px] border border-[#DCE5F0] bg-white text-[13px] font-semibold text-[#111827] focus:outline-none focus:border-[#0878F9] focus:ring-2 focus:ring-[#0878F9]/15 transition-all appearance-none cursor-pointer font-macos"
+                  className="w-full h-[42px] pl-8.5 pr-7 rounded-[9px] border border-[#E3EDF8] bg-[#F4F9FF] text-[13px] font-semibold text-[#526B87] focus:outline-none focus:border-[#8AAED8] focus:ring-2 focus:ring-[#8AAED8]/15 transition-all appearance-none cursor-pointer font-macos"
                 >
                   <option value="" disabled>
                     {getStatesForCountry(country).length > 0 ? "Select State / Region" : "No regions available"}
@@ -802,7 +802,7 @@ export default function Signup() {
                     </option>
                   ))}
                 </select>
-                <div className="absolute inset-y-0 right-0 pr-2.5 flex items-center pointer-events-none text-[#64748B]">
+                <div className="absolute inset-y-0 right-0 pr-2.5 flex items-center pointer-events-none text-[#8AAED8]">
                   <ChevronDown size={13} />
                 </div>
               </div>
@@ -816,14 +816,14 @@ export default function Signup() {
                   type="checkbox"
                   checked={agreedToTerms}
                   onChange={(e) => setAgreedToTerms(e.target.checked)}
-                  className="w-4 h-4 rounded text-[#0878F9] border-[#DCE5F0] focus:ring-[#0878F9] cursor-pointer"
+                  className="w-4 h-4 rounded text-[#2563EB] border-[#E3EDF8] focus:ring-[#8AAED8] cursor-pointer"
                 />
-                <span className="text-[12px] text-[#64748B] leading-tight font-macos">
+                <span className="text-[12px] text-[#7188A3] leading-tight font-macos">
                   I agree to the{" "}
                   <button
                     type="button"
                     onClick={() => setModalContent("terms")}
-                    className="text-[#0878F9] font-medium underline hover:text-[#0647B5] focus:outline-none"
+                    className="text-[#2563EB] font-medium underline hover:text-[#1D4ED8] focus:outline-none"
                   >
                     Terms of Service
                   </button>{" "}
@@ -831,7 +831,7 @@ export default function Signup() {
                   <button
                     type="button"
                     onClick={() => setModalContent("privacy")}
-                    className="text-[#0878F9] font-medium underline hover:text-[#0647B5] focus:outline-none"
+                    className="text-[#2563EB] font-medium underline hover:text-[#1D4ED8] focus:outline-none"
                   >
                     Privacy Policy
                   </button>
@@ -863,9 +863,9 @@ export default function Signup() {
             {/* ─── Divider: "or" ─── */}
             <div className="relative flex items-center justify-center my-2.5">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-[#DCE5F0]" />
+                <div className="w-full border-t border-[#EDF3FA]" />
               </div>
-              <span className="relative px-3 bg-white text-[11px] text-[#64748B] lowercase font-medium font-macos">
+              <span className="relative px-3 bg-white text-[11px] text-[#94A8BE] lowercase font-medium font-macos">
                 or
               </span>
             </div>
@@ -890,7 +890,7 @@ export default function Signup() {
                     setError("Google sign-in is initializing. Please try again in a moment.");
                   }
                 }}
-                className="w-full h-[42px] rounded-[9px] border border-[#DCE5F0] bg-white hover:bg-slate-50 active:bg-slate-100 text-[#111827] text-[13px] font-medium transition-all flex items-center justify-center gap-2.5 cursor-pointer font-macos"
+                className="w-full h-[42px] rounded-[9px] border border-[#E3EDF8] bg-white hover:bg-[#F4F9FF] text-[#526B87] text-[13px] font-medium transition-all flex items-center justify-center gap-2.5 cursor-pointer font-macos"
               >
                 <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                   <path
@@ -924,27 +924,27 @@ export default function Signup() {
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn font-jakarta"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0F2747]/40 backdrop-blur-xs animate-fadeIn font-jakarta"
           onClick={() => setModalContent(null)}
         >
           <div
-            className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 overflow-hidden max-h-[85vh] flex flex-col font-jakarta"
+            className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-[#E3EDF8] overflow-hidden max-h-[85vh] flex flex-col font-jakarta"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="text-base font-bold text-[#0F172A] font-jakarta">
+            <div className="flex items-center justify-between pb-3 border-b border-[#EDF3FA]">
+              <h3 className="text-base font-bold text-[#526B87] font-jakarta">
                 {modalContent === "terms" ? "Terms of Service" : "Privacy Policy"}
               </h3>
               <button
                 type="button"
                 onClick={() => setModalContent(null)}
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-[#94A8BE] hover:text-[#526B87] hover:bg-[#F4F9FF] transition-colors"
               >
                 <X size={18} />
               </button>
             </div>
 
-            <div className="py-4 overflow-y-auto text-xs text-[#64748B] space-y-3 leading-relaxed font-jakarta">
+            <div className="py-4 overflow-y-auto text-xs text-[#7188A3] space-y-3 leading-relaxed font-jakarta">
               {modalContent === "terms" ? (
                 <>
                   <p>
@@ -972,11 +972,11 @@ export default function Signup() {
               )}
             </div>
 
-            <div className="pt-3 border-t border-slate-100 flex justify-end font-jakarta">
+            <div className="pt-3 border-t border-[#EDF3FA] flex justify-end font-jakarta">
               <button
                 type="button"
                 onClick={() => setModalContent(null)}
-                className="px-4 py-2 rounded-xl bg-[#0866E8] text-white text-xs font-semibold hover:bg-[#0647B5] transition-colors font-jakarta"
+                className="px-4 py-2 rounded-xl bg-[#D8EBFF] hover:bg-[#C7E1FF] text-[#2563EB] text-xs font-semibold transition-colors font-jakarta"
               >
                 Close
               </button>
