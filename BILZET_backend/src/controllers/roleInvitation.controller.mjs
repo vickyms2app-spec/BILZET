@@ -82,6 +82,18 @@ export const revokeInvitation = asyncHandler(async (req, res) => {
   return sendResponse(res, 200, result, 'Invitation revoked.');
 });
 
+
+export const generateRoleLink = asyncHandler(async (req, res) => {
+  const businessId = resolveBusinessId(req);
+  const result = await roleInvitationService.generateRoleRegistrationLink(req.user, businessId, req.body);
+  return sendResponse(res, 201, result, 'Registration link generated successfully.');
+});
+
+export const getInvitationLink = asyncHandler(async (req, res) => {
+  const result = await roleInvitationService.getInvitationLink(req.user, req.params.id);
+  return sendResponse(res, 200, result, 'Registration link retrieved successfully.');
+});
+
 export default {
   createInvitation,
   getBusinessInvitations,
@@ -91,4 +103,6 @@ export default {
   declineInvitation,
   resendInvitation,
   revokeInvitation,
+  generateRoleLink,
+  getInvitationLink,
 };

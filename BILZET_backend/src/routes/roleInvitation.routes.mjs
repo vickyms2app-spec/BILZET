@@ -25,5 +25,7 @@ router.post(
 router.get('/', roleInvitationController.getBusinessInvitations);
 router.post('/:id/resend', roleInvitationController.resendInvitation);
 router.post('/:id/revoke', roleInvitationController.revokeInvitation);
+router.post('/generate-link', roleInvitationController.generateRoleLink);
+router.get('/:id/link', roleInvitationController.getInvitationLink);
 
 export default router;

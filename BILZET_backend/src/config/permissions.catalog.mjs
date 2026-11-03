@@ -242,3 +242,5 @@ export const SYSTEM_ROLE_DEFINITIONS = [
     ],
   },
 ];
+
+export const SYSTEM_ROLES = SYSTEM_ROLE_DEFINITIONS;

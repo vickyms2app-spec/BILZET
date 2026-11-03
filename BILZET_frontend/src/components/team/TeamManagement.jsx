@@ -812,6 +812,19 @@ export default function TeamManagement() {
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
           </button>
 
+          {/* Quick Access to Roles Registration Links */}
+          <button
+            type="button"
+            onClick={() => {
+              navigate("/settings?tab=roles");
+            }}
+            className="h-9 px-3 text-xs font-semibold rounded-lg flex items-center gap-1.5 bg-[#F4F9FF] border border-[#E3EDF8] text-[#526B87] hover:bg-[#EEF7FF] transition cursor-pointer"
+            title="View and copy shareable registration links in Roles Studio"
+          >
+            <Copy className="w-3.5 h-3.5 text-indigo-600" />
+            <span className="hidden sm:inline">Role Registration Links</span>
+          </button>
+
           {/* Add Team Member Button (Guarded by Subscription) */}
           <button
             type="button"

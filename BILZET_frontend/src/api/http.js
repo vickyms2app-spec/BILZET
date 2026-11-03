@@ -106,6 +106,47 @@ http.interceptors.request.use(async (config) => {
     }
   }
 
+  // Strict View-Only Demo Guard: Intercept all data-modifying API calls
+  const isDemo = typeof window !== "undefined" && (
+    localStorage.getItem("bilzet_demo_mode") === "true" ||
+    token === "demo-token-viewonly" ||
+    token === "demo-token-active"
+  );
+
+  if (isDemo) {
+    if (config.headers?.set) {
+      config.headers.set("x-demo-mode", "true");
+    } else {
+      config.headers = config.headers || {};
+      config.headers["x-demo-mode"] = "true";
+    }
+
+    const method = String(config.method || "get").toUpperCase();
+    const isMutating = ["POST", "PUT", "PATCH", "DELETE"].includes(method);
+    const isAuth = config.url?.includes("/auth/login") || config.url?.includes("/auth/register");
+
+    if (isMutating && !isAuth) {
+      try {
+        window.dispatchEvent(
+          new CustomEvent("bilzet:demo-action-blocked", {
+            detail: { message: "Available in the full version." }
+          })
+        );
+      } catch (_) {}
+
+      const err = new Error("Available in the full version.");
+      err.response = {
+        status: 403,
+        data: {
+          success: false,
+          code: "DEMO_VIEW_ONLY",
+          message: "Available in the full version."
+        }
+      };
+      return Promise.reject(err);
+    }
+  }
+
   return config;
 });
 

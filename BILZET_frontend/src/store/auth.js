@@ -8,10 +8,11 @@ export const useAuth = create((set) => ({
   loading: true,
 
   async bootstrap() {
+    let token =
+      localStorage.getItem("bilzet_access_token") ||
+      localStorage.getItem("token") ||
+      "";
     try {
-      let token =
-        localStorage.getItem("bilzet_access_token") ||
-        localStorage.getItem("token");
 
       if (!token && typeof window !== "undefined" && window.Clerk?.session) {
         try {
@@ -109,9 +110,39 @@ export const useAuth = create((set) => ({
           );
         } catch (_) {}
         set({ user: res.user, loading: false });
+      } else {
+        // res returned but had no .user — always unblock loading to prevent blank page
+        set({ loading: false });
       }
     } catch (err) {
       console.warn("Bootstrap auth check notice:", err?.message || err);
+      // Check if visitor is in Instant Demo mode
+      const isDemo = localStorage.getItem("bilzet_demo_mode") === "true" || (typeof token === "string" && token.startsWith("demo-token"));
+      if (isDemo) {
+        set({
+          user: {
+            id: "demo-guest-id",
+            name: "Demo Visitor",
+            role: "GUEST",
+            email: "demo@bilzet.app",
+            isOwner: false,
+            isDemo: true,
+            businessId: "demo-store-01",
+            subscription: {
+              planTier: "PREMIUM",
+              planName: "Premium Showcase",
+              status: "ACTIVE",
+              isActive: true,
+              isUnlimited: true,
+              maxSubUsers: 0,
+            },
+            currentPlan: "PREMIUM",
+          },
+          loading: false,
+        });
+        return;
+      }
+
       // Cleanly clear invalid token so user is not stuck on infinite loading
       const isClerkLoggedIn = typeof window !== "undefined" && window.Clerk?.session;
       if (!isClerkLoggedIn) {
@@ -127,6 +158,37 @@ export const useAuth = create((set) => ({
     try {
       const res = await authApi.me();
       if (res && res.user) {
+        // Normalize subscription and currentPlan the same way bootstrap() does
+        const sub = res.user.subscription || {
+          planTier: "FREE",
+          planName: "Free Starter",
+          status: "ACTIVE",
+          isActive: true,
+          isUnlimited: false,
+          maxSubUsers: 0,
+          expiresAt: null,
+        };
+        res.user.subscription = sub;
+        const tier = String(sub.planTier || "FREE").toUpperCase();
+        const isValidPaidTier =
+          ["PRO", "PREMIUM", "ENTERPRISE"].includes(tier) && sub.isActive !== false;
+        res.user.currentPlan = isValidPaidTier ? tier : "FREE";
+
+        const cap = res.user.currentPlan.charAt(0) + res.user.currentPlan.slice(1).toLowerCase();
+        try {
+          localStorage.setItem(
+            "bilzet_subscription_data",
+            JSON.stringify({
+              currentPlan: cap,
+              planTier: res.user.currentPlan,
+              status: sub.status || "ACTIVE",
+              expiresAt: sub.expiresAt,
+              isActive: isValidPaidTier,
+              planName: sub.planName || "Free Starter",
+            })
+          );
+        } catch (_) {}
+
         set({ user: res.user });
         return res.user;
       }

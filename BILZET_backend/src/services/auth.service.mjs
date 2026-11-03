@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import prisma from '../config/prisma.mjs';
@@ -159,28 +160,21 @@ export const enrichUserWithSubscription = async (user) => {
         hasPendingInvitations: false,
       };
     } else {
-      const ownedBiz = await prisma.business.findFirst({ where: { ownerId: user.id } });
-      if (ownedBiz) {
-        sanitized.isOwner = true;
-        sanitized.role = 'ADMIN';
-        sanitized.businessId = ownedBiz.id;
-        onboarding = {
-          status: 'COMPLETED',
-          destination: '/dashboard',
-          canRegisterShop: false,
-          hasPendingInvitations: false,
-        };
-      } else if (memberships.length > 0) {
-        const primary = memberships[0];
-        const roleUpper = String(primary.role || 'STAFF').toUpperCase();
+      // 1. If user is an active member of a store (e.g. Cashier, Staff, CA, Manager)
+      if (memberships.length > 0) {
+        const primary = (user.businessId ? memberships.find((m) => m.businessId === user.businessId) : null) || memberships[0];
+        const roleUpper = String(primary.role || user.role || 'STAFF').toUpperCase();
         let dest = '/staff-dashboard';
-        if (roleUpper === 'CA' || roleUpper === 'ACCOUNTANT') {
+        if (roleUpper === 'CASHIER') {
+          dest = '/billing';
+        } else if (roleUpper === 'CA' || roleUpper === 'ACCOUNTANT') {
           dest = '/ca-portal';
         } else if (roleUpper === 'MANAGER' || roleUpper === 'ADMIN' || roleUpper === 'OWNER') {
           dest = '/dashboard';
         }
         sanitized.role = primary.role;
         sanitized.businessId = primary.businessId;
+        sanitized.isOwner = roleUpper === 'ADMIN' || roleUpper === 'OWNER';
         onboarding = {
           status: 'COMPLETED',
           destination: dest,
@@ -188,37 +182,86 @@ export const enrichUserWithSubscription = async (user) => {
           hasPendingInvitations: false,
         };
       } else {
-        // Check for active CA store access
-        const activeCaAccess = await prisma.caStoreAccess.findFirst({
-          where: { caUserId: user.id, status: 'ACTIVE' },
-          include: { business: { select: { id: true, name: true, gstin: true, phone: true } } },
-        }).catch(() => null);
-
-        if (activeCaAccess) {
-          sanitized.role = 'CA';
-          sanitized.businessId = activeCaAccess.businessId;
+        // 2. Check if user is a business owner of an owned store
+        const ownedBiz = await prisma.business.findFirst({ where: { ownerId: user.id } });
+        if (ownedBiz && (user.isOwner || user.role === 'ADMIN' || user.role === 'OWNER')) {
+          sanitized.isOwner = true;
+          sanitized.role = 'ADMIN';
+          sanitized.businessId = ownedBiz.id;
           onboarding = {
             status: 'COMPLETED',
-            destination: '/ca-portal',
+            destination: '/dashboard',
             canRegisterShop: false,
             hasPendingInvitations: false,
           };
-        } else if (pendingInvitationsCount > 0) {
-          onboarding = {
-            status: 'PENDING_INVITATION',
-            destination: '/join-team',
-            canRegisterShop: false,
-            hasPendingInvitations: true,
-          };
+        } else {
+          // 3. Check for active CA store access
+          const activeCaAccess = await prisma.caStoreAccess.findFirst({
+            where: { caUserId: user.id, status: 'ACTIVE' },
+            include: { business: { select: { id: true, name: true, gstin: true, phone: true } } },
+          }).catch(() => null);
+
+          if (activeCaAccess) {
+            sanitized.role = 'CA';
+            sanitized.businessId = activeCaAccess.businessId;
+            sanitized.isOwner = false;
+            onboarding = {
+              status: 'COMPLETED',
+              destination: '/ca-portal',
+              canRegisterShop: false,
+              hasPendingInvitations: false,
+            };
+          } else if (pendingInvitationsCount > 0) {
+            onboarding = {
+              status: 'PENDING_INVITATION',
+              destination: '/join-team',
+              canRegisterShop: false,
+              hasPendingInvitations: true,
+            };
+          } else {
+            const roleUpper = String(user.role || 'NONE').toUpperCase();
+            let dest = '/join-team';
+            if (roleUpper === 'CASHIER') dest = '/billing';
+            else if (roleUpper === 'STAFF') dest = '/staff-dashboard';
+            else if (roleUpper === 'CA' || roleUpper === 'ACCOUNTANT') dest = '/ca-portal';
+            else if (roleUpper === 'MANAGER' || roleUpper === 'ADMIN' || roleUpper === 'OWNER') dest = '/dashboard';
+
+            onboarding = {
+              status: user.businessId ? 'COMPLETED' : 'PENDING_STORE',
+              destination: dest,
+              canRegisterShop: !user.businessId,
+              hasPendingInvitations: false,
+            };
+          }
         }
       }
     }
   } catch (_) {}
 
+  // Resolve granular effective permissions map for frontend use
+  let effectivePermissionsMap = {};
   try {
-    const subInfo = await getActiveSubscription(user.businessId, user.id);
+    const permSet = await getEffectivePermissions(user.id);
+    if (permSet && permSet.forEach) {
+      permSet.forEach((pk) => {
+        effectivePermissionsMap[pk] = true;
+      });
+    }
+  } catch (pErr) {
+    console.warn('[enrichUserWithSubscription] Could not resolve permissions:', pErr.message);
+  }
+
+  // Ensure isOwner is strictly false for non-owner member roles
+  const roleUpper = String(sanitized.role || user.role || '').toUpperCase();
+  if (['CASHIER', 'STAFF', 'CA', 'ACCOUNTANT', 'VIEWER'].includes(roleUpper)) {
+    sanitized.isOwner = false;
+  }
+
+  try {
+    const subInfo = await getActiveSubscription(sanitized.businessId || user.businessId, user.id);
     return {
       ...sanitized,
+      effectivePermissions: effectivePermissionsMap,
       subscription: subInfo,
       currentPlan: subInfo?.planTier || 'FREE',
       businessMemberships: memberships,
@@ -228,6 +271,7 @@ export const enrichUserWithSubscription = async (user) => {
   } catch (err) {
     return {
       ...sanitized,
+      effectivePermissions: effectivePermissionsMap,
       subscription: {
         planTier: 'FREE',
         actualPlanTier: 'FREE',
@@ -295,42 +339,229 @@ export const register = async (userData, context = {}) => {
     throw ApiError.conflict(`User with email '${normalizedEmail}' already exists. Please sign in instead.`);
   }
 
+  // 1. Check if user is registering via invitationToken or if email has pending invitation
+  let pendingRoleInvite = null;
+  let pendingCaInvite = null;
+  const rawInviteToken = String(userData.invitationToken || userData.token || '').trim();
+
+  if (rawInviteToken) {
+    const tokenHash = crypto.createHash('sha256').update(rawInviteToken).digest('hex');
+    pendingRoleInvite = await prisma.roleInvitation.findFirst({
+      where: {
+        OR: [{ tokenHash }, { id: rawInviteToken }],
+        status: 'PENDING',
+        expiresAt: { gt: new Date() },
+      },
+      include: { business: true },
+    });
+
+    if (!pendingRoleInvite) {
+      pendingCaInvite = await prisma.caInvitation.findFirst({
+        where: {
+          OR: [{ tokenHash }, { id: rawInviteToken }],
+          status: 'PENDING',
+          expiresAt: { gt: new Date() },
+        },
+        include: { business: true },
+      });
+    }
+  }
+
+  if (!pendingRoleInvite && !pendingCaInvite) {
+    pendingRoleInvite = await prisma.roleInvitation.findFirst({
+      where: {
+        recipientEmail: { equals: normalizedEmail, mode: 'insensitive' },
+        status: 'PENDING',
+        expiresAt: { gt: new Date() },
+      },
+      include: { business: true },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  if (!pendingRoleInvite && !pendingCaInvite) {
+    pendingCaInvite = await prisma.caInvitation.findFirst({
+      where: {
+        email: { equals: normalizedEmail, mode: 'insensitive' },
+        status: 'PENDING',
+        expiresAt: { gt: new Date() },
+      },
+      include: { business: true },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
   // Self-Registration & Role Separation
   const isSuper = isAdminEmail(normalizedEmail);
   const isTaxConsultant = userData.accountType === 'TAX_CONSULTANT' || userData.accountType === 'CA';
   const isStaffRole = userData.accountType === 'STAFF';
 
-  const wantsOwnerAccount =
-    !isTaxConsultant &&
-    !isStaffRole &&
-    (isSuper ||
-      userData.accountType === 'BUSINESS_OWNER' ||
-      userData.isOwner === true ||
-      Boolean(userData.businessName));
+  let assignedRole = 'NONE';
+  let isOwner = false;
+  let assignedBusinessId = null;
 
-  const assignedRole = isSuper
-    ? 'SUPER_ADMIN'
-    : isTaxConsultant
-    ? 'CA'
-    : wantsOwnerAccount
-    ? 'ADMIN'
-    : 'NONE';
-  const isOwner = wantsOwnerAccount;
+  if (isSuper) {
+    assignedRole = 'SUPER_ADMIN';
+    isOwner = true;
+  } else if (pendingRoleInvite) {
+    // Invited to a store: strictly enforce role and do NOT assign business owner
+    assignedRole = pendingRoleInvite.role;
+    assignedBusinessId = pendingRoleInvite.businessId;
+    isOwner = false;
+  } else if (pendingCaInvite) {
+    assignedRole = 'CA';
+    assignedBusinessId = pendingCaInvite.businessId;
+    isOwner = false;
+  } else if (isTaxConsultant) {
+    assignedRole = 'CA';
+    isOwner = false;
+  } else if (isStaffRole) {
+    assignedRole = 'STAFF';
+    isOwner = false;
+  } else {
+    // Standard Merchant / Business Owner
+    assignedRole = 'ADMIN';
+    isOwner = true;
+  }
+
+  let inviteMeta = {};
+  if (pendingRoleInvite?.message && typeof pendingRoleInvite.message === 'string') {
+    try {
+      if (pendingRoleInvite.message.startsWith('{')) {
+        inviteMeta = JSON.parse(pendingRoleInvite.message);
+      }
+    } catch (_) {}
+  }
 
   let user = await prisma.user.create({
     data: {
-      name: name || (isSuper ? 'Platform Admin' : wantsOwnerAccount ? 'Store Admin' : isTaxConsultant ? 'Tax Consultant / CA' : 'User'),
+      name: name || pendingRoleInvite?.name || (isSuper ? 'Platform Admin' : isOwner ? 'Store Admin' : assignedRole === 'CA' ? 'Chartered Accountant' : assignedRole === 'CASHIER' ? 'Cashier' : 'Team Member'),
       email: normalizedEmail,
       phone: phone || null,
       passwordHash,
       role: assignedRole,
+      appRoleId: inviteMeta.appRoleId || null,
       isOwner,
-      businessId: null,
+      businessId: assignedBusinessId,
       isActive: true,
     },
   });
 
-  if (wantsOwnerAccount && !isSuper) {
+  if (pendingRoleInvite) {
+    // Connect registered account to the store
+    const now = new Date();
+    await prisma.businessMember.upsert({
+      where: {
+        userId_businessId: {
+          userId: user.id,
+          businessId: pendingRoleInvite.businessId,
+        },
+      },
+      update: {
+        role: pendingRoleInvite.role,
+        department: pendingRoleInvite.department,
+        designation: pendingRoleInvite.designation,
+        permissions: pendingRoleInvite.permissions,
+        status: 'ACTIVE',
+        acceptedAt: now,
+      },
+      create: {
+        userId: user.id,
+        businessId: pendingRoleInvite.businessId,
+        role: pendingRoleInvite.role,
+        department: pendingRoleInvite.department,
+        designation: pendingRoleInvite.designation,
+        permissions: pendingRoleInvite.permissions,
+        status: 'ACTIVE',
+        invitedBy: pendingRoleInvite.inviterId,
+        acceptedAt: now,
+      },
+    });
+
+    if (['STAFF', 'CASHIER', 'MANAGER'].includes(pendingRoleInvite.role)) {
+      const existingStaff = await prisma.staff.findFirst({
+        where: { userId: user.id, businessId: pendingRoleInvite.businessId },
+      });
+      if (!existingStaff) {
+        await prisma.staff.create({
+          data: {
+            staffId: `STF-${Date.now().toString().slice(-6)}`,
+            userId: user.id,
+            businessId: pendingRoleInvite.businessId,
+            name: user.name,
+            email: user.email,
+            role: pendingRoleInvite.designation || (pendingRoleInvite.role === 'CASHIER' ? 'Cashier' : pendingRoleInvite.role === 'MANAGER' ? 'Manager' : 'Staff'),
+            department: pendingRoleInvite.department || 'Operations',
+            status: 'ACTIVE',
+          },
+        }).catch(() => {});
+      }
+    }
+
+    if (pendingRoleInvite.role === 'CA' || pendingRoleInvite.role === 'ACCOUNTANT') {
+      await prisma.caStoreAccess.upsert({
+        where: {
+          caUserId_businessId: {
+            caUserId: user.id,
+            businessId: pendingRoleInvite.businessId,
+          },
+        },
+        update: { status: 'ACTIVE', permissions: pendingRoleInvite.permissions },
+        create: {
+          caUserId: user.id,
+          businessId: pendingRoleInvite.businessId,
+          status: 'ACTIVE',
+          role: 'CA',
+          assignedById: pendingRoleInvite.inviterId,
+          permissions: pendingRoleInvite.permissions,
+        },
+      }).catch(() => {});
+    }
+
+    // Update role invitation usage count & acceptance status
+    const maxUses = inviteMeta.maxUses || 1;
+    const usesCount = (inviteMeta.usesCount || 0) + 1;
+    inviteMeta.usesCount = usesCount;
+    const shouldMarkAccepted = usesCount >= maxUses;
+
+    await prisma.roleInvitation.update({
+      where: { id: pendingRoleInvite.id },
+      data: {
+        status: shouldMarkAccepted ? 'ACCEPTED' : 'PENDING',
+        acceptedAt: now,
+        recipientUserId: user.id,
+        message: JSON.stringify(inviteMeta),
+      },
+    });
+  } else if (pendingCaInvite) {
+    const now = new Date();
+    await prisma.caStoreAccess.upsert({
+      where: {
+        caUserId_businessId: {
+          caUserId: user.id,
+          businessId: pendingCaInvite.businessId,
+        },
+      },
+      update: { status: 'ACTIVE', permissions: pendingCaInvite.permissions },
+      create: {
+        caUserId: user.id,
+        businessId: pendingCaInvite.businessId,
+        status: 'ACTIVE',
+        role: 'CA',
+        assignedById: pendingCaInvite.inviterId,
+        permissions: pendingCaInvite.permissions,
+      },
+    }).catch(() => {});
+
+    await prisma.caInvitation.update({
+      where: { id: pendingCaInvite.id },
+      data: {
+        status: 'ACCEPTED',
+        acceptedAt: now,
+        caUserId: user.id,
+      },
+    });
+  } else if (isOwner && !isSuper) {
     user = await ensureAdminBusiness(user, userData.businessName || `${user.name || 'My'}'s Store`, {
       state: userData.state,
       country: userData.country,
@@ -486,20 +717,117 @@ export const login = async (email, password, context = {}) => {
     }
   }
 
-  // Sync active memberships if user does not have a current businessId
-  if (!user.businessId && user.role !== 'SUPER_ADMIN') {
+  // Sync active store memberships and pending invitations
+  if (user.role !== 'SUPER_ADMIN') {
     try {
-      const activeMember = await prisma.businessMember.findFirst({
-        where: { userId: user.id, status: 'ACTIVE' },
+      // 1. Check if there's any pending invitation to auto-connect upon login
+      const pendingInvite = await prisma.roleInvitation.findFirst({
+        where: {
+          recipientEmail: { equals: normalizedEmail, mode: 'insensitive' },
+          status: 'PENDING',
+          expiresAt: { gt: new Date() },
+        },
+        include: { business: true },
+        orderBy: { createdAt: 'desc' },
       });
-      if (activeMember) {
+
+      if (pendingInvite && (!user.businessId || user.role === 'NONE')) {
+        const now = new Date();
+        await prisma.businessMember.upsert({
+          where: {
+            userId_businessId: {
+              userId: user.id,
+              businessId: pendingInvite.businessId,
+            },
+          },
+          update: {
+            role: pendingInvite.role,
+            department: pendingInvite.department,
+            designation: pendingInvite.designation,
+            permissions: pendingInvite.permissions,
+            status: 'ACTIVE',
+            acceptedAt: now,
+          },
+          create: {
+            userId: user.id,
+            businessId: pendingInvite.businessId,
+            role: pendingInvite.role,
+            department: pendingInvite.department,
+            designation: pendingInvite.designation,
+            permissions: pendingInvite.permissions,
+            status: 'ACTIVE',
+            invitedBy: pendingInvite.inviterId,
+            acceptedAt: now,
+          },
+        });
+
+        if (['STAFF', 'CASHIER', 'MANAGER'].includes(pendingInvite.role)) {
+          const existingStaff = await prisma.staff.findFirst({
+            where: { userId: user.id, businessId: pendingInvite.businessId },
+          });
+          if (!existingStaff) {
+            await prisma.staff.create({
+              data: {
+                staffId: `STF-${Date.now().toString().slice(-6)}`,
+                userId: user.id,
+                businessId: pendingInvite.businessId,
+                name: user.name,
+                email: user.email,
+                role: pendingInvite.designation || (pendingInvite.role === 'CASHIER' ? 'Cashier' : pendingInvite.role === 'MANAGER' ? 'Manager' : 'Staff'),
+                department: pendingInvite.department || 'Operations',
+                status: 'ACTIVE',
+              },
+            }).catch(() => {});
+          }
+        }
+
+        await prisma.roleInvitation.update({
+          where: { id: pendingInvite.id },
+          data: {
+            status: 'ACCEPTED',
+            acceptedAt: now,
+            recipientUserId: user.id,
+          },
+        });
+
         user = await prisma.user.update({
           where: { id: user.id },
           data: {
-            businessId: activeMember.businessId,
-            role: activeMember.role,
+            businessId: pendingInvite.businessId,
+            role: pendingInvite.role,
+            isOwner: false,
           },
         });
+      } else {
+        // 2. Check active membership to keep session in sync
+        const activeMember = await prisma.businessMember.findFirst({
+          where: {
+            userId: user.id,
+            status: 'ACTIVE',
+            ...(user.businessId ? { businessId: user.businessId } : {}),
+          },
+        }) || await prisma.businessMember.findFirst({
+          where: { userId: user.id, status: 'ACTIVE' },
+        });
+
+        if (activeMember) {
+          const updateData = {};
+          if (user.businessId !== activeMember.businessId) {
+            updateData.businessId = activeMember.businessId;
+          }
+          if (user.role !== activeMember.role && activeMember.role !== 'NONE') {
+            updateData.role = activeMember.role;
+          }
+          if (user.isOwner && activeMember.role !== 'ADMIN' && activeMember.role !== 'OWNER') {
+            updateData.isOwner = false;
+          }
+          if (Object.keys(updateData).length > 0) {
+            user = await prisma.user.update({
+              where: { id: user.id },
+              data: updateData,
+            });
+          }
+        }
       }
     } catch (_) {}
   }

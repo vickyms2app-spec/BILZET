@@ -14,6 +14,27 @@ import { getActiveSubscription, assertCanAddSubUser } from './subscription.servi
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ALLOWED_ROLES = ['STAFF', 'MANAGER', 'CA', 'CASHIER', 'ACCOUNTANT', 'SALES_STAFF', 'VIEWER'];
+export const packInvitationMeta = (rawToken, data = {}) => {
+  return JSON.stringify({
+    userMessage: data.message ? String(data.message).trim() : null,
+    rawToken,
+    maxUses: data.maxUses ? parseInt(data.maxUses, 10) : 1,
+    usesCount: data.usesCount || 0,
+    appRoleId: data.appRoleId || null,
+    isRoleLink: Boolean(data.isRoleLink),
+  });
+};
+
+export const unpackInvitationMeta = (messageStr) => {
+  if (!messageStr || typeof messageStr !== 'string') return {};
+  try {
+    if (messageStr.startsWith('{') && messageStr.endsWith('}')) {
+      return JSON.parse(messageStr);
+    }
+  } catch (_) {}
+  return { userMessage: messageStr };
+};
+
 
 /**
  * Resolves the target business and verifies that the inviter user is an authorized Admin/Owner.
@@ -130,8 +151,15 @@ export const createInvitation = async (inviterUser, businessId, data = {}) => {
   }
 
   const rawRole = String(data.role || 'STAFF').trim().toUpperCase();
-  if (!ALLOWED_ROLES.includes(rawRole)) {
-    throw ApiError.badRequest(`Invalid role '${rawRole}'. Allowed roles: ${ALLOWED_ROLES.join(', ')}`);
+  const isCustomRole = await prisma.appRole.findFirst({
+    where: {
+      businessId: resolvedBusinessId,
+      code: rawRole,
+    },
+  }).catch(() => null);
+
+  if (!ALLOWED_ROLES.includes(rawRole) && !isCustomRole) {
+    throw ApiError.badRequest(`Invalid role '${rawRole}'. Allowed roles: ${ALLOWED_ROLES.join(', ')} or configured business roles.`);
   }
 
   // Prevent self-invitation
@@ -211,7 +239,13 @@ export const createInvitation = async (inviterUser, businessId, data = {}) => {
       department: data.department ? String(data.department).trim() : null,
       designation: data.designation ? String(data.designation).trim() : null,
       permissions: data.permissions || [],
-      message: data.message ? String(data.message).trim() : null,
+      message: packInvitationMeta(rawToken, {
+        message: data.message,
+        maxUses: data.maxUses || 1,
+        usesCount: 0,
+        appRoleId: data.appRoleId || null,
+        isRoleLink: Boolean(data.isRoleLink),
+      }),
       tokenHash,
       status: 'PENDING',
       deliveryStatus: 'PENDING',
@@ -307,12 +341,20 @@ export const createInvitation = async (inviterUser, businessId, data = {}) => {
     });
   } catch (_) {}
 
+  const registrationLink = `${frontendUrl}/sign-up?invitation=${rawToken}`;
   return {
     invitation: {
       ...updatedInvitation,
       rawToken,
+      token: rawToken,
+      registrationLink,
+      maxUses: data.maxUses || 1,
+      usesCount: 0,
+      isRoleLink: Boolean(data.isRoleLink),
     },
     inviteLink,
+    registrationLink,
+    token: rawToken,
     emailSent,
     deliveryStatus,
     inAppNotificationCreated: Boolean(notification),
@@ -341,13 +383,28 @@ export const getBusinessInvitations = async (inviterUser, businessId, query = {}
     },
   });
 
-  // Check and auto-flag expired records
+  // Check, unpack metadata and auto-flag expired records
   const now = new Date();
+  const frontendUrl = env.FRONTEND_URL || 'http://localhost:5173';
   const processed = invitations.map((inv) => {
+    const meta = unpackInvitationMeta(inv.message);
+    const effectiveToken = meta.rawToken || inv.id;
+    let effectiveStatus = inv.status;
     if (inv.status === 'PENDING' && new Date(inv.expiresAt) < now) {
-      return { ...inv, status: 'EXPIRED' };
+      effectiveStatus = 'EXPIRED';
     }
-    return inv;
+    return {
+      ...inv,
+      message: meta.userMessage || null,
+      token: effectiveToken,
+      registrationLink: `${frontendUrl}/sign-up?invitation=${effectiveToken}`,
+      inviteLink: `${frontendUrl}/accept-invitation?token=${effectiveToken}&role=${(inv.role || 'STAFF').toLowerCase()}`,
+      maxUses: meta.maxUses || 1,
+      usesCount: meta.usesCount || 0,
+      appRoleId: meta.appRoleId || null,
+      isRoleLink: Boolean(meta.isRoleLink),
+      status: effectiveStatus,
+    };
   });
 
   return { invitations: processed };
@@ -462,15 +519,26 @@ export const verifyInvitationToken = async (rawToken) => {
     throw ApiError.badRequest('Valid token parameter is required.');
   }
 
-  const tokenHash = crypto.createHash('sha256').update(rawToken.trim()).digest('hex');
+  const trimmed = rawToken.trim();
+  const tokenHash = crypto.createHash('sha256').update(trimmed).digest('hex');
 
-  const invitation = await prisma.roleInvitation.findUnique({
+  let invitation = await prisma.roleInvitation.findUnique({
     where: { tokenHash },
     include: {
       business: { select: { id: true, name: true, gstin: true, phone: true, state: true } },
       inviter: { select: { id: true, name: true, email: true } },
     },
   });
+
+  if (!invitation) {
+    invitation = await prisma.roleInvitation.findUnique({
+      where: { id: trimmed },
+      include: {
+        business: { select: { id: true, name: true, gstin: true, phone: true, state: true } },
+        inviter: { select: { id: true, name: true, email: true } },
+      },
+    });
+  }
 
   if (!invitation) {
     throw ApiError.notFound('Invitation not found or invalid token.');
@@ -485,28 +553,57 @@ export const verifyInvitationToken = async (rawToken) => {
 
   const now = new Date();
   const isExpired = new Date(invitation.expiresAt) < now;
+  const meta = unpackInvitationMeta(invitation.message);
+  const maxUses = meta.maxUses || 1;
+  const usesCount = meta.usesCount || 0;
+  const isLimitReached = usesCount >= maxUses;
 
-  if (isExpired && invitation.status === 'PENDING') {
-    await prisma.roleInvitation.update({
-      where: { id: invitation.id },
-      data: { status: 'EXPIRED' },
-    }).catch(() => {});
+  let validityStatus = 'VALID';
+  let message = 'Invitation is valid and ready for registration.';
+  let isValid = true;
+
+  if (invitation.status === 'REVOKED') {
+    validityStatus = 'REVOKED';
+    message = 'This registration link has been revoked by the store owner.';
+    isValid = false;
+  } else if (isExpired || invitation.status === 'EXPIRED') {
+    validityStatus = 'EXPIRED';
+    message = 'This registration link has expired.';
+    isValid = false;
+    if (invitation.status === 'PENDING') {
+      await prisma.roleInvitation.update({
+        where: { id: invitation.id },
+        data: { status: 'EXPIRED' },
+      }).catch(() => {});
+    }
+  } else if (isLimitReached || invitation.status === 'ACCEPTED') {
+    validityStatus = 'USAGE_LIMIT_REACHED';
+    message = 'This registration link has reached its maximum usage limit.';
+    isValid = false;
   }
 
+  const isRoleGeneric = invitation.recipientEmail.endsWith('@role.bilzet') || invitation.recipientEmail.includes('bilzet.store') || Boolean(meta.isRoleLink);
+
   return {
-    valid: invitation.status === 'PENDING' && !isExpired,
+    valid: isValid,
+    validityStatus,
+    message,
     invitation: {
       id: invitation.id,
-      email: invitation.recipientEmail,
+      email: isRoleGeneric ? null : invitation.recipientEmail,
       name: invitation.name,
       role: invitation.role,
+      appRoleId: meta.appRoleId || null,
       department: invitation.department,
       designation: invitation.designation,
-      status: isExpired && invitation.status === 'PENDING' ? 'EXPIRED' : invitation.status,
+      status: validityStatus !== 'VALID' ? validityStatus : invitation.status,
       expiresAt: invitation.expiresAt,
       business: invitation.business,
       inviter: invitation.inviter,
       permissions: invitation.permissions,
+      maxUses,
+      usesCount,
+      isRoleLink: Boolean(meta.isRoleLink),
     },
   };
 };
@@ -591,15 +688,23 @@ export const acceptInvitation = async (user, rawToken) => {
     throw ApiError.badRequest('This invitation has expired. Please ask the administrator to resend it.');
   }
 
-  // Enforce identity verification: logged-in user email must match recipient email
+  // Enforce identity verification: logged-in user email must match recipient email unless generic role registration link
   const userEmail = (user.email || '').toLowerCase().trim();
   const inviteEmail = (invitation.recipientEmail || '').toLowerCase().trim();
+  const meta = unpackInvitationMeta(invitation.message);
+  const isGenericRoleLink = inviteEmail.endsWith('@role.bilzet') || inviteEmail.includes('bilzet.store') || Boolean(meta.isRoleLink);
 
-  if (userEmail !== inviteEmail) {
+  if (!isGenericRoleLink && userEmail !== inviteEmail) {
     throw ApiError.forbidden(
       `Access denied: You are signed in as ${userEmail}, but this invitation was intended for ${inviteEmail}. Please sign in with the invited email.`
     );
   }
+
+  const maxUses = meta.maxUses || 1;
+  const usesCount = (meta.usesCount || 0) + 1;
+  meta.usesCount = usesCount;
+  const shouldMarkAccepted = usesCount >= maxUses;
+  const updatedMessage = packInvitationMeta(meta.rawToken || rawToken, meta);
 
   // Execute acceptance in transactional safety
   const result = await prisma.$transaction(async (tx) => {
@@ -705,18 +810,16 @@ export const acceptInvitation = async (user, rawToken) => {
       }
     }
 
-    // 4. Update user's active businessId and role if user had NONE or no business
-    const userUpdateData = {};
-    if (!user.businessId || user.role === 'NONE' || user.role === 'VIEWER') {
-      userUpdateData.businessId = invitation.businessId;
-      userUpdateData.role = invitation.role;
-    }
-    if (Object.keys(userUpdateData).length > 0) {
-      await tx.user.update({
-        where: { id: user.id },
-        data: userUpdateData,
-      });
-    }
+    // 4. Update user's active businessId and role to the accepted store
+    const isOwnerRole = invitation.role === 'ADMIN' || invitation.role === 'OWNER';
+    await tx.user.update({
+      where: { id: user.id },
+      data: {
+        businessId: invitation.businessId,
+        role: invitation.role,
+        isOwner: isOwnerRole ? true : false,
+      },
+    });
 
     // 5. Mark invitation as ACCEPTED
     const updatedInvitation = await tx.roleInvitation.update({
@@ -981,6 +1084,178 @@ export const revokeInvitation = async (inviterUser, invitationId) => {
   return { invitation: updated };
 };
 
+
+/**
+ * Generate or retrieve an active Role Registration Link
+ */
+export const generateRoleRegistrationLink = async (inviterUser, businessId, data = {}) => {
+  const business = await resolveAndAuthorizeBusiness(inviterUser, businessId);
+  const resolvedBusinessId = business.id;
+
+  const rawRole = String(data.role || 'STAFF').trim().toUpperCase();
+  const appRoleId = data.appRoleId || null;
+  const expiresInDays = Math.min(60, Math.max(1, parseInt(data.expiresInDays || '7', 10)));
+  const maxUses = Math.min(100, Math.max(1, parseInt(data.maxUses || '1', 10)));
+  const forceNew = Boolean(data.forceNew);
+
+  let customRole = null;
+  if (appRoleId) {
+    customRole = await prisma.appRole.findFirst({
+      where: { id: appRoleId, businessId: resolvedBusinessId },
+      include: { permissions: { include: { permission: true } } },
+    });
+    if (!customRole) {
+      throw ApiError.notFound('Custom role not found for this store.');
+    }
+  }
+
+  // Enforce Subscription Entitlement:
+  if (inviterUser.role !== 'SUPER_ADMIN' && !inviterUser.isSuperAdmin) {
+    if (rawRole === 'CA' || appRoleId) {
+      const subInfo = await getActiveSubscription(resolvedBusinessId, inviterUser.id);
+      if (!subInfo.isActive || subInfo.planTier !== 'PREMIUM') {
+        throw ApiError.forbidden('Custom roles and CA registration links require an active Premium subscription.');
+      }
+    } else {
+      await assertCanAddSubUser(resolvedBusinessId, inviterUser.id);
+    }
+  }
+
+  const now = new Date();
+  const roleLinkEmail = `link_${rawRole.toLowerCase()}_${resolvedBusinessId}@role.bilzet`;
+
+  if (!forceNew) {
+    const existing = await prisma.roleInvitation.findFirst({
+      where: {
+        businessId: resolvedBusinessId,
+        role: rawRole,
+        recipientEmail: roleLinkEmail,
+        status: 'PENDING',
+        expiresAt: { gt: now },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (existing) {
+      const meta = unpackInvitationMeta(existing.message);
+      if ((meta.usesCount || 0) < (meta.maxUses || 1) && meta.rawToken) {
+        const frontendUrl = env.FRONTEND_URL || 'http://localhost:5173';
+        return {
+          success: true,
+          token: meta.rawToken,
+          registrationLink: `${frontendUrl}/sign-up?invitation=${meta.rawToken}`,
+          inviteLink: `${frontendUrl}/accept-invitation?token=${meta.rawToken}&role=${rawRole.toLowerCase()}`,
+          role: rawRole,
+          roleName: customRole?.name || rawRole,
+          appRoleId: meta.appRoleId || null,
+          businessName: business.name,
+          expiresAt: existing.expiresAt,
+          maxUses: meta.maxUses || 1,
+          usesCount: meta.usesCount || 0,
+          isExisting: true,
+        };
+      }
+    }
+  }
+
+  const rawToken = crypto.randomBytes(32).toString('hex');
+  const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+  const expiresAt = new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000);
+
+  const permissionsList = customRole?.permissions
+    ? customRole.permissions.map((p) => p.permission.key)
+    : data.permissions || [];
+
+  const serializedMeta = packInvitationMeta(rawToken, {
+    message: data.message || `Registration Link for ${customRole?.name || rawRole}`,
+    maxUses,
+    usesCount: 0,
+    appRoleId: customRole?.id || appRoleId || null,
+    isRoleLink: true,
+  });
+
+  const invitation = await prisma.roleInvitation.create({
+    data: {
+      businessId: resolvedBusinessId,
+      inviterId: inviterUser.id,
+      recipientEmail: roleLinkEmail,
+      name: customRole?.name || rawRole,
+      role: rawRole,
+      department: data.department || (rawRole === 'CASHIER' ? 'Billing Counter' : 'Operations'),
+      designation: data.designation || (customRole?.name || rawRole),
+      permissions: permissionsList,
+      message: serializedMeta,
+      tokenHash,
+      status: 'PENDING',
+      deliveryStatus: 'DELIVERED',
+      expiresAt,
+    },
+  });
+
+  const frontendUrl = env.FRONTEND_URL || 'http://localhost:5173';
+  return {
+    success: true,
+    token: rawToken,
+    registrationLink: `${frontendUrl}/sign-up?invitation=${rawToken}`,
+    inviteLink: `${frontendUrl}/accept-invitation?token=${rawToken}&role=${rawRole.toLowerCase()}`,
+    role: rawRole,
+    roleName: customRole?.name || rawRole,
+    appRoleId: customRole?.id || null,
+    businessName: business.name,
+    expiresAt,
+    maxUses,
+    usesCount: 0,
+    isExisting: false,
+  };
+};
+
+/**
+ * Retrieve current Registration Link for an invitation by ID
+ */
+export const getInvitationLink = async (inviterUser, invitationId) => {
+  const invitation = await prisma.roleInvitation.findUnique({
+    where: { id: invitationId },
+    include: { business: true },
+  });
+
+  if (!invitation) throw ApiError.notFound('Invitation not found.');
+  await verifyInviterAuthorization(inviterUser, invitation.businessId);
+
+  const meta = unpackInvitationMeta(invitation.message);
+  let token = meta.rawToken;
+
+  if (!token) {
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+    const updatedMeta = packInvitationMeta(rawToken, {
+      ...meta,
+      rawToken,
+    });
+    await prisma.roleInvitation.update({
+      where: { id: invitationId },
+      data: {
+        tokenHash,
+        message: updatedMeta,
+      },
+    });
+    token = rawToken;
+  }
+
+  const frontendUrl = env.FRONTEND_URL || 'http://localhost:5173';
+  return {
+    success: true,
+    token,
+    registrationLink: `${frontendUrl}/sign-up?invitation=${token}`,
+    inviteLink: `${frontendUrl}/accept-invitation?token=${token}&role=${invitation.role.toLowerCase()}`,
+    role: invitation.role,
+    expiresAt: invitation.expiresAt,
+    status: invitation.status,
+    businessName: invitation.business?.name,
+    maxUses: meta.maxUses || 1,
+    usesCount: meta.usesCount || 0,
+  };
+};
+
 export default {
   createInvitation,
   getBusinessInvitations,
@@ -990,4 +1265,6 @@ export default {
   rejectInvitation,
   resendInvitation,
   revokeInvitation,
+  generateRoleRegistrationLink,
+  getInvitationLink,
 };

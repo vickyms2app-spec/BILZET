@@ -28,7 +28,7 @@ export default function AcceptCaInvitation() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token");
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [invitationData, setInvitationData] = useState(null);
@@ -98,6 +98,18 @@ export default function AcceptCaInvitation() {
           setIsRoleInvite(matchedRole);
           if (res?.valid && res.invitation) {
             setInvitationData(res.invitation);
+          } else if (res?.invitation?.status === 'ACCEPTED' || res?.code === 'ALREADY_ACCEPTED') {
+            setErrorStatus({
+              code: "ALREADY_ACCEPTED",
+              message: "This invitation has already been accepted and linked to your store membership.",
+            });
+            if (user) {
+              redirectTimerRef.current = setTimeout(() => {
+                const targetRole = res?.invitation?.role || user?.role || "STAFF";
+                const targetStoreId = res?.invitation?.businessId || user?.businessId;
+                navigate(getWorkspaceRedirectPath({ role: targetRole, businessId: targetStoreId }), { replace: true });
+              }, 1200);
+            }
           } else {
             setErrorStatus({
               code: res?.code || "INVALID",
@@ -127,6 +139,7 @@ export default function AcceptCaInvitation() {
   }, [token, searchParams]);
 
   // Check email match if user is signed in
+  // Field is `recipientEmail` for role invitations, `email` for CA invitations
   const invitedEmail = (invitationData?.recipientEmail || invitationData?.email || invitationData?.invitedEmail || "").trim().toLowerCase();
   const userEmail = (user?.email || "").trim().toLowerCase();
   const isEmailMatch = Boolean(user && userEmail && invitedEmail && userEmail === invitedEmail);
@@ -146,7 +159,12 @@ export default function AcceptCaInvitation() {
       }
       setSuccessResult(res);
 
-      const targetStoreId = res?.storeId || res?.data?.member?.businessId || invitationData?.businessId;
+      // Refresh the Zustand auth store so the new role/businessId is reflected immediately
+      if (refreshUser) {
+        try { await refreshUser(); } catch (_) {}
+      }
+
+      const targetStoreId = res?.storeId || res?.businessId || res?.data?.member?.businessId || invitationData?.businessId;
       if (targetStoreId) {
         localStorage.setItem("bilzet_active_store_id", targetStoreId);
         window.dispatchEvent(new CustomEvent("bilzet:store-changed", { detail: { businessId: targetStoreId } }));
@@ -154,7 +172,7 @@ export default function AcceptCaInvitation() {
 
       // Automatically redirect to role workspace after short feedback
       redirectTimerRef.current = setTimeout(() => {
-        const targetRole = res?.data?.member?.role || invitationData?.role || "CA";
+        const targetRole = res?.role || res?.data?.member?.role || invitationData?.role || "CA";
         const redirectPath = getWorkspaceRedirectPath({ role: targetRole, businessId: targetStoreId });
         navigate(redirectPath, { replace: true });
       }, 1800);
@@ -212,13 +230,17 @@ export default function AcceptCaInvitation() {
         <div className="text-center mb-6">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold uppercase tracking-wider mb-3">
             <Sparkles className="w-3.5 h-3.5" />
-            BILZET &bull; CA Connect
+            {isRoleInvite ? "BILZET \u2022 Team Onboarding" : "BILZET \u2022 CA Connect"}
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-            Chartered Accountant Invitation
+            {isRoleInvite
+              ? `${invitationData?.role ? invitationData.role.charAt(0) + invitationData.role.slice(1).toLowerCase() : "Team"} Invitation`
+              : "Chartered Accountant Invitation"}
           </h1>
           <p className="text-sm text-slate-400 mt-1">
-            Secure client authorization & synchronized accounting workspace
+            {isRoleInvite
+              ? "Secure team onboarding & workspace access"
+              : "Secure client authorization & synchronized accounting workspace"}
           </p>
         </div>
 
@@ -241,7 +263,7 @@ export default function AcceptCaInvitation() {
               </div>
               <h2 className="text-xl font-bold text-white mb-2">Connection Established!</h2>
               <p className="text-sm text-slate-300 mb-6">
-                You are now connected with <strong className="text-emerald-400">{successResult.storeName}</strong> as their authorized Chartered Accountant.
+                You are now connected with <strong className="text-emerald-400">{successResult.businessName || successResult.storeName}</strong>{isRoleInvite ? ` as ${successResult.role || invitationData?.role || "team member"}.` : " as their authorized Chartered Accountant."}
               </p>
               <div className="inline-flex items-center gap-2 text-xs text-blue-400 bg-blue-500/10 px-4 py-2 rounded-xl border border-blue-500/20 animate-pulse">
                 <span>Redirecting to your CA workspace…</span>
@@ -283,7 +305,7 @@ export default function AcceptCaInvitation() {
                 </Link>
                 {user && (
                   <Link
-                    to="/dashboard"
+                    to={getWorkspaceRedirectPath(user)}
                     className="w-full sm:w-auto px-5 py-2.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-xl text-xs font-semibold transition"
                   >
                     Open Dashboard
@@ -369,18 +391,18 @@ export default function AcceptCaInvitation() {
                     </div>
                     <h4 className="text-sm font-bold text-white mb-1">Authentication Required</h4>
                     <p className="text-xs text-slate-300 mb-4 max-w-sm mx-auto leading-relaxed">
-                      This invitation is intended for <strong className="text-blue-300 underline">{invitationData.email}</strong>.
+                      This invitation is intended for <strong className="text-blue-300 underline">{invitationData.recipientEmail || invitationData.email}</strong>.
                       Please sign in or register to verify your identity.
                     </p>
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-2">
                       <Link
-                        to={`/sign-in?returnUrl=${encodeURIComponent(window.location.pathname + window.location.search)}`}
+                        to={`/sign-in?returnUrl=${encodeURIComponent(window.location.pathname + window.location.search)}&email=${encodeURIComponent(invitedEmail)}`}
                         className="w-full sm:w-auto px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold transition"
                       >
-                        Sign In as {invitationData.email}
+                        Sign In as {invitationData.recipientEmail || invitationData.email}
                       </Link>
                       <Link
-                        to={`/sign-up?returnUrl=${encodeURIComponent(window.location.pathname + window.location.search)}`}
+                        to={`/sign-up?returnUrl=${encodeURIComponent(window.location.pathname + window.location.search)}&email=${encodeURIComponent(invitedEmail)}`}
                         className="w-full sm:w-auto px-5 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-xl text-xs font-semibold transition"
                       >
                         Create New Account
@@ -398,7 +420,7 @@ export default function AcceptCaInvitation() {
                           This invitation is reserved exclusively for:
                           <br />
                           <strong className="text-white font-mono text-[11px] bg-slate-900 px-2 py-0.5 rounded border border-slate-700 inline-block mt-1">
-                            {invitationData.email}
+                            {invitationData.recipientEmail || invitationData.email}
                           </strong>
                         </p>
                         <p className="text-xs text-slate-400 leading-relaxed mb-3">

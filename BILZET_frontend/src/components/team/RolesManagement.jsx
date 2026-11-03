@@ -15,8 +15,15 @@ import {
   Layers,
   ChevronDown,
   ChevronUp,
+  Copy,
+  Check,
+  Link2,
+  Clock,
+  ExternalLink,
+  Sparkles,
+  Share2,
 } from "lucide-react";
-import { rolesApi, subscriptionApi } from "../../api";
+import { rolesApi, subscriptionApi, roleInvitationApi } from "../../api";
 import { usePermissions } from "../../hooks/usePermissions";
 import { useAuth } from "../../store/auth";
 
@@ -43,6 +50,12 @@ export default function RolesManagement() {
   const [expandedModules, setExpandedModules] = useState({});
   const [feedback, setFeedback] = useState({ message: "", type: "success" });
   const [submitting, setSubmitting] = useState(false);
+  // Registration Link States
+  const [copiedRoleId, setCopiedRoleId] = useState(null);
+  const [linkLoadingId, setLinkLoadingId] = useState(null);
+  const [linkSettingsModal, setLinkSettingsModal] = useState(null); // { role, linkData, loading, actionLoading }
+  const [createdLinkModal, setCreatedLinkModal] = useState(null); // { roleName, link, expiresAt, maxUses }
+
 
   // Effective Subscription Tier Evaluation
   const effectiveTier = (() => {
@@ -102,6 +115,63 @@ export default function RolesManagement() {
   useEffect(() => {
     loadData();
   }, []);
+
+
+  const handleCopyRoleLink = async (role, e) => {
+    if (e) e.stopPropagation();
+    const rId = role.id || role._id;
+    setLinkLoadingId(rId);
+    try {
+      const res = await roleInvitationApi.generateRoleLink({
+        role: role.code || role.name,
+        appRoleId: role.isSystem ? undefined : role.id,
+        name: role.name,
+      });
+
+      const linkToCopy = res.registrationLink || res.inviteLink;
+      await navigator.clipboard.writeText(linkToCopy);
+      setCopiedRoleId(rId);
+      setTimeout(() => setCopiedRoleId(null), 2500);
+      showNotification(`Registration link for "${role.name}" copied to clipboard!`);
+    } catch (err) {
+      showNotification(err.response?.data?.message || err.message || "Failed to generate registration link.", "error");
+    } finally {
+      setLinkLoadingId(null);
+    }
+  };
+
+  const handleOpenLinkSettings = async (role) => {
+    setLinkSettingsModal({ role, linkData: null, loading: true, actionLoading: false });
+    try {
+      const res = await roleInvitationApi.generateRoleLink({
+        role: role.code || role.name,
+        appRoleId: role.isSystem ? undefined : role.id,
+        name: role.name,
+      });
+      setLinkSettingsModal({ role, linkData: res, loading: false, actionLoading: false });
+    } catch (err) {
+      showNotification(err.response?.data?.message || "Failed to fetch link settings.", "error");
+      setLinkSettingsModal(null);
+    }
+  };
+
+  const handleRegenerateRoleLink = async (role) => {
+    if (!linkSettingsModal) return;
+    setLinkSettingsModal((prev) => ({ ...prev, actionLoading: true }));
+    try {
+      const res = await roleInvitationApi.generateRoleLink({
+        role: role.code || role.name,
+        appRoleId: role.isSystem ? undefined : role.id,
+        name: role.name,
+        forceNew: true,
+      });
+      setLinkSettingsModal({ role, linkData: res, loading: false, actionLoading: false });
+      showNotification("A fresh registration link has been generated!");
+    } catch (err) {
+      showNotification(err.response?.data?.message || "Failed to regenerate link.", "error");
+      setLinkSettingsModal((prev) => ({ ...prev, actionLoading: false }));
+    }
+  };
 
   const showNotification = (message, type = "success") => {
     setFeedback({ message, type });
@@ -193,12 +263,33 @@ export default function RolesManagement() {
         });
         showNotification("Custom role updated successfully.");
       } else {
-        await rolesApi.create({
+        const createdRes = await rolesApi.create({
           name: roleForm.name,
           description: roleForm.description,
           permissionKeys: roleForm.permissionKeys,
         });
         showNotification("Custom role created successfully.");
+
+        // Automatically generate registration invitation link for newly created role
+        try {
+          const roleObj = createdRes?.role || createdRes;
+          const roleCode = roleObj?.code || roleForm.name.toUpperCase().replace(/\s+/g, "_");
+          const linkRes = await roleInvitationApi.generateRoleLink({
+            role: roleCode,
+            appRoleId: roleObj?.id,
+            name: roleForm.name,
+            permissions: roleForm.permissionKeys,
+          });
+
+          if (linkRes?.registrationLink) {
+            setCreatedLinkModal({
+              roleName: roleForm.name,
+              link: linkRes.registrationLink,
+              expiresAt: linkRes.expiresAt,
+              maxUses: linkRes.maxUses,
+            });
+          }
+        } catch (_) {}
       }
       setShowModal(false);
       loadData();
@@ -354,31 +445,223 @@ export default function RolesManagement() {
               </div>
             </div>
 
-            <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-              <span>{role.userCount || 0} member(s) assigned</span>
+            <div className="pt-3 border-t border-slate-100 space-y-3">
+              <div className="flex items-center justify-between text-xs text-slate-500">
+                <span>{role.userCount || 0} member(s) assigned</span>
 
-              {!role.isSystem && (
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5">
                   <button
-                    onClick={() => handleOpenEdit(role)}
-                    className="p-1 hover:text-indigo-600 rounded transition"
-                    title="Edit role"
+                    type="button"
+                    onClick={() => handleOpenLinkSettings(role)}
+                    className="p-1.5 hover:bg-slate-100 text-slate-500 hover:text-indigo-600 rounded-md transition"
+                    title="Link Settings, Expiry & Details"
                   >
-                    <Edit2 className="w-4 h-4" />
+                    <Clock className="w-3.5 h-3.5" />
                   </button>
-                  <button
-                    onClick={() => handleDeleteRole(role)}
-                    className="p-1 hover:text-rose-600 rounded transition"
-                    title="Delete role"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+
+                  {!role.isSystem && (
+                    <>
+                      <button
+                        onClick={() => handleOpenEdit(role)}
+                        className="p-1.5 hover:bg-indigo-50 text-slate-500 hover:text-indigo-600 rounded-md transition"
+                        title="Edit role"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteRole(role)}
+                        className="p-1.5 hover:bg-rose-50 text-slate-500 hover:text-rose-600 rounded-md transition"
+                        title="Delete role"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </>
+                  )}
                 </div>
-              )}
+              </div>
+
+              {/* Requirement 2: Dedicated Copy Registration Link button on each role */}
+              <button
+                type="button"
+                onClick={(e) => handleCopyRoleLink(role, e)}
+                disabled={linkLoadingId === (role.id || role._id)}
+                className="w-full py-2 px-3 bg-indigo-50/80 hover:bg-indigo-100 text-indigo-700 hover:text-indigo-800 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition border border-indigo-200/70 shadow-2xs cursor-pointer active:scale-[0.98]"
+                title="Copy Registration Link for this role"
+              >
+                {copiedRoleId === (role.id || role._id) ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-emerald-600" />
+                    <span className="text-emerald-700 font-bold">Registration Link Copied!</span>
+                  </>
+                ) : linkLoadingId === (role.id || role._id) ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin text-indigo-600" />
+                    <span>Generating Link…</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>Copy Registration Link</span>
+                  </>
+                )}
+              </button>
             </div>
           </div>
         ))}
       </div>
+
+
+      {/* ── MODAL: REGISTRATION LINK CREATED (Auto-shown after custom role creation) ── */}
+      {createdLinkModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-2xl max-w-lg w-full border border-slate-200 shadow-2xl p-6 space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-800 text-base">Custom Role &amp; Link Ready!</h3>
+                <p className="text-xs text-slate-500">
+                  Role <span className="font-semibold text-slate-800">{createdLinkModal.roleName}</span> was created. Share this registration link with candidates:
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center gap-2">
+              <Link2 className="w-4 h-4 text-indigo-600 shrink-0" />
+              <span className="font-mono text-xs text-slate-700 truncate select-all flex-1">
+                {createdLinkModal.link}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
+              <span>Expires: {createdLinkModal.expiresAt ? new Date(createdLinkModal.expiresAt).toLocaleDateString() : "7 days"}</span>
+              <span>Single or Multi-use within plan</span>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setCreatedLinkModal(null)}
+                className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl transition"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  await navigator.clipboard.writeText(createdLinkModal.link);
+                  showNotification("Registration link copied to clipboard!");
+                  setCreatedLinkModal(null);
+                }}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl flex items-center gap-1.5 shadow-xs transition"
+              >
+                <Copy className="w-3.5 h-3.5" />
+                Copy Registration Link
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL: LINK SETTINGS, EXPIRY & REVOCATION ── */}
+      {linkSettingsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-2xl max-w-lg w-full border border-slate-200 shadow-2xl p-6 space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <Link2 className="w-5 h-5 text-indigo-600" />
+                <h3 className="font-bold text-slate-800 text-base">
+                  Registration Link: {linkSettingsModal.role.name}
+                </h3>
+              </div>
+              <button
+                onClick={() => setLinkSettingsModal(null)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            {linkSettingsModal.loading ? (
+              <div className="py-8 text-center text-slate-400">
+                <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-indigo-600" />
+                Retrieving active registration link…
+              </div>
+            ) : linkSettingsModal.linkData ? (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Shareable Registration Link</label>
+                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center gap-2">
+                    <span className="font-mono text-xs text-slate-700 truncate select-all flex-1">
+                      {linkSettingsModal.linkData.registrationLink || linkSettingsModal.linkData.inviteLink}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const link = linkSettingsModal.linkData.registrationLink || linkSettingsModal.linkData.inviteLink;
+                        await navigator.clipboard.writeText(link);
+                        showNotification("Registration link copied to clipboard!");
+                      }}
+                      className="p-1.5 hover:bg-slate-200 text-indigo-600 rounded-lg transition"
+                      title="Copy Link"
+                    >
+                      <Copy className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div className="p-3 bg-slate-50 border border-slate-100 rounded-xl">
+                    <span className="text-slate-400 block text-[11px]">Expiration Date</span>
+                    <span className="font-bold text-slate-800">
+                      {linkSettingsModal.linkData.expiresAt ? new Date(linkSettingsModal.linkData.expiresAt).toLocaleDateString() : "7 Days"}
+                    </span>
+                  </div>
+                  <div className="p-3 bg-slate-50 border border-slate-100 rounded-xl">
+                    <span className="text-slate-400 block text-[11px]">Usage Limits</span>
+                    <span className="font-bold text-slate-800">
+                      {linkSettingsModal.linkData.usesCount || 0} / {linkSettingsModal.linkData.maxUses || 1} uses
+                    </span>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-xl text-xs text-amber-800 flex items-start gap-2">
+                  <Clock className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <span>
+                    When a candidate registers through this link, they are automatically connected to your store with this role and assigned permissions.
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => handleRegenerateRoleLink(linkSettingsModal.role)}
+                    disabled={linkSettingsModal.actionLoading}
+                    className="px-3 py-1.5 text-xs text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-xl font-semibold transition cursor-pointer"
+                  >
+                    {linkSettingsModal.actionLoading ? "Regenerating…" : "Revoke & Regenerate Link"}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const link = linkSettingsModal.linkData.registrationLink || linkSettingsModal.linkData.inviteLink;
+                      await navigator.clipboard.writeText(link);
+                      showNotification("Registration link copied!");
+                      setLinkSettingsModal(null);
+                    }}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl flex items-center gap-1.5 shadow-xs transition"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                    Copy Link &amp; Close
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      )}
 
       {/* ── MODAL: CREATE / EDIT CUSTOM ROLE ── */}
       {showModal && (

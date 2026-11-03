@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "../store/auth";
 import { apiError } from "../api/http";
-import { referralApi } from "../api";
+import { referralApi, roleInvitationApi } from "../api";
 import { getWorkspaceRedirectPath } from "../utils/workspaceRouter";
 import { ClerkGoogleButton } from "../components/auth/ClerkAuth";
 import { hasClerk } from "../config/clerk";
@@ -96,6 +96,61 @@ export default function Signup() {
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const initialRefCode = searchParams.get("ref") || "";
+  const returnUrl = searchParams.get("returnUrl") || "";
+  const queryEmail = searchParams.get("email") || "";
+
+  const inviteToken = searchParams.get("invitation") || searchParams.get("token") || "";
+  const [verifiedInvite, setVerifiedInvite] = useState(null);
+  const [inviteVerifying, setInviteVerifying] = useState(Boolean(inviteToken));
+  const [inviteError, setInviteError] = useState("");
+
+  useEffect(() => {
+    if (!inviteToken) return;
+    let isCancelled = false;
+    setInviteVerifying(true);
+    setInviteError("");
+
+    roleInvitationApi
+      .verify(inviteToken)
+      .then((res) => {
+        if (isCancelled) return;
+        if (res?.valid && res.invitation) {
+          setVerifiedInvite(res.invitation);
+          const assignedRole = res.invitation.role;
+          if (assignedRole === "CA" || assignedRole === "ACCOUNTANT") {
+            setAccountType("TAX_CONSULTANT");
+          } else {
+            setAccountType("STAFF");
+          }
+          if (res.invitation.email) {
+            setEmail(res.invitation.email);
+          }
+          if (res.invitation.name) {
+            setName(res.invitation.name);
+          }
+        } else {
+          setInviteError(res?.message || "This registration link is invalid, expired, or has reached its usage limit.");
+        }
+      })
+      .catch((err) => {
+        if (isCancelled) return;
+        setInviteError(err?.response?.data?.message || err?.message || "Invalid or expired registration link.");
+      })
+      .finally(() => {
+        if (!isCancelled) setInviteVerifying(false);
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [inviteToken]);
+
+  const isInvitedFlow = Boolean(
+    returnUrl.includes("accept-invitation") ||
+    returnUrl.includes("join-team") ||
+    searchParams.get("role") ||
+    searchParams.get("token")
+  );
 
   // Auth store
   const user = useAuth((s) => s.user);
@@ -103,10 +158,10 @@ export default function Signup() {
   const googleLogin = useAuth((s) => s.googleLogin);
 
   // Form State
-  const [accountType, setAccountType] = useState("BUSINESS_OWNER"); // 'BUSINESS_OWNER' | 'TAX_CONSULTANT' | 'STAFF'
+  const [accountType, setAccountType] = useState(() => (isInvitedFlow ? "STAFF" : "BUSINESS_OWNER")); // 'BUSINESS_OWNER' | 'TAX_CONSULTANT' | 'STAFF'
   const [businessName, setBusinessName] = useState("");
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(queryEmail);
   const [countryCode, setCountryCode] = useState("+91");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
@@ -136,12 +191,13 @@ export default function Signup() {
   const [success, setSuccess] = useState("");
   const [modalContent, setModalContent] = useState(null); // 'terms' | 'privacy' | null
 
-  // Redirect if already authenticated
+  // Redirect if already authenticated — honour returnUrl if present
   useEffect(() => {
     if (user) {
-      nav(getWorkspaceRedirectPath(user), { replace: true });
+      const target = returnUrl || getWorkspaceRedirectPath(user);
+      nav(target, { replace: true });
     }
-  }, [user, nav]);
+  }, [user, nav, returnUrl]);
 
   // Validate referral code if present
   useEffect(() => {
@@ -234,21 +290,27 @@ export default function Signup() {
     setBusy(true);
     try {
       const fullPhone = `${countryCode} ${phone.trim()}`;
+      const effectiveAccountType = inviteToken
+        ? (verifiedInvite?.role === "CA" || verifiedInvite?.role === "ACCOUNTANT" ? "TAX_CONSULTANT" : "STAFF")
+        : accountType;
+
       const payload = {
         name: name.trim(),
         email: email.trim().toLowerCase(),
         phone: fullPhone,
         password,
-        accountType,
+        accountType: effectiveAccountType,
         businessName: businessName.trim() || undefined,
         country: country.trim(),
         state: state.trim(),
         referralCode: referralCode.trim().toUpperCase() || undefined,
+        invitationToken: inviteToken ? inviteToken.trim() : undefined,
       };
 
       const regUser = await register(payload);
-      setSuccess("Account created successfully! Redirecting to your workspace...");
-      const targetPath = getWorkspaceRedirectPath(regUser?.user || useAuth.getState().user);
+      setSuccess("Account created successfully! Redirecting\u2026");
+      // If user came from an invitation link, send them back there; otherwise go to their workspace
+      const targetPath = returnUrl || getWorkspaceRedirectPath(regUser?.user || useAuth.getState().user);
       setTimeout(() => nav(targetPath, { replace: true }), 400);
     } catch (err) {
       setError(apiError(err) || "Failed to create account. Please verify your details.");

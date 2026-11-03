@@ -530,6 +530,8 @@ export const roleInvitationApi = {
   decline: (payload) => http.post("/invitations/decline", payload).then(unwrap),
   resend: (id) => http.post(`/invitations/${id}/resend`).then(unwrap),
   revoke: (id) => http.post(`/invitations/${id}/revoke`).then(unwrap),
+  generateRoleLink: (payload) => http.post("/invitations/generate-link", payload).then(unwrap),
+  getLink: (id) => http.get(`/invitations/${id}/link`).then(unwrap),
 };
 
 export const notificationApi = {

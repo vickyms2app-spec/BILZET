@@ -1,4 +1,5 @@
-import { useState, useEffect, Fragment } from "react";
+import { useState, useEffect, Fragment, useCallback } from "react";
+import UpiPaymentModal from "../components/payment/UpiPaymentModal";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import {
   Check,
@@ -136,6 +137,8 @@ export default function Plans() {
   const [paymentProcessing, setPaymentProcessing] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [paymentError, setPaymentError] = useState("");
+  // Controls whether the UPI QR modal is shown during subscription checkout
+  const [upiModalOpen, setUpiModalOpen] = useState(false);
 
   // Automatically open checkout modal if target tier parameter is present
   useEffect(() => {
@@ -354,21 +357,31 @@ export default function Plans() {
   const handleExtraBillsClick = () => {
     setCheckoutModal({
       open: true,
-      plan: { name: "Extra 500 Bills Pack", price: "₹499.00", amount: 499 },
+      plan: { name: "Extra 500 Bills Pack", price: "₹299.00", amount: 299 },
       extraBills: true,
     });
   };
 
-  const confirmPayment = async () => {
+  // Phase 1: User clicks "Pay" → open UPI QR modal so they can actually pay
+  const handleOpenUpiModal = () => {
+    setPaymentError("");
+    setUpiModalOpen(true);
+  };
+
+  // Phase 2: UPI modal reports success with a real UTR → activate subscription on backend
+  const confirmPayment = useCallback(async (utrOrRef) => {
     if (paymentProcessing) return;
     setPaymentProcessing(true);
     setPaymentError("");
     try {
-      const paymentRef = `PAY-${Date.now().toString().slice(-6)}`;
       const targetPlanName = checkoutModal.plan.name;
       const targetPlanTier = checkoutModal.extraBills
         ? (subData.currentPlan || "FREE").toUpperCase()
         : targetPlanName.toUpperCase();
+
+      // Use the UTR provided by the user through the UPI modal as the authoritative reference.
+      // For extra bill packs (₹0 UPI-less flow) generate a reference locally.
+      const paymentRef = utrOrRef || `PAY-${Date.now().toString().slice(-6)}`;
 
       let upgradeResult = null;
       if (!checkoutModal.extraBills) {
@@ -431,7 +444,7 @@ export default function Plans() {
               {
                 id: paymentRef,
                 plan: "Extra 500 Bills Pack",
-                amount: "₹499.00",
+                amount: "₹299.00",
                 date: new Date().toLocaleDateString("en-GB", {
                   day: "numeric",
                   month: "short",
@@ -489,7 +502,7 @@ export default function Plans() {
       setPaymentProcessing(false);
       setPaymentError(err?.message || "Payment confirmation failed. Please try again.");
     }
-  };
+  }, [paymentProcessing, checkoutModal, subData, updateSubscription, refreshSubscription, refreshUser, redirectUrl, navigate]);
 
   // Detailed comparison matrix rows
   const comparisonRows = [
@@ -968,14 +981,33 @@ export default function Plans() {
                 icon={ArrowRight}
                 disabled={paymentProcessing}
                 loading={paymentProcessing}
-                onClick={confirmPayment}
+                onClick={checkoutModal.extraBills ? () => confirmPayment() : handleOpenUpiModal}
                 className="flex-1"
               >
-                Pay {checkoutModal.plan.price}
+                {checkoutModal.extraBills ? `Pay ${checkoutModal.plan.price}` : `Pay via UPI — ${checkoutModal.plan.price}`}
               </Button>
             </div>
           </div>
         </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════
+          UPI PAYMENT MODAL — shown when user clicks "Pay via UPI"
+          The UTR from onSuccess is passed to confirmPayment to activate the plan.
+      ══════════════════════════════════════════════════ */}
+      {upiModalOpen && checkoutModal.open && checkoutModal.plan && !checkoutModal.extraBills && (
+        <UpiPaymentModal
+          amount={checkoutModal.plan.amount}
+          invoiceNumber={`SUB-${checkoutModal.plan.tier || checkoutModal.plan.name.toUpperCase()}`}
+          customerName={authUser?.name || "Customer"}
+          upiId="bilzet@hdfcbank"
+          shopName="BILZET Subscriptions"
+          onSuccess={({ utr }) => {
+            setUpiModalOpen(false);
+            confirmPayment(utr);
+          }}
+          onClose={() => setUpiModalOpen(false)}
+        />
       )}
     </div>
   );

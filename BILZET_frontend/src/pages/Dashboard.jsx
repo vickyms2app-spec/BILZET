@@ -444,9 +444,9 @@ export default function Dashboard() {
 
   const paymentBreakdown = useMemo(() => {
     return [
-      { name: "Collected", value: paymentHealth.collected, color: "#2563eb", percent: `${paymentHealth.collectedPct}%` },
-      { name: "Pending", value: paymentHealth.pending, color: "#f59e0b", percent: `${paymentHealth.pendingPct}%` },
-      { name: "Overdue", value: paymentHealth.overdue, color: "#e11d48", percent: `${paymentHealth.overduePct}%` },
+      { name: "Collected", value: paymentHealth.collected, color: "#91C5FF", percent: `${paymentHealth.collectedPct}%` },
+      { name: "Pending", value: paymentHealth.pending, color: "#F6BFA8", percent: `${paymentHealth.pendingPct}%` },
+      { name: "Overdue", value: paymentHealth.overdue, color: "#B9A4F5", percent: `${paymentHealth.overduePct}%` },
     ];
   }, [paymentHealth]);
 
@@ -881,8 +881,8 @@ export default function Dashboard() {
                         boxShadow: "0 4px 12px rgba(82, 107, 135, 0.08)",
                       }}
                     />
-                    <Bar dataKey="sales" fill="#9CC8FF" radius={[3, 3, 0, 0]} maxBarSize={20} isAnimationActive={false} />
-                    <Bar dataKey="purchases" fill="#D4C2FF" radius={[3, 3, 0, 0]} maxBarSize={20} isAnimationActive={false} />
+                    <Bar dataKey="sales" fill="#91C5FF" radius={[3, 3, 0, 0]} maxBarSize={20} isAnimationActive={false} />
+                    <Bar dataKey="purchases" fill="#B9A4F5" radius={[3, 3, 0, 0]} maxBarSize={20} isAnimationActive={false} />
                   </BarChart>
                 </ResponsiveContainer>
               )}

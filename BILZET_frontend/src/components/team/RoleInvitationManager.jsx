@@ -22,7 +22,7 @@ import {
   Filter,
   Eye,
 } from "lucide-react";
-import { roleInvitationApi, memberApi } from "../../api";
+import { roleInvitationApi, memberApi, rolesApi } from "../../api";
 import { useAuth } from "../../store/auth";
 
 export default function RoleInvitationManager() {
@@ -30,6 +30,7 @@ export default function RoleInvitationManager() {
 
   const [invitations, setInvitations] = useState([]);
   const [members, setMembers] = useState([]);
+  const [customRoles, setCustomRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [subTab, setSubTab] = useState("invitations"); // 'invitations' | 'members'
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -58,9 +59,10 @@ export default function RoleInvitationManager() {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [invRes, memRes] = await Promise.allSettled([
+      const [invRes, memRes, rolesRes] = await Promise.allSettled([
         roleInvitationApi.list(),
         memberApi.list(),
+        rolesApi.list(),
       ]);
 
       if (invRes.status === "fulfilled") {
@@ -70,6 +72,10 @@ export default function RoleInvitationManager() {
       if (memRes.status === "fulfilled") {
         const memList = memRes.value?.data?.members || memRes.value?.members || [];
         setMembers(memList);
+      }
+      if (rolesRes.status === "fulfilled") {
+        const rList = rolesRes.value?.roles || rolesRes.value?.data?.roles || [];
+        setCustomRoles(Array.isArray(rList) ? rList : []);
       }
     } catch (err) {
       console.warn("Failed to load invitation and member data:", err);
@@ -172,13 +178,22 @@ export default function RoleInvitationManager() {
     }
   };
 
-  const handleCopyLink = (inv) => {
-    const origin = window.location.origin;
-    const token = inv.token || inv.id;
-    const link = `${origin}/accept-invitation?token=${token}&role=${inv.role.toLowerCase()}`;
-    navigator.clipboard.writeText(link);
-    setCopiedId(inv.id);
-    setTimeout(() => setCopiedId(null), 2500);
+  const handleCopyLink = async (inv) => {
+    try {
+      const origin = window.location.origin;
+      let token = inv.token;
+      if (!token) {
+        const linkRes = await roleInvitationApi.getLink(inv.id);
+        token = linkRes?.token || inv.id;
+      }
+      const link = `${origin}/sign-up?invitation=${token}`;
+      await navigator.clipboard.writeText(link);
+      setCopiedId(inv.id);
+      setTimeout(() => setCopiedId(null), 2500);
+      setFeedback({ type: "success", message: `Registration link for ${inv.role} copied to clipboard!` });
+    } catch (err) {
+      setFeedback({ type: "error", message: "Failed to copy registration link." });
+    }
   };
 
   const handleUpdateMemberRole = async (e) => {
@@ -469,7 +484,7 @@ export default function RoleInvitationManager() {
                                 type="button"
                                 onClick={() => handleCopyLink(inv)}
                                 className="p-1.5 rounded-md hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition cursor-pointer"
-                                title="Copy invitation link"
+                                title="Copy Registration Link"
                               >
                                 {copiedId === inv.id ? (
                                   <Check size={14} className="text-emerald-600" />
@@ -674,9 +689,20 @@ export default function RoleInvitationManager() {
                     onChange={(e) => setInviteRole(e.target.value)}
                     className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-bold"
                   >
-                    <option value="STAFF">Staff (POS & Inventory)</option>
-                    <option value="MANAGER">Manager (Operations & Analytics)</option>
+                    <option value="CASHIER">Cashier (Billing & POS Counter)</option>
+                    <option value="STAFF">Staff (Operations & Inventory)</option>
+                    <option value="MANAGER">Manager (Store Operations & Analytics)</option>
                     <option value="CA">Chartered Accountant (CA Connect)</option>
+                    <option value="ACCOUNTANT">Accountant (Accounting & Tax)</option>
+                    <option value="SALES_STAFF">Sales Staff (Sales & Challans)</option>
+                    <option value="INVENTORY_STAFF">Inventory Staff (Godown & Stock)</option>
+                    {customRoles
+                      .filter((cr) => !["STAFF", "MANAGER", "CA", "CASHIER", "ACCOUNTANT", "SALES_STAFF", "INVENTORY_STAFF", "ADMIN", "OWNER", "SUPER_ADMIN"].includes(cr.code))
+                      .map((cr) => (
+                        <option key={cr.id || cr.code} value={cr.code}>
+                          {cr.name || cr.code} (Custom Role)
+                        </option>
+                      ))}
                   </select>
                 </div>
               </div>
@@ -770,9 +796,11 @@ export default function RoleInvitationManager() {
                   onChange={(e) => setNewRole(e.target.value)}
                   className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                 >
-                  <option value="STAFF">Staff (Cashier / POS / Stock)</option>
+                  <option value="CASHIER">Cashier (Billing & POS Counter)</option>
+                  <option value="STAFF">Staff (Operations & Inventory)</option>
                   <option value="MANAGER">Manager (Operations & Store Management)</option>
                   <option value="CA">Chartered Accountant (CA Connect)</option>
+                  <option value="ACCOUNTANT">Accountant (Accounting & Tax)</option>
                 </select>
               </div>
 

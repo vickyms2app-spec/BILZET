@@ -51,6 +51,9 @@ function BrandHeader({ className = "", logoHeight = "h-10" }) {
 export default function Login({ initialMode = "login" }) {
   const location = useLocation();
   const nav = useNavigate();
+  const searchParams = new URLSearchParams(location.search);
+  const returnUrl = searchParams.get("returnUrl") || "";
+  const queryEmail = searchParams.get("email") || "";
 
   // If URL points to sign-up, redirect to new Signup page immediately
   useEffect(() => {
@@ -65,7 +68,7 @@ export default function Login({ initialMode = "login" }) {
   const googleLogin = useAuth((s) => s.googleLogin);
 
   // Form Fields
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(queryEmail);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
@@ -75,12 +78,13 @@ export default function Login({ initialMode = "login" }) {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  // Redirect if already authenticated
+  // Redirect if already authenticated — honour returnUrl if present
   useEffect(() => {
     if (user) {
-      nav(getWorkspaceRedirectPath(user), { replace: true });
+      const targetPath = returnUrl || getWorkspaceRedirectPath(user);
+      nav(targetPath, { replace: true });
     }
-  }, [user, nav]);
+  }, [user, nav, returnUrl]);
 
   // Google Identity Services client (GIS fallback if Clerk is inactive)
   useEffect(() => {
@@ -142,7 +146,7 @@ export default function Login({ initialMode = "login" }) {
         password,
       });
       setSuccess("Authentication successful! Loading your workspace...");
-      const targetPath = getWorkspaceRedirectPath(loggedUser?.user || useAuth.getState().user);
+      const targetPath = returnUrl || getWorkspaceRedirectPath(loggedUser?.user || useAuth.getState().user);
       setTimeout(() => nav(targetPath, { replace: true }), 350);
     } catch (err) {
       setError(apiError(err) || "Invalid email or password. Please try again.");
@@ -156,24 +160,27 @@ export default function Login({ initialMode = "login" }) {
     try {
       useAuth.setState({
         user: {
-          id: "demo-admin-id",
-          name: "Vicky (Owner)",
-          role: "ADMIN",
-          email: "owner@bilzet.app",
-          isOwner: true,
+          id: "demo-guest-id",
+          name: "Demo Visitor",
+          role: "GUEST",
+          email: "demo@bilzet.app",
+          isOwner: false,
+          isDemo: true,
           businessId: "demo-store-01",
           subscription: {
             planTier: "PREMIUM",
-            planName: "Premium Enterprise",
+            planName: "Premium Showcase",
             status: "ACTIVE",
             isActive: true,
             isUnlimited: true,
-            maxSubUsers: -1,
+            maxSubUsers: 0,
           },
+          currentPlan: "PREMIUM",
         },
         loading: false,
       });
-      localStorage.setItem("bilzet_access_token", "demo-token-active");
+      localStorage.setItem("bilzet_access_token", "demo-token-viewonly");
+      localStorage.setItem("bilzet_demo_mode", "true");
     } catch (_) {}
     nav("/dashboard");
   }

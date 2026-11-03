@@ -39,9 +39,11 @@ export default function JoinTeam() {
   const [statusMessage, setStatusMessage] = useState(null);
   const [copiedEmail, setCopiedEmail] = useState(false);
 
-  // If user already has an active business role and store, redirect automatically
+  // If user already has an active business role and store, redirect automatically.
+  // Exception: if there is a token in the URL, stay on this page so the user can redeem it.
   useEffect(() => {
     if (
+      !initialToken &&
       user &&
       user.role &&
       user.role !== "NONE" &&
@@ -50,7 +52,7 @@ export default function JoinTeam() {
     ) {
       navigate(getWorkspaceRedirectPath(user), { replace: true });
     }
-  }, [user, navigate]);
+  }, [user, navigate, initialToken]);
 
   const fetchInvitations = useCallback(async () => {
     try {

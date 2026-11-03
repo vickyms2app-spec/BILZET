@@ -1,14 +1,17 @@
 import prisma from '../config/prisma.mjs';
 import { ApiError } from '../utils/ApiError.mjs';
+import { SYSTEM_ROLE_DEFINITIONS, SYSTEM_ROLES, PERMISSIONS_CATALOG } from '../config/permissions.catalog.mjs';
 
 /**
  * Resolves all effective permissions for a user into a Set of permission keys.
  * Deterministic precedence:
  * 1. SUPER_ADMIN -> ALL
- * 2. isOwner: true -> ALL
- * 3. User explicit override: false -> DENY, true -> ALLOW
- * 4. Role inherited permission -> ALLOW
- * 5. Default -> DENY
+ * 2. True Business Owner of active business -> ALL
+ * 3. Business Member explicit permissions array from businessMember -> ALLOW
+ * 4. Custom AppRole assigned by owner -> ALLOW
+ * 5. Default permissions from System Role catalog -> ALLOW
+ * 6. User explicit overrides: false -> DENY, true -> ALLOW
+ * 7. Default -> DENY
  *
  * @param {string} userId
  * @returns {Promise<Set<string>>} Set of granted permission keys
@@ -38,50 +41,81 @@ export const getEffectivePermissions = async (userId) => {
 
   // 1. Platform Super Admin has unrestricted access to all permissions
   if (user.role === 'SUPER_ADMIN' || Boolean(user.isSuperAdmin)) {
-    const allPerms = await prisma.permission.findMany({ select: { key: true } });
-    return new Set(allPerms.map((p) => p.key));
+    const allPerms = await prisma.permission.findMany({ select: { key: true } }).catch(() => []);
+    if (allPerms.length > 0) {
+      return new Set(allPerms.map((p) => p.key));
+    }
+    return new Set(PERMISSIONS_CATALOG.map((p) => p.key));
   }
 
-  // 2. Business Owner or Administrator has full access to all tenant operations
+  // 2. Business Owner: Only grant tenant owner bypass if user genuinely owns the business
+  let isTrueOwner = false;
   if (user.isOwner || user.role === 'ADMIN' || user.role === 'OWNER') {
-    const allPerms = await prisma.permission.findMany({ select: { key: true } });
-    return new Set(allPerms.map((p) => p.key));
+    if (user.businessId) {
+      const biz = await prisma.business.findFirst({
+        where: { id: user.businessId, ownerId: user.id },
+      }).catch(() => null);
+      if (biz) isTrueOwner = true;
+    } else {
+      const ownedBiz = await prisma.business.findFirst({
+        where: { ownerId: user.id },
+      }).catch(() => null);
+      if (ownedBiz) isTrueOwner = true;
+    }
+  }
+
+  if (isTrueOwner) {
+    const allPerms = await prisma.permission.findMany({ select: { key: true } }).catch(() => []);
+    if (allPerms.length > 0) {
+      return new Set(allPerms.map((p) => p.key));
+    }
+    return new Set(PERMISSIONS_CATALOG.map((p) => p.key));
   }
 
   const effectiveSet = new Set();
 
-  // 3. Collect permissions from assigned role (or fallback to system role by enum)
-  let rolePermissionKeys = new Set();
+  // 3. Check BusinessMember record for explicit assigned permissions
+  const activeMember = await prisma.businessMember.findFirst({
+    where: {
+      userId: user.id,
+      status: 'ACTIVE',
+      ...(user.businessId ? { businessId: user.businessId } : {}),
+    },
+  }).catch(() => null);
 
-  if (user.appRole?.permissions) {
-    user.appRole.permissions.forEach((rp) => {
-      if (rp.permission?.key) rolePermissionKeys.add(rp.permission.key);
+  if (activeMember?.permissions && Array.isArray(activeMember.permissions)) {
+    activeMember.permissions.forEach((permKey) => {
+      if (typeof permKey === 'string' && permKey.trim()) {
+        effectiveSet.add(permKey.trim());
+      }
     });
-  } else if (user.role) {
-    // If user has no custom role assigned, load permissions from system role matching enum code
-    const systemRole = await prisma.appRole.findFirst({
-      where: {
-        code: String(user.role),
-        isSystem: true,
-      },
-      include: {
-        permissions: {
-          include: { permission: true },
-        },
-      },
-    });
-
-    if (systemRole?.permissions) {
-      systemRole.permissions.forEach((rp) => {
-        if (rp.permission?.key) rolePermissionKeys.add(rp.permission.key);
-      });
-    }
   }
 
-  // Add all role permissions initially
-  rolePermissionKeys.forEach((k) => effectiveSet.add(k));
+  // 4. Collect permissions from assigned custom AppRole
+  if (user.appRole?.permissions) {
+    user.appRole.permissions.forEach((rp) => {
+      if (rp.permission?.key) effectiveSet.add(rp.permission.key);
+    });
+  }
 
-  // 4. Apply explicit user overrides
+  // 5. Fallback: Add default permissions from System Role catalog
+  const effectiveRoleCode = String(activeMember?.role || user.role || '').toUpperCase();
+  const matchedSystemRole = (SYSTEM_ROLE_DEFINITIONS || SYSTEM_ROLES || []).find((r) => r.code === effectiveRoleCode);
+  if (matchedSystemRole && Array.isArray(matchedSystemRole.permissions)) {
+    matchedSystemRole.permissions.forEach((pk) => effectiveSet.add(pk));
+  }
+
+  // 6. CA Store Access default permissions
+  if (effectiveRoleCode === 'CA' || effectiveRoleCode === 'ACCOUNTANT') {
+    const caDefaults = [
+      'ca_portal.view', 'billing.view', 'billing.export', 'billing.print',
+      'gst.view', 'gst.export', 'reports.view', 'reports.sales',
+      'reports.profit_loss', 'reports.export'
+    ];
+    caDefaults.forEach((pk) => effectiveSet.add(pk));
+  }
+
+  // 7. Apply explicit user overrides
   if (user.permissionOverrides && user.permissionOverrides.length > 0) {
     user.permissionOverrides.forEach((override) => {
       const key = override.permission?.key;
@@ -123,14 +157,18 @@ export const getUserPermissionMap = async (userId) => {
 };
 
 /**
- * Returns a comprehensive permission inspection breakdown distinguishing
- * inherited role permissions, overrides, and default state for UI display.
+ * Retrieves the full permission matrix breakdown for a specific user.
  * @param {string} userId
  */
 export const getUserPermissionBreakdown = async (userId) => {
+  if (!userId) throw ApiError.badRequest('User ID is required.');
+
   const user = await prisma.user.findUnique({
     where: { id: userId },
     include: {
+      permissionOverrides: {
+        include: { permission: true },
+      },
       appRole: {
         include: {
           permissions: {
@@ -138,139 +176,148 @@ export const getUserPermissionBreakdown = async (userId) => {
           },
         },
       },
-      permissionOverrides: {
-        include: { permission: true },
-      },
     },
   });
 
-  if (!user) {
-    throw ApiError.notFound('User not found');
-  }
+  if (!user) throw ApiError.notFound('User not found.');
 
-  const allPermissions = await prisma.permission.findMany({
+  const effectiveSet = await getEffectivePermissions(userId);
+
+  let allPermissions = await prisma.permission.findMany({
     orderBy: [{ module: 'asc' }, { action: 'asc' }],
-  });
+  }).catch(() => []);
 
-  const rolePermKeys = new Set();
-  if (user.appRole?.permissions) {
-    user.appRole.permissions.forEach((rp) => {
-      if (rp.permission?.key) rolePermKeys.add(rp.permission.key);
-    });
-  } else if (user.role) {
-    const systemRole = await prisma.appRole.findFirst({
-      where: { code: String(user.role), isSystem: true },
-      include: {
-        permissions: { include: { permission: true } },
-      },
-    });
-    systemRole?.permissions?.forEach((rp) => {
-      if (rp.permission?.key) rolePermKeys.add(rp.permission.key);
-    });
+  if (!allPermissions || allPermissions.length === 0) {
+    allPermissions = PERMISSIONS_CATALOG;
   }
 
   const overrideMap = new Map();
-  user.permissionOverrides?.forEach((o) => {
-    if (o.permission?.key) {
-      overrideMap.set(o.permission.key, o.allowed);
+  if (user.permissionOverrides) {
+    user.permissionOverrides.forEach((po) => {
+      const key = po.permission?.key;
+      if (key) overrideMap.set(key, po.allowed);
+    });
+  }
+
+  const roleInheritedKeys = new Set();
+  if (user.appRole?.permissions) {
+    user.appRole.permissions.forEach((rp) => {
+      if (rp.permission?.key) roleInheritedKeys.add(rp.permission.key);
+    });
+  } else {
+    const roleUpper = String(user.role || '').toUpperCase();
+    const systemRole = (SYSTEM_ROLE_DEFINITIONS || SYSTEM_ROLES || []).find((r) => r.code === roleUpper);
+    if (systemRole && Array.isArray(systemRole.permissions)) {
+      systemRole.permissions.forEach((pk) => roleInheritedKeys.add(pk));
     }
-  });
+  }
 
   const breakdown = allPermissions.map((perm) => {
-    let effective = false;
-    let source = 'DEFAULT_DENY';
-
-    if (user.role === 'SUPER_ADMIN') {
-      effective = true;
-      source = 'SUPER_ADMIN';
-    } else if (user.isOwner) {
-      effective = true;
-      source = 'OWNER';
-    } else if (overrideMap.has(perm.key)) {
-      const allowed = overrideMap.get(perm.key);
-      effective = allowed;
-      source = allowed ? 'USER_OVERRIDE_ALLOW' : 'USER_OVERRIDE_DENY';
-    } else if (rolePermKeys.has(perm.key)) {
-      effective = true;
-      source = 'ROLE';
-    }
+    const key = perm.key;
+    const hasOverride = overrideMap.has(key);
+    const overrideVal = hasOverride ? overrideMap.get(key) : null;
+    const isInherited = roleInheritedKeys.has(key);
+    const isGranted = effectiveSet.has(key);
 
     return {
-      id: perm.id,
-      key: perm.key,
+      id: perm.id || `perm-${key}`,
+      key,
       module: perm.module,
       action: perm.action,
       description: perm.description,
-      effective,
-      source,
-      roleDefault: rolePermKeys.has(perm.key),
-      hasOverride: overrideMap.has(perm.key),
-      overrideAllowed: overrideMap.get(perm.key) ?? null,
+      granted: isGranted,
+      inherited: isInherited,
+      override: overrideVal,
     };
   });
 
   return {
     userId: user.id,
     userName: user.name,
-    email: user.email,
-    isOwner: user.isOwner,
+    userEmail: user.email,
     role: user.role,
-    customRole: user.appRole ? { id: user.appRole.id, name: user.appRole.name, code: user.appRole.code } : null,
+    isOwner: Boolean(user.isOwner),
+    effectivePermissions: Array.from(effectiveSet),
     permissions: breakdown,
   };
 };
 
 /**
- * Updates a user's explicit permission overrides.
+ * Updates explicit permission overrides for a team member.
  * @param {string} userId
- * @param {Array<{ permissionId?: string, key?: string, allowed: boolean | null }>} overrides
+ * @param {Array|Object} overrides
  */
-export const updateUserPermissionOverrides = async (userId, overrides = []) => {
-  const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user) throw ApiError.notFound('User not found');
+export const updateUserPermissionOverrides = async (userId, overrides) => {
+  if (!userId) throw ApiError.badRequest('User ID is required.');
 
-  if (user.isOwner) {
-    throw ApiError.badRequest('Cannot set permission overrides for the business owner.');
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: { permissionOverrides: true },
+  });
+
+  if (!user) throw ApiError.notFound('User not found.');
+
+  let overrideItems = [];
+  if (Array.isArray(overrides)) {
+    if (overrides.length > 0 && typeof overrides[0] === 'string') {
+      const grantedKeys = new Set(overrides);
+      const allPerms = await prisma.permission.findMany().catch(() => []);
+      const permsList = allPerms.length > 0 ? allPerms : PERMISSIONS_CATALOG;
+      overrideItems = permsList.map((p) => ({
+        permissionKey: p.key,
+        allowed: grantedKeys.has(p.key),
+      }));
+    } else {
+      overrideItems = overrides.map((o) => ({
+        permissionKey: o.permissionKey || o.key || o.permissionId,
+        allowed: Boolean(o.allowed),
+      }));
+    }
+  } else if (overrides && typeof overrides === 'object') {
+    overrideItems = Object.entries(overrides).map(([key, allowed]) => ({
+      permissionKey: key,
+      allowed: Boolean(allowed),
+    }));
   }
 
-  // Clear existing overrides and replace with new set
-  await prisma.userPermission.deleteMany({ where: { userId } });
+  for (const item of overrideItems) {
+    if (!item.permissionKey) continue;
+    const permRecord = await prisma.permission.findUnique({
+      where: { key: item.permissionKey },
+    }).catch(() => null);
 
-  for (const item of overrides) {
-    const isAllowed =
-      item.allowed !== undefined
-        ? item.allowed
-        : item.isGranted !== undefined
-        ? item.isGranted
-        : item.granted;
-
-    if (isAllowed === null || isAllowed === undefined) {
-      continue; // null indicates reverting back to role default
-    }
-
-    let permissionId = item.permissionId;
-    if (!permissionId && item.key) {
-      const p = await prisma.permission.findUnique({ where: { key: item.key } });
-      permissionId = p?.id;
-    }
-
-    if (permissionId) {
-      await prisma.userPermission.create({
-        data: {
-          userId,
-          permissionId,
-          allowed: Boolean(isAllowed),
+    if (permRecord) {
+      await prisma.permissionOverride.upsert({
+        where: {
+          userId_permissionId: {
+            userId: user.id,
+            permissionId: permRecord.id,
+          },
         },
-      });
+        update: { allowed: item.allowed },
+        create: {
+          userId: user.id,
+          permissionId: permRecord.id,
+          allowed: item.allowed,
+        },
+      }).catch(() => {});
     }
+  }
+
+  if (user.businessId) {
+    const grantedList = overrideItems.filter((i) => i.allowed).map((i) => i.permissionKey);
+    await prisma.businessMember.updateMany({
+      where: { userId: user.id, businessId: user.businessId },
+      data: { permissions: grantedList },
+    }).catch(() => {});
   }
 
   return getUserPermissionBreakdown(userId);
 };
 
 export default {
-  hasPermission,
   getEffectivePermissions,
+  hasPermission,
   getUserPermissionMap,
   getUserPermissionBreakdown,
   updateUserPermissionOverrides,

@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import prisma from '../config/prisma.mjs';
-import { ApiError } from '../utils/ApiError.mjs';
+import { ApiError } from '../utils/apiError.mjs';
 import { verifyCAStoreAccess } from './caPortal.service.mjs';
 
 /**

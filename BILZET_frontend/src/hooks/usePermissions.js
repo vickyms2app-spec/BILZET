@@ -23,19 +23,21 @@ export function usePermissions() {
       return true;
     }
 
-    // Guest Mode: Allow standard retail cashier actions for evaluation
-    if (user.role === "GUEST") {
-      const guestPerms = [
-        "billing.view",
-        "billing.create",
-        "billing.print",
-        "inventory.view",
-        "customers.view",
-        "customers.create",
-        "reports.view",
-        "reports.sales",
-      ];
-      return guestPerms.includes(permissionKey);
+    // Instant Demo / Guest Mode: STRICT VIEW-ONLY. All viewing permitted, all mutations strictly blocked.
+    if (user.role === "GUEST" || user.isDemo) {
+      if (
+        permissionKey.endsWith(".create") ||
+        permissionKey.endsWith(".edit") ||
+        permissionKey.endsWith(".update") ||
+        permissionKey.endsWith(".delete") ||
+        permissionKey.endsWith(".adjust") ||
+        permissionKey.endsWith(".cancel") ||
+        permissionKey.endsWith(".manage") ||
+        permissionKey.endsWith(".transfer")
+      ) {
+        return false;
+      }
+      return true;
     }
 
     // Check user's effective permissions map

@@ -1,6 +1,49 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, Component } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+
+// ── Route-level Error Boundary ─────────────────────────────────────────────
+// Catches render errors in any child route and shows a readable message
+// instead of a blank white page. This is critical for debugging.
+class RouteErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { error: null };
+  }
+  static getDerivedStateFromError(err) {
+    return { error: err };
+  }
+  componentDidCatch(err, info) {
+    console.error("[BILZET RouteError]", err, info?.componentStack);
+  }
+  render() {
+    if (this.state.error) {
+      const msg = this.state.error?.message || String(this.state.error);
+      return (
+        <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f8fafc", padding: 32 }}>
+          <div style={{ maxWidth: 520, width: "100%", background: "#fff", border: "1px solid #fca5a5", borderRadius: 14, padding: 32, boxShadow: "0 4px 24px rgba(0,0,0,.07)" }}>
+            <h2 style={{ color: "#dc2626", fontWeight: 700, fontSize: 18, marginBottom: 8 }}>⚠ Page Error</h2>
+            <p style={{ color: "#475569", fontSize: 13, marginBottom: 16, lineHeight: 1.6 }}>
+              A rendering error occurred. Open <strong>DevTools → Console</strong> (F12) for the full stack trace.
+            </p>
+            <pre style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: 12, fontSize: 12, color: "#7f1d1d", whiteSpace: "pre-wrap", wordBreak: "break-word", marginBottom: 20 }}>
+              {msg}
+            </pre>
+            <button onClick={() => window.location.reload()} style={{ padding: "8px 20px", background: "#2563eb", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+              Reload Page
+            </button>
+            <button onClick={() => { localStorage.removeItem("bilzet_access_token"); window.location.href = "/sign-in"; }} style={{ marginLeft: 10, padding: "8px 20px", background: "#f1f5f9", color: "#334155", border: "1px solid #cbd5e1", borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+              Sign Out &amp; Retry
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 import { useAuth } from "../store/auth";
+import Logo from "../components/common/Logo";
+import AuthLoadingScreen from "../components/common/AuthLoadingScreen";
 import Layout from "../components/layout/Layout";
 import NotFound from "../pages/NotFound";
 import Login from "../pages/Login";
@@ -87,43 +130,6 @@ import { useAuth as useClerkAuth } from "@clerk/clerk-react";
 
 import { hasClerk } from "../config/clerk";
 
-function AuthLoadingScreen() {
-  const [showRetry, setShowRetry] = useState(false);
-  useEffect(() => {
-    const timer = setTimeout(() => setShowRetry(true), 4000);
-    return () => clearTimeout(timer);
-  }, []);
-
-  return (
-    <div className="grid min-h-screen place-items-center bg-slate-50 px-4">
-      <div className="flex flex-col items-center gap-3 text-center max-w-xs animate-in fade-in">
-        <div
-          className="w-10 h-10 rounded-full animate-spin"
-          style={{ border: "3px solid #dbeafe", borderTopColor: "#1a5cff" }}
-        />
-        <p className="text-sm font-semibold text-slate-800">Loading BILZET…</p>
-        <p className="text-xs text-slate-400">Synchronizing session state</p>
-        {showRetry && (
-          <div className="mt-2 flex flex-col gap-2 w-full animate-in fade-in">
-            <button
-              onClick={() => window.location.reload()}
-              className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl transition shadow-xs"
-            >
-              Retry Connection
-            </button>
-            <a
-              href="/sign-in"
-              className="text-[11px] text-slate-500 hover:text-slate-800 underline"
-            >
-              Return to Sign In
-            </a>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 function RootRedirect() {
   const { user, loading } = useAuth();
   if (loading) return <AuthLoadingScreen />;
@@ -136,14 +142,23 @@ function ClerkProtectedWrapper({ children, roles, permission, minPlan, featureKe
   const { isLoaded: isClerkLoaded, isSignedIn } = useClerkAuth();
   const { hasPermission } = usePermissions();
 
-  // If we don't have a local user session yet, wait for Clerk to load or auth loading to complete
-  if ((!user && !isClerkLoaded) || (isSignedIn && !user) || authLoading) {
+  // Wait only if: auth is still loading AND we have no local user yet
+  if (authLoading && !user) {
     return <AuthLoadingScreen />;
   }
 
-  // Only redirect if Clerk has finished loading AND user is not signed in
-  if (!isSignedIn && !user) {
+  // Clerk is still loading but we already have a local user — proceed immediately
+  // (local JWT auth does not require Clerk to be fully loaded)
+  const effectivelySignedIn = isSignedIn || Boolean(user);
+
+  // No session at all
+  if (!effectivelySignedIn) {
     return <Navigate to="/sign-in" replace />;
+  }
+
+  // Prevent null-property crashes while user profile is syncing
+  if (!user) {
+    return <AuthLoadingScreen />;
   }
 
   const isAuthorizedRole =
@@ -153,6 +168,11 @@ function ClerkProtectedWrapper({ children, roles, permission, minPlan, featureKe
     isAdminUser(user);
 
   if (!isAuthorizedRole && user.role !== "GUEST") {
+    return <Navigate to={getWorkspaceRedirectPath(user)} replace />;
+  }
+
+  // Safety gate: Non-owners can never access /dashboard unless they have explicit reports.view permission
+  if (window.location.pathname === "/dashboard" && !user.isOwner && user.role !== "SUPER_ADMIN" && !hasPermission("reports.view")) {
     return <Navigate to={getWorkspaceRedirectPath(user)} replace />;
   }
 
@@ -185,7 +205,7 @@ function StandardProtectedWrapper({ children, roles, permission, minPlan, featur
     return <AuthLoadingScreen />;
   }
 
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/sign-in" replace />;
 
   const isAuthorizedRole =
     !roles ||
@@ -194,6 +214,11 @@ function StandardProtectedWrapper({ children, roles, permission, minPlan, featur
     isAdminUser(user);
 
   if (!isAuthorizedRole && user.role !== "GUEST") {
+    return <Navigate to={getWorkspaceRedirectPath(user)} replace />;
+  }
+
+  // Safety gate: Non-owners can never access /dashboard unless they have explicit reports.view permission
+  if (window.location.pathname === "/dashboard" && !user.isOwner && user.role !== "SUPER_ADMIN" && !hasPermission("reports.view")) {
     return <Navigate to={getWorkspaceRedirectPath(user)} replace />;
   }
 
@@ -254,7 +279,8 @@ const Protected = hasClerk ? ClerkProtectedWrapper : StandardProtectedWrapper;
 
 export default function AppRoutes() {
   return (
-    <Routes>
+    <RouteErrorBoundary>
+      <Routes>
       {/* Public Authentication routes */}
       <Route path="/sign-in/*" element={<Login initialMode="login" />} />
       <Route path="/sign-in" element={<Login initialMode="login" />} />
@@ -754,5 +780,6 @@ export default function AppRoutes() {
 
       <Route path="*" element={<NotFound />} />
     </Routes>
+    </RouteErrorBoundary>
   );
 }
