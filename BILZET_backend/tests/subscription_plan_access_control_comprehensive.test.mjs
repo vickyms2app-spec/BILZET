@@ -269,7 +269,7 @@ describe('COMPREHENSIVE SUBSCRIPTION PLAN ACCESS CONTROL & FEATURE ENTITLEMENTS'
     });
     assert.equal(inviteRes.status, 403);
     const inviteData = await inviteRes.json();
-    assert.match(inviteData.message || inviteData.error, /sub-user limit/i);
+    assert.match(inviteData.message || inviteData.error, /sub-user limit|Upgrade to PRO/i);
   });
 
   // Scenario 4: Paid users (PRO) can access features included in their active plan

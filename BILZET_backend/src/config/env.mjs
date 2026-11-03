@@ -28,6 +28,11 @@ const envSchema = z.object({
   SMTP_SECURE: z.string().optional().default('false'),
   SMTP_FROM: z.string().optional().default('no-reply@bilzet.com'),
   ALLOW_MOCK_EMAIL: z.string().optional().default('true'),
+  RAZORPAY_KEY_ID: z.string().optional().default('rzp_test_bilzet2026'),
+  RAZORPAY_KEY_SECRET: z.string().optional().default('bilzet_rzp_secret_key_2026'),
+  RAZORPAY_WEBHOOK_SECRET: z.string().optional().default('bilzet_webhook_secret_2026'),
+  RAZORPAY_PRO_PLAN_ID: z.string().optional().default('plan_bilzet_pro_annual'),
+  RAZORPAY_PREMIUM_PLAN_ID: z.string().optional().default('plan_bilzet_premium_annual'),
 });
 
 const parsed = envSchema.safeParse(process.env);

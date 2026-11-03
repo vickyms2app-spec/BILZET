@@ -382,6 +382,52 @@ export const subscriptionApi = {
     } catch (_) {}
     return res;
   },
+  createRazorpayOrder: (payload) => http.post("/subscription/razorpay/create-order", payload).then(unwrap),
+  verifyRazorpayPayment: async (payload) => {
+    const res = await http.post("/subscription/razorpay/verify", payload).then(unwrap);
+    if (res && res.planTier) {
+      const tierUpper = String(res.planTier).toUpperCase();
+      const tierCap = tierUpper.charAt(0) + tierUpper.slice(1).toLowerCase();
+      try {
+        localStorage.setItem(
+          "bilzet_subscription_data",
+          JSON.stringify({
+            currentPlan: tierCap,
+            planTier: tierUpper,
+            status: res.status || "ACTIVE",
+            expiresAt: res.expiresAt,
+            isActive: res.isActive !== false,
+            planName: res.planName,
+          })
+        );
+        window.dispatchEvent(new CustomEvent("bilzet:subscription_updated", { detail: res }));
+      } catch (_) {}
+    }
+    return res;
+  },
+  switchPlan: async (payload) => {
+    const res = await http.post("/subscription/switch", payload).then(unwrap);
+    if (res && res.planTier) {
+      const tierUpper = String(res.planTier).toUpperCase();
+      const tierCap = tierUpper.charAt(0) + tierUpper.slice(1).toLowerCase();
+      try {
+        localStorage.setItem(
+          "bilzet_subscription_data",
+          JSON.stringify({
+            currentPlan: tierCap,
+            planTier: tierUpper,
+            status: res.status || "ACTIVE",
+            expiresAt: res.expiresAt,
+            isActive: res.isActive !== false,
+            planName: res.planName,
+          })
+        );
+        window.dispatchEvent(new CustomEvent("bilzet:subscription_updated", { detail: res }));
+      } catch (_) {}
+    }
+    return res;
+  },
+  getRazorpayConfig: () => http.get("/subscription/razorpay/config").then(unwrap),
   getBillCredits: () => http.get("/subscription/bill-credits").then(unwrap),
   buyBillPack: (data) => http.post("/subscription/buy-bill-pack", data).then(unwrap),
 };

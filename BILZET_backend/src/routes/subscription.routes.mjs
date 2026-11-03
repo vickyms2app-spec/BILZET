@@ -12,6 +12,7 @@ import {
   purchaseBillPack,
   getBillCreditLedger,
 } from '../services/billCredit.service.mjs';
+import razorpayService from '../services/razorpay.service.mjs';
 import { PLAN_DETAILS, FEATURE_ENTITLEMENTS } from '../config/plans.config.mjs';
 import { sendResponse } from '../utils/apiResponse.mjs';
 import { asyncHandler } from '../utils/asyncHandler.mjs';
@@ -28,14 +29,127 @@ router.get(
       {
         plans: Object.values(PLAN_DETAILS),
         features: FEATURE_ENTITLEMENTS,
+        razorpay: razorpayService.getRazorpayConfig(),
       },
       'Subscription plans retrieved successfully.'
     );
   })
 );
 
+// Public Razorpay Configuration Endpoint
+router.get(
+  '/razorpay/config',
+  asyncHandler(async (req, res) => {
+    const config = razorpayService.getRazorpayConfig();
+    return sendResponse(
+      res,
+      200,
+      {
+        ...config,
+        plans: {
+          PRO: {
+            planId: config.proPlanId,
+            amount: PLAN_DETAILS.PRO.amount,
+            currency: 'INR',
+            name: PLAN_DETAILS.PRO.name,
+          },
+          PREMIUM: {
+            planId: config.premiumPlanId,
+            amount: PLAN_DETAILS.PREMIUM.amount,
+            currency: 'INR',
+            name: PLAN_DETAILS.PREMIUM.name,
+          },
+        },
+      },
+      'Razorpay configuration retrieved successfully.'
+    );
+  })
+);
+
+// Public Razorpay Webhook Endpoint
+router.post(
+  '/razorpay/webhook',
+  asyncHandler(async (req, res) => {
+    const signature = req.headers['x-razorpay-signature'];
+    const result = await razorpayService.handleRazorpayWebhook({
+      payload: req.body,
+      signature,
+      rawBody: req.body,
+    });
+    return sendResponse(res, 200, result, 'Webhook processed successfully.');
+  })
+);
+
 // All operational subscription routes require authentication
 router.use(authMiddleware);
+
+/**
+ * Creates a Razorpay checkout order for the chosen plan (PRO or PREMIUM).
+ * Free users can directly purchase either PRO or PREMIUM without sequential barriers.
+ */
+router.post(
+  '/razorpay/create-order',
+  asyncHandler(async (req, res) => {
+    const { planTier, billingCycle } = req.body;
+    const order = await razorpayService.createSubscriptionCheckoutOrder({
+      planTier,
+      billingCycle,
+      user: req.user,
+      businessId: req.user.businessId,
+    });
+
+    return sendResponse(res, 201, order, `Razorpay order created for ${order.planName}.`);
+  })
+);
+
+/**
+ * Verifies Razorpay payment signature and activates the exact plan selected.
+ */
+router.post(
+  '/razorpay/verify',
+  asyncHandler(async (req, res) => {
+    const { planTier, orderId, paymentId, signature, billingCycle } = req.body;
+    const result = await razorpayService.verifyAndActivateRazorpayPayment({
+      businessId: req.user.businessId,
+      userId: req.user.id,
+      planTier,
+      orderId,
+      paymentId,
+      signature,
+      billingCycle,
+    });
+
+    return sendResponse(res, 200, result.subscription, result.message);
+  })
+);
+
+/**
+ * Direct Plan Switch / Downgrade / Upgrade Endpoint.
+ * Allows independent switching between FREE, PRO, and PREMIUM.
+ */
+router.post(
+  '/switch',
+  asyncHandler(async (req, res) => {
+    const { targetTier, paymentReference, paymentMethod } = req.body;
+    const normalizedTier = String(targetTier || 'FREE').toUpperCase();
+
+    if (normalizedTier === 'FREE') {
+      const updated = await cancelSubscription(req.user.businessId, req.user.id);
+      return sendResponse(res, 200, updated, 'Successfully switched to Free Starter plan.');
+    }
+
+    const updated = await upgradeSubscription({
+      businessId: req.user.businessId,
+      userId: req.user.id,
+      planTier: normalizedTier,
+      amount: PLAN_DETAILS[normalizedTier]?.amount,
+      paymentReference: paymentReference || `SW-${Date.now()}`,
+      durationDays: 365,
+    });
+
+    return sendResponse(res, 200, updated, `Successfully switched to ${updated.planTier} plan.`);
+  })
+);
 
 /**
  * Returns full verified subscription status and active plan parameters.
@@ -55,6 +169,7 @@ router.get(
         usage,
         billCredits,
         currentPlan: subInfo.planTier,
+        razorpay: razorpayService.getRazorpayConfig(),
       },
       'Subscription status retrieved successfully.'
     );
@@ -132,7 +247,7 @@ router.post(
       durationDays,
     });
 
-    return sendResponse(res, 200, updated, `Successfully upgraded to ${updated.planTier} plan.`);
+    return sendResponse(res, 200, updated, `Successfully activated ${updated.planTier} plan.`);
   })
 );
 
@@ -153,7 +268,7 @@ router.post(
       paymentMethod,
     });
 
-    return sendResponse(res, 200, updated, `Payment verified. Successfully upgraded to ${updated.planTier} plan.`);
+    return sendResponse(res, 200, updated, `Payment verified. Successfully activated ${updated.planTier} plan.`);
   })
 );
 

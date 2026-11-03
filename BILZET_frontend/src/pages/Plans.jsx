@@ -325,12 +325,97 @@ export default function Plans() {
     },
   ];
 
+  const getPlanButtonInfo = (p) => {
+    const currentTier = (subData.currentPlan || "FREE").toUpperCase();
+    const planTier = p.tier.toUpperCase();
+
+    if (planTier === currentTier) {
+      return {
+        label: planTier === "FREE" ? "Current Plan (Free Starter)" : `Active (${p.name} · Renew / Extend)`,
+        variant: "neutral",
+        action: "current",
+      };
+    }
+
+    if (currentTier === "FREE") {
+      return {
+        label: `Subscribe to ${p.name}`,
+        variant: "primary",
+        action: "subscribe",
+      };
+    }
+
+    if (currentTier === "PRO") {
+      if (planTier === "PREMIUM") {
+        return {
+          label: "Upgrade to Premium",
+          variant: "primary",
+          action: "upgrade",
+        };
+      } else {
+        return {
+          label: "Downgrade to Free",
+          variant: "neutral",
+          action: "downgrade",
+        };
+      }
+    }
+
+    if (currentTier === "PREMIUM") {
+      if (planTier === "PRO") {
+        return {
+          label: "Downgrade to Pro",
+          variant: "neutral",
+          action: "downgrade",
+        };
+      } else {
+        return {
+          label: "Downgrade to Free",
+          variant: "neutral",
+          action: "downgrade",
+        };
+      }
+    }
+
+    return {
+      label: p.buttonLabel || `Choose ${p.name}`,
+      variant: "primary",
+      action: "choose",
+    };
+  };
+
   const handlePlanClick = (p) => {
-    if (p.name.toUpperCase() === (subData.currentPlan || "FREE").toUpperCase() && p.name === "Free") {
-      // Renew Free for 1 Year
+    const currentTier = (subData.currentPlan || "FREE").toUpperCase();
+    const planTier = p.tier.toUpperCase();
+
+    // 1. If currently on a paid plan and clicking Free, confirm downgrade
+    if (planTier === "FREE" && currentTier !== "FREE") {
+      const confirmDowngrade = window.confirm(
+        "Are you sure you want to switch to Free Starter? Your active paid subscription features will be discontinued at the end of the billing period."
+      );
+      if (!confirmDowngrade) return;
+
+      subscriptionApi
+        .switchPlan({ targetTier: "FREE" })
+        .then(() => {
+          setSubData((prev) => ({
+            ...prev,
+            currentPlan: "Free",
+            status: "Active",
+            totalBills: 100,
+          }));
+          alert("Successfully switched to Free Starter plan.");
+          if (refreshSubscription) refreshSubscription();
+        })
+        .catch((err) => alert(err?.message || "Downgrade request failed."));
+      return;
+    }
+
+    // 2. Free user clicking Free renewal
+    if (planTier === "FREE" && currentTier === "FREE") {
       const updated = {
         ...subData,
-        validUntil: "14 Sept 2028",
+        validUntil: "365 Days Validity",
         payments: [
           {
             id: `PAY-${Date.now().toString().slice(-6)}`,
@@ -347,6 +432,7 @@ export default function Plans() {
       return;
     }
 
+    // 3. Paid plan selection (Pro or Premium can be chosen directly and independently)
     setCheckoutModal({
       open: true,
       plan: p,
@@ -357,15 +443,163 @@ export default function Plans() {
   const handleExtraBillsClick = () => {
     setCheckoutModal({
       open: true,
-      plan: { name: "Extra 500 Bills Pack", price: "₹299.00", amount: 299 },
+      plan: { name: "Extra 500 Bills Pack", tier: "EXTRA_BILLS", price: "₹299.00", amount: 299 },
       extraBills: true,
     });
   };
 
-  // Phase 1: User clicks "Pay" → open UPI QR modal so they can actually pay
+  // Phase 1: User clicks "Pay via UPI" → open UPI QR modal
   const handleOpenUpiModal = () => {
     setPaymentError("");
     setUpiModalOpen(true);
+  };
+
+  // Helper to dynamically load Razorpay checkout SDK
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      if (typeof window !== "undefined" && window.Razorpay) {
+        resolve(true);
+        return;
+      }
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+  // Direct Razorpay Checkout handler
+  const handleRazorpayCheckout = async () => {
+    if (paymentProcessing || !checkoutModal.plan) return;
+    setPaymentProcessing(true);
+    setPaymentError("");
+
+    try {
+      const resLoaded = await loadRazorpayScript();
+      if (!resLoaded) {
+        throw new Error("Razorpay checkout SDK failed to load. Please verify your internet connection or use Direct UPI QR.");
+      }
+
+      const targetPlanTier = checkoutModal.extraBills
+        ? "EXTRA_BILLS"
+        : (checkoutModal.plan.tier || checkoutModal.plan.name).toUpperCase();
+      const targetPlanName = checkoutModal.plan.name;
+
+      // 1. Create order on backend
+      const orderData = await subscriptionApi.createRazorpayOrder({
+        planTier: targetPlanTier,
+        billingCycle: "ANNUAL",
+      });
+
+      if (!orderData || !orderData.orderId) {
+        throw new Error(orderData?.message || "Failed to initialize Razorpay checkout order.");
+      }
+
+      // 2. Launch Razorpay modal
+      const options = {
+        key: orderData.keyId,
+        amount: orderData.amount,
+        currency: orderData.currency || "INR",
+        name: "BILZET ERP",
+        description: `${targetPlanName} - Annual Subscription`,
+        order_id: orderData.orderId,
+        prefill: {
+          name: authUser?.name || "Business Owner",
+          email: authUser?.email || "billing@bilzet.com",
+          contact: authUser?.phone || "9999999999",
+        },
+        theme: {
+          color: targetPlanTier === "PREMIUM" ? "#D97706" : "#2563EB",
+        },
+        handler: async function (response) {
+          try {
+            setPaymentProcessing(true);
+            const verifyRes = await subscriptionApi.verifyRazorpayPayment({
+              orderId: response.razorpay_order_id,
+              paymentId: response.razorpay_payment_id,
+              signature: response.razorpay_signature,
+              planTier: targetPlanTier,
+              billingCycle: "ANNUAL",
+            });
+
+            if (verifyRes?.success || verifyRes?.subscription) {
+              setPaymentSuccess(true);
+              const activatedSub = verifyRes.subscription;
+              if (updateSubscription && activatedSub) {
+                updateSubscription(activatedSub);
+              }
+              if (refreshSubscription) {
+                refreshSubscription().catch(() => {});
+              } else if (refreshUser) {
+                refreshUser().catch(() => {});
+              }
+
+              const nextExpiry = activatedSub?.expiresAt
+                ? new Date(activatedSub.expiresAt).toLocaleDateString("en-GB", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })
+                : "365 Days Validity";
+
+              const updated = {
+                ...subData,
+                currentPlan: targetPlanName,
+                status: "Active",
+                validUntil: nextExpiry,
+                totalBills: "Unlimited",
+                payments: [
+                  {
+                    id: response.razorpay_payment_id || `RZP-${Date.now().toString().slice(-6)}`,
+                    plan: `${targetPlanName} Annual`,
+                    amount: checkoutModal.plan.price,
+                    date: new Date().toLocaleDateString("en-GB", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    }),
+                    status: "Success",
+                  },
+                  ...subData.payments,
+                ],
+              };
+              saveSubData(updated);
+
+              setTimeout(() => {
+                setPaymentSuccess(false);
+                setPaymentProcessing(false);
+                setCheckoutModal({ open: false, plan: null, extraBills: false });
+                const dest = redirectUrl || (targetPlanTier === "PREMIUM" || targetPlanTier === "PRO" ? "/team" : "");
+                if (dest) {
+                  navigate(dest);
+                }
+              }, 1200);
+            } else {
+              throw new Error(verifyRes?.message || "Razorpay payment verification failed.");
+            }
+          } catch (vErr) {
+            setPaymentProcessing(false);
+            setPaymentError(vErr?.message || "Payment signature verification failed.");
+          }
+        },
+        modal: {
+          ondismiss: function () {
+            setPaymentProcessing(false);
+          },
+        },
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.on("payment.failed", function (resp) {
+        setPaymentProcessing(false);
+        setPaymentError(resp?.error?.description || "Payment failed or was cancelled.");
+      });
+      rzp.open();
+    } catch (err) {
+      setPaymentProcessing(false);
+      setPaymentError(err?.message || "Could not launch Razorpay. You can also pay via Direct UPI QR below.");
+    }
   };
 
   // Phase 2: UPI modal reports success with a real UTR → activate subscription on backend
@@ -699,16 +933,19 @@ export default function Plans() {
 
                 {/* Bottom CTA Button */}
                 <div className="pt-2">
-                  <Button
-                    variant={isCurrent ? "neutral" : "primary"}
-                    icon={isCurrent ? Check : Zap}
-                    onClick={() => handlePlanClick(p)}
-                    className="w-full"
-                  >
-                    {isCurrent
-                      ? (p.name === "Free" ? "Renew Free for 1 Year" : `Active (${p.name} · Renew / Extend)`)
-                      : p.buttonLabel}
-                  </Button>
+                  {(() => {
+                    const btnInfo = getPlanButtonInfo(p);
+                    return (
+                      <Button
+                        variant={btnInfo.variant || (isCurrent ? "neutral" : "primary")}
+                        icon={isCurrent ? Check : Zap}
+                        onClick={() => handlePlanClick(p)}
+                        className="w-full"
+                      >
+                        {btnInfo.label}
+                      </Button>
+                    );
+                  })()}
                 </div>
               </div>
             );
@@ -916,7 +1153,7 @@ export default function Plans() {
               <div className="flex items-center gap-2">
                 <CreditCard size={18} className="text-blue-600" />
                 <h3 className="font-bold text-slate-900 text-sm">
-                  {checkoutModal.extraBills ? "Add Bill Credits" : `Upgrade to ${checkoutModal.plan.name}`}
+                  {checkoutModal.extraBills ? "Add Bill Credits" : `Subscribe to ${checkoutModal.plan.name}`}
                 </h3>
               </div>
               <CompactIconButton
@@ -928,11 +1165,43 @@ export default function Plans() {
             </div>
 
             <div className="py-4 space-y-4 text-xs">
+              {/* Independent Plan Switcher inside modal */}
+              {!checkoutModal.extraBills && (
+                <div className="flex rounded-xl bg-slate-100 p-1 border border-slate-200">
+                  {plans.filter(p => p.tier !== "FREE").map((p) => {
+                    const isSelected = (checkoutModal.plan?.tier || checkoutModal.plan?.name).toUpperCase() === p.tier;
+                    return (
+                      <button
+                        key={p.tier}
+                        type="button"
+                        onClick={() => setCheckoutModal((prev) => ({ ...prev, plan: p }))}
+                        className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all ${
+                          isSelected
+                            ? p.tier === "PREMIUM"
+                              ? "bg-amber-600 text-white shadow-xs"
+                              : "bg-blue-600 text-white shadow-xs"
+                            : "text-slate-600 hover:text-slate-900"
+                        }`}
+                      >
+                        {p.name} ({p.price})
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
               <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between">
                 <div>
-                  <p className="font-bold text-slate-900">{checkoutModal.plan.name}</p>
-                  <p className="text-[11px] text-slate-500">
-                    {checkoutModal.extraBills ? "500 extra bill credits" : "365 days full access"}
+                  <div className="flex items-center gap-1.5">
+                    <p className="font-bold text-slate-900">{checkoutModal.plan.name}</p>
+                    {checkoutModal.plan.tier && checkoutModal.plan.tier !== "FREE" && (
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-200 text-slate-700">
+                        {checkoutModal.plan.tier === "PREMIUM" ? "plan_bilzet_premium_annual" : "plan_bilzet_pro_annual"}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    {checkoutModal.extraBills ? "500 extra bill credits" : "Independent direct 365-day subscription"}
                   </p>
                 </div>
                 <div className="text-right">
@@ -944,8 +1213,8 @@ export default function Plans() {
               <div className="p-3.5 rounded-xl border border-dashed border-slate-300 flex items-center gap-3">
                 <QrCode size={36} className="text-blue-600 shrink-0" />
                 <div className="text-[11px] text-slate-600 leading-snug">
-                  <p className="font-bold text-slate-800">Direct UPI &amp; Cards Enabled</p>
-                  <p>Instant automated ledger recording and subscription certificate issuance.</p>
+                  <p className="font-bold text-slate-800">Direct Razorpay &amp; UPI Enabled</p>
+                  <p>Instant automated ledger recording, Razorpay webhook sync, and certificate issuance.</p>
                 </div>
               </div>
 
@@ -964,28 +1233,45 @@ export default function Plans() {
               )}
             </div>
 
-            <div className="pt-2 flex items-center gap-2">
-              <Button
-                type="button"
-                variant="neutral"
-                icon={X}
-                disabled={paymentProcessing}
-                onClick={() => setCheckoutModal({ open: false, plan: null, extraBills: false })}
-                className="flex-1"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                variant="primary"
-                icon={ArrowRight}
-                disabled={paymentProcessing}
-                loading={paymentProcessing}
-                onClick={checkoutModal.extraBills ? () => confirmPayment() : handleOpenUpiModal}
-                className="flex-1"
-              >
-                {checkoutModal.extraBills ? `Pay ${checkoutModal.plan.price}` : `Pay via UPI — ${checkoutModal.plan.price}`}
-              </Button>
+            <div className="pt-2 flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="neutral"
+                  icon={X}
+                  disabled={paymentProcessing}
+                  onClick={() => setCheckoutModal({ open: false, plan: null, extraBills: false })}
+                  className="shrink-0"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  variant="primary"
+                  icon={CreditCard}
+                  disabled={paymentProcessing}
+                  loading={paymentProcessing}
+                  onClick={checkoutModal.extraBills ? () => confirmPayment() : handleRazorpayCheckout}
+                  className="flex-1"
+                >
+                  {checkoutModal.extraBills
+                    ? `Pay ${checkoutModal.plan.price}`
+                    : `Pay with Razorpay (${checkoutModal.plan.price})`}
+                </Button>
+              </div>
+
+              {!checkoutModal.extraBills && (
+                <Button
+                  type="button"
+                  variant="neutral"
+                  icon={QrCode}
+                  disabled={paymentProcessing}
+                  onClick={handleOpenUpiModal}
+                  className="w-full text-xs text-slate-700"
+                >
+                  Pay via Direct UPI QR instead
+                </Button>
+              )}
             </div>
           </div>
         </div>
