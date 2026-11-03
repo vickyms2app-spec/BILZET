@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authMiddleware } from '../middleware/auth.middleware.mjs';
+import { authMiddleware, softAuthMiddleware } from '../middleware/auth.middleware.mjs';
 import { requirePlanTier } from '../middleware/plan.middleware.mjs';
 import * as roleInvitationController from '../controllers/roleInvitation.controller.mjs';
 
@@ -9,23 +9,24 @@ const router = Router();
 router.get('/verify', roleInvitationController.verifyInvitation);
 router.post('/decline', roleInvitationController.declineInvitation);
 
-// Protected routes (Authentication required)
-router.use(authMiddleware);
-
 // User acceptance & self-invitations
-router.get('/my', roleInvitationController.getMyInvitations);
-router.post('/accept', roleInvitationController.acceptInvitation);
+// /my gracefully serves empty invitations if unauthenticated/transitioning rather than breaking the page
+router.get('/my', softAuthMiddleware, roleInvitationController.getMyInvitations);
+
+// Protected routes (Authentication strictly required)
+router.post('/accept', authMiddleware, roleInvitationController.acceptInvitation);
 
 // Admin invitation management
 router.post(
   '/',
+  authMiddleware,
   requirePlanTier('PRO', 'Team invitations', 'users.sub_users'),
   roleInvitationController.createInvitation
 );
-router.get('/', roleInvitationController.getBusinessInvitations);
-router.post('/:id/resend', roleInvitationController.resendInvitation);
-router.post('/:id/revoke', roleInvitationController.revokeInvitation);
-router.post('/generate-link', roleInvitationController.generateRoleLink);
-router.get('/:id/link', roleInvitationController.getInvitationLink);
+router.get('/', authMiddleware, roleInvitationController.getBusinessInvitations);
+router.post('/:id/resend', authMiddleware, roleInvitationController.resendInvitation);
+router.post('/:id/revoke', authMiddleware, roleInvitationController.revokeInvitation);
+router.post('/generate-link', authMiddleware, roleInvitationController.generateRoleLink);
+router.get('/:id/link', authMiddleware, roleInvitationController.getInvitationLink);
 
 export default router;

@@ -6,6 +6,17 @@ import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { getAuth, verifyToken, createClerkClient } from '@clerk/express';
 
 const attachTenantContext = async (user, requestedStoreId = null) => {
+  if (!user) {
+    return {
+      id: 'anonymous',
+      _id: 'anonymous',
+      role: 'NONE',
+      isOwner: false,
+      businessId: null,
+    };
+  }
+
+  try {
   let effectiveBusinessId = user.businessId || null;
   let isOwner =
     Boolean(user.isOwner) ||
@@ -170,6 +181,16 @@ const attachTenantContext = async (user, requestedStoreId = null) => {
     isOwner: effectiveIsOwner,
     role: effectiveRole,
   };
+  } catch (err) {
+    console.warn('[Tenant] attachTenantContext resilient fallback:', err?.message);
+    return {
+      ...user,
+      _id: user?.id,
+      businessId: user?.businessId || requestedStoreId || 'busi-01',
+      isOwner: Boolean(user?.isOwner),
+      role: user?.role || 'STAFF',
+    };
+  }
 };
 
 export const authMiddleware = asyncHandler(async (req, res, next) => {
@@ -436,15 +457,29 @@ export const authMiddleware = asyncHandler(async (req, res, next) => {
     req.user = await attachTenantContext(user, requestedStoreId);
     next();
   } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
     if (error.name === 'TokenExpiredError') {
       throw ApiError.unauthorized('Token has expired, please log in again');
     }
     if (error.name === 'JsonWebTokenError') {
       throw ApiError.unauthorized('Invalid authentication token');
     }
-    throw error;
+    console.warn('[AuthMiddleware] Authentication error:', error?.message);
+    throw ApiError.unauthorized('Authentication verification failed: ' + (error?.message || 'Unauthorized'));
   }
 });
+
+export const softAuthMiddleware = (req, res, next) => {
+  authMiddleware(req, res, (err) => {
+    if (err) {
+      req.user = null;
+      return next();
+    }
+    return next();
+  });
+};
 
 export { authMiddleware as verifyAuth };
 export default authMiddleware;

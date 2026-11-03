@@ -57,6 +57,10 @@ export const errorHandler = (err, req, res, next) => {
     response.stack = error.stack;
   }
 
+  if (error.statusCode >= 500) {
+    console.error('[ErrorHandler 500]:', error.message || error);
+  }
+
   return res.status(error.statusCode || 500).json(response);
 };
 
