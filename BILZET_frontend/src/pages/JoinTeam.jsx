@@ -475,6 +475,30 @@ export default function JoinTeam() {
           </form>
         </div>
 
+        {/* Register Own Store Option */}
+        <div className="bg-gradient-to-r from-blue-50/40 via-indigo-50/20 to-white rounded-2xl border border-blue-200/60 p-5 sm:p-6 shadow-xs mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3.5">
+            <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 mt-0.5">
+              <Store size={16} />
+            </div>
+            <div>
+              <h3 className="text-[15px] font-semibold text-[#172033]">
+                Starting your own business?
+              </h3>
+              <p className="text-[13px] text-[#64748B] mt-0.5 leading-normal">
+                Register a new store to manage inventory, billing, and team roles as the Business Owner.
+              </p>
+            </div>
+          </div>
+          <Link
+            to="/register-shop"
+            className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-xs font-semibold text-[#172033] transition shadow-2xs shrink-0 self-start sm:self-center"
+          >
+            <span>Register Store</span>
+            <ArrowRight size={13} />
+          </Link>
+        </div>
+
         {/* 6. Pending Invitations Section */}
         <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-xs">
           {/* Header */}

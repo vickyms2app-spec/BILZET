@@ -556,7 +556,9 @@ export const getOnboardingStatus = asyncHandler(async (req, res) => {
     const primary = activeMemberships[0];
     const roleUpper = String(primary.role || 'STAFF').toUpperCase();
     let dest = '/staff-dashboard';
-    if (roleUpper === 'CA' || roleUpper === 'ACCOUNTANT') {
+    if (roleUpper === 'CASHIER') {
+      dest = '/billing';
+    } else if (roleUpper === 'CA' || roleUpper === 'ACCOUNTANT') {
       dest = '/ca-portal';
     } else if (roleUpper === 'MANAGER' || roleUpper === 'ADMIN' || roleUpper === 'OWNER') {
       dest = '/dashboard';
@@ -601,16 +603,18 @@ export const getOnboardingStatus = asyncHandler(async (req, res) => {
     }, 'Pending invitations found for user.');
   }
 
-  // 5. Unassigned user
+  // 5. Unassigned user - strict RBAC: never judge or assume role automatically
   return sendResponse(res, 200, {
     onboardingStatus: 'UNASSIGNED',
-    destination: '/dashboard',
-    role: 'ADMIN',
-    canRegisterShop: false,
+    destination: '/join-team',
+    role: user.role || 'NONE',
+    isOwner: false,
+    businessId: null,
+    canRegisterShop: true,
     hasPendingInvitations: false,
     pendingInvitationsCount: 0,
     memberships: [],
-  }, 'User workspace ready.');
+  }, 'User onboarding status: unassigned.');
 });
 
 export default {

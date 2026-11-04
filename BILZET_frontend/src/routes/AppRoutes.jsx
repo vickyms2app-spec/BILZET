@@ -161,6 +161,15 @@ function ClerkProtectedWrapper({ children, roles, permission, minPlan, featureKe
     return <AuthLoadingScreen />;
   }
 
+  // Strict RBAC: Users without an assigned role or active business store cannot access protected workspaces
+  if (
+    user.role === "NONE" ||
+    user.role === "UNASSIGNED" ||
+    (!user.businessId && !user.isSuperAdmin && user.role !== "CA" && user.role !== "ACCOUNTANT")
+  ) {
+    return <Navigate to={getWorkspaceRedirectPath(user)} replace />;
+  }
+
   const isAuthorizedRole =
     !roles ||
     roles.includes(user.role) ||
@@ -206,6 +215,15 @@ function StandardProtectedWrapper({ children, roles, permission, minPlan, featur
   }
 
   if (!user) return <Navigate to="/sign-in" replace />;
+
+  // Strict RBAC: Users without an assigned role or active business store cannot access protected workspaces
+  if (
+    user.role === "NONE" ||
+    user.role === "UNASSIGNED" ||
+    (!user.businessId && !user.isSuperAdmin && user.role !== "CA" && user.role !== "ACCOUNTANT")
+  ) {
+    return <Navigate to={getWorkspaceRedirectPath(user)} replace />;
+  }
 
   const isAuthorizedRole =
     !roles ||
@@ -265,7 +283,10 @@ function CaPortalGuard() {
 
 function RegisterShopGuard() {
   const { user } = useAuth();
-  return <Navigate to={getWorkspaceRedirectPath(user) || "/dashboard"} replace />;
+  if (user?.isOwner && user?.businessId) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  return <RegisterShop />;
 }
 
 function AuthenticatedOnly({ children }) {

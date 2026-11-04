@@ -392,9 +392,8 @@ export const register = async (userData, context = {}) => {
   }
 
   // Self-Registration & Role Separation
+  // Strict RBAC: The system never assumes or assigns any role automatically before the business owner adds the user and assigns a role.
   const isSuper = isAdminEmail(normalizedEmail);
-  const isTaxConsultant = userData.accountType === 'TAX_CONSULTANT' || userData.accountType === 'CA';
-  const isStaffRole = userData.accountType === 'STAFF';
 
   let assignedRole = 'NONE';
   let isOwner = false;
@@ -404,24 +403,20 @@ export const register = async (userData, context = {}) => {
     assignedRole = 'SUPER_ADMIN';
     isOwner = true;
   } else if (pendingRoleInvite) {
-    // Invited to a store: strictly enforce role and do NOT assign business owner
+    // Explicitly invited by a Business Owner: strictly enforce role assigned by owner
     assignedRole = pendingRoleInvite.role;
     assignedBusinessId = pendingRoleInvite.businessId;
     isOwner = false;
   } else if (pendingCaInvite) {
+    // CA invitation from a Business Owner
     assignedRole = 'CA';
     assignedBusinessId = pendingCaInvite.businessId;
     isOwner = false;
-  } else if (isTaxConsultant) {
-    assignedRole = 'CA';
-    isOwner = false;
-  } else if (isStaffRole) {
-    assignedRole = 'STAFF';
-    isOwner = false;
   } else {
-    // Standard Merchant / Business Owner
-    assignedRole = 'ADMIN';
-    isOwner = true;
+    // Standalone user without an invitation: no predefined role assumed or assigned
+    assignedRole = 'NONE';
+    assignedBusinessId = null;
+    isOwner = false;
   }
 
   let inviteMeta = {};
@@ -435,7 +430,7 @@ export const register = async (userData, context = {}) => {
 
   let user = await prisma.user.create({
     data: {
-      name: name || pendingRoleInvite?.name || (isSuper ? 'Platform Admin' : isOwner ? 'Store Admin' : assignedRole === 'CA' ? 'Chartered Accountant' : assignedRole === 'CASHIER' ? 'Cashier' : 'Team Member'),
+      name: name || pendingRoleInvite?.name || (isSuper ? 'Platform Admin' : 'User'),
       email: normalizedEmail,
       phone: phone || null,
       passwordHash,
@@ -832,14 +827,17 @@ export const login = async (email, password, context = {}) => {
     } catch (_) {}
   }
 
-  // Auto-repair existing Store Admin without a business
-  if ((user.role === 'ADMIN' || user.isOwner) && !user.businessId) {
+  // Link existing owned business for Store Admin if available
+  if ((user.role === 'ADMIN' || user.isOwner) && user.role !== 'NONE' && !user.businessId) {
     try {
-      user = await ensureAdminBusiness(user, `${user.name || 'My'}'s Store`);
-    } catch (_) {
-      user.businessId = 'busi-01';
-      user.isOwner = true;
-    }
+      const ownedBiz = await prisma.business.findFirst({ where: { ownerId: user.id } });
+      if (ownedBiz) {
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: { businessId: ownedBiz.id, isOwner: true, role: 'ADMIN' },
+        });
+      }
+    } catch (_) {}
   }
 
   // Link any pending pre-registration notifications to this user
@@ -962,21 +960,86 @@ export const googleLogin = async (credential, context = {}) => {
       }
     } else {
       const isSuper = isAdminEmail(email);
-      const role = isSuper ? 'SUPER_ADMIN' : 'ADMIN';
+      let assignedRole = 'NONE';
+      let isOwner = false;
+      let assignedBusinessId = null;
+
+      // Check if user has a pending invitation from a Business Owner
+      const pendingRoleInvite = await prisma.roleInvitation.findFirst({
+        where: {
+          recipientEmail: { equals: email, mode: 'insensitive' },
+          status: 'PENDING',
+          expiresAt: { gt: new Date() },
+        },
+        include: { business: true },
+        orderBy: { createdAt: 'desc' },
+      }).catch(() => null);
+
+      const pendingCaInvite = !pendingRoleInvite
+        ? await prisma.caInvitation.findFirst({
+            where: {
+              email: { equals: email, mode: 'insensitive' },
+              status: 'PENDING',
+              expiresAt: { gt: new Date() },
+            },
+            include: { business: true },
+            orderBy: { createdAt: 'desc' },
+          }).catch(() => null)
+        : null;
+
+      if (isSuper) {
+        assignedRole = 'SUPER_ADMIN';
+        isOwner = true;
+      } else if (pendingRoleInvite) {
+        assignedRole = pendingRoleInvite.role;
+        assignedBusinessId = pendingRoleInvite.businessId;
+        isOwner = false;
+      } else if (pendingCaInvite) {
+        assignedRole = 'CA';
+        assignedBusinessId = pendingCaInvite.businessId;
+        isOwner = false;
+      } else {
+        // Strict RBAC: No automatic role assumption. User starts with role NONE until owner assigns one.
+        assignedRole = 'NONE';
+        assignedBusinessId = null;
+        isOwner = false;
+      }
+
       user = await prisma.user.create({
         data: {
           name,
           email,
           googleId,
           avatar,
-          role,
-          isOwner: true,
+          role: assignedRole,
+          businessId: assignedBusinessId,
+          isOwner,
           isActive: true,
-        }
+        },
       });
 
-      if (!isSuper) {
-        user = await ensureAdminBusiness(user, `${name || 'My'}'s Store`);
+      if (pendingRoleInvite) {
+        const now = new Date();
+        await prisma.businessMember.upsert({
+          where: { userId_businessId: { userId: user.id, businessId: pendingRoleInvite.businessId } },
+          update: { role: pendingRoleInvite.role, status: 'ACTIVE', acceptedAt: now },
+          create: { userId: user.id, businessId: pendingRoleInvite.businessId, role: pendingRoleInvite.role, status: 'ACTIVE', invitedBy: pendingRoleInvite.inviterId, acceptedAt: now },
+        }).catch(() => {});
+        await prisma.roleInvitation.update({
+          where: { id: pendingRoleInvite.id },
+          data: { status: 'ACCEPTED', acceptedAt: now, recipientUserId: user.id },
+        }).catch(() => {});
+      } else if (pendingCaInvite) {
+        const now = new Date();
+        await prisma.caStoreAccess.upsert({
+          where: { caUserId_businessId: { caUserId: user.id, businessId: pendingCaInvite.businessId } },
+          update: { status: 'ACTIVE', permissions: pendingCaInvite.permissions },
+          create: { caUserId: user.id, businessId: pendingCaInvite.businessId, status: 'ACTIVE', role: 'CA', assignedById: pendingCaInvite.inviterId, permissions: pendingCaInvite.permissions },
+        }).catch(() => {});
+        await prisma.caInvitation.update({
+          where: { id: pendingCaInvite.id },
+          data: { status: 'ACCEPTED', acceptedAt: now, caUserId: user.id },
+        }).catch(() => {});
       }
     }
 
@@ -1066,9 +1129,27 @@ export const clerkSync = async ({ clerkId, email, name, avatar, phone } = {}) =>
           }).catch(() => null)
         : null;
 
-      const hasInvitations = Boolean(pendingInv || pendingCa);
-      const role = isSuper ? 'SUPER_ADMIN' : hasInvitations ? 'NONE' : 'ADMIN';
-      const isOwner = isSuper || !hasInvitations;
+      let role = 'NONE';
+      let isOwner = false;
+      let businessId = null;
+
+      if (isSuper) {
+        role = 'SUPER_ADMIN';
+        isOwner = true;
+      } else if (pendingInv) {
+        role = pendingInv.role;
+        businessId = pendingInv.businessId;
+        isOwner = false;
+      } else if (pendingCa) {
+        role = 'CA';
+        businessId = pendingCa.businessId;
+        isOwner = false;
+      } else {
+        // Strict RBAC: No automatic role assumption. Standalone user role is NONE until assigned by business owner.
+        role = 'NONE';
+        businessId = null;
+        isOwner = false;
+      }
 
       try {
         user = await prisma.user.create({
@@ -1079,14 +1160,34 @@ export const clerkSync = async ({ clerkId, email, name, avatar, phone } = {}) =>
             avatar: avatar || null,
             googleId: clerkId || null,
             role,
+            businessId,
             isOwner,
             isActive: true,
           }
         });
 
-        // If signing up as a store owner, ensure their business profile is created immediately
-        if (isOwner && !isSuper) {
-          user = await ensureAdminBusiness(user, `${displayName}'s Store`);
+        if (pendingInv) {
+          const now = new Date();
+          await prisma.businessMember.upsert({
+            where: { userId_businessId: { userId: user.id, businessId: pendingInv.businessId } },
+            update: { role: pendingInv.role, status: 'ACTIVE', acceptedAt: now },
+            create: { userId: user.id, businessId: pendingInv.businessId, role: pendingInv.role, status: 'ACTIVE', acceptedAt: now },
+          }).catch(() => {});
+          await prisma.roleInvitation.update({
+            where: { id: pendingInv.id },
+            data: { status: 'ACCEPTED', acceptedAt: now, recipientUserId: user.id },
+          }).catch(() => {});
+        } else if (pendingCa) {
+          const now = new Date();
+          await prisma.caStoreAccess.upsert({
+            where: { caUserId_businessId: { caUserId: user.id, businessId: pendingCa.businessId } },
+            update: { status: 'ACTIVE', permissions: pendingCa.permissions },
+            create: { caUserId: user.id, businessId: pendingCa.businessId, status: 'ACTIVE', role: 'CA', assignedById: pendingCa.inviterId, permissions: pendingCa.permissions },
+          }).catch(() => {});
+          await prisma.caInvitation.update({
+            where: { id: pendingCa.id },
+            data: { status: 'ACCEPTED', acceptedAt: now, caUserId: user.id },
+          }).catch(() => {});
         }
       } catch (createErr) {
         console.warn('[clerkSync] create user warning:', createErr.message);
@@ -1123,14 +1224,8 @@ export const clerkSync = async ({ clerkId, email, name, avatar, phone } = {}) =>
             data: { businessId: owned.id, isOwner: true, role: 'ADMIN' },
           });
         } else {
-          const hasMember = await prisma.businessMember.findFirst({ where: { userId: user.id, status: 'ACTIVE' } }).catch(() => null);
-          if (!hasMember) {
-            user = await ensureAdminBusiness(user, `${displayName}'s Store`);
-            user = await prisma.user.update({
-              where: { id: user.id },
-              data: { isOwner: true, role: 'ADMIN' },
-            });
-          }
+          // Do not auto-provision stores or assume roles for unassigned users
+          // Roles and stores must only be created when explicitly registered or assigned by business owner
         }
       }
     }

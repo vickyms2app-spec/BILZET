@@ -116,12 +116,6 @@ export default function Signup() {
         if (isCancelled) return;
         if (res?.valid && res.invitation) {
           setVerifiedInvite(res.invitation);
-          const assignedRole = res.invitation.role;
-          if (assignedRole === "CA" || assignedRole === "ACCOUNTANT") {
-            setAccountType("TAX_CONSULTANT");
-          } else {
-            setAccountType("STAFF");
-          }
           if (res.invitation.email) {
             setEmail(res.invitation.email);
           }
@@ -157,9 +151,7 @@ export default function Signup() {
   const register = useAuth((s) => s.register);
   const googleLogin = useAuth((s) => s.googleLogin);
 
-  // Form State
-  const [accountType, setAccountType] = useState(() => (isInvitedFlow ? "STAFF" : "BUSINESS_OWNER")); // 'BUSINESS_OWNER' | 'TAX_CONSULTANT' | 'STAFF'
-  const [businessName, setBusinessName] = useState("");
+  // Form State - Strict RBAC: No predefined role. Universal account creation.
   const [name, setName] = useState("");
   const [email, setEmail] = useState(queryEmail);
   const [countryCode, setCountryCode] = useState("+91");
@@ -256,12 +248,6 @@ export default function Signup() {
     setSuccess("");
 
     // Validations
-    if (accountType === "BUSINESS_OWNER" && !businessName.trim()) {
-      return setError("Please enter your Business / Company Name.");
-    }
-    if (accountType === "TAX_CONSULTANT" && !businessName.trim()) {
-      return setError("Please enter your Firm / Practice Name.");
-    }
     if (name.trim().length < 2) {
       return setError("Please enter your full name.");
     }
@@ -290,17 +276,12 @@ export default function Signup() {
     setBusy(true);
     try {
       const fullPhone = `${countryCode} ${phone.trim()}`;
-      const effectiveAccountType = inviteToken
-        ? (verifiedInvite?.role === "CA" || verifiedInvite?.role === "ACCOUNTANT" ? "TAX_CONSULTANT" : "STAFF")
-        : accountType;
 
       const payload = {
         name: name.trim(),
         email: email.trim().toLowerCase(),
         phone: fullPhone,
         password,
-        accountType: effectiveAccountType,
-        businessName: businessName.trim() || undefined,
         country: country.trim(),
         state: state.trim(),
         referralCode: referralCode.trim().toUpperCase() || undefined,
@@ -319,18 +300,7 @@ export default function Signup() {
     }
   }
 
-  // Adaptive placeholder based on selected account type
-  const getBusinessFieldPlaceholder = () => {
-    switch (accountType) {
-      case "TAX_CONSULTANT":
-        return "Firm / Practice Name";
-      case "STAFF":
-        return "Business / Employer Name (Optional)";
-      case "BUSINESS_OWNER":
-      default:
-        return "Business / Company Name";
-    }
-  };
+
 
   return (
     <div
@@ -596,145 +566,20 @@ export default function Signup() {
 
           {/* Registration Form */}
           <form onSubmit={handleSubmit} noValidate className="space-y-2.5 font-macos">
-            {/* ─── Account Type Selector (Exact 3 Cards in 1 Row) ─── */}
-            <div>
-              <label className="block text-[11.5px] font-semibold text-[#526B87] mb-1.5 font-macos">
-                Account type
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                {/* 1. Business Owner */}
-                <button
-                  type="button"
-                  id="account-type-owner"
-                  onClick={() => setAccountType("BUSINESS_OWNER")}
-                  className={`relative flex flex-col items-center justify-center pt-2.5 pb-2 px-1 rounded-[10px] transition-all text-center select-none cursor-pointer border ${
-                    accountType === "BUSINESS_OWNER"
-                      ? "border-[#8AAED8] bg-[#EEF7FF] text-[#2563EB]"
-                      : "border-[#E3EDF8] bg-white text-[#7188A3] hover:border-[#8AAED8] hover:bg-[#F4F9FF]"
-                  }`}
-                >
-                  {/* Top-left Radio Indicator */}
-                  <div className="absolute top-2 left-2">
-                    <div
-                      className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-colors ${
-                        accountType === "BUSINESS_OWNER"
-                          ? "border-[#2563EB] bg-white"
-                          : "border-[#E3EDF8] bg-white"
-                      }`}
-                    >
-                      {accountType === "BUSINESS_OWNER" && (
-                        <div className="w-2 h-2 rounded-full bg-[#0878F9]" />
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Icon */}
-                  <Store
-                    size={18}
-                    className={`mb-1 mt-0.5 ${
-                      accountType === "BUSINESS_OWNER" ? "text-[#0878F9]" : "text-[#64748B]"
-                    }`}
-                    strokeWidth={1.8}
-                  />
-                  <span className="text-[11px] font-semibold text-[#111827] leading-tight font-macos">
-                    Business Owner
-                  </span>
-                </button>
-
-                {/* 2. Tax Consultant / CA */}
-                <button
-                  type="button"
-                  id="account-type-ca"
-                  onClick={() => setAccountType("TAX_CONSULTANT")}
-                  className={`relative flex flex-col items-center justify-center pt-2.5 pb-2 px-1 rounded-[10px] transition-all text-center select-none cursor-pointer border ${
-                    accountType === "TAX_CONSULTANT"
-                      ? "border-[#8AAED8] bg-[#EEF7FF] text-[#2563EB]"
-                      : "border-[#E3EDF8] bg-white text-[#7188A3] hover:border-[#8AAED8] hover:bg-[#F4F9FF]"
-                  }`}
-                >
-                  {/* Top-left Radio Indicator */}
-                  <div className="absolute top-2 left-2">
-                    <div
-                      className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-colors ${
-                        accountType === "TAX_CONSULTANT"
-                          ? "border-[#2563EB] bg-white"
-                          : "border-[#E3EDF8] bg-white"
-                      }`}
-                    >
-                      {accountType === "TAX_CONSULTANT" && (
-                        <div className="w-2 h-2 rounded-full bg-[#2563EB]" />
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Icon */}
-                  <UserCheck
-                    size={18}
-                    className={`mb-1 mt-0.5 ${
-                      accountType === "TAX_CONSULTANT" ? "text-[#2563EB]" : "text-[#8AAED8]"
-                    }`}
-                    strokeWidth={1.8}
-                  />
-                  <span className="text-[11px] font-medium text-[#526B87] leading-tight font-macos">
-                    Tax Consultant / CA
-                  </span>
-                </button>
-
-                {/* 3. Staff / Other Role */}
-                <button
-                  type="button"
-                  id="account-type-staff"
-                  onClick={() => setAccountType("STAFF")}
-                  className={`relative flex flex-col items-center justify-center pt-2.5 pb-2 px-1 rounded-[10px] transition-all text-center select-none cursor-pointer border ${
-                    accountType === "STAFF"
-                      ? "border-[#8AAED8] bg-[#EEF7FF] text-[#2563EB]"
-                      : "border-[#E3EDF8] bg-white text-[#7188A3] hover:border-[#8AAED8] hover:bg-[#F4F9FF]"
-                  }`}
-                >
-                  {/* Top-left Radio Indicator */}
-                  <div className="absolute top-2 left-2">
-                    <div
-                      className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-colors ${
-                        accountType === "STAFF"
-                          ? "border-[#2563EB] bg-white"
-                          : "border-[#E3EDF8] bg-white"
-                      }`}
-                    >
-                      {accountType === "STAFF" && (
-                        <div className="w-2 h-2 rounded-full bg-[#2563EB]" />
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Icon */}
-                  <Users
-                    size={18}
-                    className={`mb-1 mt-0.5 ${
-                      accountType === "STAFF" ? "text-[#2563EB]" : "text-[#8AAED8]"
-                    }`}
-                    strokeWidth={1.8}
-                  />
-                  <span className="text-[11px] font-medium text-[#526B87] leading-tight font-macos">
-                    Staff / Other Role
-                  </span>
-                </button>
+            {/* Verified Team Invitation Notice (if arrived with invitation link) */}
+            {verifiedInvite && (
+              <div className="p-3 rounded-xl bg-[#EEF7FF] border border-[#8AAED8]/60 text-[#1E3A8A] flex items-start gap-2.5 font-macos">
+                <ShieldCheck size={18} className="text-[#2563EB] shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-[12.5px] font-bold text-[#1E40AF]">
+                    Joining {verifiedInvite.business?.name || "Business Store"}
+                  </p>
+                  <p className="text-[11.5px] text-[#475569] mt-0.5">
+                    Role assigned by business owner: <strong className="text-[#1D4ED8]">{verifiedInvite.role}</strong>
+                  </p>
+                </div>
               </div>
-            </div>
-
-            {/* ─── Field 1: Business / Company Name ─── */}
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#8AAED8]">
-                <Building2 size={15} strokeWidth={1.8} />
-              </div>
-              <input
-                id="signup-business-name"
-                type="text"
-                value={businessName}
-                onChange={(e) => setBusinessName(e.target.value)}
-                placeholder={getBusinessFieldPlaceholder()}
-                className="w-full h-[42px] pl-9 pr-3.5 rounded-[9px] border border-[#E3EDF8] bg-[#F4F9FF] text-[13px] text-[#526B87] placeholder:text-[#94A8BE] focus:outline-none focus:border-[#8AAED8] focus:ring-2 focus:ring-[#8AAED8]/15 transition-all font-macos"
-              />
-            </div>
+            )}
 
             {/* ─── Field 2: Full Name ─── */}
             <div className="relative">
