@@ -542,17 +542,7 @@ All backend endpoints are prefixed with `/api/v1`.
 - npm `v9.0.0` or higher
 - Optional: Local PostgreSQL instance or a free NeonDB cloud connection string
 
-### Quick Start 1: Frontend Only (Instant Demo Mode)
-The fastest way to test the entire application interface without configuring databases:
-```bash
-cd BILZET_frontend
-npm install
-npm run dev
-```
-1. Open your browser at `http://localhost:5173`.
-2. Click **"Skip Login"** on the sign-in page to enter the dashboard immediately with full demo data.
-
-### Quick Start 2: Full-Stack (Frontend + Backend + PostgreSQL)
+### Quick Start: Full-Stack (Frontend + Backend + PostgreSQL)
 ```bash
 # 1. Setup Backend
 cd BILZET_backend

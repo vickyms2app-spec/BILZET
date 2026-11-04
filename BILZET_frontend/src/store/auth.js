@@ -116,32 +116,6 @@ export const useAuth = create((set) => ({
       }
     } catch (err) {
       console.warn("Bootstrap auth check notice:", err?.message || err);
-      // Check if visitor is in Instant Demo mode
-      const isDemo = localStorage.getItem("bilzet_demo_mode") === "true" || (typeof token === "string" && token.startsWith("demo-token"));
-      if (isDemo) {
-        set({
-          user: {
-            id: "demo-guest-id",
-            name: "Demo Visitor",
-            role: "GUEST",
-            email: "demo@bilzet.app",
-            isOwner: false,
-            isDemo: true,
-            businessId: "demo-store-01",
-            subscription: {
-              planTier: "PREMIUM",
-              planName: "Premium Showcase",
-              status: "ACTIVE",
-              isActive: true,
-              isUnlimited: true,
-              maxSubUsers: 0,
-            },
-            currentPlan: "PREMIUM",
-          },
-          loading: false,
-        });
-        return;
-      }
 
       // Cleanly clear invalid token so user is not stuck on infinite loading
       const isClerkLoggedIn = typeof window !== "undefined" && window.Clerk?.session;

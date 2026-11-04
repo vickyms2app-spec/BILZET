@@ -23,23 +23,6 @@ export function usePermissions() {
       return true;
     }
 
-    // Instant Demo / Guest Mode: STRICT VIEW-ONLY. All viewing permitted, all mutations strictly blocked.
-    if (user.role === "GUEST" || user.isDemo) {
-      if (
-        permissionKey.endsWith(".create") ||
-        permissionKey.endsWith(".edit") ||
-        permissionKey.endsWith(".update") ||
-        permissionKey.endsWith(".delete") ||
-        permissionKey.endsWith(".adjust") ||
-        permissionKey.endsWith(".cancel") ||
-        permissionKey.endsWith(".manage") ||
-        permissionKey.endsWith(".transfer")
-      ) {
-        return false;
-      }
-      return true;
-    }
-
     // Check user's effective permissions map
     if (user.effectivePermissions && typeof user.effectivePermissions === "object") {
       if (user.effectivePermissions[permissionKey] !== undefined) {

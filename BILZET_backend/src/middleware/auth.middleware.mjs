@@ -222,43 +222,6 @@ export const authMiddleware = asyncHandler(async (req, res, next) => {
     req.query?.storeId ||
     null;
 
-  // Instant Demo Strict View-Only Mode Enforcement
-  const isDemo = Boolean(
-    token?.startsWith('demo-token') ||
-    req.headers['x-demo-mode'] === 'true'
-  );
-
-  if (isDemo) {
-    const method = req.method.toUpperCase();
-    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
-      throw ApiError.forbidden(
-        'Instant Demo is in Strict View-Only Mode. Data-modifying actions are disabled. Please create an account to perform business operations.',
-        'DEMO_VIEW_ONLY'
-      );
-    }
-
-    req.user = {
-      id: 'demo-guest-id',
-      _id: 'demo-guest-id',
-      name: 'Demo Visitor',
-      email: 'demo@bilzet.app',
-      role: 'GUEST',
-      isOwner: false,
-      isDemo: true,
-      businessId: 'demo-store-01',
-      subscription: {
-        planTier: 'PREMIUM',
-        planName: 'Premium Showcase',
-        status: 'ACTIVE',
-        isActive: true,
-        isUnlimited: true,
-        maxSubUsers: 0,
-      },
-      currentPlan: 'PREMIUM',
-    };
-    return next();
-  }
-
   // 1. Detect if this is a Clerk token or session
   const decodedToken = token ? jwt.decode(token) : null;
   const isClerk = Boolean(

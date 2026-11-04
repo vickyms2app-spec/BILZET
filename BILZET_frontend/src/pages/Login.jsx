@@ -20,7 +20,6 @@ import {
   Loader2,
   AlertCircle,
   Check,
-  Zap,
   CheckCircle,
   Shield,
   Cloud,
@@ -153,36 +152,6 @@ export default function Login({ initialMode = "login" }) {
     } finally {
       setBusy(false);
     }
-  }
-
-  // Instant Demo / Guest Mode Access
-  function handleSkipLogin() {
-    try {
-      useAuth.setState({
-        user: {
-          id: "demo-guest-id",
-          name: "Demo Visitor",
-          role: "GUEST",
-          email: "demo@bilzet.app",
-          isOwner: false,
-          isDemo: true,
-          businessId: "demo-store-01",
-          subscription: {
-            planTier: "PREMIUM",
-            planName: "Premium Showcase",
-            status: "ACTIVE",
-            isActive: true,
-            isUnlimited: true,
-            maxSubUsers: 0,
-          },
-          currentPlan: "PREMIUM",
-        },
-        loading: false,
-      });
-      localStorage.setItem("bilzet_access_token", "demo-token-viewonly");
-      localStorage.setItem("bilzet_demo_mode", "true");
-    } catch (_) {}
-    nav("/dashboard");
   }
 
   return (
@@ -587,16 +556,6 @@ export default function Login({ initialMode = "login" }) {
                 <span>Continue with Google</span>
               </button>
             )}
-
-            {/* ─── Instant Demo / Guest Mode ─── */}
-            <button
-              type="button"
-              onClick={handleSkipLogin}
-              className="w-full flex items-center justify-center gap-2 rounded-[9px] py-2 text-xs font-semibold transition-all duration-200 border border-[#E3EDF8] bg-[#F4F9FF] text-[#526B87] hover:bg-[#EEF7FF] cursor-pointer font-macos"
-            >
-              <Zap size={14} className="text-[#2563EB]" />
-              <span>Instant Demo — Continue as Guest</span>
-            </button>
           </form>
         </div>
       </div>

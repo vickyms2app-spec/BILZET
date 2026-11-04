@@ -50,7 +50,6 @@ import {
   ArrowUpRight,
   Lock,
   Unlock,
-  Eye,
   CalendarCheck2,
   ShieldCheck,
   Building2,
@@ -200,101 +199,9 @@ export default function Layout({ children }) {
     }));
   };
 
-  const [demoTooltip, setDemoTooltip] = useState({ visible: false, x: 0, y: 0, text: "" });
-
-  // Global Strict View-Only Demo Action Interceptor
-  useEffect(() => {
-    const isDemoMode = user?.role === "GUEST" || user?.isDemo || localStorage.getItem("bilzet_demo_mode") === "true";
-    if (!isDemoMode) return;
-
-    const handleBlockedAction = (e) => {
-      setDemoTooltip({
-        visible: true,
-        x: window.innerWidth / 2,
-        y: 80,
-        text: e?.detail?.message || "Available in the full version.",
-      });
-      setTimeout(() => setDemoTooltip((prev) => ({ ...prev, visible: false })), 2500);
-    };
-
-    const handleGlobalClick = (e) => {
-      const target = e.target.closest("button, [data-demo-action]");
-      if (!target) return;
-
-      // Allow navigation, sidebar toggling, search, shortcuts, and account creation
-      if (
-        target.closest("a") ||
-        target.closest("[role='navigation']") ||
-        target.getAttribute("role") === "tab" ||
-        target.getAttribute("aria-label")?.includes("sidebar") ||
-        target.getAttribute("aria-label")?.includes("Sidebar") ||
-        target.getAttribute("aria-label")?.includes("Shortcuts") ||
-        target.getAttribute("aria-label")?.includes("Navigation") ||
-        target.getAttribute("title")?.includes("sidebar") ||
-        target.getAttribute("title")?.includes("Sidebar") ||
-        target.dataset.demoAllowed === "true" ||
-        target.classList.contains("demo-allowed")
-      ) {
-        return;
-      }
-
-      // Identify mutating operational actions
-      const text = (target.textContent || "").toLowerCase().trim();
-      if (text.includes("create account") || text.includes("sign in") || text.includes("login") || target.dataset.demoAllowed === "true") {
-        return;
-      }
-      const isMutatingAction =
-        target.type === "submit" ||
-        text.includes("create") ||
-        text.includes("add ") ||
-        text.includes("save") ||
-        text.includes("delete") ||
-        text.includes("update") ||
-        text.includes("record") ||
-        text.includes("adjust") ||
-        text.includes("cancel") ||
-        text.includes("checkout") ||
-        text.includes("import") ||
-        text.includes("export") ||
-        text.includes("punch") ||
-        text.includes("complete") ||
-        text.includes("collect");
-
-      if (isMutatingAction) {
-        e.preventDefault();
-        e.stopPropagation();
-        const rect = target.getBoundingClientRect();
-        setDemoTooltip({
-          visible: true,
-          x: Math.max(120, Math.min(window.innerWidth - 120, rect.left + rect.width / 2)),
-          y: Math.max(20, rect.top - 36),
-          text: "Available in the full version.",
-        });
-        setTimeout(() => setDemoTooltip((prev) => ({ ...prev, visible: false })), 2500);
-      }
-    };
-
-    window.addEventListener("click", handleGlobalClick, true);
-    window.addEventListener("bilzet:demo-action-blocked", handleBlockedAction);
-    return () => {
-      window.removeEventListener("click", handleGlobalClick, true);
-      window.removeEventListener("bilzet:demo-action-blocked", handleBlockedAction);
-    };
-  }, [user]);
-
-  const handleExitDemoToLogin = () => {
-    try {
-      localStorage.removeItem("bilzet_demo_mode");
-      localStorage.removeItem("bilzet_access_token");
-      localStorage.removeItem("token");
-      useAuth.setState({ user: null });
-    } catch (_) {}
-    nav("/sign-in");
-  };
-
   const displayName = user?.name || "Admin User";
   const displayRole =
-    user?.role === "ADMIN" || !user?.role || user?.role === "GUEST"
+    user?.role === "ADMIN" || !user?.role
       ? "Business Owner"
       : user.role;
 
@@ -1391,24 +1298,8 @@ export default function Layout({ children }) {
               <Keyboard size={18} />
             </button>
 
-            {/* Demo Session Indicator or Subscription Plan Badge */}
-            {user?.role === "GUEST" || user?.isDemo || (typeof window !== "undefined" && localStorage.getItem("bilzet_demo_mode") === "true") ? (
-              <div className="flex items-center gap-2 shrink-0">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-300 shadow-2xs select-none">
-                  <Eye size={13} className="text-amber-600 shrink-0" />
-                  <span>VIEW-ONLY DEMO</span>
-                </span>
-                <button
-                  type="button"
-                  data-demo-allowed="true"
-                  onClick={handleExitDemoToLogin}
-                  className="demo-allowed inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#1A5CFF] hover:bg-[#1546C2] text-white text-xs font-bold transition shadow-xs active:scale-98 shrink-0 cursor-pointer"
-                >
-                  <ArrowUpRight size={14} className="shrink-0" />
-                  <span>Create Account</span>
-                </button>
-              </div>
-            ) : isPremium ? (
+            {/* Subscription Plan Badge */}
+            {isPremium ? (
               <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#FFF6E9] text-[#92400E] border border-[#FDE68A] shrink-0">
                 <Crown size={12} className="text-amber-600" />
                 <span>Premium</span>
@@ -1635,30 +1526,6 @@ export default function Layout({ children }) {
           </div>
         </footer>
       </div>
-
-      {/* Floating Demo Restriction Tooltip */}
-      {demoTooltip.visible && (
-        <div
-          style={{
-            position: "fixed",
-            left: demoTooltip.x,
-            top: demoTooltip.y,
-            transform: "translateX(-50%)",
-            background: "#1E293B",
-            color: "#FFFFFF",
-            fontSize: "12px",
-            fontWeight: "600",
-            padding: "6px 14px",
-            borderRadius: "8px",
-            boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.3)",
-            zIndex: 99999,
-            pointerEvents: "none",
-            animation: "fadeIn 0.15s ease-out",
-          }}
-        >
-          {demoTooltip.text}
-        </div>
-      )}
 
       {/* Global Keyboard Navigation & Shortcuts Cheatsheet */}
       <KeyboardShortcutsModal

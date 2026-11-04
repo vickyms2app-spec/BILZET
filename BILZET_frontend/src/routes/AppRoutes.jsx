@@ -167,7 +167,7 @@ function ClerkProtectedWrapper({ children, roles, permission, minPlan, featureKe
     (user.isOwner && (roles.includes("ADMIN") || roles.includes("OWNER") || roles.includes("MANAGER"))) ||
     isAdminUser(user);
 
-  if (!isAuthorizedRole && user.role !== "GUEST") {
+  if (!isAuthorizedRole) {
     return <Navigate to={getWorkspaceRedirectPath(user)} replace />;
   }
 
@@ -213,7 +213,7 @@ function StandardProtectedWrapper({ children, roles, permission, minPlan, featur
     (user.isOwner && (roles.includes("ADMIN") || roles.includes("OWNER") || roles.includes("MANAGER"))) ||
     isAdminUser(user);
 
-  if (!isAuthorizedRole && user.role !== "GUEST") {
+  if (!isAuthorizedRole) {
     return <Navigate to={getWorkspaceRedirectPath(user)} replace />;
   }
 
