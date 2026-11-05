@@ -141,6 +141,8 @@ function ClerkProtectedWrapper({ children, roles, permission, minPlan, featureKe
   const { user, loading: authLoading } = useAuth();
   const { isLoaded: isClerkLoaded, isSignedIn } = useClerkAuth();
   const { hasPermission } = usePermissions();
+  const location = useLocation();
+  const currentPath = location.pathname;
 
   // Wait only if: auth is still loading AND we have no local user yet
   if (authLoading && !user) {
@@ -161,13 +163,17 @@ function ClerkProtectedWrapper({ children, roles, permission, minPlan, featureKe
     return <AuthLoadingScreen />;
   }
 
-  // Strict RBAC: Users without an assigned role or active business store cannot access protected workspaces
-  if (
+  // Strict RBAC: Unassigned users or non-owner members without a business store cannot access protected workspaces
+  const isUnassignedMember =
     user.role === "NONE" ||
     user.role === "UNASSIGNED" ||
-    (!user.businessId && !user.isSuperAdmin && user.role !== "CA" && user.role !== "ACCOUNTANT")
-  ) {
-    return <Navigate to={getWorkspaceRedirectPath(user)} replace />;
+    (!user.businessId && !user.isOwner && !user.isSuperAdmin && !isAdminUser(user) && user.role !== "CA" && user.role !== "ACCOUNTANT");
+
+  if (isUnassignedMember) {
+    const dest = getWorkspaceRedirectPath(user) || "/join-team";
+    if (currentPath !== dest) {
+      return <Navigate to={dest} replace />;
+    }
   }
 
   const isAuthorizedRole =
@@ -177,16 +183,26 @@ function ClerkProtectedWrapper({ children, roles, permission, minPlan, featureKe
     isAdminUser(user);
 
   if (!isAuthorizedRole) {
-    return <Navigate to={getWorkspaceRedirectPath(user)} replace />;
+    const dest = getWorkspaceRedirectPath(user) || "/join-team";
+    if (currentPath !== dest) {
+      return <Navigate to={dest} replace />;
+    }
+    return <Navigate to="/sign-in" replace />;
   }
 
   // Safety gate: Non-owners can never access /dashboard unless they have explicit reports.view permission
-  if (window.location.pathname === "/dashboard" && !user.isOwner && user.role !== "SUPER_ADMIN" && !hasPermission("reports.view")) {
-    return <Navigate to={getWorkspaceRedirectPath(user)} replace />;
+  if (currentPath === "/dashboard" && !user.isOwner && user.role !== "SUPER_ADMIN" && !isAdminUser(user) && !hasPermission("reports.view")) {
+    const fallbackDest = user.role === "CASHIER" ? "/billing" : "/staff-dashboard";
+    if (currentPath !== fallbackDest) {
+      return <Navigate to={fallbackDest} replace />;
+    }
   }
 
   if (permission && !hasPermission(permission)) {
-    return <Navigate to={getWorkspaceRedirectPath(user)} replace />;
+    const dest = getWorkspaceRedirectPath(user) || "/dashboard";
+    if (currentPath !== dest) {
+      return <Navigate to={dest} replace />;
+    }
   }
 
   const { allowed, userPlan } = checkPlanAccess(user, minPlan, featureKey);
@@ -209,6 +225,8 @@ function ClerkProtectedWrapper({ children, roles, permission, minPlan, featureKe
 function StandardProtectedWrapper({ children, roles, permission, minPlan, featureKey }) {
   const { user, loading } = useAuth();
   const { hasPermission } = usePermissions();
+  const location = useLocation();
+  const currentPath = location.pathname;
 
   if (loading) {
     return <AuthLoadingScreen />;
@@ -216,13 +234,17 @@ function StandardProtectedWrapper({ children, roles, permission, minPlan, featur
 
   if (!user) return <Navigate to="/sign-in" replace />;
 
-  // Strict RBAC: Users without an assigned role or active business store cannot access protected workspaces
-  if (
+  // Strict RBAC: Unassigned users or non-owner members without a business store cannot access protected workspaces
+  const isUnassignedMember =
     user.role === "NONE" ||
     user.role === "UNASSIGNED" ||
-    (!user.businessId && !user.isSuperAdmin && user.role !== "CA" && user.role !== "ACCOUNTANT")
-  ) {
-    return <Navigate to={getWorkspaceRedirectPath(user)} replace />;
+    (!user.businessId && !user.isOwner && !user.isSuperAdmin && !isAdminUser(user) && user.role !== "CA" && user.role !== "ACCOUNTANT");
+
+  if (isUnassignedMember) {
+    const dest = getWorkspaceRedirectPath(user) || "/join-team";
+    if (currentPath !== dest) {
+      return <Navigate to={dest} replace />;
+    }
   }
 
   const isAuthorizedRole =
@@ -232,16 +254,26 @@ function StandardProtectedWrapper({ children, roles, permission, minPlan, featur
     isAdminUser(user);
 
   if (!isAuthorizedRole) {
-    return <Navigate to={getWorkspaceRedirectPath(user)} replace />;
+    const dest = getWorkspaceRedirectPath(user) || "/join-team";
+    if (currentPath !== dest) {
+      return <Navigate to={dest} replace />;
+    }
+    return <Navigate to="/sign-in" replace />;
   }
 
   // Safety gate: Non-owners can never access /dashboard unless they have explicit reports.view permission
-  if (window.location.pathname === "/dashboard" && !user.isOwner && user.role !== "SUPER_ADMIN" && !hasPermission("reports.view")) {
-    return <Navigate to={getWorkspaceRedirectPath(user)} replace />;
+  if (currentPath === "/dashboard" && !user.isOwner && user.role !== "SUPER_ADMIN" && !isAdminUser(user) && !hasPermission("reports.view")) {
+    const fallbackDest = user.role === "CASHIER" ? "/billing" : "/staff-dashboard";
+    if (currentPath !== fallbackDest) {
+      return <Navigate to={fallbackDest} replace />;
+    }
   }
 
   if (permission && !hasPermission(permission)) {
-    return <Navigate to={getWorkspaceRedirectPath(user)} replace />;
+    const dest = getWorkspaceRedirectPath(user) || "/dashboard";
+    if (currentPath !== dest) {
+      return <Navigate to={dest} replace />;
+    }
   }
 
   const { allowed, userPlan } = checkPlanAccess(user, minPlan, featureKey);
@@ -263,10 +295,14 @@ function StandardProtectedWrapper({ children, roles, permission, minPlan, featur
 
 function AdminEmailGuard({ children }) {
   const { user } = useAuth();
+  const location = useLocation();
   const allowed = isSuperAdminUser(user) || isAdminEmail(user?.email);
 
   if (!allowed) {
-    return <Navigate to="/dashboard" replace />;
+    if (location.pathname !== "/dashboard") {
+      return <Navigate to="/dashboard" replace />;
+    }
+    return null;
   }
   return children;
 }

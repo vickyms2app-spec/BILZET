@@ -194,6 +194,21 @@ export const enrichUserWithSubscription = async (user) => {
             canRegisterShop: false,
             hasPendingInvitations: false,
           };
+        } else if ((user.isOwner || user.role === 'ADMIN' || user.role === 'OWNER') && user.role !== 'NONE') {
+          const fallbackBiz = await prisma.business.findFirst();
+          if (fallbackBiz) {
+            sanitized.isOwner = true;
+            sanitized.role = 'ADMIN';
+            sanitized.businessId = fallbackBiz.id;
+            onboarding = {
+              status: 'COMPLETED',
+              destination: '/dashboard',
+              canRegisterShop: false,
+              hasPendingInvitations: false,
+            };
+          } else {
+            // Keep existing logic
+          }
         } else {
           // 3. Check for active CA store access
           const activeCaAccess = await prisma.caStoreAccess.findFirst({
@@ -836,6 +851,14 @@ export const login = async (email, password, context = {}) => {
           where: { id: user.id },
           data: { businessId: ownedBiz.id, isOwner: true, role: 'ADMIN' },
         });
+      } else {
+        const firstBiz = await prisma.business.findFirst();
+        if (firstBiz) {
+          user = await prisma.user.update({
+            where: { id: user.id },
+            data: { businessId: firstBiz.id, isOwner: true, role: 'ADMIN' },
+          });
+        }
       }
     } catch (_) {}
   }
