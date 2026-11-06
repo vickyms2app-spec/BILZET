@@ -63,6 +63,7 @@ export default function Login({ initialMode = "login" }) {
 
   // Auth store
   const user = useAuth((s) => s.user);
+  const loading = useAuth((s) => s.loading);
   const login = useAuth((s) => s.login);
   const googleLogin = useAuth((s) => s.googleLogin);
 
@@ -77,13 +78,24 @@ export default function Login({ initialMode = "login" }) {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  // Redirect if already authenticated — honour returnUrl if present
+  // Redirect if already authenticated — honour returnUrl if present and safe
   useEffect(() => {
-    if (user) {
-      const targetPath = returnUrl || getWorkspaceRedirectPath(user);
-      nav(targetPath, { replace: true });
+    if (!loading && user) {
+      const isAuthPath = (p) =>
+        !p ||
+        p.startsWith("/sign-in") ||
+        p.startsWith("/sign-up") ||
+        p === "/login" ||
+        p === "/register";
+
+      const safeReturnUrl = isAuthPath(returnUrl) ? null : returnUrl;
+      const targetPath = safeReturnUrl || getWorkspaceRedirectPath(user);
+
+      if (targetPath && !isAuthPath(targetPath) && targetPath !== location.pathname) {
+        nav(targetPath, { replace: true });
+      }
     }
-  }, [user, nav, returnUrl]);
+  }, [user, loading, nav, returnUrl, location.pathname]);
 
   // Google Identity Services client (GIS fallback if Clerk is inactive)
   useEffect(() => {
@@ -145,8 +157,16 @@ export default function Login({ initialMode = "login" }) {
         password,
       });
       setSuccess("Authentication successful! Loading your workspace...");
-      const targetPath = returnUrl || getWorkspaceRedirectPath(loggedUser?.user || useAuth.getState().user);
-      setTimeout(() => nav(targetPath, { replace: true }), 350);
+      const isAuthPath = (p) =>
+        !p ||
+        p.startsWith("/sign-in") ||
+        p.startsWith("/sign-up") ||
+        p === "/login" ||
+        p === "/register";
+      const safeReturnUrl = isAuthPath(returnUrl) ? null : returnUrl;
+      const targetPath = safeReturnUrl || getWorkspaceRedirectPath(loggedUser?.user || useAuth.getState().user);
+      const destination = (!targetPath || isAuthPath(targetPath)) ? "/dashboard" : targetPath;
+      setTimeout(() => nav(destination, { replace: true }), 350);
     } catch (err) {
       setError(apiError(err) || "Invalid email or password. Please try again.");
     } finally {

@@ -148,6 +148,7 @@ export default function Signup() {
 
   // Auth store
   const user = useAuth((s) => s.user);
+  const loading = useAuth((s) => s.loading);
   const register = useAuth((s) => s.register);
   const googleLogin = useAuth((s) => s.googleLogin);
 
@@ -183,13 +184,24 @@ export default function Signup() {
   const [success, setSuccess] = useState("");
   const [modalContent, setModalContent] = useState(null); // 'terms' | 'privacy' | null
 
-  // Redirect if already authenticated — honour returnUrl if present
+  // Redirect if already authenticated — honour returnUrl if present and safe
   useEffect(() => {
-    if (user) {
-      const target = returnUrl || getWorkspaceRedirectPath(user);
-      nav(target, { replace: true });
+    if (!loading && user) {
+      const isAuthPath = (p) =>
+        !p ||
+        p.startsWith("/sign-in") ||
+        p.startsWith("/sign-up") ||
+        p === "/login" ||
+        p === "/register";
+
+      const safeReturnUrl = isAuthPath(returnUrl) ? null : returnUrl;
+      const target = safeReturnUrl || getWorkspaceRedirectPath(user);
+
+      if (target && !isAuthPath(target) && target !== location.pathname) {
+        nav(target, { replace: true });
+      }
     }
-  }, [user, nav, returnUrl]);
+  }, [user, loading, nav, returnUrl, location.pathname]);
 
   // Validate referral code if present
   useEffect(() => {
@@ -291,8 +303,16 @@ export default function Signup() {
       const regUser = await register(payload);
       setSuccess("Account created successfully! Redirecting\u2026");
       // If user came from an invitation link, send them back there; otherwise go to their workspace
-      const targetPath = returnUrl || getWorkspaceRedirectPath(regUser?.user || useAuth.getState().user);
-      setTimeout(() => nav(targetPath, { replace: true }), 400);
+      const isAuthPath = (p) =>
+        !p ||
+        p.startsWith("/sign-in") ||
+        p.startsWith("/sign-up") ||
+        p === "/login" ||
+        p === "/register";
+      const safeReturnUrl = isAuthPath(returnUrl) ? null : returnUrl;
+      const targetPath = safeReturnUrl || getWorkspaceRedirectPath(regUser?.user || useAuth.getState().user);
+      const destination = (!targetPath || isAuthPath(targetPath)) ? "/dashboard" : targetPath;
+      setTimeout(() => nav(destination, { replace: true }), 400);
     } catch (err) {
       setError(apiError(err) || "Failed to create account. Please verify your details.");
     } finally {
@@ -550,7 +570,19 @@ export default function Signup() {
               className="mb-4 p-3 rounded-lg bg-[#FFF0F2] border border-[#FECDD3] text-[#991B1B] text-xs sm:text-[13px] flex items-start gap-2.5 animate-fadeIn font-macos"
             >
               <AlertCircle size={15} className="shrink-0 text-[#EF4444] mt-0.5" />
-              <div className="flex-1 font-medium">{error}</div>
+              <div className="flex-1 font-medium">
+                <div>{error}</div>
+                {(String(error).toLowerCase().includes("already exists") || String(error).toLowerCase().includes("sign in instead")) && (
+                  <div className="mt-2">
+                    <Link
+                      to={`/sign-in?email=${encodeURIComponent(email)}`}
+                      className="inline-flex items-center gap-1 font-bold text-[#2563EB] hover:underline text-xs"
+                    >
+                      Click here to sign in with this email &rarr;
+                    </Link>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
