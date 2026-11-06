@@ -69,7 +69,7 @@ http.interceptors.request.use(async (config) => {
     try {
       token = await Promise.race([
         window.Clerk.session.getToken(),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("Clerk timeout")), 1500)),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Clerk timeout")), 5000)),
       ]);
     } catch (err) {
       // Gracefully continue without throwing
@@ -143,7 +143,7 @@ http.interceptors.response.use(
         try {
           const freshClerkToken = await Promise.race([
             window.Clerk.session.getToken({ skipCache: true }),
-            new Promise((_, reject) => setTimeout(() => reject(new Error("Clerk refresh timeout")), 2000)),
+            new Promise((_, reject) => setTimeout(() => reject(new Error("Clerk refresh timeout")), 5000)),
           ]);
           if (freshClerkToken) {
             setTokens(freshClerkToken);

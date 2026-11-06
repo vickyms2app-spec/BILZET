@@ -4,6 +4,8 @@ import { ApiError } from '../utils/ApiError.mjs';
 import authService from '../services/auth.service.mjs';
 import { getActiveSubscription } from '../services/subscription.service.mjs';
 import prisma from '../config/prisma.mjs';
+import { getAuth, verifyToken } from '@clerk/express';
+import { env } from '../config/env.mjs';
 
 export const register = asyncHandler(async (req, res) => {
   const result = await authService.register(req.body, { req });
@@ -51,7 +53,31 @@ export const google = asyncHandler(async (req, res) => {
 
 export const clerkSync = asyncHandler(async (req, res) => {
   try {
-    const result = await authService.clerkSync(req.body || {});
+    let verifiedClerkId = null;
+    try {
+      const auth = getAuth(req);
+      if (auth?.userId) verifiedClerkId = auth.userId;
+    } catch (_) {}
+
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
+
+    if (!verifiedClerkId && token) {
+      try {
+        const verified = await verifyToken(token, {
+          secretKey: env.CLERK_SECRET_KEY,
+          publishableKey: env.CLERK_PUBLISHABLE_KEY,
+        });
+        if (verified?.sub) verifiedClerkId = verified.sub;
+      } catch (_) {}
+    }
+
+    const payload = {
+      ...req.body,
+      clerkId: verifiedClerkId || req.body?.clerkId,
+    };
+
+    const result = await authService.clerkSync(payload);
     return sendResponse(res, 200, result, 'Clerk user identity synchronized successfully');
   } catch (err) {
     console.error('[authController.clerkSync unexpected error]:', err);

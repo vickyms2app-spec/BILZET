@@ -19,8 +19,16 @@ const envSchema = z.object({
   SHOP_GSTIN: z.string().default('33AAAAA0000A1Z5'),
   SHOP_STATE: z.string().default('Tamil Nadu'),
   SHOP_STATE_CODE: z.string().default('33'),
-  CLERK_SECRET_KEY: z.string().optional().transform((val) => (val && val.trim() ? val.trim() : 'sk_test_alCaCb1Zy67kRtR6zaGbUibJWm2kjo34eFPLTu5fcu')).default('sk_test_alCaCb1Zy67kRtR6zaGbUibJWm2kjo34eFPLTu5fcu'),
-  CLERK_PUBLISHABLE_KEY: z.string().optional().transform((val) => (val && val.trim() ? val.trim() : 'pk_test_dW5pdGVkLWJlZGJ1Zy03NTkzLmNsZXJrLmFjY291bnRzLmRldiQ')).default('pk_test_dW5pdGVkLWJlZGJ1Zy03NTkzLmNsZXJrLmFjY291bnRzLmRldiQ'),
+  CLERK_SECRET_KEY: z.string().optional().transform((val) => {
+    const raw = val || process.env.CLERK_SECRET_KEY;
+    const clean = String(raw || '').trim().replace(/^["']|["']$/g, '');
+    return clean || 'sk_test_alCaCb1Zy67kRtR6zaGbUibJWm2kjo34eFPLTu5fcu';
+  }).default('sk_test_alCaCb1Zy67kRtR6zaGbUibJWm2kjo34eFPLTu5fcu'),
+  CLERK_PUBLISHABLE_KEY: z.string().optional().transform((val) => {
+    const raw = val || process.env.CLERK_PUBLISHABLE_KEY || process.env.VITE_CLERK_PUBLISHABLE_KEY;
+    const clean = String(raw || '').trim().replace(/^["']|["']$/g, '');
+    return clean || 'pk_test_dW5pdGVkLWJlZGJ1Zy03NTkzLmNsZXJrLmFjY291bnRzLmRldiQ';
+  }).default('pk_test_dW5pdGVkLWJlZGJ1Zy03NTkzLmNsZXJrLmFjY291bnRzLmRldiQ'),
   SMTP_HOST: z.string().optional().default('smtp.gmail.com'),
   SMTP_PORT: z.string().optional().default('587'),
   SMTP_USER: z.string().optional().default(''),

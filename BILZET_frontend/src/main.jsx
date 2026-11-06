@@ -8,14 +8,21 @@ import { ClerkProvider } from "@clerk/clerk-react";
 import { CLERK_PUBLISHABLE_KEY, hasClerk } from "./config/clerk";
 
 const container = document.getElementById("root");
+
 if (container) {
   const root = createRoot(container);
+
   root.render(
     <React.StrictMode>
       <ErrorBoundary>
         {hasClerk ? (
           <ClerkProvider
             publishableKey={CLERK_PUBLISHABLE_KEY}
+            signInUrl="/sign-in"
+            signUpUrl="/sign-up"
+            signInFallbackRedirectUrl="/dashboard"
+            signUpFallbackRedirectUrl="/dashboard"
+            afterSignOutUrl="/sign-in"
             fallback={<AuthLoadingScreen message="Initializing BILZET Workspace…" />}
           >
             <App />

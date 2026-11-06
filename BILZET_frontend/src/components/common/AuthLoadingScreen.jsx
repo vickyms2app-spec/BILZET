@@ -4,18 +4,19 @@ import Logo from "./Logo";
 /**
  * Standardized High-Performance Loading Screen for Authentication & Session Sync
  * Used across ClerkProvider fallback, Route Guards, and Workspace Hydration.
- * Prevents any white screens and offers a direct 1-click fallback to Local Mode.
  */
 export default function AuthLoadingScreen({ message = "Verifying Workspace & Permissions…" }) {
   const [showRetry, setShowRetry] = useState(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => setShowRetry(true), 3000);
+    const timer = setTimeout(() => setShowRetry(true), 8000);
     return () => clearTimeout(timer);
   }, []);
 
-  const handleContinueLocal = () => {
-    sessionStorage.setItem("bilzet_skip_clerk", "true");
+  const handleReload = () => {
+    try {
+      sessionStorage.removeItem("bilzet_skip_clerk");
+    } catch (_) {}
     window.location.reload();
   };
 
@@ -38,7 +39,7 @@ export default function AuthLoadingScreen({ message = "Verifying Workspace & Per
           alignItems: "center",
           gap: "12px",
           textAlign: "center",
-          maxWidth: "320px",
+          maxWidth: "340px",
           width: "100%",
         }}
       >
@@ -74,23 +75,8 @@ export default function AuthLoadingScreen({ message = "Verifying Workspace & Per
             }}
           >
             <button
-              onClick={handleContinueLocal}
-              style={{
-                padding: "8px 16px",
-                background: "#059669",
-                color: "#ffffff",
-                border: "none",
-                borderRadius: "10px",
-                fontSize: "12px",
-                fontWeight: "600",
-                cursor: "pointer",
-                boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-              }}
-            >
-              Continue in Local Mode
-            </button>
-            <button
-              onClick={() => window.location.reload()}
+              type="button"
+              onClick={handleReload}
               style={{
                 padding: "8px 16px",
                 background: "#1A5CFF",
@@ -100,6 +86,7 @@ export default function AuthLoadingScreen({ message = "Verifying Workspace & Per
                 fontSize: "12px",
                 fontWeight: "600",
                 cursor: "pointer",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
               }}
             >
               Reload Workspace
@@ -121,4 +108,3 @@ export default function AuthLoadingScreen({ message = "Verifying Workspace & Per
     </div>
   );
 }
-

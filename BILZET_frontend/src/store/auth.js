@@ -18,7 +18,7 @@ export const useAuth = create((set) => ({
         try {
           token = await Promise.race([
             window.Clerk.session.getToken(),
-            new Promise((_, reject) => setTimeout(() => reject(new Error("Clerk token timeout")), 1500)),
+            new Promise((_, reject) => setTimeout(() => reject(new Error("Clerk token timeout")), 5000)),
           ]);
           if (token) {
             setTokens(token);
@@ -64,7 +64,7 @@ export const useAuth = create((set) => ({
       // Add a 6-second timeout so the UI never hangs on slow network
       const mePromise = authApi.me();
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Auth check timed out")), 6000)
+        setTimeout(() => reject(new Error("Auth check timed out")), 12000)
       );
 
       const res = await Promise.race([mePromise, timeoutPromise]);

@@ -53,11 +53,15 @@ app.use(
   cors({
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
-      // Allow configured frontend, local dev, or any vercel.app deployment
+      // Allow configured frontend, local dev, bilzet.in, or any vercel.app deployment
       const isAllowed =
         !env.FRONTEND_URL ||
         origin === env.FRONTEND_URL ||
         origin.includes('localhost') ||
+        origin.includes('127.0.0.1') ||
+        origin === 'https://bilzet.in' ||
+        origin === 'https://www.bilzet.in' ||
+        origin.endsWith('.bilzet.in') ||
         origin.endsWith('.vercel.app');
       return callback(null, isAllowed);
     },
