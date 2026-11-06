@@ -26,19 +26,23 @@ export function isAdminEmail(email) {
 export function isSuperAdminUser(user) {
   if (!user) return false;
   const email = user.email || user.primaryEmailAddress?.emailAddress || "";
+  const role = String(user.role || "").toUpperCase();
   return (
-    user.role === "SUPER_ADMIN" ||
-    user.role === "SUPERADMIN" ||
+    role === "SUPER_ADMIN" ||
+    role === "SUPERADMIN" ||
     isAdminEmail(email)
   );
 }
 
 export function isAdminUser(user) {
   if (!user) return false;
+  const role = String(user.role || "").toUpperCase();
   return (
     user.isOwner === true ||
-    user.role === "ADMIN" ||
-    user.role === "OWNER" ||
+    role === "ADMIN" ||
+    role === "OWNER" ||
+    role === "SUPER_ADMIN" ||
+    role === "SUPERADMIN" ||
     isSuperAdminUser(user)
   );
 }
