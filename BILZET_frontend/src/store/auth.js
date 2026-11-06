@@ -255,9 +255,9 @@ export const useAuth = create((set) => ({
           email,
           phone,
           avatar,
-          role: isSuper ? 'SUPER_ADMIN' : 'ADMIN',
-          businessId: isSuper ? null : 'busi-01',
-          isOwner: true,
+          role: isSuper ? 'SUPER_ADMIN' : 'NONE',
+          businessId: null,
+          isOwner: false,
           isActive: true,
           subscription: {
             planTier: 'FREE',

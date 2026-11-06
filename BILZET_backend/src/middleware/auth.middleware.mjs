@@ -291,6 +291,36 @@ export const authMiddleware = asyncHandler(async (req, res, next) => {
 
         // Ensure user is persisted in the database so foreign keys work
         if (!user) {
+          const normEmail = String(finalEmail).trim().toLowerCase();
+          const isSuper = ['vickyms2app@gmail.com', 'admin@bilzet.com', 'vicky@bilzet.com'].includes(normEmail);
+
+          // Check if user has a pending invitation
+          const pendingInv = await prisma.roleInvitation.findFirst({
+            where: { recipientEmail: { equals: normEmail, mode: 'insensitive' }, status: 'PENDING' }
+          }).catch(() => null);
+          const pendingCa = !pendingInv
+            ? await prisma.caInvitation.findFirst({
+                where: { email: { equals: normEmail, mode: 'insensitive' }, status: 'PENDING' }
+              }).catch(() => null)
+            : null;
+
+          let role = 'NONE';
+          let businessId = null;
+          let isOwner = false;
+
+          if (isSuper) {
+            role = 'SUPER_ADMIN';
+            isOwner = true;
+          } else if (pendingInv) {
+            role = pendingInv.role;
+            businessId = pendingInv.businessId;
+            isOwner = false;
+          } else if (pendingCa) {
+            role = 'CA';
+            businessId = pendingCa.businessId;
+            isOwner = false;
+          }
+
           try {
             user = await prisma.user.create({
               data: {
@@ -298,8 +328,9 @@ export const authMiddleware = asyncHandler(async (req, res, next) => {
                 googleId: clerkUserId,
                 name: finalName,
                 email: finalEmail,
-                role: 'ADMIN',
-                isOwner: true,
+                role,
+                businessId,
+                isOwner,
                 isActive: true,
               },
             });
@@ -319,8 +350,9 @@ export const authMiddleware = asyncHandler(async (req, res, next) => {
                 id: clerkUserId,
                 name: finalName,
                 email: finalEmail,
-                role: 'ADMIN',
-                isOwner: true,
+                role,
+                businessId,
+                isOwner,
                 isActive: true,
               };
             }

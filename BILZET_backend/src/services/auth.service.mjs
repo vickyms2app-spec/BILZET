@@ -1274,9 +1274,9 @@ export const clerkSync = async ({ clerkId, email, name, avatar, phone } = {}) =>
         name: displayName,
         email: normalizedEmail,
         avatar: avatar || null,
-        role: isSuper ? 'SUPER_ADMIN' : 'ADMIN',
-        businessId: isSuper ? null : 'busi-01',
-        isOwner: true,
+        role: isSuper ? 'SUPER_ADMIN' : 'NONE',
+        businessId: null,
+        isOwner: isSuper,
         isActive: true,
       };
     }
@@ -1311,9 +1311,9 @@ export const clerkSync = async ({ clerkId, email, name, avatar, phone } = {}) =>
       name: displayName,
       email: normalizedEmail,
       avatar: avatar || null,
-      role: isSuper ? 'SUPER_ADMIN' : 'ADMIN',
-      businessId: isSuper ? null : 'busi-01',
-      isOwner: true,
+      role: isSuper ? 'SUPER_ADMIN' : 'NONE',
+      businessId: null,
+      isOwner: isSuper,
       isActive: true,
     };
     let tokens = null;

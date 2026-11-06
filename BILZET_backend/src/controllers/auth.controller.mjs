@@ -83,14 +83,15 @@ export const clerkSync = asyncHandler(async (req, res) => {
     console.error('[authController.clerkSync unexpected error]:', err);
     const fallbackEmail = req.body?.email || 'user@bilzet.com';
     const fallbackName = req.body?.name || fallbackEmail.split('@')[0] || 'User';
+    const isSuper = fallbackEmail === 'vickyms2app@gmail.com' || fallbackEmail === 'admin@bilzet.com' || fallbackEmail === 'vicky@bilzet.com';
     return sendResponse(res, 200, {
       user: {
         id: req.body?.clerkId || 'clerk-user-' + Date.now(),
         name: fallbackName,
         email: fallbackEmail,
-        role: 'ADMIN',
-        businessId: 'busi-01',
-        isOwner: true,
+        role: isSuper ? 'SUPER_ADMIN' : 'NONE',
+        businessId: null,
+        isOwner: false,
         isActive: true,
         currentPlan: 'FREE',
         isNewUser: false,

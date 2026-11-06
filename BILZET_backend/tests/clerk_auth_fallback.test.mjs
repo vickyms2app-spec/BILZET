@@ -44,7 +44,7 @@ describe('Clerk Authentication & Fallback in Vercel Serverless Environment', () 
     { algorithm: 'HS256' }
   );
 
-  test('1. API verifies Clerk token and returns 200 on /api/v1/auth/me instead of 401', async () => {
+  test('1. API verifies Clerk token and returns 200 on /api/v1/auth/me with strict RBAC initial role NONE', async () => {
     const res = await fetch(`${baseUrl}/auth/me`, {
       headers: {
         'Authorization': `Bearer ${clerkToken}`,
@@ -55,7 +55,7 @@ describe('Clerk Authentication & Fallback in Vercel Serverless Environment', () 
     assert.equal(res.status, 200, `Expected 200, got ${res.status}: ${JSON.stringify(body)}`);
     assert.equal(body.success, true);
     assert.equal(body.data.user.email, clerkEmail);
-    assert.equal(body.data.user.role, 'ADMIN');
+    assert.equal(body.data.user.role, 'NONE');
   });
 
   test('2. API allows access to /api/v1/stores with Clerk token', async () => {
@@ -70,28 +70,41 @@ describe('Clerk Authentication & Fallback in Vercel Serverless Environment', () 
     assert.equal(body.success, true);
   });
 
-  test('3. API allows access to /api/v1/products with Clerk token', async () => {
-    const res = await fetch(`${baseUrl}/products?limit=50`, {
+  test('3. Standalone Clerk user registers their store -> becomes verified OWNER and ADMIN', async () => {
+    const res = await fetch(`${baseUrl}/stores/register`, {
+      method: 'POST',
       headers: {
         'Authorization': `Bearer ${clerkToken}`,
+        'Content-Type': 'application/json',
       },
+      body: JSON.stringify({
+        shopName: 'Clerk Merchant Store',
+        businessType: 'RETAIL',
+        ownerName: 'Clerk Test Merchant',
+        phone: '+91 9876543210',
+        state: 'Tamil Nadu',
+      }),
     });
     const body = await res.json();
-
-    assert.equal(res.status, 200, `Expected 200, got ${res.status}: ${JSON.stringify(body)}`);
-    assert.equal(body.success, true);
+    assert.ok(res.status === 201 || res.status === 200, `Expected 200/201, got ${res.status}: ${JSON.stringify(body)}`);
   });
 
-  test('4. API allows access to /api/v1/customers with Clerk token', async () => {
-    const res = await fetch(`${baseUrl}/customers?limit=50`, {
+  test('4. Once store is registered, Clerk user has ADMIN access to /products and /customers', async () => {
+    const prodRes = await fetch(`${baseUrl}/products?limit=50`, {
       headers: {
         'Authorization': `Bearer ${clerkToken}`,
       },
     });
-    const body = await res.json();
+    const prodBody = await prodRes.json();
+    assert.equal(prodRes.status, 200, `Expected 200, got ${prodRes.status}: ${JSON.stringify(prodBody)}`);
 
-    assert.equal(res.status, 200, `Expected 200, got ${res.status}: ${JSON.stringify(body)}`);
-    assert.equal(body.success, true);
+    const custRes = await fetch(`${baseUrl}/customers?limit=50`, {
+      headers: {
+        'Authorization': `Bearer ${clerkToken}`,
+      },
+    });
+    const custBody = await custRes.json();
+    assert.equal(custRes.status, 200, `Expected 200, got ${custRes.status}: ${JSON.stringify(custBody)}`);
   });
 
   test('5. Non-Clerk local JWT token still verifies correctly', async () => {

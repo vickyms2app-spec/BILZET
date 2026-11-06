@@ -826,7 +826,7 @@ export default function Signup() {
                   if (window.google?.accounts?.id) {
                     window.google.accounts.id.prompt();
                   } else {
-                    setError("Google sign-in is initializing. Please try again in a moment.");
+                    setError("Google Sign-In is initializing. Please wait a moment or sign up with your email.");
                   }
                 }}
                 className="w-full h-[42px] rounded-[9px] border border-[#E3EDF8] bg-white hover:bg-[#F4F9FF] text-[#526B87] text-[13px] font-medium transition-all flex items-center justify-center gap-2.5 cursor-pointer font-macos"

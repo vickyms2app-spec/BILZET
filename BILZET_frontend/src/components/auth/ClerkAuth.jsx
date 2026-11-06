@@ -119,7 +119,10 @@ export function ClerkGoogleButton({ mode = "login", onError, setBusy, busy }) {
   const { signUp, isLoaded: isSignUpLoaded } = useSignUp();
 
   const handleGoogleClick = async () => {
-    if (!isSignInLoaded || !isSignUpLoaded) return;
+    if (!isSignInLoaded || !isSignUpLoaded) {
+      if (onError) onError("Google authentication is initializing. Please wait a moment...");
+      return;
+    }
     try {
       if (setBusy) setBusy(true);
       if (onError) onError("");
@@ -162,29 +165,42 @@ export function ClerkGoogleButton({ mode = "login", onError, setBusy, busy }) {
   return (
     <button
       type="button"
-      disabled={busy || !isSignInLoaded}
+      id={mode === "register" ? "signup-google-btn" : "signin-google-btn"}
+      disabled={busy}
       onClick={handleGoogleClick}
-      className="w-full flex items-center justify-center gap-3 py-2.5 px-4 mb-4 rounded-xl border border-slate-200 bg-white hover:bg-slate-50/90 text-slate-700 text-xs font-bold transition shadow-2xs hover:shadow-xs active:scale-[0.99]"
+      className="w-full h-[42px] rounded-[9px] border border-[#E3EDF8] bg-white hover:bg-[#F4F9FF] text-[#526B87] text-[13px] font-medium transition-all flex items-center justify-center gap-2.5 cursor-pointer font-macos"
     >
-      <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
-        <path
-          fill="#4285F4"
-          d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.65v3h3.88c2.27-2.09 3.665-5.17 3.665-9.09z"
-        />
-        <path
-          fill="#34A853"
-          d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.26v3.09C3.29 21.43 7.37 24 12 24z"
-        />
-        <path
-          fill="#FBBC05"
-          d="M5.28 14.32c-.25-.72-.38-1.49-.38-2.32s.13-1.6.38-2.32V6.59H1.26C.46 8.19 0 9.99 0 12s.46 3.81 1.26 5.41l4.02-3.09z"
-        />
-        <path
-          fill="#EA4335"
-          d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.37 0 3.29 2.57 1.26 6.59l4.02 3.09c.95-2.83 3.6-4.93 6.72-4.93z"
-        />
-      </svg>
-      <span>Continue with Google</span>
+      {busy ? (
+        <>
+          <span
+            className="w-4 h-4 rounded-full animate-spin shrink-0"
+            style={{ border: "2px solid #DCEBFA", borderTopColor: "#1A5CFF" }}
+          />
+          <span>Connecting to Google…</span>
+        </>
+      ) : (
+        <>
+          <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+            <path
+              fill="#4285F4"
+              d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.65v3h3.88c2.27-2.09 3.665-5.17 3.665-9.09z"
+            />
+            <path
+              fill="#34A853"
+              d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.26v3.09C3.29 21.43 7.37 24 12 24z"
+            />
+            <path
+              fill="#FBBC05"
+              d="M5.28 14.32c-.25-.72-.38-1.49-.38-2.32s.13-1.6.38-2.32V6.59H1.26C.46 8.19 0 9.99 0 12s.46 3.81 1.26 5.41l4.02-3.09z"
+            />
+            <path
+              fill="#EA4335"
+              d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.37 0 3.29 2.57 1.26 6.59l4.02 3.09c.95-2.83 3.6-4.93 6.72-4.93z"
+            />
+          </svg>
+          <span>Continue with Google</span>
+        </>
+      )}
     </button>
   );
 }
@@ -195,19 +211,40 @@ export function ClerkGoogleButton({ mode = "login", onError, setBusy, busy }) {
  * Completes session handshake and smoothly redirects to dashboard.
  */
 export function ClerkSsoCallback() {
+  const [showRetry, setShowRetry] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setShowRetry(true), 10000);
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
-    <div className="min-h-screen grid place-items-center bg-slate-50">
-      <div className="flex flex-col items-center gap-3">
+    <div className="min-h-screen grid place-items-center bg-[#F7FBFF]">
+      <div className="flex flex-col items-center gap-3 p-6 text-center max-w-sm">
         <div
           className="w-10 h-10 rounded-full animate-spin"
-          style={{ border: "3px solid #dbeafe", borderTopColor: "#1a5cff" }}
+          style={{ border: "3px solid #DCEBFA", borderTopColor: "#1A5CFF" }}
         />
-        <p className="text-sm font-semibold text-slate-800">Authenticating with Google…</p>
-        <p className="text-xs text-slate-500">Establishing secure Clerk ERP session</p>
+        <p className="text-sm font-semibold text-[#1E293B]">Authenticating with Google…</p>
+        <p className="text-xs text-[#64748B]">Establishing secure Clerk ERP session</p>
+        {showRetry && (
+          <div className="mt-4 flex flex-col items-center gap-2">
+            <p className="text-xs text-[#64748B]">Taking longer than usual?</p>
+            <a
+              href="/sign-in"
+              className="text-xs font-semibold text-[#1A5CFF] hover:underline"
+            >
+              Return to Sign In
+            </a>
+          </div>
+        )}
       </div>
       <AuthenticateWithRedirectCallback
-        signInForceRedirectUrl="/dashboard"
-        signUpForceRedirectUrl="/dashboard"
+        signInFallbackRedirectUrl="/dashboard"
+        signUpFallbackRedirectUrl="/dashboard"
+        continueSignUpUrl="/sign-up"
+        signInUrl="/sign-in"
+        signUpUrl="/sign-up"
       />
     </div>
   );
