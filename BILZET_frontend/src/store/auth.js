@@ -43,8 +43,8 @@ export const useAuth = create((set) => ({
             id: cu.id,
             name,
             email,
-            role: isSuper ? "SUPER_ADMIN" : "ADMIN",
-            isOwner: true,
+            role: isSuper ? "SUPER_ADMIN" : "NONE",
+            isOwner: isSuper,
             isActive: true,
             // Always default to FREE — the /auth/me response will set the real plan.
             subscription: {
