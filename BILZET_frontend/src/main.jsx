@@ -28,12 +28,12 @@ function ClerkConfigurationError({ diagnostics }) {
   let validationStatus = "Valid";
   if (!hasKey) {
     validationStatus = "Missing Publishable Key";
-  } else if (diagnostics?.keyLength < 32) {
-    validationStatus = "Invalid: Key length < 32 characters";
-  } else if (isProd && !diagnostics?.isProductionKey) {
-    validationStatus = "Invalid: Development key (pk_test_) rejected in Production";
   } else if (!diagnostics?.isProductionKey && !diagnostics?.isDevelopmentKey) {
     validationStatus = "Invalid: Key must start with pk_live_ or pk_test_";
+  } else if (diagnostics?.keyLength <= 8) {
+    validationStatus = "Invalid: Key is missing payload after prefix";
+  } else if (isProd && !diagnostics?.isProductionKey) {
+    validationStatus = "Invalid: Development key (pk_test_) rejected in Production";
   } else if (!diagnostics?.isKeyValid) {
     validationStatus = "Invalid Key Format";
   }

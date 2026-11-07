@@ -19,9 +19,11 @@ export const isProductionKey =
 export const isDevelopmentKey =
   sanitizedKey.startsWith("pk_test_");
 
+// Validate Clerk publishable key structure: non-empty, matching expected prefix and containing payload
 export const isKeyValid =
-  sanitizedKey.length >= 32 &&
-  (isProductionKey || isDevelopmentKey);
+  Boolean(sanitizedKey) &&
+  (isProductionKey || isDevelopmentKey) &&
+  sanitizedKey.slice(8).trim().length > 0;
 
 export const hasClerk =
   isKeyValid &&
@@ -33,8 +35,12 @@ export const CLERK_PUBLISHABLE_KEY =
 export const clerkDiagnostics = {
   environment: isProd ? "production" : "development",
   keyExists: Boolean(sanitizedKey),
-  keyPrefix: sanitizedKey
-    ? sanitizedKey.substring(0, 7)
+  keyPrefix: isProductionKey
+    ? "pk_live_"
+    : isDevelopmentKey
+    ? "pk_test_"
+    : sanitizedKey
+    ? sanitizedKey.substring(0, 8)
     : "none",
   keyLength: sanitizedKey.length,
   isProductionKey,
