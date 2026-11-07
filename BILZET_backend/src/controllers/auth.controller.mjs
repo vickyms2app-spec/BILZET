@@ -31,6 +31,11 @@ export const getMe = asyncHandler(async (req, res) => {
     : req.user;
 
   const enriched = await authService.enrichUserWithSubscription(dbUser || req.user);
+  if (req.user?.clerkId) {
+    enriched.clerkId = req.user.clerkId;
+  } else if (dbUser?.googleId) {
+    enriched.clerkId = dbUser.googleId;
+  }
   return sendResponse(res, 200, { user: enriched }, 'Current user profile fetched successfully');
 });
 

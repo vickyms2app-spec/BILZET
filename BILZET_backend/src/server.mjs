@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import app from './app.mjs';
 import { env } from './config/env.mjs';
 import prisma from './config/prisma.mjs';

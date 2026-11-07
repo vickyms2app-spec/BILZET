@@ -1,6 +1,14 @@
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { z } from 'zod';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const backendRoot = path.resolve(__dirname, '../../');
+
+// Ensure .env is loaded from backend root or current directory
+dotenv.config({ path: path.join(backendRoot, '.env') });
 dotenv.config();
 
 const envSchema = z.object({
@@ -48,6 +56,29 @@ const parsed = envSchema.safeParse(process.env);
 if (!parsed.success) {
   console.error('Invalid environment variables:', parsed.error.format());
   process.exit(1);
+}
+
+// Environment & Clerk Configuration Checks
+if (parsed.data.NODE_ENV === 'production') {
+  if (!process.env.CLERK_SECRET_KEY) {
+    console.error('[Clerk Config Error] Missing CLERK_SECRET_KEY in production environment variables.');
+  } else if (parsed.data.CLERK_SECRET_KEY.startsWith('sk_test_')) {
+    console.warn('[Clerk Config Warning] CLERK_SECRET_KEY is using a development test key (sk_test_...) in production.');
+  }
+
+  if (!process.env.CLERK_PUBLISHABLE_KEY) {
+    console.error('[Clerk Config Error] Missing CLERK_PUBLISHABLE_KEY in production environment variables.');
+  } else if (parsed.data.CLERK_PUBLISHABLE_KEY.startsWith('pk_test_')) {
+    console.warn('[Clerk Config Warning] CLERK_PUBLISHABLE_KEY is using a development test key (pk_test_...) in production.');
+  }
+} else if (parsed.data.NODE_ENV === 'development') {
+  const secretKey = parsed.data.CLERK_SECRET_KEY;
+  const pubKey = parsed.data.CLERK_PUBLISHABLE_KEY;
+  if (secretKey?.startsWith('sk_live_') && pubKey?.startsWith('pk_test_')) {
+    console.warn('[Clerk Config Warning] Key mismatch: CLERK_SECRET_KEY is live (sk_live_...) but CLERK_PUBLISHABLE_KEY is test (pk_test_...).');
+  } else if (secretKey?.startsWith('sk_test_') && pubKey?.startsWith('pk_live_')) {
+    console.warn('[Clerk Config Warning] Key mismatch: CLERK_SECRET_KEY is test (sk_test_...) but CLERK_PUBLISHABLE_KEY is live (pk_live_...).');
+  }
 }
 
 export const env = parsed.data;

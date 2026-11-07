@@ -369,6 +369,12 @@ export const authMiddleware = asyncHandler(async (req, res, next) => {
         }
 
         req.user = await attachTenantContext(user, requestedStoreId);
+        req.user.clerkId = clerkUserId;
+        if (!req.auth) {
+          req.auth = { userId: clerkUserId };
+        } else if (!req.auth.userId) {
+          req.auth.userId = clerkUserId;
+        }
         return next();
       }
 
@@ -450,6 +456,9 @@ export const authMiddleware = asyncHandler(async (req, res, next) => {
 
     // Attach user, tenant context, and backward-compatible _id
     req.user = await attachTenantContext(user, requestedStoreId);
+    if (user.googleId && (user.googleId.startsWith('user_') || user.googleId.startsWith('clerk_'))) {
+      req.user.clerkId = user.googleId;
+    }
     next();
   } catch (error) {
     if (error instanceof ApiError) {
