@@ -16,8 +16,29 @@ import razorpayService from '../services/razorpay.service.mjs';
 import { PLAN_DETAILS, FEATURE_ENTITLEMENTS } from '../config/plans.config.mjs';
 import { sendResponse } from '../utils/apiResponse.mjs';
 import { asyncHandler } from '../utils/asyncHandler.mjs';
+import dealerOfferService from '../services/dealerOffer.service.mjs';
 
 const router = Router();
+
+// Active dealer offers for plan selection & checkout
+router.get(
+  '/dealer-offers',
+  asyncHandler(async (req, res) => {
+    const billingCycle = req.query.billingCycle || 'ANNUAL';
+    const offers = await dealerOfferService.listOffers({ activeOnly: true, billingCycle });
+    return sendResponse(res, 200, { offers }, 'Active dealer offers retrieved successfully.');
+  })
+);
+
+// Validate dealer promo code for checkout
+router.post(
+  '/dealer-offers/validate',
+  asyncHandler(async (req, res) => {
+    const { code, planTier, billingCycle } = req.body;
+    const result = await dealerOfferService.validateOffer({ code, planTier, billingCycle });
+    return sendResponse(res, 200, result, 'Dealer offer validated successfully.');
+  })
+);
 
 // Public plan comparison directory (optional auth, useful for pre-login and billing display)
 router.get(
@@ -90,12 +111,24 @@ router.use(authMiddleware);
 router.post(
   '/razorpay/create-order',
   asyncHandler(async (req, res) => {
-    const { planTier, billingCycle } = req.body;
+    const { planTier, billingCycle, dealerOfferCode } = req.body;
+    let overrideAmount = undefined;
+
+    if (dealerOfferCode) {
+      const validated = await dealerOfferService.validateOffer({
+        code: dealerOfferCode,
+        planTier,
+        billingCycle,
+      });
+      overrideAmount = validated.pricing.finalAmount;
+    }
+
     const order = await razorpayService.createSubscriptionCheckoutOrder({
       planTier,
       billingCycle,
       user: req.user,
       businessId: req.user.businessId,
+      amount: overrideAmount,
     });
 
     return sendResponse(res, 201, order, `Razorpay order created for ${order.planName}.`);
@@ -130,7 +163,7 @@ router.post(
 router.post(
   '/switch',
   asyncHandler(async (req, res) => {
-    const { targetTier, paymentReference, paymentMethod } = req.body;
+    const { targetTier, paymentReference, paymentMethod, dealerOfferCode, billingCycle = 'YEARLY' } = req.body;
     const normalizedTier = String(targetTier || 'FREE').toUpperCase();
 
     if (normalizedTier === 'FREE') {
@@ -138,16 +171,35 @@ router.post(
       return sendResponse(res, 200, updated, 'Successfully switched to Free Starter plan.');
     }
 
+    let finalAmount = PLAN_DETAILS[normalizedTier]?.amount;
+    let appliedOffer = null;
+
+    if (dealerOfferCode) {
+      const validated = await dealerOfferService.validateOffer({
+        code: dealerOfferCode,
+        planTier: normalizedTier,
+        billingCycle,
+      });
+      finalAmount = validated.pricing.finalAmount;
+      appliedOffer = validated.offer;
+      await dealerOfferService.recordRedemption(dealerOfferCode);
+    }
+
     const updated = await upgradeSubscription({
       businessId: req.user.businessId,
       userId: req.user.id,
       planTier: normalizedTier,
-      amount: PLAN_DETAILS[normalizedTier]?.amount,
+      amount: finalAmount,
       paymentReference: paymentReference || `SW-${Date.now()}`,
-      durationDays: 365,
+      durationDays: billingCycle === 'MONTHLY' ? 30 : 365,
     });
 
-    return sendResponse(res, 200, updated, `Successfully switched to ${updated.planTier} plan.`);
+    return sendResponse(
+      res,
+      200,
+      { ...updated, appliedOffer },
+      `Successfully switched to ${updated.planTier} plan${appliedOffer ? ` with dealer offer ${appliedOffer.code}` : ''}.`
+    );
   })
 );
 

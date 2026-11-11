@@ -5,15 +5,33 @@ import realtimeService from './realtime.service.mjs';
 
 const mapProduct = (p) => {
   if (!p) return null;
+  const availableStock = Number(p.stock ?? p.stockQuantity ?? 0);
+  const minimumStock = Number(p.minimumStock ?? 5);
+  const soldQuantity = Array.isArray(p.saleItems)
+    ? p.saleItems.reduce((acc, si) => acc + Number(si.quantity || 0), 0)
+    : Number(p.soldQuantity || 0);
+  const unitPrice = Number(p.sellingPrice || p.purchasePrice || 0);
+  const stockValue = Number((availableStock * unitPrice).toFixed(2));
+  const lowStockStatus =
+    availableStock <= 0
+      ? 'OUT_OF_STOCK'
+      : availableStock <= minimumStock
+      ? 'LOW_STOCK'
+      : 'IN_STOCK';
+
   return {
     ...p,
     _id: p.id,
-    currentStock: Number(p.stock ?? p.stockQuantity ?? 0),
-    stock: Number(p.stock ?? p.stockQuantity ?? 0),
+    currentStock: availableStock,
+    stock: availableStock,
+    availableStock,
+    soldQuantity,
+    minimumStock,
+    lowStockStatus,
+    stockValue,
     sellingPrice: Number(p.sellingPrice ?? 0),
     purchasePrice: Number(p.purchasePrice ?? 0),
     gstRate: Number(p.gstRate ?? 0),
-    minimumStock: Number(p.minimumStock ?? 5),
   };
 };
 
@@ -36,7 +54,10 @@ export const getInventoryOverview = async (query = {}) => {
       skip,
       take: limit,
       orderBy: { createdAt: 'desc' },
-      include: { category: { select: { id: true, name: true } } },
+      include: {
+        category: { select: { id: true, name: true } },
+        saleItems: { select: { quantity: true } },
+      },
     }),
     prisma.product.count({ where }),
   ]);
@@ -52,7 +73,10 @@ export const getLowStockProducts = async (query = {}) => {
   
   const allActive = await prisma.product.findMany({
     where: { isActive: true },
-    include: { category: { select: { id: true, name: true } } },
+    include: {
+      category: { select: { id: true, name: true } },
+      saleItems: { select: { quantity: true } },
+    },
     orderBy: { stock: 'asc' },
   });
 

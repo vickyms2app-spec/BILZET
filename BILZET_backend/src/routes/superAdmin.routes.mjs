@@ -21,6 +21,12 @@ router.post('/users/:id/reset-password', superAdminController.resetUserPassword)
 router.get('/subscriptions', superAdminController.getSubscriptions);
 router.patch('/subscriptions/:id', superAdminController.updateSubscription);
 
+// Dealer offer management
+router.get('/dealer-offers', superAdminController.getDealerOffers);
+router.post('/dealer-offers', superAdminController.createDealerOffer);
+router.patch('/dealer-offers/:id', superAdminController.updateDealerOffer);
+router.delete('/dealer-offers/:id', superAdminController.deleteDealerOffer);
+
 // Global customer directory
 router.get('/customers', superAdminController.getAllCustomers);
 

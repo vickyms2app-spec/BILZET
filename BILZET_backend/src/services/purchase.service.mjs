@@ -519,9 +519,25 @@ export const createPurchaseReturn = async (returnData) => {
     // Decrease stock back for returned items
     for (const item of items) {
       if (item.productId) {
+        const product = await tx.product.findUnique({ where: { id: item.productId } });
+        const prevStock = product ? Number(product.stock || 0) : 0;
+        const returnQty = Number(item.quantity || 1);
+        const newStock = Math.max(0, prevStock - returnQty);
+
         await tx.product.update({
           where: { id: item.productId },
-          data: { stock: { decrement: Number(item.quantity) } },
+          data: { stock: newStock },
+        });
+
+        await tx.stockTransaction.create({
+          data: {
+            productId: item.productId,
+            type: 'OUT',
+            quantity: -returnQty,
+            previousStock,
+            newStock,
+            reason: `Purchase return ${returnNumber} to supplier: ${reason || 'Defective/Damaged Stock'}`,
+          },
         });
       }
     }

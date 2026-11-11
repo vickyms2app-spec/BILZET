@@ -10,11 +10,32 @@ const mapProduct = (p) => {
   if (!p) return null;
   const hsn = p.hsnCode || p.hsn || null;
   const isInc = p.isTaxInclusive !== undefined ? Boolean(p.isTaxInclusive) : (p.pricingMethod === 'INCLUSIVE');
+  const availableStock = Number(p.stock ?? p.stockQuantity ?? 0);
+  const minimumStock = Number(p.minimumStock ?? 5);
+  const soldQuantity = Array.isArray(p.saleItems)
+    ? p.saleItems.reduce((acc, si) => acc + Number(si.quantity || 0), 0)
+    : Number(p.soldQuantity || 0);
+  const unitPrice = Number(p.sellingPrice || p.purchasePrice || 0);
+  const stockValue = Number((availableStock * unitPrice).toFixed(2));
+  const lowStockStatus =
+    availableStock <= 0
+      ? 'OUT_OF_STOCK'
+      : availableStock <= minimumStock
+      ? 'LOW_STOCK'
+      : 'IN_STOCK';
+
   return {
     ...p,
     _id: p.id,
     categoryId: p.categoryId || p.category?.id || null,
     category: p.category ? { ...p.category, _id: p.category.id } : null,
+    stock: availableStock,
+    currentStock: availableStock,
+    availableStock,
+    minimumStock,
+    soldQuantity,
+    lowStockStatus,
+    stockValue,
     sellingPrice: Number(p.sellingPrice),
     purchasePrice: Number(p.purchasePrice),
     gstRate: Number(p.gstRate),
@@ -53,7 +74,10 @@ export const getProducts = asyncHandler(async (req, res) => {
       skip,
       take: limit,
       orderBy: { createdAt: 'desc' },
-      include: { category: { select: { id: true, name: true } } },
+      include: {
+        category: { select: { id: true, name: true } },
+        saleItems: { select: { quantity: true } },
+      },
     }),
     prisma.product.count({ where }),
   ]);
@@ -70,7 +94,10 @@ export const getProducts = asyncHandler(async (req, res) => {
 export const getProductById = asyncHandler(async (req, res) => {
   const product = await prisma.product.findUnique({
     where: { id: req.params.id },
-    include: { category: { select: { id: true, name: true } } },
+    include: {
+      category: { select: { id: true, name: true } },
+      saleItems: { select: { quantity: true } },
+    },
   });
   if (!product) {
     throw ApiError.notFound('Product not found');
@@ -81,7 +108,10 @@ export const getProductById = asyncHandler(async (req, res) => {
 export const getProductByBarcode = asyncHandler(async (req, res) => {
   const product = await prisma.product.findFirst({
     where: { barcode: req.params.barcode, isActive: true },
-    include: { category: { select: { id: true, name: true } } },
+    include: {
+      category: { select: { id: true, name: true } },
+      saleItems: { select: { quantity: true } },
+    },
   });
   if (!product) {
     throw ApiError.notFound(`No active product found with barcode '${req.params.barcode}'`);
@@ -95,7 +125,10 @@ export const getLowStockProducts = asyncHandler(async (req, res) => {
   // Products where stock <= minimumStock
   const allActive = await prisma.product.findMany({
     where: { isActive: true },
-    include: { category: { select: { id: true, name: true } } },
+    include: {
+      category: { select: { id: true, name: true } },
+      saleItems: { select: { quantity: true } },
+    },
     orderBy: { stock: 'asc' },
   });
 
@@ -157,6 +190,26 @@ export const createProduct = asyncHandler(async (req, res) => {
   });
   if (existingSku) {
     throw ApiError.conflict(`Product with SKU '${sku}' already exists`);
+  }
+
+  if (barcode) {
+    const existingBarcode = await prisma.product.findUnique({
+      where: { barcode },
+    });
+    if (existingBarcode) {
+      throw ApiError.conflict(`Product with barcode '${barcode}' already exists`);
+    }
+  }
+
+  const existingName = await prisma.product.findFirst({
+    where: {
+      name: { equals: name.trim(), mode: 'insensitive' },
+      brand: brand ? { equals: brand.trim(), mode: 'insensitive' } : null,
+      isActive: true,
+    },
+  });
+  if (existingName) {
+    throw ApiError.conflict(`Product with name '${name}' already exists in catalog`);
   }
 
   const product = await prisma.product.create({
@@ -232,6 +285,24 @@ export const updateProduct = asyncHandler(async (req, res) => {
     isActive,
   } = req.body;
 
+  if (sku && sku.toUpperCase() !== existing.sku) {
+    const existingSku = await prisma.product.findUnique({
+      where: { sku: sku.toUpperCase() },
+    });
+    if (existingSku && existingSku.id !== id) {
+      throw ApiError.conflict(`Product with SKU '${sku}' already exists`);
+    }
+  }
+
+  if (barcode && barcode !== existing.barcode) {
+    const existingBarcode = await prisma.product.findUnique({
+      where: { barcode },
+    });
+    if (existingBarcode && existingBarcode.id !== id) {
+      throw ApiError.conflict(`Product with barcode '${barcode}' already exists`);
+    }
+  }
+
   const resolvedCategoryId =
     categoryId !== undefined
       ? categoryId || null
@@ -272,9 +343,24 @@ export const updateProduct = asyncHandler(async (req, res) => {
     }, { userId: req.user?.id, action: 'PRODUCT_UPDATED' });
 
     if (stock !== undefined && Number(stock) !== Number(existing.stock)) {
+      const prevStock = Number(existing.stock || 0);
+      const newStock = Number(stock);
+      const delta = newStock - prevStock;
+
+      await prisma.stockTransaction.create({
+        data: {
+          productId: updated.id,
+          type: delta > 0 ? 'ADD' : 'REMOVE',
+          quantity: delta,
+          previousStock: prevStock,
+          newStock,
+          reason: 'Manual stock edit from product catalog',
+        },
+      });
+
       realtimeService.broadcastBusinessEvent(targetBusinessId, 'STOCK_ADJUSTED', {
         reason: 'Manual stock adjustment in product catalog',
-        items: [{ productId: updated.id, quantity: Number(stock) - Number(existing.stock) }],
+        items: [{ productId: updated.id, quantity: delta }],
       }, { userId: req.user?.id, action: 'STOCK_ADJUSTED' });
     }
   } catch (_) {}

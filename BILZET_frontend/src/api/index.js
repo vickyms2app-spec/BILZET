@@ -310,6 +310,10 @@ export const subscriptionApi = {
     }
   },
   getPlans: () => http.get("/subscription/plans").then(unwrap),
+  getDealerOffers: (params) =>
+    http.get("/subscription/dealer-offers", { params }).then(unwrap).catch(() => ({ offers: [] })),
+  validateDealerOffer: (data) =>
+    http.post("/subscription/dealer-offers/validate", data).then(unwrap),
   getUsage: async () => {
     try {
       const res = await http.get("/subscription/usage").then(unwrap);
@@ -494,6 +498,10 @@ export const superAdminApi = {
   getCustomers: (params) => http.get("/super-admin/customers", { params }).then(unwrap),
   getConfig: () => http.get("/super-admin/config").then(unwrap),
   updateConfig: (data) => http.patch("/super-admin/config", data).then(unwrap),
+  getDealerOffers: () => http.get("/super-admin/dealer-offers").then(unwrap),
+  createDealerOffer: (data) => http.post("/super-admin/dealer-offers", data).then(unwrap),
+  updateDealerOffer: (id, data) => http.patch(`/super-admin/dealer-offers/${id}`, data).then(unwrap),
+  deleteDealerOffer: (id) => http.delete(`/super-admin/dealer-offers/${id}`).then(unwrap),
 };
 
 export const caPortalApi = {

@@ -75,6 +75,7 @@ import { usePermissions } from "../../hooks/usePermissions";
 import StoreSwitcher from "../common/StoreSwitcher";
 import NotificationBell from "../common/NotificationBell";
 import KeyboardShortcutsModal from "../common/KeyboardShortcutsModal";
+import NewBillButton from "../common/NewBillButton";
 
 export const caMainNavItems = [
   { label: "CA Dashboard", path: "/ca-portal/dashboard", icon: LayoutGrid },
@@ -121,7 +122,7 @@ const navSections = [
       { label: "Delivery Challans", path: "/sales/challans", icon: FileCheck },
       { label: "Sales Returns", path: "/sales/returns", icon: RotateCcw },
       { label: "Payments-In", path: "/sales/payments-in", icon: DollarSign },
-      { label: "Customer Details", path: "/customers", icon: Users },
+      { label: "Customers", path: "/customers", icon: Users },
     ],
   },
   {
@@ -131,7 +132,7 @@ const navSections = [
       { label: "Purchase Invoices", path: "/purchases", icon: ShoppingBag },
       { label: "Purchase Orders", path: "/purchases/orders", icon: ClipboardList },
       { label: "Debit Notes / Returns", path: "/purchases/debit-notes", icon: Receipt },
-      { label: "Suppliers Directory", path: "/suppliers", icon: Truck },
+      { label: "Suppliers", path: "/suppliers", icon: Truck },
     ],
   },
   {
@@ -179,8 +180,38 @@ const navSections = [
 ];
 
 export default function Layout({ children }) {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  // Desktop and Laptop screens: OPEN by default, persisted in localStorage across refreshes and page navigations
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    try {
+      const saved = localStorage.getItem("bilzet_sidebar_state");
+      if (saved !== null) {
+        return saved === "open";
+      }
+    } catch (_) {}
+    if (typeof window !== "undefined") {
+      return window.innerWidth >= 768; // Desktop and laptop open by default
+    }
+    return true;
+  });
+
   const [mobileDrawer, setMobileDrawer] = useState(false);
+
+  const toggleSidebar = useCallback(() => {
+    setSidebarOpen((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem("bilzet_sidebar_state", next ? "open" : "collapsed");
+      } catch (_) {}
+      return next;
+    });
+  }, []);
+
+  // Synchronize sidebar state to localStorage whenever it changes
+  useEffect(() => {
+    try {
+      localStorage.setItem("bilzet_sidebar_state", sidebarOpen ? "open" : "collapsed");
+    } catch (_) {}
+  }, [sidebarOpen]);
   const [collapsedSections, setCollapsedSections] = useState({});
   const [userDropdown, setUserDropdown] = useState(false);
   const [showShortcutsModal, setShowShortcutsModal] = useState(false);
@@ -239,6 +270,18 @@ export default function Layout({ children }) {
   useEffect(() => {
     setMobileDrawer(false);
   }, [location.pathname]);
+
+  // Lock body scroll when mobile drawer is open to prevent background scrolling
+  useEffect(() => {
+    if (mobileDrawer) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [mobileDrawer]);
 
   // Notifications State & Popover
   const [showNotifications, setShowNotifications] = useState(false);
@@ -592,22 +635,23 @@ export default function Layout({ children }) {
           }`}
         >
           <Logo collapsed={!sidebarOpen} theme="light" size="md" />
-          {sidebarOpen && (
+          {sidebarOpen ? (
             <button
-              onClick={() => setSidebarOpen(false)}
+              type="button"
+              onClick={toggleSidebar}
               className="text-[#648CB8] hover:text-[#111827] p-1.5 rounded-lg hover:bg-[#E3F1FF] transition duration-150 cursor-pointer"
-              title="Collapse sidebar"
-              aria-label="Collapse sidebar"
+              title="Close Sidebar"
+              aria-label="Close Sidebar"
             >
               <ChevronLeft size={16} />
             </button>
-          )}
-          {!sidebarOpen && (
+          ) : (
             <button
-              onClick={() => setSidebarOpen(true)}
+              type="button"
+              onClick={toggleSidebar}
               className="text-[#648CB8] hover:text-[#111827] p-1.5 rounded-lg hover:bg-[#E3F1FF] transition duration-150 cursor-pointer"
-              title="Expand sidebar"
-              aria-label="Expand sidebar"
+              title="Open Sidebar"
+              aria-label="Open Sidebar"
             >
               <ChevronRight size={16} />
             </button>
@@ -713,6 +757,11 @@ export default function Layout({ children }) {
                       strokeWidth={isActive ? 2.2 : 1.8}
                     />
                     {sidebarOpen && <span className="truncate">{item.label}</span>}
+                    {!sidebarOpen && (
+                      <div className="hidden group-hover:flex absolute left-full ml-2 z-50 px-2.5 py-1 bg-[#111827] text-white text-[11px] font-medium rounded-lg whitespace-nowrap shadow-xl pointer-events-none items-center animate-in fade-in zoom-in-95 duration-150">
+                        {item.label}
+                      </div>
+                    )}
                   </NavLink>
                 );
               })}
@@ -743,6 +792,11 @@ export default function Layout({ children }) {
                       strokeWidth={isActive ? 2.2 : 1.8}
                     />
                     {sidebarOpen && <span className="truncate">{item.label}</span>}
+                    {!sidebarOpen && (
+                      <div className="hidden group-hover:flex absolute left-full ml-2 z-50 px-2.5 py-1 bg-[#111827] text-white text-[11px] font-medium rounded-lg whitespace-nowrap shadow-xl pointer-events-none items-center animate-in fade-in zoom-in-95 duration-150">
+                        {item.label}
+                      </div>
+                    )}
                   </NavLink>
                 );
               })}
@@ -805,6 +859,11 @@ export default function Layout({ children }) {
                               strokeWidth={isActive ? 2.2 : 1.8}
                             />
                             {sidebarOpen && <span className="truncate">{item.label}</span>}
+                            {!sidebarOpen && (
+                              <div className="hidden group-hover:flex absolute left-full ml-2 z-50 px-2.5 py-1 bg-[#111827] text-white text-[11px] font-medium rounded-lg whitespace-nowrap shadow-xl pointer-events-none items-center animate-in fade-in zoom-in-95 duration-150">
+                                {item.label}
+                              </div>
+                            )}
                           </NavLink>
                         );
                       })}
@@ -841,7 +900,7 @@ export default function Layout({ children }) {
                 <span className="truncate">Admin Console &amp; Vault</span>
               </NavLink>
             ) : (
-              <div className="flex justify-center">
+              <div className="flex justify-center relative group">
                 <NavLink
                   to="/admin"
                   title="Admin Console &amp; Vault"
@@ -855,6 +914,9 @@ export default function Layout({ children }) {
                 >
                   <Shield size={18} />
                 </NavLink>
+                <div className="hidden group-hover:flex absolute left-full ml-2 z-50 px-2.5 py-1 bg-[#111827] text-white text-[11px] font-medium rounded-lg whitespace-nowrap shadow-xl pointer-events-none items-center animate-in fade-in zoom-in-95 duration-150">
+                  Admin Console &amp; Vault
+                </div>
               </div>
             )}
           </div>
@@ -909,19 +971,12 @@ export default function Layout({ children }) {
                   </NavLink>
                 </div>
               ) : (
-                <NavLink
-                  to="/billing"
+                <NewBillButton
+                  fullWidth
+                  showShortcut
+                  shortcutText="F2"
                   onClick={() => setMobileDrawer(false)}
-                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-[8px] font-semibold text-[13px] text-[#111827] bg-[#D4E9FF] hover:bg-[#C7E1FF] border border-[#DCEBFA] shadow-2xs transition"
-                >
-                  <div className="flex items-center gap-2">
-                    <Plus size={16} className="text-[#3978B8]" />
-                    <span>New Bill</span>
-                  </div>
-                  <span className="px-1.5 py-0.5 rounded bg-white/70 text-[10px] font-mono tracking-wide text-[#111827]">
-                    F2
-                  </span>
-                </NavLink>
+                />
               )}
             </div>
 
@@ -1073,24 +1128,34 @@ export default function Layout({ children }) {
         <header className="h-16 shrink-0 bg-white border-b border-[#E3EDF8] px-4 sm:px-6 flex items-center justify-between gap-4 z-20">
           {/* Left: Mobile trigger & Global Search with Ctrl+K */}
           <div className="flex items-center gap-2.5 min-w-0 flex-1 max-w-md">
-            {/* Simple Hamburger Menu on the left */}
+            {/* Mobile Navigation Drawer Toggle */}
             <button
               type="button"
               onClick={() => setMobileDrawer(true)}
-              className="md:hidden p-2 rounded-lg text-[#8AAED8] hover:text-[#526B87] hover:bg-[#F4F9FF] transition shrink-0 cursor-pointer"
+              className="md:hidden inline-flex items-center justify-center w-9 h-9 rounded-xl text-[#3978B8] hover:text-[#1E40AF] bg-[#F4F9FF] hover:bg-[#E3F1FF] border border-[#DCEBFA] hover:border-[#B9D8FF] transition-all duration-200 cursor-pointer shadow-2xs active:scale-95 group shrink-0"
+              title="Open Navigation"
               aria-label="Open Navigation"
             >
-              <Menu size={18} />
+              <Menu size={18} className="transition-transform duration-200 group-hover:scale-110" />
             </button>
 
+            {/* Mobile BILZET Logo Brand Mark */}
+            <div className="md:hidden flex items-center shrink-0 mr-1">
+              <Logo variant="compact" theme="light" size="sm" />
+            </div>
+
+            {/* Desktop Navigation Toggle Button */}
             <button
               type="button"
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="hidden md:flex p-2 rounded-lg text-[#8AAED8] hover:text-[#526B87] hover:bg-[#F4F9FF] transition shrink-0 cursor-pointer"
-              title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
-              aria-label="Toggle Sidebar"
+              onClick={toggleSidebar}
+              className="hidden md:inline-flex items-center justify-center w-9 h-9 rounded-xl text-[#3978B8] hover:text-[#1E40AF] bg-[#F4F9FF] hover:bg-[#E3F1FF] border border-[#DCEBFA] hover:border-[#B9D8FF] transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-xs active:scale-95 group shrink-0"
+              title={sidebarOpen ? "Close Sidebar" : "Open Sidebar"}
+              aria-label={sidebarOpen ? "Close Sidebar" : "Open Sidebar"}
             >
-              <Menu size={18} />
+              <Menu
+                size={18}
+                className="transition-transform duration-200 group-hover:scale-110"
+              />
             </button>
 
             {/* Compact Customer Search Bar with Ctrl+K */}
@@ -1336,14 +1401,8 @@ export default function Layout({ children }) {
               </div>
             )}
 
-            {/* Primary Action: Light Powder Blue "New Bill" button */}
-            <NavLink
-              to="/billing"
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#D8EBFF] hover:bg-[#C7E1FF] text-[#1E40AF] text-xs font-bold transition border border-[#C7E1FF] shadow-2xs active:scale-98 shrink-0"
-            >
-              <Plus size={15} className="text-[#2563EB] shrink-0" />
-              <span>New Bill</span>
-            </NavLink>
+            {/* Primary Action: Highlighted Signature New Bill Button */}
+            <NewBillButton size="sm" showShortcut shortcutText="F2" className="shrink-0" />
 
             {/* Subtle Divider */}
             <div className="h-5 w-px bg-[#EDF3FA] hidden sm:block" />

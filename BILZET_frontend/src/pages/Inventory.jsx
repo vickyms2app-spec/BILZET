@@ -15,6 +15,8 @@ import {
   Coins,
   Search,
   FileText,
+  Download,
+  FileSpreadsheet,
 } from "lucide-react";
 import { inventoryApi, productsApi, warehousesApi } from "../api";
 import { useAuth } from "../store/auth";
@@ -94,12 +96,19 @@ export default function Inventory() {
       for (const p of prodList) {
         const key = p.id || p._id || p.sku;
         if (key && (p.isActive === undefined || p.isActive)) {
+          const avail = Number(p.availableStock !== undefined ? p.availableStock : (p.stock ?? p.currentStock ?? 0));
+          const sold = Number(p.soldQuantity || 0);
+          const price = Number(p.sellingPrice ?? 0);
           map.set(key, {
             ...p,
             id: p.id || p._id,
-            stock: Number(p.stock ?? p.currentStock ?? 0),
-            currentStock: Number(p.stock ?? p.currentStock ?? 0),
-            sellingPrice: Number(p.sellingPrice ?? 0),
+            stock: avail,
+            currentStock: avail,
+            availableStock: avail,
+            soldQuantity: sold,
+            lowStockStatus: p.lowStockStatus || (avail <= 0 ? "OUT_OF_STOCK" : avail <= (p.minimumStock || 5) ? "LOW_STOCK" : "IN_STOCK"),
+            stockValue: Number(p.stockValue !== undefined ? p.stockValue : (avail * (price || Number(p.purchasePrice || 0)))),
+            sellingPrice: price,
             purchasePrice: Number(p.purchasePrice ?? 0),
           });
         }
@@ -109,14 +118,22 @@ export default function Inventory() {
       for (const item of invList) {
         const key = item.id || item._id || item.sku;
         if (key && (item.isActive === undefined || item.isActive)) {
+          const prev = map.get(key) || {};
+          const avail = Number(item.availableStock !== undefined ? item.availableStock : (item.stock ?? item.currentStock ?? prev.availableStock ?? 0));
+          const sold = Number(item.soldQuantity !== undefined ? item.soldQuantity : (prev.soldQuantity || 0));
+          const price = Number(item.sellingPrice ?? prev.sellingPrice ?? 0);
           map.set(key, {
-            ...(map.get(key) || {}),
+            ...prev,
             ...item,
             id: item.id || item._id,
-            stock: Number(item.stock ?? item.currentStock ?? 0),
-            currentStock: Number(item.stock ?? item.currentStock ?? 0),
-            sellingPrice: Number(item.sellingPrice ?? 0),
-            purchasePrice: Number(item.purchasePrice ?? 0),
+            stock: avail,
+            currentStock: avail,
+            availableStock: avail,
+            soldQuantity: sold,
+            lowStockStatus: item.lowStockStatus || prev.lowStockStatus || (avail <= 0 ? "OUT_OF_STOCK" : avail <= (item.minimumStock || 5) ? "LOW_STOCK" : "IN_STOCK"),
+            stockValue: Number(item.stockValue !== undefined ? item.stockValue : (avail * (price || Number(item.purchasePrice || prev.purchasePrice || 0)))),
+            sellingPrice: price,
+            purchasePrice: Number(item.purchasePrice ?? prev.purchasePrice ?? 0),
           });
         }
       }
@@ -322,6 +339,73 @@ export default function Inventory() {
     }
   };
 
+  const handleExportStockCsv = () => {
+    if (!filtered || filtered.length === 0) {
+      setNotification({
+        type: "error",
+        message: "No inventory stock records available to export.",
+      });
+      return;
+    }
+
+    try {
+      const headers = [
+        "Product Name",
+        "SKU / Code",
+        "Category",
+        "Available Stock",
+        "Sold Quantity",
+        "Reserved Quantity",
+        "Minimum Stock Level",
+        "Purchase Price",
+        "Stock Valuation",
+        "Stock Status",
+      ];
+
+      const rows = filtered.map((item) => {
+        const avail = item.availableStock !== undefined ? item.availableStock : (item.stock ?? item.currentStock ?? 0);
+        const sold = item.soldQuantity || 0;
+        const reserved = item.reservedQuantity || 0;
+        const minStock = item.minimumStock || 5;
+        const purchase = item.purchasePrice || 0;
+        const valuation = item.stockValue !== undefined ? item.stockValue : (avail * (item.purchasePrice || item.sellingPrice || 150));
+        const status = avail <= 0 ? "OUT_OF_STOCK" : avail <= minStock ? "LOW_STOCK" : "IN_STOCK";
+
+        return [
+          `"${(item.name || "").replace(/"/g, '""')}"`,
+          `"${item.sku || item.code || ""}"`,
+          `"${getCategoryName(item.category)}"`,
+          avail,
+          sold,
+          reserved,
+          minStock,
+          purchase,
+          valuation,
+          status,
+        ].join(",");
+      });
+
+      const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows].join("\n");
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `bilzet-stock-overview-${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      setNotification({
+        type: "success",
+        message: "Stock overview exported to CSV / Excel successfully.",
+      });
+    } catch (err) {
+      setNotification({
+        type: "error",
+        message: "Failed to export stock overview: " + (err?.message || "Unknown error"),
+      });
+    }
+  };
+
   useEffect(() => {
     loadData();
     loadHistory();
@@ -461,6 +545,7 @@ export default function Inventory() {
       });
 
       window.dispatchEvent(new CustomEvent("bilzet:inventory-changed"));
+      window.dispatchEvent(new CustomEvent("bilzet:products-changed"));
       loadData();
       loadHistory();
       setOpenModal(false);
@@ -511,6 +596,17 @@ export default function Inventory() {
               className={loading ? "animate-spin text-[#007AFF]" : "text-[#6E6E73]"}
             />
             <span>{loading ? "Syncing…" : "Sync"}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleExportStockCsv}
+            disabled={filtered.length === 0}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border border-[#E5E5EA] bg-white text-[#1D1D1F] hover:bg-[#F5F5F7] rounded-xl transition cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.02)] disabled:opacity-50"
+            title="Export Stock Report to Excel/CSV"
+          >
+            <FileSpreadsheet size={13} className="text-[#248A3D]" />
+            <span>Export Stock</span>
           </button>
 
           <button
@@ -719,25 +815,30 @@ export default function Inventory() {
               <table className="w-full text-xs text-left border-collapse">
                 <thead className="bg-[#F5F5F7] border-b border-[#E5E5EA] text-[11px] font-medium text-[#6E6E73] uppercase tracking-wider">
                   <tr>
-                    <th className="py-2.5 px-4 min-w-[200px]">Product</th>
-                    <th className="py-2.5 px-3 min-w-[120px]">SKU</th>
-                    <th className="py-2.5 px-4 min-w-[150px]">Available Stock</th>
-                    <th className="py-2.5 px-3 min-w-[120px]">Minimum Stock</th>
-                    <th className="py-2.5 px-4 text-right min-w-[130px]">Inventory Value</th>
-                    <th className="py-2.5 px-3.5 text-center min-w-[100px]">Actions</th>
+                    <th className="py-2.5 px-4 min-w-[170px]">Product Name</th>
+                    <th className="py-2.5 px-3 min-w-[100px]">SKU / Barcode</th>
+                    <th className="py-2.5 px-3 min-w-[95px]">Category</th>
+                    <th className="py-2.5 px-3 text-right min-w-[95px]">Available</th>
+                    <th className="py-2.5 px-3 text-right min-w-[75px]">Sold</th>
+                    <th className="py-2.5 px-3 text-right min-w-[75px]">Reserved</th>
+                    <th className="py-2.5 px-3 text-right min-w-[80px]">Min Stock</th>
+                    <th className="py-2.5 px-3 text-right min-w-[95px]">Purchase Price</th>
+                    <th className="py-2.5 px-3.5 text-center min-w-[110px]">Stock Status</th>
+                    <th className="py-2.5 px-3 text-right min-w-[110px]">Stock Valuation</th>
+                    <th className="py-2.5 px-3 text-center min-w-[80px]">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#E5E5EA] bg-white">
                   {loading ? (
                     <tr>
-                      <td colSpan={6} className="py-14 text-center">
+                      <td colSpan={11} className="py-14 text-center">
                         <RefreshCw size={22} className="animate-spin text-[#007AFF] mx-auto mb-2" />
                         <p className="text-xs text-[#6E6E73]">Loading inventory records…</p>
                       </td>
                     </tr>
                   ) : filtered.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="py-14 px-4 text-center">
+                      <td colSpan={11} className="py-14 px-4 text-center">
                         <div className="w-11 h-11 rounded-2xl bg-[#F5F5F7] border border-[#E5E5EA] text-[#6E6E73] flex items-center justify-center mx-auto mb-2">
                           <Boxes size={20} />
                         </div>
@@ -760,14 +861,15 @@ export default function Inventory() {
                     </tr>
                   ) : (
                     filtered.map((item, idx) => {
-                      const stockVal = item.stock ?? item.currentStock ?? 0;
+                      const availStock = item.availableStock !== undefined ? item.availableStock : (item.stock ?? item.currentStock ?? 0);
+                      const soldQty = item.soldQuantity || 0;
                       const minStock = item.minimumStock || 5;
-                      const isLow = stockVal <= minStock;
-                      const isOut = stockVal <= 0;
+                      const isLow = availStock <= minStock && availStock > 0;
+                      const isOut = availStock <= 0;
                       const unit = item.unit || "PIECE";
-                      const itemValuation =
-                        stockVal *
-                        (item.sellingPrice || item.purchasePrice || item.value || 150);
+                      const itemValuation = item.stockValue !== undefined
+                        ? item.stockValue
+                        : (availStock * (item.sellingPrice || item.purchasePrice || item.value || 150));
 
                       const initial = item.name ? item.name.trim().charAt(0).toUpperCase() : "P";
                       const palette = getProductAvatarPalette(
@@ -779,7 +881,7 @@ export default function Inventory() {
                           key={item.id || item._id || item.sku || idx}
                           className="hover:bg-[#F5F5F7]/60 transition"
                         >
-                          {/* 1. Product Column */}
+                          {/* 1. Product Name */}
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-2.5">
                               <div
@@ -796,65 +898,94 @@ export default function Inventory() {
                                 <p className="font-semibold text-[#1D1D1F] leading-snug text-xs">
                                   {item.name}
                                 </p>
-                                <span className="text-[11px] text-[#6E6E73] font-normal leading-none block mt-0.5">
-                                  {getCategoryName(item.category)}
-                                </span>
+                                {item.brand && (
+                                  <span className="text-[11px] text-[#8E8E93] font-normal leading-none block mt-0.5">
+                                    {item.brand}
+                                  </span>
+                                )}
                               </div>
                             </div>
                           </td>
 
-                          {/* 2. SKU */}
-                          <td className="py-3 px-3 font-mono text-[11px] text-[#6E6E73]">
-                            {item.sku || "—"}
+                          {/* 2. Product SKU / Code */}
+                          <td className="py-3 px-3 font-mono text-[11px] text-[#6E6E73] font-medium">
+                            {item.sku || item.code || "—"}
                           </td>
 
-                          {/* 3. Available Stock */}
-                          <td className="py-3 px-4">
-                            <div className="flex items-center gap-2">
+                          {/* 3. Category */}
+                          <td className="py-3 px-3">
+                            <span className="inline-block px-2 py-0.5 rounded-md bg-[#F5F5F7] text-[#1D1D1F] text-[11px] font-medium border border-[#E5E5EA]">
+                              {getCategoryName(item.category)}
+                            </span>
+                          </td>
+
+                          {/* 4. Available Stock */}
+                          <td className="py-3 px-3 text-right">
+                            <span
+                              className={`inline-flex items-center gap-1.5 font-semibold text-xs font-mono ${
+                                isOut
+                                  ? "text-[#8E8E93]"
+                                  : isLow
+                                  ? "text-[#D70015]"
+                                  : "text-[#248A3D]"
+                              }`}
+                            >
                               <span
-                                className={`inline-flex items-center gap-1.5 font-semibold text-xs font-mono ${
+                                className={`w-1.5 h-1.5 rounded-full ${
                                   isOut
-                                    ? "text-[#6E6E73]"
+                                    ? "bg-[#8E8E93]"
                                     : isLow
-                                    ? "text-[#D70015]"
-                                    : "text-[#248A3D]"
+                                    ? "bg-[#D70015]"
+                                    : "bg-[#248A3D]"
                                 }`}
-                              >
-                                <span
-                                  className={`w-1.5 h-1.5 rounded-full ${
-                                    isOut
-                                      ? "bg-[#8E8E93]"
-                                      : isLow
-                                      ? "bg-[#D70015]"
-                                      : "bg-[#248A3D]"
-                                  }`}
-                                />
-                                {stockVal.toLocaleString("en-IN")} {unit}
+                              />
+                              {availStock.toLocaleString("en-IN")} {unit}
+                            </span>
+                          </td>
+
+                          {/* 5. Sold Quantity */}
+                          <td className="py-3 px-3 text-right font-mono font-medium text-[#1D1D1F]">
+                            {soldQty.toLocaleString("en-IN")}
+                          </td>
+
+                          {/* 6. Reserved Quantity */}
+                          <td className="py-3 px-3 text-right font-mono text-[#6E6E73]">
+                            {(item.reservedQuantity || 0).toLocaleString("en-IN")}
+                          </td>
+
+                          {/* 7. Minimum Stock Level */}
+                          <td className="py-3 px-3 text-right font-mono text-[#6E6E73]">
+                            {minStock.toLocaleString("en-IN")}
+                          </td>
+
+                          {/* 8. Purchase Price */}
+                          <td className="py-3 px-3 text-right font-mono text-[#1D1D1F]">
+                            ₹{Number(item.purchasePrice || 0).toLocaleString("en-IN")}
+                          </td>
+
+                          {/* 9. Stock Status */}
+                          <td className="py-3 px-3.5 text-center">
+                            {isOut ? (
+                              <span className="inline-flex px-2 py-0.5 text-[10px] font-semibold text-[#8E8E93] bg-[#F5F5F7] border border-[#E5E5EA] rounded uppercase tracking-wider">
+                                Out of Stock
                               </span>
-
-                              {isOut ? (
-                                <span className="px-1.5 py-0.5 text-[9px] font-semibold text-[#6E6E73] bg-[#F5F5F7] border border-[#E5E5EA] rounded uppercase tracking-wider">
-                                  Out of Stock
-                                </span>
-                              ) : isLow ? (
-                                <span className="px-1.5 py-0.5 text-[9px] font-semibold text-[#D70015] bg-[#FFF1F2] border border-[#FECDD3] rounded uppercase tracking-wider">
-                                  Low Stock
-                                </span>
-                              ) : null}
-                            </div>
+                            ) : isLow ? (
+                              <span className="inline-flex px-2 py-0.5 text-[10px] font-semibold text-[#D70015] bg-[#FFF1F2] border border-[#FECDD3] rounded uppercase tracking-wider">
+                                Low Stock
+                              </span>
+                            ) : (
+                              <span className="inline-flex px-2 py-0.5 text-[10px] font-semibold text-[#248A3D] bg-[#EDF8F0] border border-[#CCE8D4] rounded uppercase tracking-wider">
+                                In Stock
+                              </span>
+                            )}
                           </td>
 
-                          {/* 4. Minimum Stock */}
-                          <td className="py-3 px-3 font-mono text-[11px] text-[#6E6E73]">
-                            {minStock} {unit}
+                          {/* 10. Stock Valuation */}
+                          <td className="py-3 px-3 text-right font-mono font-semibold text-[#1D1D1F] text-xs">
+                            ₹{Number(itemValuation || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </td>
 
-                          {/* 5. Inventory Value */}
-                          <td className="py-3 px-4 text-right font-mono font-semibold text-[#1D1D1F] text-xs">
-                            ₹{itemValuation.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
-                          </td>
-
-                          {/* 6. Actions */}
+                          {/* 11. Actions */}
                           <td className="py-3 px-3.5 text-center">
                             <button
                               type="button"

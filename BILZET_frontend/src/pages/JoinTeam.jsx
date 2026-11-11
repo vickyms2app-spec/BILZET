@@ -7,20 +7,17 @@ import {
   AlertCircle,
   RefreshCw,
   LogOut,
-  ChevronLeft,
   ArrowRight,
   Copy,
   Check,
   X,
   Users,
-  KeyRound,
-  Inbox,
+  Sparkles,
 } from "lucide-react";
 import { useAuth } from "../store/auth";
 import { roleInvitationApi, caInvitationApi } from "../api";
 import { getWorkspaceRedirectPath } from "../utils/workspaceRouter";
 import Logo from "../components/common/Logo";
-import NotificationBell from "../components/common/NotificationBell";
 
 export default function JoinTeam() {
   const { user, refreshUser, logout } = useAuth();
@@ -98,9 +95,10 @@ export default function JoinTeam() {
   }, [fetchInvitations]);
 
   const handleCopyEmail = async () => {
-    if (user?.email) {
+    const emailToCopy = user?.email || "";
+    if (emailToCopy) {
       try {
-        await navigator.clipboard.writeText(user.email);
+        await navigator.clipboard.writeText(emailToCopy);
         setCopiedEmail(true);
         setTimeout(() => setCopiedEmail(false), 2000);
       } catch (_) {
@@ -183,7 +181,7 @@ export default function JoinTeam() {
     e.preventDefault();
     let raw = tokenInput.trim();
     if (!raw) {
-      return setTokenMessage({ type: "error", text: "Please enter an invitation token or link." });
+      return setTokenMessage({ type: "error", text: "Please enter an invitation code or link." });
     }
 
     // Extract token if user pasted a full URL
@@ -192,6 +190,9 @@ export default function JoinTeam() {
         const url = new URL(raw.startsWith("http") ? raw : `http://dummy.com/${raw}`);
         raw = url.searchParams.get("token") || raw;
       } catch (_) {}
+    } else if (raw.includes("/invite/") || raw.includes("/join-team/")) {
+      const parts = raw.split("/");
+      raw = parts[parts.length - 1] || raw;
     }
 
     setTokenLoading(true);
@@ -265,59 +266,55 @@ export default function JoinTeam() {
     .slice(0, 2)
     .toUpperCase() || "BZ";
 
-  const isVerified = Boolean(
-    user?.emailVerified ||
-      user?.isEmailVerified ||
-      user?.email ||
-      (typeof window !== "undefined" && window.Clerk?.user?.primaryEmailAddress?.verification?.status === "verified")
-  );
+  const userEmail =
+    user?.email ||
+    (typeof window !== "undefined" && window.Clerk?.user?.primaryEmailAddress?.emailAddress) ||
+    "verified@bilzet.in";
 
   return (
     <div
-      className="min-h-screen bg-slate-50/80 text-[#172033] flex flex-col justify-between selection:bg-blue-100 selection:text-blue-900 relative overflow-x-hidden"
-      style={{ fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}
+      className="min-h-screen text-[#202B3C] flex flex-col justify-between selection:bg-[#91C5FF]/30 selection:text-[#1E40AF] relative"
+      style={{
+        background:
+          "radial-gradient(ellipse at 10% 10%, #E6F1FF 0%, transparent 40%), radial-gradient(ellipse at 90% 85%, #F0EAFE 0%, transparent 40%), #F2F6FC",
+        fontFamily:
+          '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif',
+      }}
     >
-      {/* Subtle Background Lighting for warmth & depth */}
-      <div className="absolute inset-0 pointer-events-none -z-0 overflow-hidden" aria-hidden="true">
-        <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-[750px] h-[340px] bg-gradient-to-b from-blue-100/40 via-teal-50/20 to-transparent blur-3xl rounded-full" />
-        <div className="absolute inset-0 opacity-[0.025] bg-[radial-gradient(#0f172a_1px,transparent_1px)] [background-size:24px_24px]" />
-      </div>
-
-      {/* 1. Header (Clean White Navigation Bar) */}
-      <header className="bg-white/95 backdrop-blur-md border-b border-slate-200/90 sticky top-0 z-30 shadow-2xs">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
-          {/* Left: BILZET Logo */}
+      {/* 1. Header Navigation Bar */}
+      <header className="bg-white/95 backdrop-blur-sm border-b border-[#E1E9F4] sticky top-0 z-30 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+        <div className="max-w-[1180px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+          {/* Top-left BILZET Logo */}
           <div className="flex items-center">
             <Logo theme="light" size="sm" />
           </div>
 
-          {/* Right: Notifications, Profile, Sign Out */}
+          {/* Top-right Profile & Sign Out */}
           <div className="flex items-center gap-3 sm:gap-4">
-            <NotificationBell theme="light" />
-
-            {/* Profile Snippet */}
-            <div className="flex items-center gap-2.5 pl-2 border-l border-slate-200">
+            <div className="flex items-center gap-2.5">
               <div
-                className="w-7 h-7 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold flex items-center justify-center shrink-0 select-none shadow-2xs"
+                className="w-8 h-8 rounded-full bg-[#91C5FF]/30 border border-[#91C5FF]/60 text-[#1E40AF] text-xs font-semibold flex items-center justify-center shrink-0 select-none shadow-xs"
                 aria-hidden="true"
               >
                 {userInitials}
               </div>
               <div className="hidden sm:flex flex-col text-left">
-                <span className="text-xs font-semibold text-[#172033] leading-tight">
+                <span className="text-xs font-semibold text-[#202B3C] leading-tight">
                   {displayName}
                 </span>
-                <span className="text-[11px] text-[#64748B] leading-tight font-mono truncate max-w-[170px]" title={user?.email}>
-                  {user?.email || "verified@bilzet.com"}
+                <span
+                  className="text-[11px] text-[#64748B] leading-tight font-mono truncate max-w-[170px]"
+                  title={userEmail}
+                >
+                  {userEmail}
                 </span>
               </div>
             </div>
 
-            {/* Sign Out Button */}
             <button
               type="button"
               onClick={handleLogout}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-medium text-[#172033] transition cursor-pointer shadow-2xs active:scale-95"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#E1E9F4] bg-white hover:bg-slate-50 text-xs font-medium text-[#202B3C] transition cursor-pointer shadow-xs active:scale-95"
               title="Sign out of your account"
             >
               <LogOut size={13} className="text-[#64748B]" />
@@ -327,35 +324,26 @@ export default function JoinTeam() {
         </div>
       </header>
 
-      {/* 2. Main Content Container (Centered, ~840px max width) */}
-      <main className="relative z-10 flex-1 max-w-[840px] w-full mx-auto px-4 sm:px-6 py-8 sm:py-12 flex flex-col justify-center">
-        {/* Navigation Breadcrumb */}
-        <div className="mb-6">
-          <Link
-            to="/dashboard"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:border-slate-300 text-xs text-[#64748B] hover:text-[#172033] transition font-medium shadow-2xs"
-          >
-            <ChevronLeft size={14} className="text-slate-400" />
-            <span>Back to Dashboard</span>
-          </Link>
-        </div>
-
-        {/* Status Message Feedback */}
+      {/* 2. Main Content Container (max-w-[1180px], centered, balanced vertical spacing) */}
+      <main className="flex-1 max-w-[1180px] w-full mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col justify-center">
+        {/* Global Feedback Banner */}
         {statusMessage && (
           <div
-            className={`mb-6 p-3.5 rounded-xl text-xs sm:text-sm font-medium flex items-center gap-2.5 border shadow-2xs ${
+            className={`mb-5 p-3.5 rounded-xl text-xs sm:text-sm font-medium flex items-center gap-2.5 border shadow-xs transition-all ${
               statusMessage.type === "success"
-                ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                ? "bg-[#91D9C0]/30 text-[#0A6C45] border-[#91D9C0]/60"
                 : statusMessage.type === "error"
                 ? "bg-rose-50 text-rose-800 border-rose-200"
-                : "bg-slate-100 text-[#172033] border-slate-200"
+                : "bg-[#91C5FF]/30 text-[#1D4ED8] border-[#91C5FF]/50"
             }`}
             role="status"
           >
             {statusMessage.type === "success" ? (
-              <CheckCircle2 size={16} className="text-[#059669] shrink-0" />
-            ) : (
+              <CheckCircle2 size={16} className="text-[#0A6C45] shrink-0" />
+            ) : statusMessage.type === "error" ? (
               <AlertCircle size={16} className="text-rose-600 shrink-0" />
+            ) : (
+              <Sparkles size={16} className="text-[#1D4ED8] shrink-0" />
             )}
             <span className="flex-1">{statusMessage.text}</span>
             <button
@@ -369,52 +357,81 @@ export default function JoinTeam() {
           </div>
         )}
 
-        {/* 3. Title Section */}
-        <div className="mb-7">
-          <div className="flex items-center gap-3.5 mb-2">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-blue-600 text-white flex items-center justify-center shadow-sm shadow-blue-500/20 shrink-0">
-              <Users size={20} />
-            </div>
-            <h1 className="text-[28px] sm:text-[32px] font-bold text-[#172033] tracking-[-0.8px] leading-tight">
-              Join Our Team
-            </h1>
-          </div>
-          <p className="text-[14px] sm:text-[15px] text-[#64748B] mt-1 leading-[1.6]">
-            Connect to an existing business workspace using an invitation from your store administrator.
+        {/* 3. Welcome Section */}
+        <section className="text-center mb-6 sm:mb-8">
+          <h1 className="text-[34px] sm:text-[38px] font-semibold text-[#202B3C] tracking-tight leading-tight">
+            Welcome to{" "}
+            <span className="text-[#3977F6] bg-gradient-to-r from-[#3977F6] to-[#69B5FF] bg-clip-text text-transparent">
+              BILZET
+            </span>
+          </h1>
+          <p className="text-[15px] sm:text-[16px] text-[#64748B] mt-1.5 max-w-xl mx-auto font-normal">
+            Choose how you want to get started with your business workspace.
           </p>
-        </div>
+        </section>
 
-        {/* 4. Verified Email Section (Lightly tinted, tasteful panel) */}
-        <div className="bg-gradient-to-r from-blue-50/50 via-white to-white rounded-2xl border border-blue-200/80 p-5 sm:p-6 shadow-xs mb-6 relative overflow-hidden">
+        {/* 4. Verified Email Section (Light sky-blue tinted card background) */}
+        <section
+          className="rounded-[18px] border p-4 sm:p-5 shadow-[0_4px_16px_rgba(145,197,255,0.12)] mb-6 transition-all"
+          style={{
+            background: "linear-gradient(120deg, #EAF3FF 0%, #F5F8FF 100%)",
+            borderColor: "#C8E0FF",
+          }}
+        >
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-start gap-3.5">
-              <div className="w-9 h-9 rounded-xl bg-blue-100/70 text-blue-700 flex items-center justify-center shrink-0 border border-blue-200/60 mt-0.5">
-                <Mail size={17} />
+              {/* Mail icon inside blue-tinted container */}
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border mt-0.5 shadow-xs"
+                style={{
+                  background: "#DCEBFF",
+                  borderColor: "#B8D7FF",
+                  color: "#1E58D8",
+                }}
+              >
+                <Mail size={18} />
               </div>
-              <div>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-blue-700 block">
-                  Your Verified Account Email
-                </span>
-                <div className="mt-1.5 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white border border-blue-200 text-sm font-mono font-bold text-slate-900 shadow-2xs">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span>{user?.email || "verified@bilzet.com"}</span>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[13px] font-semibold text-[#202B3C]">
+                    Verified email address
+                  </span>
+                  {/* Mint green Verified badge */}
+                  <span
+                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border shadow-2xs"
+                    style={{
+                      background: "#D4F4E6",
+                      borderColor: "#91D9C0",
+                      color: "#0A6C45",
+                    }}
+                  >
+                    <CheckCircle2 size={11} className="text-[#0A6C45]" />
+                    <span>Verified</span>
+                  </span>
                 </div>
-                <p className="text-[13px] text-[#64748B] mt-1.5">
-                  Share this email with your store owner or manager so they can invite you.
+                <div className="text-[14px] sm:text-[15px] font-medium text-[#202B3C] font-mono mt-0.5 truncate">
+                  {userEmail}
+                </div>
+                <p className="text-[12px] sm:text-[13px] text-[#64748B] mt-0.5 leading-normal">
+                  Store invitations will be linked to this email address.
                 </p>
               </div>
             </div>
 
+            {/* Copy Email button with blue outline and subtle hover */}
             <button
               type="button"
               onClick={handleCopyEmail}
-              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-blue-50 text-blue-700 text-xs font-semibold border border-blue-200 transition shadow-2xs cursor-pointer shrink-0 self-start sm:self-center active:scale-95"
+              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/90 hover:bg-white text-[#2563EB] text-xs font-semibold transition cursor-pointer shadow-xs active:scale-95 shrink-0 self-start sm:self-center border"
+              style={{
+                borderColor: "#91C5FF",
+              }}
               aria-label="Copy verified account email"
             >
               {copiedEmail ? (
                 <>
-                  <Check size={13} className="text-[#059669]" />
-                  <span className="text-[#059669]">Copied!</span>
+                  <Check size={13} className="text-[#0A6C45]" />
+                  <span className="text-[#0A6C45]">Copied!</span>
                 </>
               ) : (
                 <>
@@ -424,95 +441,212 @@ export default function JoinTeam() {
               )}
             </button>
           </div>
-        </div>
+        </section>
 
-        {/* 5. Invitation Link / Token Section */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-xs hover:border-slate-300 transition mb-6">
-          <div className="flex items-center gap-2.5 mb-1">
-            <div className="w-7 h-7 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center border border-teal-100">
-              <KeyRound size={15} />
-            </div>
-            <h2 className="text-[17px] sm:text-[18px] font-semibold text-[#172033]">
-              Have an invitation code or link?
-            </h2>
-          </div>
-          <p className="text-[13px] text-[#64748B] mb-4 leading-normal">
-            Paste the code or invitation link provided by your business owner to instantly join their workspace.
-          </p>
-
-          <form onSubmit={handleRedeemToken} className="space-y-3">
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
-              <input
-                type="text"
-                value={tokenInput}
-                onChange={(e) => setTokenInput(e.target.value)}
-                placeholder="Paste your invitation code or link"
-                className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-[14px] text-[#172033] placeholder-[#94A3B8] focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition font-mono"
-              />
-              <button
-                type="submit"
-                disabled={tokenLoading || !tokenInput.trim()}
-                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 text-white text-[14px] font-semibold transition shadow-sm shadow-blue-500/20 cursor-pointer shrink-0"
-              >
-                {tokenLoading ? (
-                  <RefreshCw size={14} className="animate-spin" />
-                ) : (
-                  <ArrowRight size={14} />
-                )}
-                <span>{tokenLoading ? "Joining…" : "Join Store"}</span>
-              </button>
-            </div>
-
-            {tokenMessage && (
-              <p
-                className={`text-[13px] font-medium ${
-                  tokenMessage.type === "success" ? "text-[#059669]" : "text-rose-600"
-                }`}
-              >
-                {tokenMessage.text}
-              </p>
-            )}
-          </form>
-        </div>
-
-        {/* Register Own Store Option */}
-        <div className="bg-gradient-to-r from-blue-50/40 via-indigo-50/20 to-white rounded-2xl border border-blue-200/60 p-5 sm:p-6 shadow-xs mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-start gap-3.5">
-            <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 mt-0.5">
-              <Store size={16} />
-            </div>
-            <div>
-              <h3 className="text-[15px] font-semibold text-[#172033]">
-                Starting your own business?
-              </h3>
-              <p className="text-[13px] text-[#64748B] mt-0.5 leading-normal">
-                Register a new store to manage inventory, billing, and team roles as the Business Owner.
-              </p>
-            </div>
-          </div>
-          <Link
-            to="/register-shop"
-            className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-xs font-semibold text-[#172033] transition shadow-2xs shrink-0 self-start sm:self-center"
+        {/* 5. Main Workspace Action Cards (Side-by-side on desktop, equal height, 20-24px gap) */}
+        <section className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 items-stretch">
+          {/* CARD A — JOIN EXISTING WORKSPACE (Light Blue card background) */}
+          <div
+            className="rounded-[18px] border p-6 sm:p-7 shadow-[0_4px_20px_rgba(145,197,255,0.15)] flex flex-col justify-between transition-all hover:shadow-[0_6px_24px_rgba(145,197,255,0.22)]"
+            style={{
+              background: "linear-gradient(135deg, #EDF5FF 0%, #F5F9FF 100%)",
+              borderColor: "#C4DCFF",
+            }}
           >
-            <span>Register Store</span>
-            <ArrowRight size={13} />
-          </Link>
-        </div>
-
-        {/* 6. Pending Invitations Section */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-xs">
-          {/* Header */}
-          <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 mb-4">
-            <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-700 flex items-center justify-center border border-indigo-100">
-                <Inbox size={15} />
+            <div>
+              {/* Blue icon container */}
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center border mb-4 shadow-xs"
+                style={{
+                  background: "#DCEBFF",
+                  borderColor: "#B8D7FF",
+                  color: "#1E58D8",
+                }}
+              >
+                <Users size={18} />
               </div>
-              <h2 className="text-[17px] sm:text-[18px] font-semibold text-[#172033]">
+
+              <h2 className="text-[21px] sm:text-[22px] font-semibold text-[#202B3C] tracking-tight">
+                Already have a store invitation?
+              </h2>
+              <p className="text-[14px] text-[#64748B] mt-1.5 leading-relaxed">
+                Join an existing business as an invited team member.
+              </p>
+
+              <form onSubmit={handleRedeemToken} className="mt-5">
+                <label
+                  htmlFor="invitation-input"
+                  className="block text-[13px] font-semibold text-[#202B3C] mb-2"
+                >
+                  Invitation code or link
+                </label>
+                <input
+                  id="invitation-input"
+                  type="text"
+                  value={tokenInput}
+                  onChange={(e) => setTokenInput(e.target.value)}
+                  placeholder="Paste your invitation code or link"
+                  disabled={tokenLoading}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white text-[14px] text-[#202B3C] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#91C5FF] transition font-mono disabled:opacity-60 border"
+                  style={{
+                    borderColor: "#C4DCFF",
+                  }}
+                />
+
+                {tokenMessage && (
+                  <div
+                    className={`mt-2.5 p-2.5 rounded-lg text-xs font-medium border flex items-center gap-2 ${
+                      tokenMessage.type === "success"
+                        ? "bg-[#91D9C0]/30 text-[#0A6C45] border-[#91D9C0]/60"
+                        : "bg-rose-50 text-rose-700 border-rose-200"
+                    }`}
+                  >
+                    {tokenMessage.type === "success" ? (
+                      <CheckCircle2 size={13} className="text-[#0A6C45] shrink-0" />
+                    ) : (
+                      <AlertCircle size={13} className="text-rose-600 shrink-0" />
+                    )}
+                    <span>{tokenMessage.text}</span>
+                  </div>
+                )}
+
+                {/* Primary blue gradient button */}
+                <button
+                  type="submit"
+                  disabled={tokenLoading || !tokenInput.trim()}
+                  className="w-full inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-white text-[14px] font-semibold transition cursor-pointer mt-5 shadow-[0_4px_14px_rgba(57,119,246,0.30)] hover:shadow-[0_6px_18px_rgba(57,119,246,0.40)] active:scale-[0.99] disabled:opacity-50 disabled:shadow-none"
+                  style={{
+                    background: "linear-gradient(110deg, #69B5FF 0%, #3977F6 100%)",
+                  }}
+                >
+                  {tokenLoading ? (
+                    <>
+                      <RefreshCw size={14} className="animate-spin" />
+                      <span>Joining Workspace…</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Join Workspace</span>
+                      <ArrowRight size={14} />
+                    </>
+                  )}
+                </button>
+              </form>
+            </div>
+          </div>
+
+          {/* CARD B — REGISTER NEW STORE (Light Mint card background) */}
+          <div
+            className="rounded-[18px] border p-6 sm:p-7 shadow-[0_4px_20px_rgba(145,217,192,0.18)] flex flex-col justify-between transition-all hover:shadow-[0_6px_24px_rgba(145,217,192,0.26)]"
+            style={{
+              background: "linear-gradient(135deg, #F0FAF5 0%, #F7FCFA 100%)",
+              borderColor: "#BDEBD8",
+            }}
+          >
+            <div>
+              {/* Green icon container */}
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center border mb-4 shadow-xs"
+                style={{
+                  background: "#DDF5EA",
+                  borderColor: "#A9E5CC",
+                  color: "#0A6C45",
+                }}
+              >
+                <Store size={18} />
+              </div>
+
+              <h2 className="text-[21px] sm:text-[22px] font-semibold text-[#202B3C] tracking-tight">
+                Starting your own business?
+              </h2>
+              <p className="text-[14px] text-[#64748B] mt-1.5 leading-relaxed">
+                Register a new store and become the Business Owner.
+              </p>
+
+              {/* Light mint information panel */}
+              <div
+                className="mt-5 p-4 rounded-xl border flex items-start gap-3 shadow-2xs"
+                style={{
+                  background: "#E2F6ED",
+                  borderColor: "#AEE8CF",
+                }}
+              >
+                <CheckCircle2 size={16} className="text-[#0A6C45] shrink-0 mt-0.5" />
+                <p className="text-[13px] font-semibold text-[#0A6C45] leading-snug">
+                  Your own store, billing, inventory and team management.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6">
+              {/* Blue outlined Register New Store button */}
+              <Link
+                to="/register-shop"
+                className="w-full inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-white hover:bg-[#EDF5FF] active:bg-[#DCEBFF] text-[14px] font-semibold transition cursor-pointer shadow-xs border-2"
+                style={{
+                  borderColor: "#3977F6",
+                  color: "#2563EB",
+                }}
+              >
+                <Store size={15} />
+                <span>Register New Store</span>
+                <ArrowRight size={14} />
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* 6. Pending Store Invitations (Light lavender-tinted section background) */}
+        <section
+          className="rounded-[18px] border p-5 sm:p-7 shadow-[0_4px_20px_rgba(185,164,245,0.14)] mb-6 transition-all"
+          style={{
+            background: "linear-gradient(135deg, #F7F3FF 0%, #FCFAFF 100%)",
+            borderColor: "#DFD3FB",
+          }}
+        >
+          {/* Header */}
+          <div
+            className="flex items-center justify-between pb-4 border-b mb-5"
+            style={{
+              borderColor: "#EADFFC",
+            }}
+          >
+            <div className="flex items-center gap-2.5">
+              {/* Lavender icon container */}
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center border shadow-2xs"
+                style={{
+                  background: "#EAE0FD",
+                  borderColor: "#D2BFF9",
+                  color: "#6D28D9",
+                }}
+              >
+                <Mail size={16} />
+              </div>
+              <h2 className="text-[18px] sm:text-[20px] font-semibold text-[#202B3C]">
                 Pending Store Invitations
               </h2>
-              {invitations.length > 0 && (
-                <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-[#059669] border border-emerald-200">
-                  {invitations.length} ready
+              {invitations.length > 0 ? (
+                <span
+                  className="px-2.5 py-0.5 rounded-full text-[12px] font-semibold border shadow-2xs"
+                  style={{
+                    background: "#D4F4E6",
+                    borderColor: "#91D9C0",
+                    color: "#0A6C45",
+                  }}
+                >
+                  {invitations.length} {invitations.length === 1 ? "invite" : "invites"}
+                </span>
+              ) : (
+                <span
+                  className="px-2.5 py-0.5 rounded-full text-[12px] font-medium border"
+                  style={{
+                    background: "#EDE5FD",
+                    borderColor: "#DFD3FB",
+                    color: "#6D28D9",
+                  }}
+                >
+                  0
                 </span>
               )}
             </div>
@@ -521,49 +655,82 @@ export default function JoinTeam() {
               type="button"
               onClick={fetchInvitations}
               disabled={loading}
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-medium text-[#172033] transition cursor-pointer shadow-2xs"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border bg-white/90 hover:bg-white text-xs font-semibold text-[#202B3C] transition shadow-xs cursor-pointer disabled:opacity-60"
+              style={{
+                borderColor: "#D2BFF9",
+              }}
               title="Check for new invitations"
             >
-              <RefreshCw size={12} className={loading ? "animate-spin text-blue-600" : "text-slate-500"} />
-              <span>{loading ? "Checking…" : "Refresh"}</span>
+              <RefreshCw
+                size={12}
+                className={loading ? "animate-spin text-[#6D28D9]" : "text-[#6D28D9]"}
+              />
+              <span>{loading ? "Refreshing…" : "Refresh"}</span>
             </button>
           </div>
 
-          {/* Invitation Rows or Friendly Empty State */}
+          {/* Invitation Rows or Clean Lavender Minimal Empty State */}
           {invitations.length > 0 ? (
             <div className="space-y-3">
               {invitations.map((inv) => (
                 <div
                   key={inv.id}
-                  className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white hover:border-slate-300 transition flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                  className="p-4 sm:p-5 rounded-xl border bg-white/90 hover:bg-white transition flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs"
+                  style={{
+                    borderColor: "#E2D7FA",
+                  }}
                 >
-                  <div>
+                  <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <Store size={16} className="text-blue-600 shrink-0" />
-                      <h3 className="text-[15px] font-semibold text-[#172033]">
+                      <Store size={16} className="text-[#3977F6] shrink-0" />
+                      <h3 className="text-[15px] font-semibold text-[#202B3C] truncate">
                         {inv.business?.name || "Business Store"}
                       </h3>
                     </div>
-                    <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                      <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-100">
+
+                    <div className="flex flex-wrap items-center gap-2 mt-2">
+                      <span
+                        className="px-2.5 py-0.5 rounded-md text-[11px] font-semibold border"
+                        style={{
+                          background: "#DCEBFF",
+                          borderColor: "#B8D7FF",
+                          color: "#1E58D8",
+                        }}
+                      >
                         Role: {inv.role}
                       </span>
                       {inv.department && (
-                        <span className="text-[12px] text-[#64748B]">• {inv.department}</span>
+                        <span className="text-[12px] text-[#64748B]">
+                          • {inv.department}
+                        </span>
                       )}
                       {inv.designation && (
-                        <span className="text-[12px] text-[#64748B]">({inv.designation})</span>
+                        <span className="text-[12px] text-[#64748B]">
+                          ({inv.designation})
+                        </span>
                       )}
                     </div>
+
                     {inv.message && (
-                      <p className="text-[12px] text-[#64748B] mt-1.5 italic bg-white p-2.5 rounded-lg border border-slate-200">
+                      <p className="text-[12px] text-[#64748B] mt-2 italic bg-[#F7F3FF] p-2.5 rounded-lg border border-[#E2D7FA]">
                         &quot;{inv.message}&quot;
                       </p>
                     )}
-                    <p className="text-[11px] text-[#64748B] mt-1.5">
-                      Invited by {inv.inviter?.name || inv.inviter?.email || "Store Owner"} on{" "}
-                      {new Date(inv.createdAt).toLocaleDateString()}
-                    </p>
+
+                    <div className="flex flex-wrap items-center gap-3 text-[12px] text-[#64748B] mt-2">
+                      <span>
+                        Invited by{" "}
+                        <strong className="font-medium text-[#202B3C]">
+                          {inv.inviter?.name || inv.inviter?.email || "Store Administrator"}
+                        </strong>{" "}
+                        on {new Date(inv.createdAt).toLocaleDateString()}
+                      </span>
+                      {inv.expiresAt && (
+                        <span>
+                          • Expires: {new Date(inv.expiresAt).toLocaleDateString()}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {/* Accept & Decline Actions */}
@@ -572,58 +739,76 @@ export default function JoinTeam() {
                       type="button"
                       onClick={() => handleAcceptInvite(inv)}
                       disabled={actionLoadingId === inv.id}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition shadow-sm shadow-emerald-600/20 disabled:opacity-50 cursor-pointer"
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-xs font-semibold transition shadow-sm disabled:opacity-50 cursor-pointer"
+                      style={{
+                        background: "linear-gradient(110deg, #69B5FF 0%, #3977F6 100%)",
+                      }}
                     >
                       {actionLoadingId === inv.id ? (
                         <RefreshCw size={12} className="animate-spin" />
                       ) : (
                         <Check size={13} />
                       )}
-                      <span>Accept Invitation</span>
+                      <span>Accept</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => handleDeclineInvite(inv)}
                       disabled={actionLoadingId === inv.id}
-                      className="px-3 py-2 rounded-xl bg-white hover:bg-rose-50 hover:text-rose-600 text-[#64748B] text-xs font-medium transition border border-slate-200 disabled:opacity-50 cursor-pointer"
+                      className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-white hover:bg-rose-50 hover:text-rose-600 text-[#64748B] text-xs font-semibold transition border border-[#DFD3FB] disabled:opacity-50 cursor-pointer"
                       title="Decline invitation"
                     >
                       <X size={13} />
+                      <span>Decline</span>
                     </button>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="py-8 text-center px-4 rounded-xl bg-slate-50/50 border border-dashed border-slate-200">
-              <div className="w-11 h-11 rounded-xl bg-white border border-slate-200 text-slate-400 flex items-center justify-center mx-auto mb-2.5 shadow-2xs">
-                <Mail size={18} className="text-slate-500" />
+            <div
+              className="py-10 text-center px-4 rounded-xl border border-dashed"
+              style={{
+                background: "rgba(255, 255, 255, 0.6)",
+                borderColor: "#D2BFF9",
+              }}
+            >
+              {/* Minimal mail icon with soft lavender circular background */}
+              <div
+                className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-3 shadow-xs border"
+                style={{
+                  background: "#EDE5FD",
+                  borderColor: "#DFD3FB",
+                  color: "#6D28D9",
+                }}
+              >
+                <Mail size={22} className="text-[#6D28D9]" />
               </div>
-              <h3 className="text-[14px] font-semibold text-[#172033]">
-                No pending invitations yet
+              <h3 className="text-[16px] font-semibold text-[#202B3C]">
+                No pending invitations
               </h3>
-              <p className="text-[13px] text-[#64748B] mt-1 max-w-sm mx-auto leading-normal">
+              <p className="text-[13px] text-[#64748B] mt-1.5 max-w-sm mx-auto leading-normal">
                 Invitations sent to your verified email will appear here automatically.
               </p>
             </div>
           )}
-        </div>
+        </section>
       </main>
 
-      {/* 7. Clean Restrained Footer */}
-      <footer className="py-4 border-t border-slate-200/90 bg-white text-[12px] text-[#64748B]">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-left">
+      {/* 7. Footer */}
+      <footer className="py-4 border-t border-[#E1E9F4] bg-white/70 backdrop-blur-sm text-[12px] text-[#64748B]">
+        <div className="max-w-[1180px] mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-left">
           <div>
             <span>Need assistance setting up your workspace? </span>
             <a
               href="mailto:support@bilzet.com"
-              className="text-blue-600 hover:text-blue-700 hover:underline font-semibold"
+              className="text-[#3977F6] hover:underline font-semibold"
             >
               Contact BILZET Support
             </a>
           </div>
           <div className="text-[11px] text-slate-400">
-            BILZET Multi-Tenant Cloud ERP • Role-Aware Team Onboarding
+            BILZET Multi-Tenant Cloud ERP • Enterprise Workspace Onboarding
           </div>
         </div>
       </footer>

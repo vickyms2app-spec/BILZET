@@ -435,7 +435,7 @@ export default function Products() {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="page-title">
-                {activeTab === "products" ? "Product Catalog" : "Category Index"}
+                {activeTab === "products" ? "Product Inventory" : "Category Index"}
               </h1>
               <span className="badge badge-info uppercase tracking-wider flex items-center gap-1">
                 <Building2 size={11} />
@@ -492,7 +492,7 @@ export default function Products() {
           }`}
         >
           <Package size={15} />
-          <span>Product Catalog</span>
+          <span>Product Inventory</span>
           <span
             className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold ${
               activeTab === "products"
@@ -704,7 +704,7 @@ export default function Products() {
             {!data ? (
               <div className="py-16 flex flex-col items-center justify-center text-slate-400 gap-2">
                 <div className="w-7 h-7 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
-                <p className="text-xs font-medium">Loading product catalog...</p>
+                <p className="text-xs font-medium">Loading product inventory...</p>
               </div>
             ) : productsList.length === 0 ? (
               <div className="empty-state py-16">
@@ -736,41 +736,53 @@ export default function Products() {
                   <thead className="bg-slate-50/75 border-b border-slate-200/80 text-[11px] font-semibold text-slate-600 uppercase tracking-wider">
                     <tr>
                       <th className="px-4 py-3">Product Name</th>
+                      <th className="px-4 py-3">Product SKU / Code</th>
                       <th className="px-4 py-3">Category</th>
-                      <th className="px-4 py-3">Price</th>
-                      <th className="px-4 py-3">Stock</th>
-                      <th className="px-4 py-3">Status</th>
-                      <th className="px-4 py-3">SKU</th>
-                      <th className="px-4 py-3">GST Rate</th>
+                      <th className="px-4 py-3 text-right">Selling Price</th>
+                      <th className="px-4 py-3 text-right">Available Stock</th>
+                      <th className="px-4 py-3 text-right">Sold Quantity</th>
+                      <th className="px-4 py-3 text-center">Low Stock Status</th>
+                      <th className="px-4 py-3 text-right">Stock Value</th>
                       <th className="px-4 py-3 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {productsList.map((p) => {
-                      const stockVal = Number(p.stock ?? 0);
+                      const availStock = Number(p.availableStock !== undefined ? p.availableStock : (p.stock ?? p.currentStock ?? 0));
+                      const soldQty = Number(p.soldQuantity || 0);
                       const minStockVal = Number(p.minimumStock ?? 5);
-                      const isOutOfStock = stockVal <= 0;
-                      const isLowStock = !isOutOfStock && stockVal <= minStockVal;
+                      const isOutOfStock = availStock <= 0;
+                      const isLowStock = !isOutOfStock && availStock <= minStockVal;
+                      const priceVal = Number(p.sellingPrice || 0);
+                      const itemValuation = Number(p.stockValue !== undefined ? p.stockValue : (availStock * (priceVal || Number(p.purchasePrice || 0))));
 
                       return (
                         <tr key={p._id || p.id} className="hover:bg-slate-50/60 transition group">
+                          {/* 1. Product Name */}
                           <td className="px-4 py-3">
                             <div className="font-semibold text-slate-900">{p.name}</div>
                             {p.brand && (
                               <div className="text-[11px] text-slate-400 font-normal">{p.brand}</div>
                             )}
                           </td>
+                          {/* 2. Product SKU / Code */}
+                          <td className="px-4 py-3 font-mono text-[11px] text-slate-700 font-medium">
+                            {p.sku || p.code || "—"}
+                          </td>
+                          {/* 3. Category */}
                           <td className="px-4 py-3 text-slate-600">
                             <span className="inline-block px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[11px] font-medium">
-                              {p.category?.name || "General"}
+                              {p.category?.name || p.category || "General"}
                             </span>
                           </td>
-                          <td className="px-4 py-3 font-semibold text-slate-900">
-                            ₹{Number(p.sellingPrice || 0).toLocaleString("en-IN")}
+                          {/* Price */}
+                          <td className="px-4 py-3 text-right font-semibold font-mono text-slate-900">
+                            ₹{priceVal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                           </td>
-                          <td className="px-4 py-3">
+                          {/* 4. Available Stock */}
+                          <td className="px-4 py-3 text-right">
                             <span
-                              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
+                              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold font-mono ${
                                 isOutOfStock
                                   ? "bg-rose-50 text-rose-700 border border-rose-200"
                                   : isLowStock
@@ -778,10 +790,15 @@ export default function Products() {
                                   : "bg-emerald-50 text-emerald-700 border border-emerald-200"
                               }`}
                             >
-                              {stockVal} {p.unit || "pcs"}
+                              {availStock} {p.unit || "pcs"}
                             </span>
                           </td>
-                          <td className="px-4 py-3">
+                          {/* 5. Sold Quantity */}
+                          <td className="px-4 py-3 text-right font-mono font-medium text-slate-700">
+                            {soldQty} {p.unit || "pcs"}
+                          </td>
+                          {/* 6. Low Stock Status */}
+                          <td className="px-4 py-3 text-center">
                             {p.isActive === false ? (
                               <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-500 border border-slate-200">
                                 Inactive
@@ -800,12 +817,11 @@ export default function Products() {
                               </span>
                             )}
                           </td>
-                          <td className="px-4 py-3 font-mono text-[11px] text-slate-600">
-                            {p.sku || "—"}
+                          {/* 7. Stock Value */}
+                          <td className="px-4 py-3 text-right font-mono font-semibold text-slate-900">
+                            ₹{itemValuation.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                           </td>
-                          <td className="px-4 py-3 text-slate-600 font-medium">
-                            {p.gstRate ?? 0}%
-                          </td>
+                          {/* Actions */}
                           <td className="px-4 py-3 text-right">
                             <div className="inline-flex items-center gap-1.5 opacity-80 group-hover:opacity-100">
                               <CompactIconButton

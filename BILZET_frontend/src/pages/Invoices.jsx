@@ -33,6 +33,7 @@ import ReturnModal from "../components/invoice/ReturnModal";
 import DateNavigator from "../components/common/DateNavigator";
 import SearchBar from "../components/common/SearchBar";
 import Button, { CompactIconButton } from "../components/common/Button";
+import NewBillButton from "../components/common/NewBillButton";
 import useRealtimeSync from "../hooks/useRealtimeSync";
 
 // Predefined palette of soft, professional colors for deterministic avatar assignment
@@ -467,14 +468,11 @@ export default function Invoices() {
               <span>Create Quotation</span>
             </button>
           ) : (
-            <Button
-              variant="primary"
+            <NewBillButton
               size="sm"
-              icon={Plus}
+              label="New Bill"
               onClick={() => nav("/billing")}
-            >
-              Create Bill
-            </Button>
+            />
           )}
         </div>
       </div>
@@ -635,13 +633,13 @@ export default function Invoices() {
                       <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
                         Try clearing search filters or create a new invoice to get started.
                       </p>
-                      <button
-                        onClick={() => nav("/billing")}
-                        className="btn-primary mt-4 text-xs inline-flex items-center gap-1.5"
-                      >
-                        <Plus size={13} strokeWidth={2.5} />
-                        <span>Create New Bill</span>
-                      </button>
+                      <div className="mt-4">
+                        <NewBillButton
+                          size="sm"
+                          label="New Bill"
+                          onClick={() => nav("/billing")}
+                        />
+                      </div>
                     </td>
                   </tr>
                 ) : (

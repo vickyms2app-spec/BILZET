@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import prisma from '../config/prisma.mjs';
 import { ApiError } from '../utils/ApiError.mjs';
+import dealerOfferService from '../services/dealerOffer.service.mjs';
 
 export const getOverviewStats = async (req, res, next) => {
   try {
@@ -352,6 +353,56 @@ export const updateAppConfig = async (req, res, next) => {
   }
 };
 
+export const getDealerOffers = async (req, res, next) => {
+  try {
+    const offers = await dealerOfferService.listOffers({ activeOnly: false });
+    res.json({
+      success: true,
+      data: { offers },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const createDealerOffer = async (req, res, next) => {
+  try {
+    const offer = await dealerOfferService.createOffer(req.body, req.user);
+    res.status(201).json({
+      success: true,
+      message: 'Dealer offer created successfully.',
+      data: { offer },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const updateDealerOffer = async (req, res, next) => {
+  try {
+    const offer = await dealerOfferService.updateOffer(req.params.id, req.body);
+    res.json({
+      success: true,
+      message: 'Dealer offer updated successfully.',
+      data: { offer },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const deleteDealerOffer = async (req, res, next) => {
+  try {
+    const result = await dealerOfferService.deleteOffer(req.params.id);
+    res.json({
+      success: true,
+      message: result.message,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 export default {
   getOverviewStats,
   getUsers,
@@ -362,4 +413,8 @@ export default {
   getAllCustomers,
   getAppConfig,
   updateAppConfig,
+  getDealerOffers,
+  createDealerOffer,
+  updateDealerOffer,
+  deleteDealerOffer,
 };

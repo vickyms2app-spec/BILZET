@@ -1,4 +1,4 @@
-import { useState, useEffect, Fragment, useCallback } from "react";
+import { useState, useEffect, Fragment, useCallback, useMemo } from "react";
 import UpiPaymentModal from "../components/payment/UpiPaymentModal";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import {
@@ -129,6 +129,15 @@ export default function Plans() {
 
   const [loadingStatus, setLoadingStatus] = useState(true);
 
+  // Dealer Special Offers State (Task 3)
+  const [dealerOffers, setDealerOffers] = useState([]);
+  const [loadingOffers, setLoadingOffers] = useState(false);
+  const [promoCodeInput, setPromoCodeInput] = useState("");
+  const [appliedOffer, setAppliedOffer] = useState(null);
+  const [promoValidating, setPromoValidating] = useState(false);
+  const [promoMessage, setPromoMessage] = useState({ type: "", text: "" });
+  const [billingCycle, setBillingCycle] = useState("ANNUAL"); // 'ANNUAL' | 'MONTHLY'
+
   const [checkoutModal, setCheckoutModal] = useState({
     open: false,
     plan: null,
@@ -240,6 +249,71 @@ export default function Plans() {
     };
   }, [updateSubscription]);
 
+  // Fetch active dealer promotional offers whenever billingCycle changes
+  useEffect(() => {
+    let mounted = true;
+    subscriptionApi
+      .getDealerOffers({ billingCycle })
+      .then((res) => {
+        if (mounted && res && res.offers) {
+          setDealerOffers(res.offers);
+        }
+      })
+      .catch((err) => {
+        console.warn("Notice: could not load dealer offers:", err);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [billingCycle]);
+
+  // Handler to validate dealer promo code with backend API
+  const handleApplyPromoCode = async (codeToValidate, targetPlanTier) => {
+    const code = (codeToValidate || promoCodeInput).trim().toUpperCase();
+    if (!code) {
+      setPromoMessage({ type: "error", text: "Please enter a valid dealer promo code." });
+      return;
+    }
+    setPromoValidating(true);
+    setPromoMessage({ type: "", text: "" });
+    try {
+      const tier = targetPlanTier || checkoutModal.plan?.tier || "PRO";
+      const res = await subscriptionApi.validateDealerOffer({
+        code,
+        planTier: tier,
+        billingCycle,
+      });
+      if (res && res.valid) {
+        setAppliedOffer(res);
+        setPromoMessage({
+          type: "success",
+          text: `Dealer offer "${code}" applied! You save ₹${Number(res.discountAmount || 0).toLocaleString("en-IN")}.`,
+        });
+      } else {
+        setAppliedOffer(null);
+        setPromoMessage({
+          type: "error",
+          text: res?.message || "Invalid or expired dealer promo code.",
+        });
+      }
+    } catch (err) {
+      setAppliedOffer(null);
+      setPromoMessage({
+        type: "error",
+        text: err?.message || "Failed to validate dealer offer code.",
+      });
+    } finally {
+      setPromoValidating(false);
+    }
+  };
+
+  const handleRemovePromo = () => {
+    setAppliedOffer(null);
+    setPromoCodeInput("");
+    setPromoMessage({ type: "", text: "" });
+  };
+
   const saveSubData = (updated) => {
     setSubData(updated);
     const tierUpper = String(updated.currentPlan || "FREE").toUpperCase();
@@ -252,6 +326,128 @@ export default function Plans() {
         status: updated.status || "Active",
       })
     );
+  };
+
+  // Memoized dealer plans supporting Dealer Basic, Dealer Pro, and Dealer Premium with dynamic backend offers
+  const displayedDealerPlans = useMemo(() => {
+    const defaultPlans = [
+      {
+        planName: "Dealer Basic",
+        badge: "Limited Offer",
+        code: "DEALERBASIC20",
+        discountType: "PERCENTAGE",
+        discountValue: 20,
+        applicablePlans: ["BASIC", "FREE"],
+        originalPrice: billingCycle === "MONTHLY" ? 69 : 499,
+        discountedPrice: billingCycle === "MONTHLY" ? 55 : 399,
+        savingsAmount: billingCycle === "MONTHLY" ? 14 : 100,
+        discountPercentage: 20,
+        billingDuration: billingCycle === "MONTHLY" ? "Monthly" : "Annual",
+        features: [
+          "500 included bills & instant credit reload",
+          "Unified product inventory & stock overview",
+          "A4 & A5 standard print invoice formats",
+          "Daily and monthly sales & stock valuation reports",
+          "Single-user owner account (0 sub-users)",
+        ],
+        validUntil: "2026-12-31",
+      },
+      {
+        planName: "Dealer Pro",
+        badge: "Dealer Special",
+        code: "DEALER30",
+        discountType: "PERCENTAGE",
+        discountValue: 30,
+        applicablePlans: ["PRO"],
+        originalPrice: billingCycle === "MONTHLY" ? 199 : 1499,
+        discountedPrice: billingCycle === "MONTHLY" ? 139 : 1049,
+        savingsAmount: billingCycle === "MONTHLY" ? 60 : 450,
+        discountPercentage: 30,
+        billingDuration: billingCycle === "MONTHLY" ? "Monthly" : "Annual",
+        features: [
+          "Unlimited bills for 1 full year",
+          "Up to 5 Team & Cashier Sub-Users",
+          "Thermal 80mm POS receipt roll printer driver",
+          "Direct Bank details & scan-to-pay UPI QR on invoices",
+          "Multi-godown stock transfer & inventory ledger",
+          "WhatsApp invoice PDF sharing & dispatch alerts",
+        ],
+        validUntil: "2026-12-31",
+      },
+      {
+        planName: "Dealer Premium",
+        badge: "Best Value",
+        code: "DEALERVIP40",
+        discountType: "PERCENTAGE",
+        discountValue: 40,
+        applicablePlans: ["PREMIUM"],
+        originalPrice: billingCycle === "MONTHLY" ? 349 : 2999,
+        discountedPrice: billingCycle === "MONTHLY" ? 209 : 1799,
+        savingsAmount: billingCycle === "MONTHLY" ? 140 : 1200,
+        discountPercentage: 40,
+        billingDuration: billingCycle === "MONTHLY" ? "Monthly" : "Annual",
+        features: [
+          "Unlimited bills & unlimited sub-users",
+          "CA Connect — Chartered Accountant collaboration portal",
+          "Custom Roles & Permissions Studio",
+          "Thermal 58mm ultra-compact mobile handheld roll",
+          "Granular multi-godown transfers & CMP-08 filing prep",
+          "Priority partner-level phone & remote assistance",
+        ],
+        validUntil: "2026-12-31",
+      },
+    ];
+
+    if (!dealerOffers || dealerOffers.length === 0) {
+      return defaultPlans;
+    }
+
+    return defaultPlans.map((dp) => {
+      const match = dealerOffers.find(
+        (o) =>
+          (o.code && o.code.toUpperCase() === dp.code.toUpperCase()) ||
+          (o.dealerPlan && o.dealerPlan.toUpperCase() === dp.planName.toUpperCase())
+      );
+      if (!match) return dp;
+
+      return {
+        ...dp,
+        planName: match.dealerPlan || dp.planName,
+        badge: match.badge || dp.badge,
+        code: match.code || dp.code,
+        discountPercentage: match.discountPercentage ?? match.discountValue ?? dp.discountPercentage,
+        originalPrice: match.originalPrice ?? dp.originalPrice,
+        discountedPrice: match.discountedPrice ?? dp.discountedPrice,
+        savingsAmount: match.savingsAmount ?? dp.savingsAmount,
+        billingDuration: match.billingDuration || dp.billingDuration,
+        features: (match.dealerBenefits && match.dealerBenefits.length > 0) ? match.dealerBenefits : dp.features,
+        validUntil: match.validUntil || dp.validUntil,
+      };
+    });
+  }, [dealerOffers, billingCycle]);
+
+  const handleSubscribeDealerPlan = (plan) => {
+    setPromoCodeInput(plan.code);
+    const targetTier =
+      plan.planName.toUpperCase().includes("PREMIUM")
+        ? "PREMIUM"
+        : plan.planName.toUpperCase().includes("PRO")
+        ? "PRO"
+        : "PRO";
+
+    const matchedPlan = plans.find((p) => p.tier === targetTier) || plans[1];
+
+    handleApplyPromoCode(plan.code, targetTier);
+    setCheckoutModal({
+      open: true,
+      plan: {
+        ...matchedPlan,
+        name: plan.planName,
+        amount: plan.discountedPrice || matchedPlan.amount,
+        price: `₹${Number(plan.discountedPrice || matchedPlan.amount).toLocaleString("en-IN")}`,
+      },
+      extraBills: false,
+    });
   };
 
   const plans = [
@@ -486,10 +682,11 @@ export default function Plans() {
         : (checkoutModal.plan.tier || checkoutModal.plan.name).toUpperCase();
       const targetPlanName = checkoutModal.plan.name;
 
-      // 1. Create order on backend
+      // 1. Create order on backend with dealer offer discount
       const orderData = await subscriptionApi.createRazorpayOrder({
         planTier: targetPlanTier,
         billingCycle: "ANNUAL",
+        dealerOfferCode: appliedOffer?.code || undefined,
       });
 
       if (!orderData || !orderData.orderId) {
@@ -620,13 +817,14 @@ export default function Plans() {
       let upgradeResult = null;
       if (!checkoutModal.extraBills) {
         try {
-          // Authoritatively verify and persist upgrade to backend DB
+          // Authoritatively verify and persist upgrade to backend DB with dealer discount
           upgradeResult = await subscriptionApi.verifyPayment({
             planTier: targetPlanTier,
-            amount: checkoutModal.plan.amount,
+            amount: appliedOffer ? appliedOffer.discountedPrice : checkoutModal.plan.amount,
             billingCycle: "ANNUAL",
             paymentReference: paymentRef,
             paymentMethod: "UPI",
+            dealerOfferCode: appliedOffer?.code || undefined,
           });
         } catch (apiErr) {
           console.warn("[Plans] verifyPayment backend notice:", apiErr);
@@ -745,7 +943,7 @@ export default function Plans() {
       items: [
         { feature: "Validity Period", free: "1 Year (365 Days)", pro: "1 Year (365 Days)", premium: "1 Year (365 Days)" },
         { feature: "Bills / Invoices Allowance", free: "100 Bills (+ 500 Packs)", pro: "Unlimited Bills", premium: "Unlimited Bills" },
-        { feature: "Product Catalog & Stock Management", free: "Included", pro: "Included", premium: "Included" },
+        { feature: "Product Inventory & Stock Management", free: "Included", pro: "Included", premium: "Included" },
         { feature: "Multi-Godown / Warehouse Transfers", free: "Included", pro: "Included", premium: "Included" },
       ],
     },
@@ -847,7 +1045,194 @@ export default function Plans() {
       </div>
 
       {/* ══════════════════════════════════════════════════
-          2. THREE PRICING TIERS
+          2. DEALER PARTNER & SPECIAL OFFERS SECTION (TASK 3)
+      ══════════════════════════════════════════════════ */}
+      <div className="bg-gradient-to-r from-blue-50/80 via-indigo-50/60 to-purple-50/80 rounded-2xl border border-blue-200/80 p-5 sm:p-6 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-600 text-white uppercase tracking-wider">
+                Dealer &amp; Partner Program
+              </span>
+              <span className="text-xs font-semibold text-blue-900">
+                Exclusive Volume &amp; Franchise Discounts
+              </span>
+            </div>
+            <h3 className="text-lg font-bold text-slate-900 mt-1 tracking-tight">
+              Dealer Special Offers &amp; Partner Pricing
+            </h3>
+            <p className="text-xs text-slate-600 mt-0.5">
+              Verified dealers, distributors, and franchise partners receive exclusive discounted pricing on Pro and Premium tiers.
+            </p>
+          </div>
+
+          {/* Billing Cycle Switcher */}
+          <div className="inline-flex rounded-xl p-1 bg-white border border-blue-200 self-start sm:self-auto shadow-xs text-xs font-semibold">
+            <button
+              type="button"
+              onClick={() => setBillingCycle("ANNUAL")}
+              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                billingCycle === "ANNUAL"
+                  ? "bg-blue-600 text-white shadow-xs"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              Annual (Best Value)
+            </button>
+            <button
+              type="button"
+              onClick={() => setBillingCycle("MONTHLY")}
+              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                billingCycle === "MONTHLY"
+                  ? "bg-blue-600 text-white shadow-xs"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              Monthly Options
+            </button>
+          </div>
+        </div>
+
+        {/* Dealer Plans Subscription Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 pt-2">
+          {displayedDealerPlans.map((plan) => {
+            const isApplied = appliedOffer?.code === plan.code;
+            const badgeColor =
+              plan.badge === "Best Value"
+                ? "bg-amber-100 text-amber-900 border-amber-300"
+                : plan.badge === "Limited Offer"
+                ? "bg-rose-100 text-rose-900 border-rose-300"
+                : "bg-blue-100 text-blue-900 border-blue-300";
+
+            return (
+              <div
+                key={plan.code || plan.planName}
+                className={`bg-white rounded-2xl p-5 sm:p-6 border transition-all flex flex-col justify-between relative shadow-xs hover:shadow-md ${
+                  plan.badge === "Best Value"
+                    ? "border-amber-300 ring-2 ring-amber-400/20"
+                    : isApplied
+                    ? "border-emerald-500 ring-2 ring-emerald-500/20"
+                    : "border-blue-200/90 hover:border-blue-400"
+                }`}
+              >
+                <div>
+                  {/* Top Bar: Plan Name & Badges */}
+                  <div className="flex items-start justify-between gap-2 mb-3">
+                    <div>
+                      <h4 className="text-lg font-bold text-slate-900 tracking-tight">
+                        {plan.planName}
+                      </h4>
+                      <span className="font-mono text-[10px] text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200 font-semibold inline-block mt-0.5">
+                        Code: {plan.code}
+                      </span>
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shadow-2xs ${badgeColor}`}>
+                        {plan.badge}
+                      </span>
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                        {plan.discountPercentage}% OFF
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Pricing Details */}
+                  <div className="mb-4 p-3 rounded-xl bg-slate-50 border border-slate-100 space-y-1">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-xs text-slate-400 line-through font-mono">
+                        ₹{Number(plan.originalPrice).toLocaleString("en-IN")}
+                      </span>
+                      <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                        ₹{Number(plan.discountedPrice).toLocaleString("en-IN")}
+                      </span>
+                      <span className="text-xs font-semibold text-slate-500">
+                        / {billingCycle === "MONTHLY" ? "month" : "year"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] pt-1.5 border-t border-slate-200/60">
+                      <span className="font-semibold text-emerald-700">
+                        Savings: ₹{Number(plan.savingsAmount).toLocaleString("en-IN")}
+                      </span>
+                      <span className="text-slate-500 font-medium">
+                        Duration: {plan.billingDuration}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Included Features */}
+                  <div className="space-y-2 mb-6">
+                    <p className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                      Included Features:
+                    </p>
+                    <ul className="space-y-2 text-xs text-slate-600">
+                      {plan.features.map((feat, idx) => (
+                        <li key={idx} className="flex items-start gap-2">
+                          <CheckCircle2 size={14} className="text-emerald-500 shrink-0 mt-0.5" />
+                          <span className="leading-snug">{feat}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+
+                {/* Card Footer: Expiry & Subscribe Now Button */}
+                <div className="pt-4 border-t border-slate-100 space-y-2.5">
+                  <div className="flex items-center justify-between text-[11px] text-slate-400">
+                    <span className="flex items-center gap-1">
+                      <Clock size={12} className="text-slate-400" />
+                      <span>
+                        Expires:{" "}
+                        {plan.validUntil
+                          ? new Date(plan.validUntil).toLocaleDateString("en-GB", {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                            })
+                          : "31 Dec 2026"}
+                      </span>
+                    </span>
+                    {isApplied && (
+                      <span className="text-[10px] font-bold text-emerald-700">Applied ✓</span>
+                    )}
+                  </div>
+
+                  <Button
+                    variant="primary"
+                    icon={Zap}
+                    onClick={() => handleSubscribeDealerPlan(plan)}
+                    className="w-full justify-center shadow-xs"
+                  >
+                    Subscribe Now
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Dealer Benefits Comparison */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2 border-t border-blue-200/60 text-xs">
+          <div className="bg-white/80 rounded-xl p-2.5 border border-blue-100/80">
+            <p className="font-bold text-blue-900 text-[11px]">Special Dealer Pricing</p>
+            <p className="text-[10px] text-slate-500 mt-0.5">Up to 40% margin on retail client activations</p>
+          </div>
+          <div className="bg-white/80 rounded-xl p-2.5 border border-blue-100/80">
+            <p className="font-bold text-blue-900 text-[11px]">Multi-Store Godowns</p>
+            <p className="text-[10px] text-slate-500 mt-0.5">Centralized inventory transfers between outlets</p>
+          </div>
+          <div className="bg-white/80 rounded-xl p-2.5 border border-blue-100/80">
+            <p className="font-bold text-blue-900 text-[11px]">Thermal &amp; POS SDK</p>
+            <p className="text-[10px] text-slate-500 mt-0.5">Thermal 80mm &amp; 58mm printer drivers included</p>
+          </div>
+          <div className="bg-white/80 rounded-xl p-2.5 border border-blue-100/80">
+            <p className="font-bold text-blue-900 text-[11px]">Dedicated CA Support</p>
+            <p className="text-[10px] text-slate-500 mt-0.5">Priority audit portal &amp; GST compliance</p>
+          </div>
+        </div>
+      </div>
+
+      {/* ══════════════════════════════════════════════════
+          3. THREE PRICING TIERS
       ══════════════════════════════════════════════════ */}
       <div className="space-y-3">
         <div className="text-center sm:text-left">
@@ -1205,10 +1590,101 @@ export default function Plans() {
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-base font-black text-slate-900">{checkoutModal.plan.price}</p>
+                  {appliedOffer && !checkoutModal.extraBills ? (
+                    <div>
+                      <p className="text-xs line-through text-slate-400 font-mono">
+                        {checkoutModal.plan.price}
+                      </p>
+                      <p className="text-base font-black text-emerald-700 font-mono">
+                        ₹{Number(appliedOffer.discountedPrice).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-base font-black text-slate-900">{checkoutModal.plan.price}</p>
+                  )}
                   <span className="text-[10px] text-emerald-600 font-bold">18% GST Included</span>
                 </div>
               </div>
+
+              {/* Dealer Promo Code Input & Verification (Task 3) */}
+              {!checkoutModal.extraBills && (
+                <div className="p-3.5 rounded-xl bg-blue-50/50 border border-blue-200/80 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-800 text-[11px] flex items-center gap-1.5">
+                      <Sparkles size={13} className="text-blue-600" />
+                      <span>Have a Dealer Offer Code?</span>
+                    </span>
+                    {appliedOffer && (
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full">
+                        Offer Active
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={promoCodeInput}
+                      onChange={(e) => setPromoCodeInput(e.target.value.toUpperCase())}
+                      placeholder="e.g. DEALER30, DEALER500"
+                      disabled={Boolean(appliedOffer)}
+                      className="flex-1 px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-900 font-mono text-xs uppercase focus:outline-none focus:border-blue-500 disabled:bg-slate-100"
+                    />
+                    {appliedOffer ? (
+                      <button
+                        type="button"
+                        onClick={handleRemovePromo}
+                        className="px-3 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold cursor-pointer transition"
+                      >
+                        Remove
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleApplyPromoCode(promoCodeInput, checkoutModal.plan?.tier)}
+                        disabled={promoValidating || !promoCodeInput.trim()}
+                        className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold cursor-pointer transition disabled:opacity-50"
+                      >
+                        {promoValidating ? "Checking..." : "Apply"}
+                      </button>
+                    )}
+                  </div>
+
+                  {promoMessage.text && (
+                    <p
+                      className={`text-[11px] font-medium ${
+                        promoMessage.type === "success" ? "text-emerald-700" : "text-rose-600"
+                      }`}
+                    >
+                      {promoMessage.text}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Price Calculation Summary */}
+              {appliedOffer && !checkoutModal.extraBills && (
+                <div className="p-3.5 rounded-xl bg-emerald-50/60 border border-emerald-200 space-y-1.5">
+                  <div className="flex items-center justify-between text-slate-600 text-[11px]">
+                    <span>Original Price:</span>
+                    <span className="line-through font-mono">
+                      ₹{Number(appliedOffer.originalPrice || checkoutModal.plan.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-emerald-700 font-semibold text-[11px]">
+                    <span>Dealer Discount ({appliedOffer.code}):</span>
+                    <span className="font-mono">
+                      - ₹{Number(appliedOffer.discountAmount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  <div className="pt-1.5 border-t border-emerald-200/80 flex items-center justify-between text-slate-900 font-bold text-xs">
+                    <span>Discounted Payable Total:</span>
+                    <span className="text-base text-emerald-800 font-mono font-black">
+                      ₹{Number(appliedOffer.discountedPrice || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                </div>
+              )}
 
               <div className="p-3.5 rounded-xl border border-dashed border-slate-300 flex items-center gap-3">
                 <QrCode size={36} className="text-blue-600 shrink-0" />

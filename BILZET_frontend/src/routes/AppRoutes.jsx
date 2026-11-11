@@ -376,7 +376,7 @@ export default function AppRoutes() {
         path="/onboarding"
         element={
           <AuthenticatedOnly>
-            <RegisterShopGuard />
+            <JoinTeam />
           </AuthenticatedOnly>
         }
       />
