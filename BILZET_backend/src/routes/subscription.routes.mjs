@@ -120,7 +120,7 @@ router.post(
         planTier,
         billingCycle,
       });
-      overrideAmount = validated.pricing.finalAmount;
+      overrideAmount = validated.pricing.totalWithGst || validated.pricing.finalAmount;
     }
 
     const order = await razorpayService.createSubscriptionCheckoutOrder({
@@ -180,7 +180,7 @@ router.post(
         planTier: normalizedTier,
         billingCycle,
       });
-      finalAmount = validated.pricing.finalAmount;
+      finalAmount = validated.pricing.totalWithGst || validated.pricing.finalAmount;
       appliedOffer = validated.offer;
       await dealerOfferService.recordRedemption(dealerOfferCode);
     }
@@ -189,9 +189,10 @@ router.post(
       businessId: req.user.businessId,
       userId: req.user.id,
       planTier: normalizedTier,
+      billingCycle: String(billingCycle).toUpperCase() === 'MONTHLY' ? 'MONTHLY' : 'ANNUAL',
       amount: finalAmount,
       paymentReference: paymentReference || `SW-${Date.now()}`,
-      durationDays: billingCycle === 'MONTHLY' ? 30 : 365,
+      durationDays: String(billingCycle).toUpperCase() === 'MONTHLY' ? 30 : 365,
     });
 
     return sendResponse(

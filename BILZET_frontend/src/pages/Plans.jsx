@@ -330,47 +330,52 @@ export default function Plans() {
 
   // Memoized dealer plans supporting Dealer Basic, Dealer Pro, and Dealer Premium with dynamic backend offers
   const displayedDealerPlans = useMemo(() => {
+    const isMonthly = billingCycle === "MONTHLY";
     const defaultPlans = [
       {
         planName: "Dealer Basic",
-        badge: "Limited Offer",
+        badge: "Entry-level plan",
         code: "DEALERBASIC20",
         discountType: "PERCENTAGE",
         discountValue: 20,
-        applicablePlans: ["BASIC", "FREE"],
-        originalPrice: billingCycle === "MONTHLY" ? 69 : 499,
-        discountedPrice: billingCycle === "MONTHLY" ? 55 : 399,
-        savingsAmount: billingCycle === "MONTHLY" ? 14 : 100,
+        applicablePlans: ["BASIC", "DEALER_BASIC", "FREE", "PRO"],
+        originalPrice: isMonthly ? 199 : 2388,
+        discountedPrice: isMonthly ? 159 : 1910,
+        savingsAmount: isMonthly ? 40 : 478,
         discountPercentage: 20,
-        billingDuration: billingCycle === "MONTHLY" ? "Monthly" : "Annual",
+        billingDuration: isMonthly ? "Monthly" : "Annual (365 Days)",
+        durationLabel: isMonthly ? "/month" : "/year",
         features: [
-          "500 included bills & instant credit reload",
-          "Unified product inventory & stock overview",
-          "A4 & A5 standard print invoice formats",
-          "Daily and monthly sales & stock valuation reports",
-          "Single-user owner account (0 sub-users)",
+          "Billing & Invoicing",
+          "Product Catalog",
+          "Basic Inventory",
+          "Customer and Supplier Management",
+          "Basic Sales Reports",
+          "500 included bills/month",
         ],
         validUntil: "2026-12-31",
       },
       {
         planName: "Dealer Pro",
-        badge: "Dealer Special",
+        badge: "Most Popular",
         code: "DEALER30",
         discountType: "PERCENTAGE",
         discountValue: 30,
-        applicablePlans: ["PRO"],
-        originalPrice: billingCycle === "MONTHLY" ? 199 : 1499,
-        discountedPrice: billingCycle === "MONTHLY" ? 139 : 1049,
-        savingsAmount: billingCycle === "MONTHLY" ? 60 : 450,
+        applicablePlans: ["PRO", "DEALER_PRO"],
+        originalPrice: isMonthly ? 349 : 4188,
+        discountedPrice: isMonthly ? 244 : 2932,
+        savingsAmount: isMonthly ? 105 : 1256,
         discountPercentage: 30,
-        billingDuration: billingCycle === "MONTHLY" ? "Monthly" : "Annual",
+        billingDuration: isMonthly ? "Monthly" : "Annual (365 Days)",
+        durationLabel: isMonthly ? "/month" : "/year",
         features: [
-          "Unlimited bills for 1 full year",
-          "Up to 5 Team & Cashier Sub-Users",
-          "Thermal 80mm POS receipt roll printer driver",
-          "Direct Bank details & scan-to-pay UPI QR on invoices",
-          "Multi-godown stock transfer & inventory ledger",
-          "WhatsApp invoice PDF sharing & dispatch alerts",
+          "Everything in Basic",
+          "Advanced Stock Overview",
+          "Stock Movements",
+          "Purchase Management",
+          "Advanced Reports and Analytics",
+          "GST Reports",
+          "Expanded Multi-user Access",
         ],
         validUntil: "2026-12-31",
       },
@@ -380,19 +385,22 @@ export default function Plans() {
         code: "DEALERVIP40",
         discountType: "PERCENTAGE",
         discountValue: 40,
-        applicablePlans: ["PREMIUM"],
-        originalPrice: billingCycle === "MONTHLY" ? 349 : 2999,
-        discountedPrice: billingCycle === "MONTHLY" ? 209 : 1799,
-        savingsAmount: billingCycle === "MONTHLY" ? 140 : 1200,
+        applicablePlans: ["PREMIUM", "DEALER_PREMIUM"],
+        originalPrice: isMonthly ? 499 : 5988,
+        discountedPrice: isMonthly ? 299 : 3593,
+        savingsAmount: isMonthly ? 200 : 2395,
         discountPercentage: 40,
-        billingDuration: billingCycle === "MONTHLY" ? "Monthly" : "Annual",
+        billingDuration: isMonthly ? "Monthly" : "Annual (365 Days)",
+        durationLabel: isMonthly ? "/month" : "/year",
         features: [
-          "Unlimited bills & unlimited sub-users",
-          "CA Connect — Chartered Accountant collaboration portal",
-          "Custom Roles & Permissions Studio",
-          "Thermal 58mm ultra-compact mobile handheld roll",
-          "Granular multi-godown transfers & CMP-08 filing prep",
-          "Priority partner-level phone & remote assistance",
+          "Everything in Pro",
+          "Multi-Store Management",
+          "Advanced Staff Management",
+          "Role and Permission Management",
+          "CA Connect",
+          "Advanced GST Analytics",
+          "Centralized Inventory",
+          "Priority Support",
         ],
         validUntil: "2026-12-31",
       },
@@ -420,6 +428,7 @@ export default function Plans() {
         discountedPrice: match.discountedPrice ?? dp.discountedPrice,
         savingsAmount: match.savingsAmount ?? dp.savingsAmount,
         billingDuration: match.billingDuration || dp.billingDuration,
+        durationLabel: match.durationLabel || dp.durationLabel,
         features: (match.dealerBenefits && match.dealerBenefits.length > 0) ? match.dealerBenefits : dp.features,
         validUntil: match.validUntil || dp.validUntil,
       };
@@ -431,8 +440,6 @@ export default function Plans() {
     const targetTier =
       plan.planName.toUpperCase().includes("PREMIUM")
         ? "PREMIUM"
-        : plan.planName.toUpperCase().includes("PRO")
-        ? "PRO"
         : "PRO";
 
     const matchedPlan = plans.find((p) => p.tier === targetTier) || plans[1];
@@ -443,6 +450,7 @@ export default function Plans() {
       plan: {
         ...matchedPlan,
         name: plan.planName,
+        tier: targetTier,
         amount: plan.discountedPrice || matchedPlan.amount,
         price: `₹${Number(plan.discountedPrice || matchedPlan.amount).toLocaleString("en-IN")}`,
       },
@@ -683,9 +691,10 @@ export default function Plans() {
       const targetPlanName = checkoutModal.plan.name;
 
       // 1. Create order on backend with dealer offer discount
+      const effectiveCycle = billingCycle || "ANNUAL";
       const orderData = await subscriptionApi.createRazorpayOrder({
         planTier: targetPlanTier,
-        billingCycle: "ANNUAL",
+        billingCycle: effectiveCycle,
         dealerOfferCode: appliedOffer?.code || undefined,
       });
 
@@ -699,7 +708,7 @@ export default function Plans() {
         amount: orderData.amount,
         currency: orderData.currency || "INR",
         name: "BILZET ERP",
-        description: `${targetPlanName} - Annual Subscription`,
+        description: `${targetPlanName} - ${effectiveCycle === "MONTHLY" ? "Monthly" : "Annual"} Subscription`,
         order_id: orderData.orderId,
         prefill: {
           name: authUser?.name || "Business Owner",
@@ -717,7 +726,7 @@ export default function Plans() {
               paymentId: response.razorpay_payment_id,
               signature: response.razorpay_signature,
               planTier: targetPlanTier,
-              billingCycle: "ANNUAL",
+              billingCycle: effectiveCycle,
             });
 
             if (verifyRes?.success || verifyRes?.subscription) {
@@ -818,10 +827,12 @@ export default function Plans() {
       if (!checkoutModal.extraBills) {
         try {
           // Authoritatively verify and persist upgrade to backend DB with dealer discount
+          const effectiveCycle = billingCycle || "ANNUAL";
+          const payableTotal = appliedOffer ? (appliedOffer.totalWithGst || appliedOffer.discountedPrice) : checkoutModal.plan.amount;
           upgradeResult = await subscriptionApi.verifyPayment({
             planTier: targetPlanTier,
-            amount: appliedOffer ? appliedOffer.discountedPrice : checkoutModal.plan.amount,
-            billingCycle: "ANNUAL",
+            amount: payableTotal,
+            billingCycle: effectiveCycle,
             paymentReference: paymentRef,
             paymentMethod: "UPI",
             dealerOfferCode: appliedOffer?.code || undefined,
@@ -829,7 +840,8 @@ export default function Plans() {
         } catch (apiErr) {
           console.warn("[Plans] verifyPayment backend notice:", apiErr);
           // If offline or network timeout, provision clean authorized plan fallback
-          const expDate = new Date(Date.now() + 365 * 24 * 3600 * 1000).toISOString();
+          const durationDays = (billingCycle || "ANNUAL") === "MONTHLY" ? 30 : 365;
+          const expDate = new Date(Date.now() + durationDays * 24 * 3600 * 1000).toISOString();
           upgradeResult = {
             planTier: targetPlanTier,
             status: "ACTIVE",
@@ -1066,29 +1078,32 @@ export default function Plans() {
             </p>
           </div>
 
-          {/* Billing Cycle Switcher */}
+          {/* Professional Billing Cycle Switcher */}
           <div className="inline-flex rounded-xl p-1 bg-white border border-blue-200 self-start sm:self-auto shadow-xs text-xs font-semibold">
             <button
               type="button"
-              onClick={() => setBillingCycle("ANNUAL")}
-              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                billingCycle === "ANNUAL"
-                  ? "bg-blue-600 text-white shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              Annual (Best Value)
-            </button>
-            <button
-              type="button"
               onClick={() => setBillingCycle("MONTHLY")}
-              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+              className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer font-bold ${
                 billingCycle === "MONTHLY"
                   ? "bg-blue-600 text-white shadow-xs"
                   : "text-slate-600 hover:text-slate-900"
               }`}
             >
-              Monthly Options
+              Monthly
+            </button>
+            <button
+              type="button"
+              onClick={() => setBillingCycle("ANNUAL")}
+              className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer font-bold flex items-center gap-1.5 ${
+                billingCycle === "ANNUAL"
+                  ? "bg-blue-600 text-white shadow-xs"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <span>Yearly (Best Savings)</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${billingCycle === "ANNUAL" ? "bg-white/20 text-white" : "bg-emerald-100 text-emerald-800"}`}>
+                SAVE UP TO 40%
+              </span>
             </button>
           </div>
         </div>
@@ -1100,9 +1115,9 @@ export default function Plans() {
             const badgeColor =
               plan.badge === "Best Value"
                 ? "bg-amber-100 text-amber-900 border-amber-300"
-                : plan.badge === "Limited Offer"
-                ? "bg-rose-100 text-rose-900 border-rose-300"
-                : "bg-blue-100 text-blue-900 border-blue-300";
+                : plan.badge === "Most Popular"
+                ? "bg-blue-100 text-blue-900 border-blue-300"
+                : "bg-emerald-100 text-emerald-900 border-emerald-300";
 
             return (
               <div
@@ -1110,6 +1125,8 @@ export default function Plans() {
                 className={`bg-white rounded-2xl p-5 sm:p-6 border transition-all flex flex-col justify-between relative shadow-xs hover:shadow-md ${
                   plan.badge === "Best Value"
                     ? "border-amber-300 ring-2 ring-amber-400/20"
+                    : plan.badge === "Most Popular"
+                    ? "border-blue-400 ring-2 ring-blue-500/15"
                     : isApplied
                     ? "border-emerald-500 ring-2 ring-emerald-500/20"
                     : "border-blue-200/90 hover:border-blue-400"
@@ -1146,17 +1163,20 @@ export default function Plans() {
                         ₹{Number(plan.discountedPrice).toLocaleString("en-IN")}
                       </span>
                       <span className="text-xs font-semibold text-slate-500">
-                        / {billingCycle === "MONTHLY" ? "month" : "year"}
+                        {billingCycle === "MONTHLY" ? "/month" : "/year"}
                       </span>
                     </div>
                     <div className="flex items-center justify-between text-[11px] pt-1.5 border-t border-slate-200/60">
-                      <span className="font-semibold text-emerald-700">
-                        Savings: ₹{Number(plan.savingsAmount).toLocaleString("en-IN")}
+                      <span className="font-bold text-emerald-700">
+                        Save ₹{Number(plan.savingsAmount).toLocaleString("en-IN")} {billingCycle === "MONTHLY" ? "/mo" : "/yr"}
                       </span>
                       <span className="text-slate-500 font-medium">
                         Duration: {plan.billingDuration}
                       </span>
                     </div>
+                    <p className="text-[10px] text-slate-400 pt-0.5">
+                      Promotional dealer price (excl. 18% GST)
+                    </p>
                   </div>
 
                   {/* Included Features */}
@@ -1662,7 +1682,7 @@ export default function Plans() {
                 </div>
               )}
 
-              {/* Price Calculation Summary */}
+              {/* Full Payment Breakdown at Checkout */}
               {appliedOffer && !checkoutModal.extraBills && (
                 <div className="p-3.5 rounded-xl bg-emerald-50/60 border border-emerald-200 space-y-1.5">
                   <div className="flex items-center justify-between text-slate-600 text-[11px]">
@@ -1672,15 +1692,27 @@ export default function Plans() {
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-emerald-700 font-semibold text-[11px]">
-                    <span>Dealer Discount ({appliedOffer.code}):</span>
+                    <span>Dealer Discount ({appliedOffer.discountPercentage || appliedOffer.savingsPercentage}% · {appliedOffer.code}):</span>
                     <span className="font-mono">
-                      - ₹{Number(appliedOffer.discountAmount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                      - ₹{Number(appliedOffer.savingsAmount || appliedOffer.discountAmount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-slate-700 font-medium text-[11px] pt-1 border-t border-emerald-200/50">
+                    <span>Net Price (after discount):</span>
+                    <span className="font-mono font-bold text-slate-900">
+                      ₹{Number(appliedOffer.discountedPrice || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-slate-600 text-[11px]">
+                    <span>Applicable GST (18%):</span>
+                    <span className="font-mono text-emerald-800 font-semibold">
+                      + ₹{Number(appliedOffer.gstAmount || Math.round((appliedOffer.discountedPrice || 0) * 0.18)).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                     </span>
                   </div>
                   <div className="pt-1.5 border-t border-emerald-200/80 flex items-center justify-between text-slate-900 font-bold text-xs">
-                    <span>Discounted Payable Total:</span>
+                    <span>Final Payable Total:</span>
                     <span className="text-base text-emerald-800 font-mono font-black">
-                      ₹{Number(appliedOffer.discountedPrice || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                      ₹{Number(appliedOffer.totalWithGst || ((appliedOffer.discountedPrice || 0) + Math.round((appliedOffer.discountedPrice || 0) * 0.18))).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                     </span>
                   </div>
                 </div>
@@ -1732,6 +1764,8 @@ export default function Plans() {
                 >
                   {checkoutModal.extraBills
                     ? `Pay ${checkoutModal.plan.price}`
+                    : appliedOffer
+                    ? `Pay with Razorpay (₹${Number(appliedOffer.totalWithGst || ((appliedOffer.discountedPrice || 0) + Math.round((appliedOffer.discountedPrice || 0) * 0.18))).toLocaleString("en-IN")})`
                     : `Pay with Razorpay (${checkoutModal.plan.price})`}
                 </Button>
               </div>
@@ -1759,7 +1793,7 @@ export default function Plans() {
       ══════════════════════════════════════════════════ */}
       {upiModalOpen && checkoutModal.open && checkoutModal.plan && !checkoutModal.extraBills && (
         <UpiPaymentModal
-          amount={checkoutModal.plan.amount}
+          amount={appliedOffer?.totalWithGst || appliedOffer?.pricing?.totalWithGst || checkoutModal.plan.amount}
           invoiceNumber={`SUB-${checkoutModal.plan.tier || checkoutModal.plan.name.toUpperCase()}`}
           customerName={authUser?.name || "Customer"}
           upiId="bilzet@hdfcbank"

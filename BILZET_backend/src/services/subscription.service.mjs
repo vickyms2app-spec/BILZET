@@ -308,7 +308,11 @@ export const upgradeSubscription = async ({
   const planInfo = PLAN_DETAILS[normalizedTier] || PLAN_DETAILS.PRO;
   const seatLimit = getPlanSeatLimit(normalizedTier);
   const now = new Date();
-  const endDate = new Date(now.getTime() + durationDays * 24 * 3600 * 1000);
+  const isMonthly = String(billingCycle).toUpperCase() === 'MONTHLY';
+  const effectiveDurationDays = durationDays && durationDays !== 365
+    ? durationDays
+    : (isMonthly ? 30 : (durationDays || 365));
+  const endDate = new Date(now.getTime() + effectiveDurationDays * 24 * 3600 * 1000);
 
   // If downgrading to FREE
   if (normalizedTier === 'FREE') {
@@ -432,14 +436,15 @@ export const verifyAndActivatePayment = async ({
     throw ApiError.badRequest('A valid payment transaction reference is required for verification.');
   }
 
+  const isMonthly = String(billingCycle).toUpperCase() === 'MONTHLY';
   return upgradeSubscription({
     businessId,
     userId,
     planTier: normalizedTier,
-    billingCycle,
+    billingCycle: isMonthly ? 'MONTHLY' : 'ANNUAL',
     amount: amount !== undefined ? Number(amount) : expectedAmount,
     paymentReference: String(paymentReference).trim(),
-    durationDays: 365,
+    durationDays: isMonthly ? 30 : 365,
   });
 };
 

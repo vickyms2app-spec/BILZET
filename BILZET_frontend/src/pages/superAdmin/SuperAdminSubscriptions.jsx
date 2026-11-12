@@ -33,7 +33,7 @@ export default function SuperAdminSubscriptions() {
   const [modalBusy, setModalBusy] = useState(false);
   const [msg, setMsg] = useState({ type: "", text: "" });
 
-  // Dealer Special Offers State (Task 3)
+  // Dealer Special Offers State
   const [dealerOffers, setDealerOffers] = useState([]);
   const [loadingOffers, setLoadingOffers] = useState(false);
   const [offerModalOpen, setOfferModalOpen] = useState(false);
@@ -41,10 +41,15 @@ export default function SuperAdminSubscriptions() {
   const [offerForm, setOfferForm] = useState({
     code: "",
     title: "",
+    dealerPlan: "Dealer Pro",
+    badge: "Most Popular",
     description: "",
     discountType: "PERCENTAGE",
     discountValue: 30,
-    applicableTiers: ["PRO", "PREMIUM"],
+    monthlyOriginalPrice: 349,
+    yearlyOriginalPrice: 4188,
+    applicableTiers: ["PRO"],
+    dealerBenefits: "",
     validUntil: "",
     maxRedemptions: "",
     isActive: true,
@@ -132,12 +137,17 @@ export default function SuperAdminSubscriptions() {
     setOfferForm({
       code: "",
       title: "",
+      dealerPlan: "Dealer Pro",
+      badge: "Most Popular",
       description: "",
       discountType: "PERCENTAGE",
       discountValue: 30,
-      applicableTiers: ["PRO", "PREMIUM"],
+      monthlyOriginalPrice: 349,
+      yearlyOriginalPrice: 4188,
+      applicableTiers: ["PRO"],
+      dealerBenefits: "Everything in Basic\nAdvanced Stock Overview\nStock Movements\nPurchase Management\nAdvanced Reports and Analytics\nGST Reports\nExpanded Multi-user Access",
       validUntil: "",
-      maxRedemptions: "",
+      maxRedemptions: "1000",
       isActive: true,
     });
     setOfferModalOpen(true);
@@ -145,18 +155,70 @@ export default function SuperAdminSubscriptions() {
 
   const openEditOffer = (offer) => {
     setEditingOffer(offer);
+    const planName = offer.dealerPlan || (offer.title?.includes("Premium") ? "Dealer Premium" : offer.title?.includes("Basic") ? "Dealer Basic" : "Dealer Pro");
+    const mOrig = offer.monthlyOriginalPrice || (planName === "Dealer Premium" ? 499 : planName === "Dealer Pro" ? 349 : 199);
+    const yOrig = offer.yearlyOriginalPrice || (planName === "Dealer Premium" ? 5988 : planName === "Dealer Pro" ? 4188 : 2388);
+    const benefitsStr = Array.isArray(offer.dealerBenefits)
+      ? offer.dealerBenefits.join("\n")
+      : typeof offer.dealerBenefits === "string"
+      ? offer.dealerBenefits
+      : "";
+
     setOfferForm({
       code: offer.code,
       title: offer.title || "",
+      dealerPlan: planName,
+      badge: offer.badge || (planName === "Dealer Premium" ? "Best Value" : planName === "Dealer Pro" ? "Most Popular" : "Entry-level plan"),
       description: offer.description || "",
       discountType: offer.discountType || "PERCENTAGE",
-      discountValue: offer.discountValue || 30,
-      applicableTiers: offer.applicableTiers || ["PRO", "PREMIUM"],
+      discountValue: offer.discountValue !== undefined ? offer.discountValue : 30,
+      monthlyOriginalPrice: mOrig,
+      yearlyOriginalPrice: yOrig,
+      applicableTiers: offer.applicablePlans || offer.applicableTiers || ["PRO"],
+      dealerBenefits: benefitsStr,
       validUntil: offer.validUntil ? new Date(offer.validUntil).toISOString().split("T")[0] : "",
       maxRedemptions: offer.maxRedemptions ? String(offer.maxRedemptions) : "",
       isActive: offer.isActive !== false,
     });
     setOfferModalOpen(true);
+  };
+
+  const handlePlanSelectionChange = (planName) => {
+    let defaults = {
+      dealerPlan: planName,
+      badge: "Most Popular",
+      monthlyOriginalPrice: 349,
+      yearlyOriginalPrice: 4188,
+      discountValue: 30,
+      applicableTiers: ["PRO"],
+      dealerBenefits: "Everything in Basic\nAdvanced Stock Overview\nStock Movements\nPurchase Management\nAdvanced Reports and Analytics\nGST Reports\nExpanded Multi-user Access",
+    };
+    if (planName === "Dealer Basic") {
+      defaults = {
+        dealerPlan: planName,
+        badge: "Entry-level plan",
+        monthlyOriginalPrice: 199,
+        yearlyOriginalPrice: 2388,
+        discountValue: 20,
+        applicableTiers: ["BASIC", "FREE", "PRO"],
+        dealerBenefits: "Billing & Invoicing\nProduct Catalog\nBasic Inventory\nCustomer and Supplier Management\nBasic Sales Reports\n500 included bills/month",
+      };
+    } else if (planName === "Dealer Premium") {
+      defaults = {
+        dealerPlan: planName,
+        badge: "Best Value",
+        monthlyOriginalPrice: 499,
+        yearlyOriginalPrice: 5988,
+        discountValue: 40,
+        applicableTiers: ["PREMIUM"],
+        dealerBenefits: "Everything in Pro\nMulti-Store Management\nAdvanced Staff Management\nRole and Permission Management\nCA Connect\nAdvanced GST Analytics\nCentralized Inventory\nPriority Support",
+      };
+    }
+    setOfferForm((prev) => ({
+      ...prev,
+      ...defaults,
+      title: prev.title ? prev.title : `${planName} Plan`,
+    }));
   };
 
   const handleSaveOffer = async (e) => {
@@ -165,15 +227,61 @@ export default function SuperAdminSubscriptions() {
       alert("Offer code is required.");
       return;
     }
+
+    // Client-side Hierarchy Pre-Check
+    const mBase = Number(offerForm.monthlyOriginalPrice || 0);
+    const yBase = Number(offerForm.yearlyOriginalPrice || 0);
+    const disc = Number(offerForm.discountValue || 0);
+    const netM = Math.round(mBase * (1 - disc / 100));
+    const netY = Math.round(yBase * (1 - disc / 100));
+
+    // Verify against existing offers
+    const plan = offerForm.dealerPlan;
+    if (dealerOffers && dealerOffers.length > 0) {
+      if (plan === "Dealer Basic") {
+        const pro = dealerOffers.find((o) => (o.dealerPlan || o.title || "").includes("Pro"));
+        if (pro) {
+          const proM = pro.discountedPrice || (pro.monthlyOriginalPrice ? Math.round(pro.monthlyOriginalPrice * (1 - pro.discountValue / 100)) : 244);
+          if (netM >= proM) {
+            alert(`Price Hierarchy Violation: Dealer Basic monthly price (₹${netM}) must be less than Dealer Pro monthly price (₹${proM}).`);
+            return;
+          }
+        }
+      } else if (plan === "Dealer Premium") {
+        const pro = dealerOffers.find((o) => (o.dealerPlan || o.title || "").includes("Pro"));
+        if (pro) {
+          const proM = pro.discountedPrice || (pro.monthlyOriginalPrice ? Math.round(pro.monthlyOriginalPrice * (1 - pro.discountValue / 100)) : 244);
+          if (netM <= proM) {
+            alert(`Price Hierarchy Violation: Dealer Premium monthly price (₹${netM}) must be greater than Dealer Pro monthly price (₹${proM}).`);
+            return;
+          }
+        }
+      }
+    }
+
     setOfferModalBusy(true);
     try {
+      const benefitsArr = offerForm.dealerBenefits
+        ? offerForm.dealerBenefits
+            .split("\n")
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : [];
+
       const payload = {
         code: offerForm.code.trim().toUpperCase(),
-        title: offerForm.title.trim() || `Offer ${offerForm.code.trim().toUpperCase()}`,
+        title: offerForm.title.trim() || `${offerForm.dealerPlan} Plan`,
+        dealerPlan: offerForm.dealerPlan,
+        badge: offerForm.badge,
         description: offerForm.description.trim(),
         discountType: offerForm.discountType,
         discountValue: Number(offerForm.discountValue || 0),
-        applicableTiers: offerForm.applicableTiers,
+        monthlyOriginalPrice: Number(offerForm.monthlyOriginalPrice || 0),
+        yearlyOriginalPrice: Number(offerForm.yearlyOriginalPrice || 0),
+        monthlyPrice: netM,
+        yearlyPrice: netY,
+        applicablePlans: offerForm.applicableTiers,
+        dealerBenefits: benefitsArr,
         validUntil: offerForm.validUntil ? new Date(offerForm.validUntil).toISOString() : null,
         maxRedemptions: offerForm.maxRedemptions ? Number(offerForm.maxRedemptions) : null,
         isActive: offerForm.isActive,
@@ -450,7 +558,7 @@ export default function SuperAdminSubscriptions() {
         </>
       ) : (
         /* ══════════════════════════════════════════════════
-            DEALER SPECIAL OFFERS TAB (TASK 3)
+            DEALER SPECIAL OFFERS TAB
         ══════════════════════════════════════════════════ */
         <div className="space-y-4">
           <div className="rounded-2xl bg-white border border-[#E3EDF8] shadow-2xs overflow-hidden">
@@ -458,9 +566,10 @@ export default function SuperAdminSubscriptions() {
               <table className="w-full text-left text-xs">
                 <thead className="bg-[#EAF4FF] text-[11px] uppercase tracking-wider text-[#526B87] font-bold border-b border-[#E3EDF8]">
                   <tr>
-                    <th className="py-3.5 px-4">Offer Code &amp; Title</th>
+                    <th className="py-3.5 px-4">Offer Code &amp; Plan</th>
+                    <th className="py-3.5 px-4">Monthly Pricing</th>
+                    <th className="py-3.5 px-4">Yearly Pricing</th>
                     <th className="py-3.5 px-4">Discount</th>
-                    <th className="py-3.5 px-4">Eligible Tiers</th>
                     <th className="py-3.5 px-4">Validity</th>
                     <th className="py-3.5 px-4">Redemptions</th>
                     <th className="py-3.5 px-4 text-center">Status</th>
@@ -470,98 +579,111 @@ export default function SuperAdminSubscriptions() {
                 <tbody className="divide-y divide-[#EDF3FA]">
                   {loadingOffers ? (
                     <tr>
-                      <td colSpan={7} className="py-12 text-center text-[#7188A3]">
+                      <td colSpan={8} className="py-12 text-center text-[#7188A3]">
                         <RefreshCw className="animate-spin inline-block mr-2" size={16} />
                         Loading dealer offers…
                       </td>
                     </tr>
                   ) : !dealerOffers.length ? (
                     <tr>
-                      <td colSpan={7} className="py-12 text-center text-[#94A8BE]">
+                      <td colSpan={8} className="py-12 text-center text-[#94A8BE]">
                         No dealer promotional offers found. Click "Create Offer" to add one.
                       </td>
                     </tr>
                   ) : (
-                    dealerOffers.map((offer) => (
-                      <tr key={offer.code} className="hover:bg-[#F4F9FF] transition">
-                        <td className="py-3.5 px-4">
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono font-bold text-[#2563EB] bg-[#D8EBFF] border border-[#C7E1FF] px-2 py-0.5 rounded text-xs">
-                              {offer.code}
-                            </span>
-                            <span className="font-bold text-[#526B87]">{offer.title}</span>
-                          </div>
-                          {offer.description && (
-                            <p className="text-[11px] text-[#7188A3] mt-1 line-clamp-1">
-                              {offer.description}
-                            </p>
-                          )}
-                        </td>
+                    dealerOffers.map((offer) => {
+                      const planName = offer.dealerPlan || offer.title || "Dealer Pro";
+                      const isBasic = planName.includes("Basic");
+                      const isPrem = planName.includes("Premium");
+                      const mOrig = offer.monthlyOriginalPrice || (isPrem ? 499 : isBasic ? 199 : 349);
+                      const yOrig = offer.yearlyOriginalPrice || (isPrem ? 5988 : isBasic ? 2388 : 4188);
+                      const disc = offer.discountValue || (isPrem ? 40 : isBasic ? 20 : 30);
+                      const mFinal = offer.monthlyPrice || Math.round(mOrig * (1 - disc / 100));
+                      const yFinal = offer.yearlyPrice || Math.round(yOrig * (1 - disc / 100));
 
-                        <td className="py-3.5 px-4 font-mono font-bold text-[#166534]">
-                          {offer.discountType === "PERCENTAGE"
-                            ? `${offer.discountValue}% OFF`
-                            : `₹${Number(offer.discountValue).toLocaleString("en-IN")} FLAT OFF`}
-                        </td>
-
-                        <td className="py-3.5 px-4">
-                          <div className="flex flex-wrap gap-1">
-                            {(offer.applicableTiers || ["PRO", "PREMIUM"]).map((t) => (
-                              <span
-                                key={t}
-                                className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-[#F0F7FF] text-[#526B87] border border-[#E3EDF8]"
-                              >
-                                {t}
+                      return (
+                        <tr key={offer.code} className="hover:bg-[#F4F9FF] transition">
+                          <td className="py-3.5 px-4">
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono font-bold text-[#2563EB] bg-[#D8EBFF] border border-[#C7E1FF] px-2 py-0.5 rounded text-xs">
+                                {offer.code}
                               </span>
-                            ))}
-                          </div>
-                        </td>
+                              <span className="font-bold text-[#526B87]">{planName}</span>
+                              {offer.badge && (
+                                <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-50 text-amber-800 border border-amber-200">
+                                  {offer.badge}
+                                </span>
+                              )}
+                            </div>
+                            {offer.description && (
+                              <p className="text-[11px] text-[#7188A3] mt-1 line-clamp-1">
+                                {offer.description}
+                              </p>
+                            )}
+                          </td>
 
-                        <td className="py-3.5 px-4 text-[#7188A3] text-[11px]">
-                          {offer.validUntil
-                            ? new Date(offer.validUntil).toLocaleDateString()
-                            : "Ongoing"}
-                        </td>
+                          <td className="py-3.5 px-4 font-mono">
+                            <span className="text-slate-400 line-through text-[11px] mr-1.5">₹{mOrig}</span>
+                            <span className="font-bold text-[#166534]">₹{mFinal}/mo</span>
+                          </td>
 
-                        <td className="py-3.5 px-4 font-mono text-[11px] text-[#526B87]">
-                          {offer.redemptionsCount || 0}
-                          {offer.maxRedemptions ? ` / ${offer.maxRedemptions}` : " uses"}
-                        </td>
+                          <td className="py-3.5 px-4 font-mono">
+                            <span className="text-slate-400 line-through text-[11px] mr-1.5">₹{yOrig.toLocaleString("en-IN")}</span>
+                            <span className="font-bold text-[#166534]">₹{yFinal.toLocaleString("en-IN")}/yr</span>
+                          </td>
 
-                        <td className="py-3.5 px-4 text-center">
-                          <button
-                            type="button"
-                            onClick={() => handleToggleOfferStatus(offer)}
-                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold cursor-pointer transition ${
-                              offer.isActive
-                                ? "bg-[#ECF9F1] text-[#166534] border border-[#C8E6C9]"
-                                : "bg-slate-100 text-slate-500 border border-slate-300"
-                            }`}
-                          >
-                            {offer.isActive ? "ACTIVE" : "INACTIVE"}
-                          </button>
-                        </td>
+                          <td className="py-3.5 px-4 font-mono font-bold text-[#166534]">
+                            {offer.discountType === "PERCENTAGE"
+                              ? `${offer.discountValue}% OFF`
+                              : `₹${Number(offer.discountValue).toLocaleString("en-IN")} FLAT OFF`}
+                          </td>
 
-                        <td className="py-3.5 px-4 text-right">
-                          <div className="inline-flex items-center gap-1.5">
+                          <td className="py-3.5 px-4 text-[#7188A3] text-[11px]">
+                            {offer.validUntil
+                              ? new Date(offer.validUntil).toLocaleDateString()
+                              : "Ongoing"}
+                          </td>
+
+                          <td className="py-3.5 px-4 font-mono text-[11px] text-[#526B87]">
+                            {offer.timesRedeemed || offer.redemptionsCount || 0}
+                            {offer.maxRedemptions ? ` / ${offer.maxRedemptions}` : " uses"}
+                          </td>
+
+                          <td className="py-3.5 px-4 text-center">
                             <button
-                              onClick={() => openEditOffer(offer)}
-                              className="p-1.5 rounded-lg bg-[#D8EBFF] hover:bg-[#C7E1FF] text-[#2563EB] transition cursor-pointer"
-                              title="Edit Offer"
+                              type="button"
+                              onClick={() => handleToggleOfferStatus(offer)}
+                              className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold cursor-pointer transition ${
+                                offer.isActive
+                                  ? "bg-[#ECF9F1] text-[#166534] border border-[#C8E6C9]"
+                                  : "bg-slate-100 text-slate-500 border border-slate-300"
+                              }`}
                             >
-                              <Edit2 size={13} />
+                              {offer.isActive ? "ACTIVE" : "INACTIVE"}
                             </button>
-                            <button
-                              onClick={() => handleDeleteOffer(offer.code)}
-                              className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 transition cursor-pointer"
-                              title="Delete Offer"
-                            >
-                              <Trash2 size={13} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
+                          </td>
+
+                          <td className="py-3.5 px-4 text-right">
+                            <div className="inline-flex items-center gap-1.5">
+                              <button
+                                onClick={() => openEditOffer(offer)}
+                                className="p-1.5 rounded-lg bg-[#D8EBFF] hover:bg-[#C7E1FF] text-[#2563EB] transition cursor-pointer"
+                                title="Edit Offer"
+                              >
+                                <Edit2 size={13} />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteOffer(offer.code)}
+                                className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 transition cursor-pointer"
+                                title="Delete Offer"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
@@ -649,10 +771,10 @@ export default function SuperAdminSubscriptions() {
         </div>
       )}
 
-      {/* Create / Edit Dealer Offer Modal (Task 3) */}
+      {/* Create / Edit Dealer Offer Modal */}
       {offerModalOpen && (
         <div className="fixed inset-0 bg-[#0F2747]/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="max-w-md w-full rounded-2xl bg-white border border-[#E3EDF8] p-6 shadow-xl">
+          <div className="max-w-lg w-full rounded-2xl bg-white border border-[#E3EDF8] p-6 shadow-xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-base font-bold text-[#526B87] flex items-center gap-2">
                 <Tag size={16} className="text-[#2563EB]" />
@@ -666,30 +788,119 @@ export default function SuperAdminSubscriptions() {
               </button>
             </div>
 
-            <form onSubmit={handleSaveOffer} className="space-y-3.5 text-xs">
+            <form onSubmit={handleSaveOffer} className="space-y-3 text-xs">
+              {/* Target Plan Tier Selector */}
               <div>
-                <label className="font-semibold text-[#526B87]">Offer Promo Code *</label>
-                <input
-                  type="text"
-                  required
-                  disabled={Boolean(editingOffer)}
-                  value={offerForm.code}
-                  onChange={(e) => setOfferForm({ ...offerForm, code: e.target.value.toUpperCase() })}
-                  placeholder="e.g. DEALER30"
-                  className="w-full px-3.5 py-2 mt-1 rounded-xl bg-[#F4F9FF] border border-[#E3EDF8] font-mono font-bold text-xs text-[#2563EB] uppercase focus:outline-none focus:border-[#8AAED8] disabled:bg-slate-100"
-                />
+                <label className="font-semibold text-[#526B87]">Target Dealer Plan *</label>
+                <select
+                  value={offerForm.dealerPlan}
+                  onChange={(e) => handlePlanSelectionChange(e.target.value)}
+                  className="w-full px-3.5 py-2 mt-1 rounded-xl bg-[#F4F9FF] border border-[#E3EDF8] text-xs font-bold text-[#2563EB]"
+                >
+                  <option value="Dealer Basic">Dealer Basic (Target: ₹159/mo | ₹1,910/yr)</option>
+                  <option value="Dealer Pro">Dealer Pro (Target: ₹244/mo | ₹2,932/yr)</option>
+                  <option value="Dealer Premium">Dealer Premium (Target: ₹299/mo | ₹3,593/yr)</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="font-semibold text-[#526B87]">Offer Promo Code *</label>
+                  <input
+                    type="text"
+                    required
+                    disabled={Boolean(editingOffer)}
+                    value={offerForm.code}
+                    onChange={(e) => setOfferForm({ ...offerForm, code: e.target.value.toUpperCase() })}
+                    placeholder="e.g. DEALER30"
+                    className="w-full px-3.5 py-2 mt-1 rounded-xl bg-[#F4F9FF] border border-[#E3EDF8] font-mono font-bold text-xs text-[#2563EB] uppercase focus:outline-none focus:border-[#8AAED8] disabled:bg-slate-100"
+                  />
+                </div>
+                <div>
+                  <label className="font-semibold text-[#526B87]">Badge Text</label>
+                  <input
+                    type="text"
+                    value={offerForm.badge}
+                    onChange={(e) => setOfferForm({ ...offerForm, badge: e.target.value })}
+                    placeholder="e.g. Most Popular"
+                    className="w-full px-3.5 py-2 mt-1 rounded-xl bg-[#F4F9FF] border border-[#E3EDF8] text-xs text-[#526B87]"
+                  />
+                </div>
               </div>
 
               <div>
-                <label className="font-semibold text-[#526B87]">Title *</label>
+                <label className="font-semibold text-[#526B87]">Offer Title *</label>
                 <input
                   type="text"
                   required
                   value={offerForm.title}
                   onChange={(e) => setOfferForm({ ...offerForm, title: e.target.value })}
-                  placeholder="e.g. Dealer 30% Partner Rebate"
+                  placeholder="e.g. Dealer Pro Plan"
                   className="w-full px-3.5 py-2 mt-1 rounded-xl bg-[#F4F9FF] border border-[#E3EDF8] text-xs text-[#526B87] focus:outline-none focus:border-[#8AAED8]"
                 />
+              </div>
+
+              {/* Monthly & Yearly Original Pricing */}
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                <p className="font-bold text-slate-800 text-[11px]">Base Pricing &amp; Dealer Discount</p>
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <label className="text-[10px] text-slate-500 font-medium">Monthly Original (₹)</label>
+                    <input
+                      type="number"
+                      required
+                      min="1"
+                      value={offerForm.monthlyOriginalPrice}
+                      onChange={(e) => setOfferForm({ ...offerForm, monthlyOriginalPrice: e.target.value })}
+                      className="w-full px-2.5 py-1.5 mt-0.5 rounded-lg bg-white border border-slate-300 font-mono text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-500 font-medium">Yearly Original (₹)</label>
+                    <input
+                      type="number"
+                      required
+                      min="1"
+                      value={offerForm.yearlyOriginalPrice}
+                      onChange={(e) => setOfferForm({ ...offerForm, yearlyOriginalPrice: e.target.value })}
+                      className="w-full px-2.5 py-1.5 mt-0.5 rounded-lg bg-white border border-slate-300 font-mono text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-500 font-medium">Discount (%)</label>
+                    <input
+                      type="number"
+                      required
+                      min="1"
+                      max="100"
+                      value={offerForm.discountValue}
+                      onChange={(e) => setOfferForm({ ...offerForm, discountValue: e.target.value })}
+                      className="w-full px-2.5 py-1.5 mt-0.5 rounded-lg bg-white border border-slate-300 font-mono text-xs font-bold text-emerald-700"
+                    />
+                  </div>
+                </div>
+
+                {/* Computed Final Preview */}
+                <div className="pt-2 border-t border-slate-200 grid grid-cols-2 gap-2 text-[11px]">
+                  <div className="bg-white p-2 rounded-lg border border-slate-200">
+                    <p className="text-slate-500 text-[10px]">Monthly Payable (excl. GST):</p>
+                    <p className="font-bold text-slate-900 font-mono text-xs">
+                      ₹{Math.round(Number(offerForm.monthlyOriginalPrice || 0) * (1 - Number(offerForm.discountValue || 0) / 100))}/mo
+                    </p>
+                    <p className="text-[10px] text-emerald-700">
+                      Savings: ₹{Math.round(Number(offerForm.monthlyOriginalPrice || 0) * (Number(offerForm.discountValue || 0) / 100))}/mo
+                    </p>
+                  </div>
+                  <div className="bg-white p-2 rounded-lg border border-slate-200">
+                    <p className="text-slate-500 text-[10px]">Yearly Payable (excl. GST):</p>
+                    <p className="font-bold text-slate-900 font-mono text-xs">
+                      ₹{Math.round(Number(offerForm.yearlyOriginalPrice || 0) * (1 - Number(offerForm.discountValue || 0) / 100))}/yr
+                    </p>
+                    <p className="text-[10px] text-emerald-700">
+                      Savings: ₹{Math.round(Number(offerForm.yearlyOriginalPrice || 0) * (Number(offerForm.discountValue || 0) / 100))}/yr
+                    </p>
+                  </div>
+                </div>
               </div>
 
               <div>
@@ -698,36 +909,20 @@ export default function SuperAdminSubscriptions() {
                   type="text"
                   value={offerForm.description}
                   onChange={(e) => setOfferForm({ ...offerForm, description: e.target.value })}
-                  placeholder="e.g. 30% off for verified dealer partners"
+                  placeholder="e.g. Exclusive wholesale rebate for partners"
                   className="w-full px-3.5 py-2 mt-1 rounded-xl bg-[#F4F9FF] border border-[#E3EDF8] text-xs text-[#526B87] focus:outline-none focus:border-[#8AAED8]"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="font-semibold text-[#526B87]">Discount Type</label>
-                  <select
-                    value={offerForm.discountType}
-                    onChange={(e) => setOfferForm({ ...offerForm, discountType: e.target.value })}
-                    className="w-full px-3 py-2 mt-1 rounded-xl bg-[#F4F9FF] border border-[#E3EDF8] text-xs text-[#526B87]"
-                  >
-                    <option value="PERCENTAGE">Percentage (%)</option>
-                    <option value="FIXED">Fixed Amount (₹)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="font-semibold text-[#526B87]">Discount Value *</label>
-                  <input
-                    type="number"
-                    required
-                    min="1"
-                    max={offerForm.discountType === "PERCENTAGE" ? 100 : 50000}
-                    value={offerForm.discountValue}
-                    onChange={(e) => setOfferForm({ ...offerForm, discountValue: e.target.value })}
-                    className="w-full px-3.5 py-2 mt-1 rounded-xl bg-[#F4F9FF] border border-[#E3EDF8] text-xs text-[#526B87] font-mono font-bold"
-                  />
-                </div>
+              <div>
+                <label className="font-semibold text-[#526B87]">Included Features (One per line)</label>
+                <textarea
+                  rows={4}
+                  value={offerForm.dealerBenefits}
+                  onChange={(e) => setOfferForm({ ...offerForm, dealerBenefits: e.target.value })}
+                  placeholder="Enter features, one per line..."
+                  className="w-full px-3.5 py-2 mt-1 rounded-xl bg-[#F4F9FF] border border-[#E3EDF8] text-xs text-[#526B87] font-sans leading-relaxed focus:outline-none focus:border-[#8AAED8]"
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-2">
