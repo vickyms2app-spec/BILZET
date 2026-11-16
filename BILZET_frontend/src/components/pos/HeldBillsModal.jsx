@@ -86,21 +86,21 @@ export default function HeldBillsModal({
                 return (
                   <div
                     key={bill.id}
-                    className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-white hover:border-blue-300 hover:shadow-md transition-all duration-200 space-y-3"
+                    className="p-4 rounded-2xl border border-[#E7E8EC] bg-white hover:border-[#12151C] shadow-fintech transition-all duration-200 space-y-3"
                   >
                     {/* Top Row: Bill No & Timestamp */}
-                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/70 pb-2.5">
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E7E8EC] pb-2.5">
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-xs text-blue-700 bg-blue-50 border border-blue-200/80 px-2 py-0.5 rounded-lg">
+                        <span className="font-bold text-xs text-[#0E2A16] bg-[#DFFFE6] border border-[#5BF07B]/40 px-2 py-0.5 rounded-lg">
                           #{bill.billNumber}
                         </span>
-                        <span className="text-[11px] text-slate-400">
+                        <span className="text-[11px] text-[#7C7F8A]">
                           Held on {heldDate} at {heldTime}
                         </span>
                       </div>
 
                       <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-bold text-slate-900 font-mono">
+                        <span className="text-xs font-bold text-[#111318] font-mono">
                           Total: ₹{Number(bill.grandTotal || 0).toLocaleString("en-IN")}
                         </span>
                       </div>
@@ -109,37 +109,37 @@ export default function HeldBillsModal({
                     {/* Middle Row: Customer & Items summary */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                       <div className="space-y-1">
-                        <div className="flex items-center gap-1.5 font-semibold text-slate-800">
-                          <User size={13} className="text-slate-400" />
+                        <div className="flex items-center gap-1.5 font-semibold text-[#111318]">
+                          <User size={13} className="text-[#7C7F8A]" />
                           <span>{bill.customerName || "Walk-in Retail Customer"}</span>
                         </div>
                         {bill.mobileNumber && (
-                          <div className="flex items-center gap-1.5 text-slate-500 text-[11px]">
-                            <Phone size={12} className="text-slate-400" />
+                          <div className="flex items-center gap-1.5 text-[#7C7F8A] text-[11px]">
+                            <Phone size={12} className="text-[#7C7F8A]" />
                             <span>{bill.mobileNumber}</span>
                           </div>
                         )}
                       </div>
 
                       <div className="space-y-1 sm:text-right">
-                        <div className="flex items-center sm:justify-end gap-1.5 text-slate-600 font-medium">
-                          <ShoppingBag size={13} className="text-slate-400" />
+                        <div className="flex items-center sm:justify-end gap-1.5 text-[#111318] font-medium">
+                          <ShoppingBag size={13} className="text-[#7C7F8A]" />
                           <span>
                             {bill.items?.length || 0} line {bill.items?.length === 1 ? "item" : "items"}
                           </span>
                         </div>
-                        <p className="text-[11px] text-slate-400 truncate">
+                        <p className="text-[11px] text-[#7C7F8A] truncate">
                           {bill.items?.map((i) => `${i.name} (x${i.qty})`).join(", ")}
                         </p>
                       </div>
                     </div>
 
                     {/* Bottom Action Buttons */}
-                    <div className="pt-2 flex items-center justify-between border-t border-slate-200/60">
+                    <div className="pt-2 flex items-center justify-between border-t border-[#E7E8EC]">
                       <button
                         type="button"
                         onClick={() => onDeleteHeldBill(bill.id)}
-                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 px-2.5 py-1 rounded-lg transition"
+                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#E5484D] hover:text-[#E5484D] hover:bg-[#FBD3D3] px-2.5 py-1 rounded-lg transition cursor-pointer"
                       >
                         <Trash2 size={13} />
                         <span>Discard Bill</span>
@@ -148,9 +148,9 @@ export default function HeldBillsModal({
                       <button
                         type="button"
                         onClick={() => onResumeBill(bill)}
-                        className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs hover:shadow-md transition active:scale-95"
+                        className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-[#12151C] hover:bg-black text-white rounded-xl text-xs font-bold shadow-fintech transition active:scale-95 cursor-pointer"
                       >
-                        <Play size={13} fill="currentColor" />
+                        <Play size={13} fill="currentColor" className="text-[#5BF07B]" />
                         <span>Resume &amp; Settle</span>
                         <ArrowRight size={13} />
                       </button>

@@ -1331,18 +1331,18 @@ export default function Billing() {
                   onComplete: () => searchInputRef.current?.focus(),
                 })
               }
-              className="bg-white rounded-2xl border border-[#E5E5EA] p-5 sm:p-6 shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
+              className="bg-[#F6F6F8] rounded-[24px] border border-[#E7E8EC] p-5 sm:p-6 shadow-fintech"
             >
-              <div className="flex items-center justify-between mb-4 pb-3 border-b border-[#E5E5EA]">
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-[#E7E8EC]">
                 <div>
-                  <h2 className="text-sm sm:text-base font-semibold text-[#1D1D1F] tracking-tight">
+                  <h2 className="text-sm sm:text-base font-bold text-[#111318] tracking-tight">
                     Customer Information
                   </h2>
-                  <p className="text-xs text-[#6E6E73] font-normal mt-0.5">
+                  <p className="text-xs text-[#7C7F8A] font-normal mt-0.5">
                     Select an existing client or enter walk-in customer details
                   </p>
                 </div>
-                <div className="text-[11px] font-medium text-[#6E6E73] bg-[#F5F5F7] border border-[#E5E5EA] px-2.5 py-1 rounded-lg">
+                <div className="text-[11px] font-medium text-[#111318] bg-[#EDEDEF] border border-[#E7E8EC] px-2.5 py-1 rounded-xl">
                   Place of Supply: {placeOfSupply.split(" - ")[0]}
                 </div>
               </div>
@@ -1350,8 +1350,8 @@ export default function Billing() {
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3.5">
                 {/* Customer Name Autocomplete */}
                 <div className="sm:col-span-2 relative">
-                  <label className="block text-xs font-medium text-[#1D1D1F] mb-1.5">
-                    Customer Name <span className="text-[#D70015]">*</span>
+                  <label className="block text-xs font-semibold text-[#111318] mb-1.5">
+                    Customer Name <span className="text-[#E5484D]">*</span>
                   </label>
                   <div className="relative">
                     <input
@@ -1366,7 +1366,7 @@ export default function Billing() {
                       onFocus={() => {
                         if (availableCustomers.length > 0) setShowCustDropdown(true);
                       }}
-                      className="w-full px-3 py-2 text-xs sm:text-[13px] border border-[#E5E5EA] rounded-xl outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/15 transition bg-white text-[#1D1D1F] placeholder-[#6E6E73]/60"
+                      className="w-full px-3 py-2 text-xs sm:text-[13px] border border-[#E7E8EC] rounded-xl outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 transition bg-white text-[#111318] placeholder-[#7C7F8A]/60"
                     />
 
                     {/* Autocomplete Dropdown */}
@@ -1376,7 +1376,7 @@ export default function Billing() {
                           className="fixed inset-0 z-20"
                           onClick={() => setShowCustDropdown(false)}
                         />
-                        <div className="absolute left-0 right-0 mt-1 bg-white rounded-xl shadow-lg border border-[#E5E5EA] z-30 max-h-52 overflow-y-auto divide-y divide-[#E5E5EA]">
+                        <div className="absolute left-0 right-0 mt-1 bg-white rounded-xl shadow-fintech border border-[#E7E8EC] z-30 max-h-52 overflow-y-auto divide-y divide-[#E7E8EC]">
                           {availableCustomers
                             .filter((c) =>
                               c.name?.toLowerCase().includes(customerName.toLowerCase())
@@ -1389,15 +1389,15 @@ export default function Billing() {
                                   handleCustomerSelect(c);
                                   setShowCustDropdown(false);
                                 }}
-                                className="w-full p-2.5 text-left text-xs hover:bg-[#F5F5F7] transition flex items-center justify-between cursor-pointer"
+                                className="w-full p-2.5 text-left text-xs hover:bg-[#EDEDEF] transition flex items-center justify-between cursor-pointer"
                               >
                                 <div>
-                                  <p className="font-medium text-[#1D1D1F]">{c.name}</p>
-                                  <p className="text-[11px] text-[#6E6E73]">
+                                  <p className="font-semibold text-[#111318]">{c.name}</p>
+                                  <p className="text-[11px] text-[#7C7F8A]">
                                     {c.phone || "No phone"} {c.gstin ? `· GSTIN: ${c.gstin}` : ""}
                                   </p>
                                 </div>
-                                <span className="text-[11px] text-[#007AFF] font-medium">Select</span>
+                                <span className="text-[11px] text-[#111318] font-bold hover:underline">Select</span>
                               </button>
                             ))}
                         </div>
@@ -1408,7 +1408,7 @@ export default function Billing() {
 
                 {/* Mobile Number */}
                 <div>
-                  <label className="block text-xs font-medium text-[#1D1D1F] mb-1.5">
+                  <label className="block text-xs font-semibold text-[#111318] mb-1.5">
                     Phone / Mobile
                   </label>
                   <input
@@ -1416,13 +1416,13 @@ export default function Billing() {
                     placeholder="e.g. 9876543210"
                     value={mobileNumber}
                     onChange={(e) => setMobileNumber(e.target.value)}
-                    className="w-full px-3 py-2 text-xs sm:text-[13px] border border-[#E5E5EA] rounded-xl outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/15 transition bg-white text-[#1D1D1F] placeholder-[#6E6E73]/60"
+                    className="w-full px-3 py-2 text-xs sm:text-[13px] border border-[#E7E8EC] rounded-xl outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 transition bg-white text-[#111318] placeholder-[#7C7F8A]/60"
                   />
                 </div>
 
                 {/* Sale Type */}
                 <div>
-                  <label className="block text-xs font-medium text-[#1D1D1F] mb-1.5">
+                  <label className="block text-xs font-semibold text-[#111318] mb-1.5">
                     Sale Type
                   </label>
                   <select
@@ -1432,7 +1432,7 @@ export default function Billing() {
                       setSaleType(val);
                       if (val.includes("B2B")) setShowGstOptions(true);
                     }}
-                    className="w-full px-3 py-2 text-xs sm:text-[13px] border border-[#E5E5EA] rounded-xl outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/15 transition bg-white text-[#1D1D1F]"
+                    className="w-full px-3 py-2 text-xs sm:text-[13px] border border-[#E7E8EC] rounded-xl outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 transition bg-white text-[#111318]"
                   >
                     <option value="B2C — Retail Customer">B2C Retail Customer</option>
                     <option value="B2B — Registered Business">B2B Registered</option>
@@ -1442,13 +1442,13 @@ export default function Billing() {
               </div>
 
               {/* Place of Supply selector & Collapsible GSTIN trigger */}
-              <div className="mt-4 pt-3.5 border-t border-[#E5E5EA] flex flex-wrap items-center justify-between gap-3 text-xs">
+              <div className="mt-4 pt-3.5 border-t border-[#E7E8EC] flex flex-wrap items-center justify-between gap-3 text-xs">
                 <div className="flex items-center gap-2">
-                  <label className="font-medium text-[#1D1D1F] shrink-0">Place of Supply:</label>
+                  <label className="font-semibold text-[#111318] shrink-0">Place of Supply:</label>
                   <select
                     value={placeOfSupply}
                     onChange={(e) => setPlaceOfSupply(e.target.value)}
-                    className="px-2.5 py-1 text-xs border border-[#E5E5EA] rounded-lg bg-white text-[#1D1D1F] outline-none focus:border-[#007AFF]"
+                    className="px-2.5 py-1 text-xs border border-[#E7E8EC] rounded-lg bg-white text-[#111318] outline-none focus:border-[#5BF07B]"
                   >
                     {INDIAN_STATES.map((st) => (
                       <option key={st} value={st}>
@@ -1457,7 +1457,7 @@ export default function Billing() {
                     ))}
                   </select>
                   {isInterState && (
-                    <span className="text-[10px] font-semibold text-[#007AFF] bg-[#EBF5FF] border border-[#D0E2FF] px-2 py-0.5 rounded-full">
+                    <span className="text-[10px] font-semibold text-[#0E2A16] bg-[#DFFFE6] border border-[#5BF07B]/40 px-2 py-0.5 rounded-full">
                       Inter-State (IGST)
                     </span>
                   )}
@@ -1466,7 +1466,7 @@ export default function Billing() {
                 <button
                   type="button"
                   onClick={() => setShowGstOptions(!showGstOptions)}
-                  className="text-[#007AFF] hover:underline font-medium inline-flex items-center gap-1 cursor-pointer"
+                  className="text-[#111318] hover:underline font-semibold inline-flex items-center gap-1 cursor-pointer"
                 >
                   <span>{showGstOptions ? "Hide" : "+ Add"} GSTIN &amp; Billing Address</span>
                   <ChevronDown
@@ -1480,10 +1480,10 @@ export default function Billing() {
 
               {/* Expandable GSTIN & Billing Address Fields */}
               {showGstOptions && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 mt-3 pt-3.5 border-t border-[#E5E5EA] animate-in fade-in">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 mt-3 pt-3.5 border-t border-[#E7E8EC] animate-in fade-in">
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <label className="text-xs font-medium text-[#1D1D1F]">Customer GSTIN</label>
+                      <label className="text-xs font-semibold text-[#111318]">Customer GSTIN</label>
                       {saleType.includes("B2B") && !customerGstin && (
                         <span className="text-[10px] text-[#9A6700] font-medium">
                           Required for B2B ITC
@@ -1495,11 +1495,11 @@ export default function Billing() {
                       placeholder="e.g. 33AAAAA0000A1Z5"
                       value={customerGstin}
                       onChange={(e) => setCustomerGstin(e.target.value.toUpperCase())}
-                      className="w-full px-3 py-2 text-xs border border-[#E5E5EA] rounded-xl font-mono uppercase bg-white outline-none focus:border-[#007AFF] text-[#1D1D1F]"
+                      className="w-full px-3 py-2 text-xs border border-[#E7E8EC] rounded-xl font-mono uppercase bg-white outline-none focus:border-[#5BF07B] text-[#111318]"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-[#1D1D1F] mb-1">
+                    <label className="block text-xs font-semibold text-[#111318] mb-1">
                       Billing Address
                     </label>
                     <input
@@ -1507,7 +1507,7 @@ export default function Billing() {
                       placeholder="Street, City, State, Pincode"
                       value={customerAddress}
                       onChange={(e) => setCustomerAddress(e.target.value)}
-                      className="w-full px-3 py-2 text-xs border border-[#E5E5EA] rounded-xl bg-white outline-none focus:border-[#007AFF] text-[#1D1D1F]"
+                      className="w-full px-3 py-2 text-xs border border-[#E7E8EC] rounded-xl bg-white outline-none focus:border-[#5BF07B] text-[#111318]"
                     />
                   </div>
                 </div>
@@ -1515,13 +1515,13 @@ export default function Billing() {
             </section>
 
             {/* ── 3. Items & Products Section ── */}
-            <section className="bg-white rounded-2xl border border-[#E5E5EA] p-5 sm:p-6 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+            <section className="bg-[#F6F6F8] rounded-[24px] border border-[#E7E8EC] p-5 sm:p-6 shadow-fintech">
               {/* Header */}
-              <div className="mb-4 pb-3 border-b border-[#E5E5EA]">
-                <h2 className="text-sm sm:text-base font-semibold text-[#1D1D1F] tracking-tight">
+              <div className="mb-4 pb-3 border-b border-[#E7E8EC]">
+                <h2 className="text-sm sm:text-base font-bold text-[#111318] tracking-tight">
                   Items &amp; Products
                 </h2>
-                <p className="text-xs text-[#6E6E73] font-normal mt-0.5">
+                <p className="text-xs text-[#7C7F8A] font-normal mt-0.5">
                   Scan barcodes, search inventory or add custom line items
                 </p>
               </div>
@@ -1533,7 +1533,7 @@ export default function Billing() {
                   <div className="relative flex items-center">
                     <Search
                       size={15}
-                      className="absolute left-3.5 text-[#6E6E73] pointer-events-none"
+                      className="absolute left-3.5 text-[#7C7F8A] pointer-events-none"
                     />
                     <input
                       ref={searchInputRef}
@@ -1547,7 +1547,7 @@ export default function Billing() {
                       onFocus={() => {
                         if (productSearchQuery.trim()) setShowProductSearchResults(true);
                       }}
-                      className="w-full h-10 pl-9 pr-16 text-xs sm:text-[13px] border border-[#E5E5EA] rounded-xl outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/15 transition bg-white text-[#1D1D1F] placeholder-[#6E6E73]/60 shadow-2xs"
+                      className="w-full h-10 pl-9 pr-16 text-xs sm:text-[13px] border border-[#E7E8EC] rounded-xl outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 transition bg-white text-[#111318] placeholder-[#7C7F8A]/60 shadow-2xs"
                     />
                     <div className="absolute right-2 flex items-center gap-1">
                       {productSearchQuery && (
@@ -1557,7 +1557,7 @@ export default function Billing() {
                             setProductSearchQuery("");
                             setShowProductSearchResults(false);
                           }}
-                          className="p-1 text-[#6E6E73] hover:text-[#1D1D1F] rounded transition cursor-pointer"
+                          className="p-1 text-[#7C7F8A] hover:text-[#111318] rounded transition cursor-pointer"
                           title="Clear search"
                         >
                           <X size={14} />
@@ -1566,7 +1566,7 @@ export default function Billing() {
                       <button
                         type="button"
                         onClick={() => setShowBarcodeScanner(true)}
-                        className="p-1 text-[#007AFF] hover:bg-blue-50 rounded transition cursor-pointer"
+                        className="p-1 text-[#111318] hover:bg-[#EDEDEF] rounded-lg transition cursor-pointer"
                         title="Scan barcode with camera"
                       >
                         <Scan size={15} />
@@ -1581,9 +1581,9 @@ export default function Billing() {
                         className="fixed inset-0 z-20"
                         onClick={() => setShowProductSearchResults(false)}
                       />
-                      <div className="absolute left-0 right-0 mt-1.5 bg-white rounded-xl shadow-xl border border-[#E5E5EA] z-30 max-h-64 overflow-y-auto divide-y divide-[#E5E5EA]">
+                      <div className="absolute left-0 right-0 mt-1.5 bg-white rounded-xl shadow-fintech border border-[#E7E8EC] z-30 max-h-64 overflow-y-auto divide-y divide-[#E7E8EC]">
                         {filteredProducts.length === 0 ? (
-                          <div className="p-3 text-center text-xs text-[#6E6E73]">
+                          <div className="p-3 text-center text-xs text-[#7C7F8A]">
                             No matching catalog products found.
                           </div>
                         ) : (
@@ -1596,20 +1596,20 @@ export default function Billing() {
                                 setProductSearchQuery("");
                                 setShowProductSearchResults(false);
                               }}
-                              className="w-full p-2.5 text-left text-xs hover:bg-[#F5F5F7] transition flex items-center justify-between cursor-pointer"
+                              className="w-full p-2.5 text-left text-xs hover:bg-[#EDEDEF] transition flex items-center justify-between cursor-pointer"
                             >
                               <div>
-                                <p className="font-semibold text-[#1D1D1F]">{p.name}</p>
-                                <p className="text-[11px] text-[#6E6E73]">
+                                <p className="font-semibold text-[#111318]">{p.name}</p>
+                                <p className="text-[11px] text-[#7C7F8A]">
                                   SKU: {p.sku || p.barcode || "N/A"} &bull; HSN: {p.hsn || "1904"}{" "}
                                   &bull; Stock: {p.stock ?? 0}
                                 </p>
                               </div>
                               <div className="text-right">
-                                <span className="font-semibold text-[#1D1D1F]">
+                                <span className="font-semibold text-[#111318]">
                                   ₹{p.sellingPrice || p.price || 0}
                                 </span>
-                                <span className="block text-[10px] text-[#007AFF] font-medium">
+                                <span className="block text-[10px] text-[#0E2A16] font-bold">
                                   + Add to Bill
                                 </span>
                               </div>
@@ -1622,14 +1622,14 @@ export default function Billing() {
                 </div>
 
                 {/* Pricing Mode Selector (Inclusive MRP vs Exclusive Std) */}
-                <div className="h-10 inline-flex items-center p-1 bg-[#F5F5F7] rounded-xl border border-[#E5E5EA] text-xs shrink-0 shadow-2xs">
+                <div className="h-10 inline-flex items-center p-1 bg-[#EDEDEF] rounded-xl border border-[#E7E8EC] text-xs shrink-0 shadow-2xs">
                   <button
                     type="button"
                     onClick={() => setTaxInclusive(true)}
                     className={`h-8 px-3 rounded-lg font-medium transition cursor-pointer text-xs ${
                       taxInclusive
-                        ? "bg-white text-[#007AFF] shadow-xs font-semibold"
-                        : "text-[#6E6E73] hover:text-[#1D1D1F]"
+                        ? "bg-[#12151C] text-white shadow-xs font-semibold"
+                        : "text-[#7C7F8A] hover:text-[#111318]"
                     }`}
                     title="Unit rate already includes GST (MRP)"
                   >
@@ -1640,8 +1640,8 @@ export default function Billing() {
                     onClick={() => setTaxInclusive(false)}
                     className={`h-8 px-3 rounded-lg font-medium transition cursor-pointer text-xs ${
                       !taxInclusive
-                        ? "bg-white text-[#007AFF] shadow-xs font-semibold"
-                        : "text-[#6E6E73] hover:text-[#1D1D1F]"
+                        ? "bg-[#12151C] text-white shadow-xs font-semibold"
+                        : "text-[#7C7F8A] hover:text-[#111318]"
                     }`}
                     title="Tax calculated on top of unit rate"
                   >
@@ -1649,30 +1649,30 @@ export default function Billing() {
                   </button>
                 </div>
 
-                {/* Primary Blue "Add Item" Button */}
+                {/* Primary Dark "Add Item" Button */}
                 <button
                   type="button"
                   id="primary-add-item-btn"
                   onClick={handleOpenAddItem}
-                  className="h-10 px-4 rounded-xl bg-[#007AFF] hover:bg-[#0062CC] text-white text-xs font-semibold shrink-0 inline-flex items-center justify-center gap-1.5 shadow-[0_1px_2px_rgba(0,122,255,0.25)] transition cursor-pointer"
+                  className="h-10 px-4 rounded-xl bg-[#12151C] hover:bg-black text-white text-xs font-semibold shrink-0 inline-flex items-center justify-center gap-1.5 shadow-fintech transition cursor-pointer"
                   title="Add custom line item or select from inventory"
                 >
-                  <Plus size={15} strokeWidth={2.5} />
+                  <Plus size={15} strokeWidth={2.5} className="text-[#5BF07B]" />
                   <span>Add Item</span>
                 </button>
               </div>
 
               {/* 2. Product Table or Empty State */}
               {items.length === 0 ? (
-                <div className="py-12 px-4 text-center border border-dashed border-[#E5E5EA] rounded-2xl bg-[#F5F5F7]/40 space-y-3">
-                  <div className="w-11 h-11 rounded-2xl bg-white border border-[#E5E5EA] text-[#007AFF] flex items-center justify-center mx-auto shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+                <div className="py-12 px-4 text-center border border-dashed border-[#E7E8EC] rounded-2xl bg-[#FAFAFB] space-y-3">
+                  <div className="w-11 h-11 rounded-2xl bg-[#12151C] border border-[#12151C] text-[#5BF07B] flex items-center justify-center mx-auto shadow-xs">
                     <ShoppingBag size={20} />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-[#1D1D1F] text-sm">
+                    <h3 className="font-bold text-[#111318] text-sm">
                       No items added to bill yet
                     </h3>
-                    <p className="text-xs text-[#6E6E73] max-w-sm mx-auto mt-1">
+                    <p className="text-xs text-[#7C7F8A] max-w-sm mx-auto mt-1">
                       Search your catalog, scan a barcode, or add an item to get started.
                     </p>
                   </div>
@@ -1680,17 +1680,17 @@ export default function Billing() {
                     <button
                       type="button"
                       onClick={() => setShowBarcodeScanner(true)}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-[#E5E5EA] bg-white text-[#1D1D1F] hover:bg-[#F5F5F7] text-xs font-medium transition cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.03)]"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-[#E7E8EC] bg-white text-[#111318] hover:bg-[#EDEDEF] text-xs font-medium transition cursor-pointer shadow-xs"
                     >
-                      <Scan size={14} className="text-[#007AFF]" />
+                      <Scan size={14} className="text-[#111318]" />
                       <span>Scan Barcode</span>
                     </button>
                     <button
                       type="button"
                       onClick={handleOpenAddItem}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#007AFF] hover:bg-[#0062CC] text-white text-xs font-semibold transition cursor-pointer shadow-[0_1px_2px_rgba(0,122,255,0.25)]"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#12151C] hover:bg-black text-white text-xs font-semibold transition cursor-pointer shadow-fintech"
                     >
-                      <Plus size={14} />
+                      <Plus size={14} className="text-[#5BF07B]" />
                       <span>Add First Item</span>
                     </button>
                   </div>
@@ -1784,7 +1784,7 @@ export default function Billing() {
                                   updated[idx].hsn = e.target.value;
                                   setItems(updated);
                                 }}
-                                className="w-16 h-7 text-center font-mono text-[11px] border border-[#E5E5EA] rounded-lg outline-none focus:border-[#007AFF] bg-white text-[#1D1D1F] placeholder-[#8E8E93]"
+                                className="w-16 h-7 text-center font-mono text-[11px] border border-[#E7E8EC] rounded-lg outline-none focus:border-[#5BF07B] bg-white text-[#111318] placeholder-[#7C7F8A]/60"
                               />
                             </td>
 
@@ -1870,7 +1870,7 @@ export default function Billing() {
                                   updated[idx].unit = e.target.value;
                                   setItems(updated);
                                 }}
-                                className="h-7 px-1.5 text-[11px] font-medium border border-[#E5E5EA] rounded-lg bg-white outline-none focus:border-[#007AFF] text-[#1D1D1F] text-center capitalize cursor-pointer"
+                                className="h-7 px-1.5 text-[11px] font-medium border border-[#E7E8EC] rounded-lg bg-white outline-none focus:border-[#5BF07B] text-[#111318] text-center capitalize cursor-pointer"
                               >
                                 <option value="piece">Pcs</option>
                                 <option value="kg">kg</option>
@@ -1898,7 +1898,7 @@ export default function Billing() {
                                   updated[idx].rate = Math.max(0, Number(e.target.value));
                                   setItems(updated);
                                 }}
-                                className="w-20 h-7 px-2 border border-[#E5E5EA] rounded-lg text-right font-mono font-medium text-[#1D1D1F] outline-none focus:border-[#007AFF] bg-white text-xs"
+                                className="w-20 h-7 px-2 border border-[#E7E8EC] rounded-lg text-right font-mono font-medium text-[#111318] outline-none focus:border-[#5BF07B] bg-white text-xs"
                               />
                             </td>
 
@@ -1921,7 +1921,7 @@ export default function Billing() {
                                   updated[idx].discount = Number(((gross * pct) / 100).toFixed(2));
                                   setItems(updated);
                                 }}
-                                className="w-14 h-7 px-1 border border-[#E5E5EA] rounded-lg text-center font-mono text-[#1D1D1F] outline-none focus:border-[#007AFF] bg-white text-xs"
+                                className="w-14 h-7 px-1 border border-[#E7E8EC] rounded-lg text-center font-mono text-[#111318] outline-none focus:border-[#5BF07B] bg-white text-xs"
                               />
                             </td>
 
@@ -1938,7 +1938,7 @@ export default function Billing() {
                                   updated[idx].gstRate = r;
                                   setItems(updated);
                                 }}
-                                className="h-7 px-1.5 border border-[#E5E5EA] rounded-lg text-center font-mono font-medium text-[#1D1D1F] outline-none focus:border-[#007AFF] bg-white text-xs cursor-pointer"
+                                className="h-7 px-1.5 border border-[#E7E8EC] rounded-lg text-center font-mono font-medium text-[#111318] outline-none focus:border-[#5BF07B] bg-white text-xs cursor-pointer"
                               >
                                 <option value="0">0%</option>
                                 <option value="3">3%</option>
@@ -1982,10 +1982,10 @@ export default function Billing() {
                       type="button"
                       id="add-another-item-btn"
                       onClick={handleOpenAddItem}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-blue-200 bg-blue-50/70 hover:bg-blue-100/80 text-[#007AFF] text-xs font-semibold transition cursor-pointer shadow-2xs"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-[#E7E8EC] bg-white hover:bg-[#EDEDEF] text-[#111318] text-xs font-semibold transition cursor-pointer shadow-xs"
                       title="Add another line item to bill"
                     >
-                      <Plus size={14} strokeWidth={2.5} />
+                      <Plus size={14} strokeWidth={2.5} className="text-[#5BF07B]" />
                       <span>Add another item</span>
                     </button>
                   </div>
@@ -2043,12 +2043,12 @@ export default function Billing() {
                       </>
                     )}
 
-                    {/* Highlighted Grand Total Row with light-blue background and bold text */}
-                    <div className="flex items-center justify-between p-2 rounded-lg bg-blue-50/90 border border-blue-200/70 text-blue-950 font-bold mt-1 shadow-2xs">
+                    {/* Highlighted Grand Total Row with Keel dark surface and mint neon amount */}
+                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#12151C] text-white font-bold mt-1 shadow-fintech">
                       <span className="text-xs uppercase tracking-wide">
                         Grand Total
                       </span>
-                      <span className="text-sm sm:text-base font-mono tabular-nums text-blue-700">
+                      <span className="text-sm sm:text-base font-mono tabular-nums text-[#5BF07B]">
                         ₹{grandTotal.toFixed(2)}
                       </span>
                     </div>
@@ -2059,20 +2059,20 @@ export default function Billing() {
 
             {/* ── 4. Payment & Settlement Section (Invoice) OR Quotation Details & Validity (Quotation) ── */}
             {documentType === "quotation" ? (
-              <section className="bg-white rounded-2xl border border-purple-200/80 p-5 sm:p-6 shadow-[0_1px_3px_rgba(0,0,0,0.04)] space-y-4">
-                <div className="flex items-center justify-between pb-3 border-b border-[#E5E5EA]">
+              <section className="bg-[#F6F6F8] rounded-[24px] border border-[#E7E8EC] p-5 sm:p-6 shadow-fintech space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-[#E7E8EC]">
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-purple-600 animate-pulse" />
-                      <h2 className="text-sm sm:text-base font-semibold text-[#1D1D1F] tracking-tight">
+                      <span className="w-2 h-2 rounded-full bg-[#12151C] animate-pulse" />
+                      <h2 className="text-sm sm:text-base font-bold text-[#111318] tracking-tight">
                         Quotation Validity, Notes &amp; Terms
                       </h2>
                     </div>
-                    <p className="text-xs text-[#6E6E73] font-normal mt-0.5">
+                    <p className="text-xs text-[#7C7F8A] font-normal mt-0.5">
                       Configure proposal validity period, customer notes, and commercial terms
                     </p>
                   </div>
-                  <span className="text-[11px] font-semibold text-purple-700 bg-purple-50 border border-purple-200 px-2.5 py-1 rounded-lg">
+                  <span className="text-[11px] font-semibold text-[#111318] bg-[#EDEDEF] border border-[#E7E8EC] px-2.5 py-1 rounded-xl">
                     Status: {quotationStatus}
                   </span>
                 </div>
@@ -2080,26 +2080,26 @@ export default function Billing() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Validity Date */}
                   <div>
-                    <label className="block text-xs font-medium text-[#1D1D1F] mb-1.5">
+                    <label className="block text-xs font-semibold text-[#111318] mb-1.5">
                       Valid Until Date
                     </label>
                     <input
                       type="date"
                       value={quotationValidityDate}
                       onChange={(e) => setQuotationValidityDate(e.target.value)}
-                      className="w-full px-3 py-2 text-xs sm:text-[13px] border border-[#E5E5EA] rounded-xl outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-600/15 transition bg-white text-[#1D1D1F]"
+                      className="w-full px-3 py-2 text-xs sm:text-[13px] border border-[#E7E8EC] rounded-xl outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 transition bg-white text-[#111318]"
                     />
                   </div>
 
                   {/* Quotation Status */}
                   <div>
-                    <label className="block text-xs font-medium text-[#1D1D1F] mb-1.5">
+                    <label className="block text-xs font-semibold text-[#111318] mb-1.5">
                       Quotation Status
                     </label>
                     <select
                       value={quotationStatus}
                       onChange={(e) => setQuotationStatus(e.target.value)}
-                      className="w-full px-3 py-2 text-xs sm:text-[13px] border border-[#E5E5EA] rounded-xl outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-600/15 transition bg-white text-[#1D1D1F]"
+                      className="w-full px-3 py-2 text-xs sm:text-[13px] border border-[#E7E8EC] rounded-xl outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 transition bg-white text-[#111318]"
                     >
                       <option value="DRAFT">Draft</option>
                       <option value="SENT">Sent to Customer</option>
@@ -2111,7 +2111,7 @@ export default function Billing() {
 
                   {/* Customer Notes */}
                   <div className="sm:col-span-2">
-                    <label className="block text-xs font-medium text-[#1D1D1F] mb-1.5">
+                    <label className="block text-xs font-semibold text-[#111318] mb-1.5">
                       Customer Notes
                     </label>
                     <input
@@ -2119,13 +2119,13 @@ export default function Billing() {
                       placeholder="e.g. Quotation valid for 15 days from date of issue."
                       value={quotationNotes}
                       onChange={(e) => setQuotationNotes(e.target.value)}
-                      className="w-full px-3 py-2 text-xs sm:text-[13px] border border-[#E5E5EA] rounded-xl outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-600/15 transition bg-white text-[#1D1D1F]"
+                      className="w-full px-3 py-2 text-xs sm:text-[13px] border border-[#E7E8EC] rounded-xl outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 transition bg-white text-[#111318]"
                     />
                   </div>
 
                   {/* Terms & Conditions */}
                   <div className="sm:col-span-2">
-                    <label className="block text-xs font-medium text-[#1D1D1F] mb-1.5">
+                    <label className="block text-xs font-semibold text-[#111318] mb-1.5">
                       Terms &amp; Conditions
                     </label>
                     <textarea
@@ -2133,32 +2133,32 @@ export default function Billing() {
                       placeholder="Commercial terms, payment requirements, delivery timeline..."
                       value={quotationTerms}
                       onChange={(e) => setQuotationTerms(e.target.value)}
-                      className="w-full px-3 py-2 text-xs sm:text-[13px] border border-[#E5E5EA] rounded-xl outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-600/15 transition bg-white text-[#1D1D1F] resize-none"
+                      className="w-full px-3 py-2 text-xs sm:text-[13px] border border-[#E7E8EC] rounded-xl outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 transition bg-white text-[#111318] resize-none"
                     />
                   </div>
                 </div>
 
                 {/* Educational Notice */}
-                <div className="p-3 bg-purple-50/70 border border-purple-200 rounded-xl text-xs text-purple-900 flex items-start gap-2.5">
-                  <div className="p-1 rounded-lg bg-purple-200/60 text-purple-800 shrink-0 mt-0.5">
+                <div className="p-3 bg-[#EDEDEF] border border-[#E7E8EC] rounded-2xl text-xs text-[#111318] flex items-start gap-2.5">
+                  <div className="p-1 rounded-xl bg-[#12151C] text-[#5BF07B] shrink-0 mt-0.5">
                     <FileSpreadsheet size={14} />
                   </div>
                   <div>
-                    <strong className="font-semibold block">Quotation Notice — Not a Tax Invoice</strong>
-                    <span className="text-[11px] text-purple-800">
+                    <strong className="font-semibold block text-[#111318]">Quotation Notice — Not a Tax Invoice</strong>
+                    <span className="text-[11px] text-[#7C7F8A]">
                       Saving this quotation does not record payments, generate tax liabilities, or reduce inventory stock. Once accepted by the customer, you can convert it to an official Tax Invoice with a single click.
                     </span>
                   </div>
                 </div>
               </section>
             ) : (
-              <section className="bg-white rounded-2xl border border-[#E5E5EA] p-5 sm:p-6 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-                <div className="flex items-center justify-between mb-4 pb-3 border-b border-[#E5E5EA]">
+              <section className="bg-[#F6F6F8] rounded-[24px] border border-[#E7E8EC] p-5 sm:p-6 shadow-fintech">
+                <div className="flex items-center justify-between mb-4 pb-3 border-b border-[#E7E8EC]">
                   <div>
-                    <h2 className="text-sm sm:text-base font-semibold text-[#1D1D1F] tracking-tight">
+                    <h2 className="text-sm sm:text-base font-bold text-[#111318] tracking-tight">
                       Payment &amp; Settlement
                     </h2>
-                    <p className="text-xs text-[#6E6E73] font-normal mt-0.5">
+                    <p className="text-xs text-[#7C7F8A] font-normal mt-0.5">
                       Select tender method, record amount received, or generate UPI QR
                     </p>
                   </div>
@@ -2169,42 +2169,42 @@ export default function Billing() {
                   <button
                     type="button"
                     onClick={() => handleQuickPayment("Cash", "Paid")}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-medium transition cursor-pointer border ${
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer border ${
                       paymentMode === "Cash" && paymentStatus === "Paid"
-                        ? "bg-[#007AFF] text-white border-[#007AFF] shadow-xs"
-                        : "bg-white text-[#1D1D1F] border-[#E5E5EA] hover:bg-[#F5F5F7]"
+                        ? "bg-[#12151C] text-white border-[#12151C] shadow-fintech"
+                        : "bg-white text-[#111318] border-[#E7E8EC] hover:bg-[#EDEDEF]"
                     }`}
                   >
-                    ✓ Cash Paid
+                    <span className={paymentMode === "Cash" && paymentStatus === "Paid" ? "text-[#5BF07B]" : ""}>✓</span> Cash Paid
                   </button>
 
                   <button
                     type="button"
                     onClick={() => handleQuickPayment("UPI", "Paid")}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-medium transition cursor-pointer border ${
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer border ${
                       paymentMode === "UPI" && paymentStatus === "Paid"
-                        ? "bg-[#007AFF] text-white border-[#007AFF] shadow-xs"
-                        : "bg-white text-[#1D1D1F] border-[#E5E5EA] hover:bg-[#F5F5F7]"
+                        ? "bg-[#12151C] text-white border-[#12151C] shadow-fintech"
+                        : "bg-white text-[#111318] border-[#E7E8EC] hover:bg-[#EDEDEF]"
                     }`}
                   >
-                    ✓ UPI Paid
+                    <span className={paymentMode === "UPI" && paymentStatus === "Paid" ? "text-[#5BF07B]" : ""}>✓</span> UPI Paid
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setShowUpiModal(true)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border border-[#E5E5EA] bg-white text-[#007AFF] hover:bg-[#F5F5F7] transition cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border border-[#E7E8EC] bg-white text-[#111318] hover:bg-[#EDEDEF] transition cursor-pointer shadow-xs"
                   >
-                    <QrCode size={14} className="text-[#007AFF]" />
+                    <QrCode size={14} className="text-[#12151C]" />
                     <span>Request UPI (QR)</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setShowBarcodeScanner(true)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border border-[#E5E5EA] bg-white text-[#1D1D1F] hover:bg-[#F5F5F7] transition cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border border-[#E7E8EC] bg-white text-[#111318] hover:bg-[#EDEDEF] transition cursor-pointer shadow-xs"
                   >
-                    <Scan size={14} className="text-[#6E6E73]" />
+                    <Scan size={14} className="text-[#7C7F8A]" />
                     <span>Barcode Scanner</span>
                   </button>
                 </div>
@@ -2213,7 +2213,7 @@ export default function Billing() {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                   {/* Payment Status */}
                   <div>
-                    <label className="block text-xs font-medium text-[#1D1D1F] mb-1.5">
+                    <label className="block text-xs font-semibold text-[#111318] mb-1.5">
                       Payment Status
                     </label>
                     <select
@@ -2224,7 +2224,7 @@ export default function Billing() {
                         if (val === "Paid") setAmountReceived(grandTotal);
                         else if (val === "Unpaid") setAmountReceived(0);
                       }}
-                      className="w-full px-3 py-2 text-xs sm:text-[13px] border border-[#E5E5EA] rounded-xl bg-white outline-none focus:border-[#007AFF] text-[#1D1D1F]"
+                      className="w-full px-3 py-2 text-xs sm:text-[13px] border border-[#E7E8EC] rounded-xl bg-white outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 text-[#111318]"
                     >
                       <option value="Paid">Fully Paid</option>
                       <option value="Partially Paid">Partially Paid</option>
@@ -2234,13 +2234,13 @@ export default function Billing() {
 
                   {/* Payment Mode */}
                   <div>
-                    <label className="block text-xs font-medium text-[#1D1D1F] mb-1.5">
+                    <label className="block text-xs font-semibold text-[#111318] mb-1.5">
                       Payment Mode
                     </label>
                     <select
                       value={paymentMode}
                       onChange={(e) => setPaymentMode(e.target.value)}
-                      className="w-full px-3 py-2 text-xs sm:text-[13px] border border-[#E5E5EA] rounded-xl bg-white outline-none focus:border-[#007AFF] text-[#1D1D1F]"
+                      className="w-full px-3 py-2 text-xs sm:text-[13px] border border-[#E7E8EC] rounded-xl bg-white outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 text-[#111318]"
                     >
                       <option value="Cash">Cash</option>
                       <option value="UPI">UPI / QR</option>
@@ -2251,7 +2251,7 @@ export default function Billing() {
 
                   {/* Amount Received */}
                   <div>
-                    <label className="block text-xs font-medium text-[#1D1D1F] mb-1.5">
+                    <label className="block text-xs font-semibold text-[#111318] mb-1.5">
                       Amount Received (₹)
                     </label>
                     <input
@@ -2260,15 +2260,15 @@ export default function Billing() {
                       step="0.01"
                       value={amountReceived}
                       onChange={(e) => setAmountReceived(Number(e.target.value))}
-                      className="w-full px-3 py-2 text-xs sm:text-[13px] border border-[#E5E5EA] rounded-xl font-mono font-medium outline-none focus:border-[#007AFF] bg-white text-[#1D1D1F]"
+                      className="w-full px-3 py-2 text-xs sm:text-[13px] border border-[#E7E8EC] rounded-xl font-mono font-medium outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 bg-white text-[#111318]"
                     />
                   </div>
                 </div>
 
                 {/* Tender Balance Indicators */}
-                <div className="mt-4 pt-3.5 border-t border-[#E5E5EA] flex flex-wrap items-center justify-between gap-2 text-xs">
+                <div className="mt-4 pt-3.5 border-t border-[#E7E8EC] flex flex-wrap items-center justify-between gap-2 text-xs">
                   {changeDue > 0 ? (
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#EDF8F0] border border-[#CCE8D4] text-[#248A3D] font-medium">
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#DFFFE6] border border-[#5BF07B]/40 text-[#0E2A16] font-semibold">
                       <span>Change Due to Customer:</span>
                       <strong className="font-mono font-bold">₹{changeDue.toFixed(2)}</strong>
                     </div>
@@ -2278,12 +2278,12 @@ export default function Billing() {
                       <strong className="font-mono font-bold">₹{balanceDue.toFixed(2)}</strong>
                     </div>
                   ) : (
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#EDF8F0] border border-[#CCE8D4] text-[#248A3D] font-medium">
-                      <span>✓ Bill fully settled</span>
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#DFFFE6] border border-[#5BF07B]/40 text-[#0E2A16] font-semibold">
+                      <span className="text-[#0E2A16]">✓ Bill fully settled</span>
                     </div>
                   )}
-                  <span className="text-[11px] text-[#6E6E73]">
-                    Selected tender: <strong>{paymentMode}</strong> ({paymentStatus})
+                  <span className="text-[11px] text-[#7C7F8A]">
+                    Selected tender: <strong className="text-[#111318]">{paymentMode}</strong> ({paymentStatus})
                   </span>
                 </div>
               </section>
@@ -2293,57 +2293,57 @@ export default function Billing() {
           {/* RIGHT 50%: Document Summary, Checkout Actions, Live Document Preview */}
           <div className="sticky top-6 space-y-4 min-w-0">
             {/* ── 5. Document Summary Card ── */}
-            <section className="bg-white rounded-2xl border border-[#E5E5EA] p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] space-y-3.5">
-              <div className="flex items-center justify-between pb-2.5 border-b border-[#E5E5EA]">
-                <h2 className="text-sm font-semibold text-[#1D1D1F] tracking-tight">
+            <section className="bg-[#F6F6F8] rounded-[24px] border border-[#E7E8EC] p-5 shadow-fintech space-y-3.5">
+              <div className="flex items-center justify-between pb-2.5 border-b border-[#E7E8EC]">
+                <h2 className="text-sm font-bold text-[#111318] tracking-tight">
                   {documentType === "quotation" ? "Quotation Summary" : "Bill Summary"}
                 </h2>
-                <span className="text-[11px] text-[#6E6E73]">
+                <span className="text-[11px] text-[#7C7F8A]">
                   {items.length} {items.length === 1 ? "item" : "items"}
                 </span>
               </div>
 
               <div className="space-y-2 text-xs">
-                <div className="flex justify-between text-[#6E6E73]">
+                <div className="flex justify-between text-[#7C7F8A]">
                   <span>Subtotal</span>
-                  <span className="font-mono text-[#1D1D1F]">₹{subtotal.toFixed(2)}</span>
+                  <span className="font-mono text-[#111318]">₹{subtotal.toFixed(2)}</span>
                 </div>
 
                 {totalDiscount > 0 && (
-                  <div className="flex justify-between text-[#248A3D]">
+                  <div className="flex justify-between text-[#0E2A16] font-semibold">
                     <span>Item Discounts</span>
                     <span className="font-mono">-₹{totalDiscount.toFixed(2)}</span>
                   </div>
                 )}
 
-                <div className="flex justify-between text-[#6E6E73]">
+                <div className="flex justify-between text-[#7C7F8A]">
                   <span>Taxable Amount</span>
-                  <span className="font-mono text-[#1D1D1F]">₹{subtotal.toFixed(2)}</span>
+                  <span className="font-mono text-[#111318]">₹{subtotal.toFixed(2)}</span>
                 </div>
 
                 {/* GST breakdown */}
                 {isInterState ? (
-                  <div className="flex justify-between text-[#6E6E73]">
+                  <div className="flex justify-between text-[#7C7F8A]">
                     <span>IGST</span>
-                    <span className="font-mono text-[#1D1D1F]">₹{igst.toFixed(2)}</span>
+                    <span className="font-mono text-[#111318]">₹{igst.toFixed(2)}</span>
                   </div>
                 ) : (
                   <>
-                    <div className="flex justify-between text-[#6E6E73]">
+                    <div className="flex justify-between text-[#7C7F8A]">
                       <span>CGST</span>
-                      <span className="font-mono text-[#1D1D1F]">₹{cgst.toFixed(2)}</span>
+                      <span className="font-mono text-[#111318]">₹{cgst.toFixed(2)}</span>
                     </div>
-                    <div className="flex justify-between text-[#6E6E73]">
+                    <div className="flex justify-between text-[#7C7F8A]">
                       <span>SGST</span>
-                      <span className="font-mono text-[#1D1D1F]">₹{sgst.toFixed(2)}</span>
+                      <span className="font-mono text-[#111318]">₹{sgst.toFixed(2)}</span>
                     </div>
                   </>
                 )}
 
                 {documentType === "invoice" && roundOff !== 0 && (
-                  <div className="flex justify-between text-[#6E6E73]">
+                  <div className="flex justify-between text-[#7C7F8A]">
                     <span>Round Off</span>
-                    <span className="font-mono text-[#1D1D1F]">
+                    <span className="font-mono text-[#111318]">
                       {roundOff > 0 ? `+₹${roundOff.toFixed(2)}` : `-₹${Math.abs(roundOff).toFixed(2)}`}
                     </span>
                   </div>
@@ -2351,17 +2351,17 @@ export default function Billing() {
               </div>
 
               {/* Prominent Grand Total */}
-              <div className="pt-3 border-t border-[#E5E5EA] flex items-baseline justify-between">
+              <div className="pt-3 border-t border-[#E7E8EC] flex items-baseline justify-between">
                 <div>
-                  <span className="text-xs font-semibold uppercase tracking-wider text-[#6E6E73] block">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-[#7C7F8A] block">
                     {documentType === "quotation" ? "Quotation Total" : "Grand Total"}
                   </span>
-                  <span className="text-[11px] text-[#6E6E73]">
+                  <span className="text-[11px] text-[#7C7F8A]">
                     {taxInclusive ? "Tax Inclusive (MRP)" : "Tax Exclusive"}
                   </span>
                 </div>
                 <div className="text-right">
-                  <span className="text-2xl sm:text-3xl font-bold text-[#1D1D1F] font-mono tracking-tight">
+                  <span className="text-2xl sm:text-3xl font-bold text-[#111318] font-mono tracking-tight">
                     ₹{grandTotal.toFixed(2)}
                   </span>
                 </div>
@@ -2369,7 +2369,7 @@ export default function Billing() {
             </section>
 
             {/* ── 6. Primary Checkout / Quotation Actions Bar ── */}
-            <div className="bg-white rounded-2xl border border-[#E5E5EA] p-3 shadow-[0_1px_3px_rgba(0,0,0,0.04)] space-y-2">
+            <div className="bg-[#F6F6F8] rounded-[24px] border border-[#E7E8EC] p-4 shadow-fintech space-y-2.5">
               {documentType === "quotation" ? (
                 <>
                   {/* Quotation Primary Action: Save & Print */}
@@ -2378,10 +2378,10 @@ export default function Billing() {
                     id="save-print-quotation-btn"
                     onClick={() => handleSaveQuotation("print")}
                     disabled={savingBill || items.length === 0}
-                    className="w-full py-2.5 px-4 rounded-xl bg-purple-600 hover:bg-purple-700 disabled:opacity-40 text-white text-xs sm:text-[13px] font-semibold transition cursor-pointer shadow-[0_1px_2px_rgba(147,51,234,0.25)] flex items-center justify-center gap-2"
+                    className="w-full py-2.5 px-4 rounded-xl bg-[#12151C] hover:bg-black disabled:opacity-40 text-white text-xs sm:text-[13px] font-semibold transition cursor-pointer shadow-fintech flex items-center justify-center gap-2"
                     title="Save quotation and open printable document"
                   >
-                    <Printer size={15} />
+                    <Printer size={15} className="text-[#5BF07B]" />
                     <span>{savingBill ? "Saving Quotation..." : "Save & Print Quotation"}</span>
                   </button>
 
@@ -2391,10 +2391,10 @@ export default function Billing() {
                     id="save-quotation-btn"
                     onClick={() => handleSaveQuotation("modal")}
                     disabled={savingBill || items.length === 0}
-                    className="w-full py-2 px-3 rounded-xl border border-purple-200 bg-purple-50 hover:bg-purple-100 disabled:opacity-40 text-purple-800 text-xs font-medium transition cursor-pointer flex items-center justify-center gap-1.5"
+                    className="w-full py-2 px-3 rounded-xl border border-[#E7E8EC] bg-white hover:bg-[#EDEDEF] disabled:opacity-40 text-[#111318] text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
                     title="Save quotation draft/proposal without immediate print"
                   >
-                    <Check size={14} className="text-purple-600" />
+                    <Check size={14} className="text-[#5BF07B]" />
                     <span>Save Quotation (View Options)</span>
                   </button>
 
@@ -2404,7 +2404,7 @@ export default function Billing() {
                       type="button"
                       id="convert-quote-to-invoice-btn"
                       onClick={() => handleConvertLoadedQuotationToInvoice(savedQuotationRecord)}
-                      className="w-full py-2.5 px-3 rounded-full border border-[#E7E8EC] bg-[#FAFAFB] hover:bg-[#EDEDEF] text-[#111318] text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1.5"
+                      className="w-full py-2.5 px-3 rounded-xl border border-[#E7E8EC] bg-white hover:bg-[#EDEDEF] text-[#111318] text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
                       title="Convert this quotation into an active Tax Invoice"
                     >
                       <ArrowRight size={14} className="text-[#5BF07B]" />
@@ -2422,10 +2422,10 @@ export default function Billing() {
                         setShowInvoiceModal(true);
                       }}
                       disabled={items.length === 0}
-                      className="py-1.5 px-2 rounded-lg border border-[#E5E5EA] bg-white hover:bg-[#F5F5F7] disabled:opacity-40 text-purple-700 text-[11px] font-medium transition cursor-pointer flex items-center justify-center gap-1"
+                      className="py-1.5 px-2 rounded-lg border border-[#E7E8EC] bg-white hover:bg-[#EDEDEF] disabled:opacity-40 text-[#111318] text-[11px] font-medium transition cursor-pointer flex items-center justify-center gap-1 shadow-xs"
                       title="Preview quotation document"
                     >
-                      <Eye size={13} />
+                      <Eye size={13} className="text-[#7C7F8A]" />
                       <span>Preview</span>
                     </button>
 
@@ -2433,17 +2433,17 @@ export default function Billing() {
                       type="button"
                       onClick={() => handleShareQuotation()}
                       disabled={items.length === 0}
-                      className="py-1.5 px-2 rounded-lg border border-[#E5E5EA] bg-white hover:bg-[#F5F5F7] disabled:opacity-40 text-[#007AFF] text-[11px] font-medium transition cursor-pointer flex items-center justify-center gap-1"
+                      className="py-1.5 px-2 rounded-lg border border-[#E7E8EC] bg-white hover:bg-[#EDEDEF] disabled:opacity-40 text-[#111318] text-[11px] font-medium transition cursor-pointer flex items-center justify-center gap-1 shadow-xs"
                       title="Share quotation via WhatsApp or copy details"
                     >
-                      <Share2 size={13} />
+                      <Share2 size={13} className="text-[#7C7F8A]" />
                       <span>Share</span>
                     </button>
 
                     <button
                       type="button"
                       onClick={() => handleStartNewBill(true)}
-                      className="py-1.5 px-2 rounded-lg border border-[#E5E5EA] bg-white hover:bg-[#FFF2F2] text-[#D70015] text-[11px] font-medium transition cursor-pointer flex items-center justify-center gap-1"
+                      className="py-1.5 px-2 rounded-lg border border-[#E7E8EC] bg-white hover:bg-[#FFF2F2] text-[#E5484D] text-[11px] font-medium transition cursor-pointer flex items-center justify-center gap-1 shadow-xs"
                       title="Clear current quotation form"
                     >
                       <RotateCcw size={13} />
@@ -2458,10 +2458,10 @@ export default function Billing() {
                     type="button"
                     onClick={() => handleSaveBill(true)}
                     disabled={savingBill || items.length === 0}
-                    className="w-full py-2.5 px-4 rounded-xl bg-[#007AFF] hover:bg-[#0062CC] disabled:opacity-40 text-white text-xs sm:text-[13px] font-semibold transition cursor-pointer shadow-[0_1px_2px_rgba(0,122,255,0.25)] flex items-center justify-center gap-2"
+                    className="w-full py-2.5 px-4 rounded-xl bg-[#12151C] hover:bg-black disabled:opacity-40 text-white text-xs sm:text-[13px] font-semibold transition cursor-pointer shadow-fintech flex items-center justify-center gap-2"
                     title="Save sale permanently to database and open printable Tax Invoice"
                   >
-                    <Printer size={15} />
+                    <Printer size={15} className="text-[#5BF07B]" />
                     <span>{savingBill ? "Processing Invoice..." : "Save & Print Invoice"}</span>
                   </button>
 
@@ -2470,10 +2470,10 @@ export default function Billing() {
                     type="button"
                     onClick={() => handleSaveBill(false)}
                     disabled={savingBill || items.length === 0}
-                    className="w-full py-2 px-3 rounded-xl border border-[#E5E5EA] bg-[#F5F5F7] hover:bg-[#E5E5EA] disabled:opacity-40 text-[#1D1D1F] text-xs font-medium transition cursor-pointer flex items-center justify-center gap-1.5"
+                    className="w-full py-2 px-3 rounded-xl border border-[#E7E8EC] bg-white hover:bg-[#EDEDEF] disabled:opacity-40 text-[#111318] text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
                     title="Save sale and prepare fresh bill"
                   >
-                    <Check size={14} className="text-[#248A3D]" />
+                    <Check size={14} className="text-[#5BF07B]" />
                     <span>Complete Sale (Quick Save)</span>
                   </button>
 
@@ -2483,10 +2483,10 @@ export default function Billing() {
                       type="button"
                       onClick={handleHoldBill}
                       disabled={items.length === 0}
-                      className="py-1.5 px-2 rounded-lg border border-[#E5E5EA] bg-white hover:bg-[#F5F5F7] disabled:opacity-40 text-[#9A6700] text-[11px] font-medium transition cursor-pointer flex items-center justify-center gap-1"
+                      className="py-1.5 px-2 rounded-lg border border-[#E7E8EC] bg-white hover:bg-[#EDEDEF] disabled:opacity-40 text-[#111318] text-[11px] font-medium transition cursor-pointer flex items-center justify-center gap-1 shadow-xs"
                       title="Hold bill to serve next customer without losing cart"
                     >
-                      <Clock size={13} />
+                      <Clock size={13} className="text-[#7C7F8A]" />
                       <span>Hold</span>
                     </button>
 
@@ -2498,17 +2498,17 @@ export default function Billing() {
                         setShowInvoiceModal(true);
                       }}
                       disabled={items.length === 0}
-                      className="py-1.5 px-2 rounded-lg border border-[#E5E5EA] bg-white hover:bg-[#F5F5F7] disabled:opacity-40 text-[#007AFF] text-[11px] font-medium transition cursor-pointer flex items-center justify-center gap-1"
+                      className="py-1.5 px-2 rounded-lg border border-[#E7E8EC] bg-white hover:bg-[#EDEDEF] disabled:opacity-40 text-[#111318] text-[11px] font-medium transition cursor-pointer flex items-center justify-center gap-1 shadow-xs"
                       title="View PDF preview modal"
                     >
-                      <Eye size={13} />
+                      <Eye size={13} className="text-[#7C7F8A]" />
                       <span>PDF View</span>
                     </button>
 
                     <button
                       type="button"
                       onClick={() => handleStartNewBill(true)}
-                      className="py-1.5 px-2 rounded-lg border border-[#E5E5EA] bg-white hover:bg-[#FFF2F2] text-[#D70015] text-[11px] font-medium transition cursor-pointer flex items-center justify-center gap-1"
+                      className="py-1.5 px-2 rounded-lg border border-[#E7E8EC] bg-white hover:bg-[#FFF2F2] text-[#E5484D] text-[11px] font-medium transition cursor-pointer flex items-center justify-center gap-1 shadow-xs"
                       title="Clear current invoice"
                     >
                       <RotateCcw size={13} />
@@ -2520,22 +2520,22 @@ export default function Billing() {
             </div>
 
             {/* ── 7. Live Document Preview Card ── */}
-            <div className="bg-white rounded-2xl border border-[#E5E5EA] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-              <div className="px-4 py-3 bg-[#F5F5F7] border-b border-[#E5E5EA] flex items-center justify-between">
+            <div className="bg-[#F6F6F8] rounded-[24px] border border-[#E7E8EC] overflow-hidden shadow-fintech">
+              <div className="px-4 py-3 bg-[#F6F6F8] border-b border-[#E7E8EC] flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span
                     className={`w-2 h-2 rounded-full animate-pulse ${
-                      documentType === "quotation" ? "bg-purple-600" : "bg-[#248A3D]"
+                      documentType === "quotation" ? "bg-[#7C7F8A]" : "bg-[#5BF07B]"
                     }`}
                   />
-                  <span className="text-xs font-semibold text-[#1D1D1F]">
+                  <span className="text-xs font-bold text-[#111318]">
                     {documentType === "quotation" ? "Live Quotation Preview" : "Live Bill Preview"}
                   </span>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowLivePreview(!showLivePreview)}
-                  className="text-[11px] font-medium text-[#007AFF] hover:underline cursor-pointer flex items-center gap-1"
+                  className="text-[11px] font-semibold text-[#111318] hover:underline cursor-pointer flex items-center gap-1"
                 >
                   {showLivePreview ? (
                     <>
@@ -2565,23 +2565,23 @@ export default function Billing() {
           </div>
         </div>
 
-        {/* ── Add Item Modal (Clean macOS styling) ── */}
+        {/* ── Add Item Modal (Keel Fintech styling) ── */}
         {showAddItemModal && (
-          <div className="fixed inset-0 z-50 overflow-y-auto p-4 flex items-center justify-center bg-black/40 backdrop-blur-xs">
-            <div className="relative w-full max-w-lg bg-white rounded-2xl p-6 shadow-2xl border border-[#E5E5EA] animate-in fade-in zoom-in-95">
-              <div className="flex items-center justify-between pb-3.5 border-b border-[#E5E5EA]">
+          <div className="fixed inset-0 z-50 overflow-y-auto p-4 flex items-center justify-center bg-black/60 backdrop-blur-xs">
+            <div className="relative w-full max-w-lg bg-[#F6F6F8] rounded-[24px] p-6 shadow-fintech border border-[#E7E8EC] animate-in fade-in zoom-in-95">
+              <div className="flex items-center justify-between pb-3.5 border-b border-[#E7E8EC]">
                 <div>
-                  <h3 className="font-semibold text-[#1D1D1F] text-sm sm:text-base">
+                  <h3 className="font-bold text-[#111318] text-sm sm:text-base">
                     Add Item to Invoice
                   </h3>
-                  <p className="text-xs text-[#6E6E73] mt-0.5">
+                  <p className="text-xs text-[#7C7F8A] mt-0.5">
                     Select from catalog or enter custom line item details
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowAddItemModal(false)}
-                  className="text-[#6E6E73] hover:text-[#1D1D1F] p-1 rounded-lg transition cursor-pointer"
+                  className="text-[#7C7F8A] hover:text-[#111318] p-1 rounded-lg transition cursor-pointer"
                 >
                   <X size={16} />
                 </button>
@@ -2595,13 +2595,13 @@ export default function Billing() {
               >
                 {availableProducts.length > 0 && (
                   <div>
-                    <label className="block font-medium text-[#1D1D1F] mb-1">
+                    <label className="block font-semibold text-[#111318] mb-1">
                       Choose from Catalog (Optional)
                     </label>
                     <select
                       value={itemForm.productId}
                       onChange={(e) => handleProductSelectChange(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-[#E5E5EA] bg-white text-[#1D1D1F] outline-none focus:border-[#007AFF]"
+                      className="w-full px-3 py-2 rounded-xl border border-[#E7E8EC] bg-white text-[#111318] outline-none focus:border-[#5BF07B]"
                     >
                       <option value="">-- Custom line item --</option>
                       {availableProducts.map((p) => {
@@ -2617,8 +2617,8 @@ export default function Billing() {
                 )}
 
                 <div>
-                  <label className="block font-medium text-[#1D1D1F] mb-1">
-                    Item Name <span className="text-[#D70015]">*</span>
+                  <label className="block font-semibold text-[#111318] mb-1">
+                    Item Name <span className="text-[#E5484D]">*</span>
                   </label>
                   <input
                     type="text"
@@ -2626,24 +2626,24 @@ export default function Billing() {
                     placeholder="e.g. Basmati Rice 5kg or Service Fee"
                     value={itemForm.name}
                     onChange={(e) => setItemForm({ ...itemForm, name: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-[#E5E5EA] bg-white text-[#1D1D1F] outline-none focus:border-[#007AFF]"
+                    className="w-full px-3 py-2 rounded-xl border border-[#E7E8EC] bg-white text-[#111318] outline-none focus:border-[#5BF07B]"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block font-medium text-[#1D1D1F] mb-1">HSN / SAC Code</label>
+                    <label className="block font-semibold text-[#111318] mb-1">HSN / SAC Code</label>
                     <input
                       type="text"
                       placeholder="e.g. 1904"
                       value={itemForm.hsn}
                       onChange={(e) => setItemForm({ ...itemForm, hsn: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl border border-[#E5E5EA] font-mono bg-white text-[#1D1D1F] outline-none focus:border-[#007AFF]"
+                      className="w-full px-3 py-2 rounded-xl border border-[#E7E8EC] font-mono bg-white text-[#111318] outline-none focus:border-[#5BF07B]"
                     />
                   </div>
                   <div>
-                    <label className="block font-medium text-[#1D1D1F] mb-1">
-                      Quantity <span className="text-[#D70015]">*</span>
+                    <label className="block font-semibold text-[#111318] mb-1">
+                      Quantity <span className="text-[#E5484D]">*</span>
                     </label>
                     <input
                       type="number"
@@ -2663,15 +2663,15 @@ export default function Billing() {
                           setItemForm({ ...itemForm, quantity: 1 });
                         }
                       }}
-                      className="w-full px-3 py-2 rounded-xl border border-[#E5E5EA] font-semibold bg-white text-[#1D1D1F] outline-none focus:border-[#007AFF]"
+                      className="w-full px-3 py-2 rounded-xl border border-[#E7E8EC] font-semibold bg-white text-[#111318] outline-none focus:border-[#5BF07B]"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-3 gap-3">
                   <div>
-                    <label className="block font-medium text-[#1D1D1F] mb-1">
-                      Unit Rate (₹) <span className="text-[#D70015]">*</span>
+                    <label className="block font-semibold text-[#111318] mb-1">
+                      Unit Rate (₹) <span className="text-[#E5484D]">*</span>
                     </label>
                     <input
                       type="number"
@@ -2688,12 +2688,12 @@ export default function Billing() {
                           setItemForm({ ...itemForm, rate: 0 });
                         }
                       }}
-                      className="w-full px-3 py-2 rounded-xl border border-[#E5E5EA] font-mono bg-white text-[#1D1D1F] outline-none focus:border-[#007AFF]"
+                      className="w-full px-3 py-2 rounded-xl border border-[#E7E8EC] font-mono bg-white text-[#111318] outline-none focus:border-[#5BF07B]"
                     />
                   </div>
 
                   <div>
-                    <label className="block font-medium text-[#1D1D1F] mb-1">Discount (₹)</label>
+                    <label className="block font-semibold text-[#111318] mb-1">Discount (₹)</label>
                     <input
                       type="number"
                       min="0"
@@ -2708,12 +2708,12 @@ export default function Billing() {
                           setItemForm({ ...itemForm, discount: 0 });
                         }
                       }}
-                      className="w-full px-3 py-2 rounded-xl border border-[#E5E5EA] font-mono bg-white text-[#1D1D1F] outline-none focus:border-[#007AFF]"
+                      className="w-full px-3 py-2 rounded-xl border border-[#E7E8EC] font-mono bg-white text-[#111318] outline-none focus:border-[#5BF07B]"
                     />
                   </div>
 
                   <div>
-                    <label className="block font-medium text-[#1D1D1F] mb-1">GST Rate (%)</label>
+                    <label className="block font-semibold text-[#111318] mb-1">GST Rate (%)</label>
                     <input
                       type="number"
                       min="0"
@@ -2729,7 +2729,7 @@ export default function Billing() {
                           setItemForm({ ...itemForm, taxRate: 0 });
                         }
                       }}
-                      className="w-full px-3 py-2 rounded-xl border border-[#E5E5EA] font-mono font-semibold bg-white text-[#1D1D1F] outline-none focus:border-[#007AFF]"
+                      className="w-full px-3 py-2 rounded-xl border border-[#E7E8EC] font-mono font-semibold bg-white text-[#111318] outline-none focus:border-[#5BF07B]"
                     />
                     <div className="flex flex-wrap gap-1 mt-1.5">
                       {[0, 5, 12, 18, 28].map((rate) => (
@@ -2737,10 +2737,10 @@ export default function Billing() {
                           key={rate}
                           type="button"
                           onClick={() => setItemForm({ ...itemForm, taxRate: rate })}
-                          className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition cursor-pointer ${
+                          className={`px-1.5 py-0.5 rounded text-[10px] font-semibold transition cursor-pointer ${
                             Number(itemForm.taxRate) === rate
-                              ? "bg-[#007AFF] text-white"
-                              : "bg-[#F5F5F7] text-[#6E6E73] hover:text-[#1D1D1F]"
+                              ? "bg-[#12151C] text-white shadow-xs"
+                              : "bg-[#EDEDEF] text-[#7C7F8A] hover:text-[#111318]"
                           }`}
                         >
                           {rate}%
@@ -2751,9 +2751,9 @@ export default function Billing() {
                 </div>
 
                 {/* Line total preview */}
-                <div className="p-3 bg-[#F5F5F7] rounded-xl border border-[#E5E5EA] flex items-center justify-between">
-                  <span className="font-medium text-[#6E6E73]">Calculated Line Total:</span>
-                  <span className="font-semibold text-[#1D1D1F] font-mono text-sm">
+                <div className="p-3 bg-white rounded-xl border border-[#E7E8EC] flex items-center justify-between shadow-2xs">
+                  <span className="font-semibold text-[#7C7F8A]">Calculated Line Total:</span>
+                  <span className="font-bold text-[#111318] font-mono text-sm">
                     ₹
                     {(
                       (Math.max(0, parseFloat(itemForm.rate) || 0) * (parseFloat(itemForm.quantity) || 0) - Math.max(0, parseFloat(itemForm.discount) || 0)) *
@@ -2762,19 +2762,20 @@ export default function Billing() {
                   </span>
                 </div>
 
-                <div className="flex justify-end gap-2.5 pt-3.5 border-t border-[#E5E5EA]">
+                <div className="flex justify-end gap-2.5 pt-3.5 border-t border-[#E7E8EC]">
                   <button
                     type="button"
                     onClick={() => setShowAddItemModal(false)}
-                    className="px-4 py-2 rounded-xl border border-[#E5E5EA] font-medium text-[#6E6E73] hover:bg-[#F5F5F7] transition cursor-pointer"
+                    className="px-4 py-2 rounded-xl border border-[#E7E8EC] font-semibold text-[#7C7F8A] bg-white hover:bg-[#EDEDEF] hover:text-[#111318] transition cursor-pointer shadow-xs"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 rounded-xl bg-[#007AFF] hover:bg-[#0062CC] text-white font-semibold transition cursor-pointer shadow-[0_1px_2px_rgba(0,122,255,0.25)]"
+                    className="px-4 py-2 rounded-xl bg-[#12151C] hover:bg-black text-white font-semibold transition cursor-pointer shadow-fintech inline-flex items-center gap-1.5"
                   >
-                    Add to Bill
+                    <Plus size={14} className="text-[#5BF07B]" />
+                    <span>Add to Bill</span>
                   </button>
                 </div>
               </form>
@@ -2879,9 +2880,9 @@ export default function Billing() {
                     setShowQuotationActionsModal(false);
                     setShowInvoiceModal(true);
                   }}
-                  className="p-3 rounded-xl border border-[#E5E5EA] hover:border-[#007AFF] bg-white hover:bg-[#F5F5F7] transition cursor-pointer text-left flex items-center gap-3 group"
+                  className="p-3 rounded-xl border border-[#E7E8EC] hover:border-[#12151C] bg-white hover:bg-[#EDEDEF] transition cursor-pointer text-left flex items-center gap-3 group"
                 >
-                  <div className="w-8 h-8 rounded-lg bg-blue-50 text-[#007AFF] group-hover:bg-[#007AFF] group-hover:text-white transition flex items-center justify-center shrink-0">
+                  <div className="w-8 h-8 rounded-lg bg-[#12151C] text-[#5BF07B] transition flex items-center justify-center shrink-0">
                     <Eye size={16} />
                   </div>
                   <div>

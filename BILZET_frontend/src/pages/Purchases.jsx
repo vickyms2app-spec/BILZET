@@ -541,7 +541,7 @@ export default function Purchases({ defaultTab = "invoices" }) {
 
   // Predefined palette of soft, professional colors for deterministic avatar assignment
   const SUPPLIER_AVATAR_PALETTES = [
-    { bg: "#EBF5FF", text: "#007AFF", border: "#D0E2FF" }, // Blue
+    { bg: "#DFFFE6", text: "#0E2A16", border: "#5BF07B" }, // Mint
     { bg: "#F3E8FF", text: "#7C3AED", border: "#E9D5FF" }, // Purple
     { bg: "#E6FFFA", text: "#0D9488", border: "#B2F5EA" }, // Teal
     { bg: "#EDF8F0", text: "#248A3D", border: "#CCE8D4" }, // Green
@@ -848,16 +848,16 @@ export default function Purchases({ defaultTab = "invoices" }) {
       {/* ── Tab Views ── */}
       {loading ? (
         <div className="py-16 flex flex-col items-center justify-center gap-3">
-          <RefreshCw size={24} className="animate-spin text-[#007AFF]" />
-          <p className="text-[13.5px] text-[#6E6E73]">Loading purchase records…</p>
+          <RefreshCw size={24} className="animate-spin text-[#5BF07B]" />
+          <p className="text-[13.5px] text-[#7C7F8A]">Loading purchase records…</p>
         </div>
       ) : activeTab === "invoices" ? (
-        /* Purchase Invoices Table — Apple macOS Typography & Design */
-        <div className="bg-white rounded-2xl border border-[#E5E5EA] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+        /* Purchase Invoices Table — Keel Fintech Monochrome & Neon Mint */
+        <div className="bg-[#F6F6F8] rounded-[24px] border border-[#E7E8EC] overflow-hidden shadow-fintech">
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full text-left border-collapse bg-white">
               <thead>
-                <tr className="bg-[#F5F5F7] border-b border-[#E5E5EA] text-[12px] font-medium text-[#6E6E73] uppercase tracking-wider">
+                <tr className="bg-[#FAFAFB] border-b border-[#E7E8EC] text-[12px] font-bold text-[#7C7F8A] uppercase tracking-wider">
                   <th className="py-3 px-4">Invoice #</th>
                   <th className="py-3 px-4">Supplier &amp; Company</th>
                   <th className="py-3 px-4">Date</th>
@@ -867,10 +867,10 @@ export default function Purchases({ defaultTab = "invoices" }) {
                   <th className="py-3 px-4 text-center">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#E5E5EA]">
+              <tbody className="divide-y divide-[#E7E8EC]">
                 {filteredInvoices.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-12 text-center text-[13.5px] text-[#6E6E73]">
+                    <td colSpan={7} className="py-12 text-center text-[13.5px] text-[#7C7F8A]">
                       No purchase invoices found matching your filters. Click &quot;Record Purchase&quot; above to add your first vendor bill.
                     </td>
                   </tr>
@@ -902,9 +902,9 @@ export default function Purchases({ defaultTab = "invoices" }) {
                         });
 
                     return (
-                      <tr key={inv.id} className="hover:bg-[#F5F5F7]/60 transition">
+                      <tr key={inv.id} className="hover:bg-[#FAFAFB] transition">
                         {/* Invoice # */}
-                        <td className="py-3 px-4 font-mono font-medium text-[13.5px] text-[#007AFF]">
+                        <td className="py-3 px-4 font-mono font-bold text-[13.5px] text-[#111318]">
                           <span
                             onClick={() => setSelectedInvoice(inv)}
                             className="hover:underline cursor-pointer"
@@ -927,10 +927,10 @@ export default function Purchases({ defaultTab = "invoices" }) {
                               {supplierInitial}
                             </div>
                             <div>
-                              <p className="font-semibold text-[#1D1D1F] text-[14px] leading-snug">
+                              <p className="font-semibold text-[#111318] text-[14px] leading-snug">
                                 {supplierName}
                               </p>
-                              <p className="text-[12.5px] text-[#6E6E73] font-normal leading-normal">
+                              <p className="text-[12.5px] text-[#7C7F8A] font-normal leading-normal">
                                 {inv.supplier?.companyName || inv.supplier?.phone || "No company on file"}
                               </p>
                             </div>
@@ -938,12 +938,12 @@ export default function Purchases({ defaultTab = "invoices" }) {
                         </td>
 
                         {/* Date */}
-                        <td className="py-3 px-4 text-[#1D1D1F] text-[13.5px] font-normal">
+                        <td className="py-3 px-4 text-[#111318] text-[13.5px] font-normal">
                           {invDateFormatted}
                         </td>
 
                         {/* Total Amount */}
-                        <td className="py-3 px-4 text-right font-semibold text-[#1D1D1F] text-[13.5px] font-mono tabular-nums">
+                        <td className="py-3 px-4 text-right font-bold text-[#111318] text-[13.5px] font-mono tabular-nums">
                           ₹{Number(inv.totalAmount || inv.grandTotal || 0).toLocaleString("en-IN", {
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 2,
@@ -951,8 +951,8 @@ export default function Purchases({ defaultTab = "invoices" }) {
                         </td>
 
                         {/* Balance Due */}
-                        <td className="py-3 px-4 text-right font-semibold text-[13.5px] font-mono tabular-nums">
-                          <span className={dueAmount > 0 ? "text-[#D70015]" : "text-[#6E6E73]"}>
+                        <td className="py-3 px-4 text-right font-bold text-[13.5px] font-mono tabular-nums">
+                          <span className={dueAmount > 0 ? "text-[#E5484D]" : "text-[#7C7F8A]"}>
                             ₹{dueAmount.toLocaleString("en-IN", {
                               minimumFractionDigits: 2,
                               maximumFractionDigits: 2,
@@ -963,12 +963,12 @@ export default function Purchases({ defaultTab = "invoices" }) {
                         {/* Status */}
                         <td className="py-3 px-4">
                           <span
-                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[12px] font-medium border ${
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[12px] font-semibold border ${
                               status === "PAID"
-                                ? "bg-[#EDF8F0] text-[#248A3D] border-[#CCE8D4]"
+                                ? "bg-[#DFFFE6] text-[#0E2A16] border-[#5BF07B]/40"
                                 : status === "PARTIAL"
                                 ? "bg-[#FFF8EB] text-[#9A6700] border-[#FBE3B5]"
-                                : "bg-[#FFF2F2] text-[#D70015] border-[#FFD0D0]"
+                                : "bg-[#FBD3D3] text-[#E5484D] border-[#E5484D]/40"
                             }`}
                           >
                             {status}
@@ -980,7 +980,7 @@ export default function Purchases({ defaultTab = "invoices" }) {
                           <button
                             type="button"
                             onClick={() => setSelectedInvoice(inv)}
-                            className="inline-flex items-center gap-1 px-3 py-1 text-[13.5px] font-medium rounded-lg text-[#007AFF] hover:bg-[#EBF5FF] transition cursor-pointer"
+                            className="inline-flex items-center gap-1 px-3 py-1 text-[13.5px] font-semibold rounded-lg text-[#111318] hover:bg-[#EDEDEF] transition cursor-pointer"
                             title="View Invoice Details"
                           >
                             <span>View</span>
@@ -1114,14 +1114,14 @@ export default function Purchases({ defaultTab = "invoices" }) {
                         ₹{Number(po.grandTotal || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                       </td>
                       <td className="py-3 px-4">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#EDEDEF] text-[#111318] border border-[#E7E8EC]">
                           {po.status || "PENDING"}
                         </span>
                       </td>
                       <td className="py-3 px-4 text-center">
                         <button
                           onClick={() => handleConvertPO(po)}
-                          className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition inline-flex items-center gap-1"
+                          className="px-2.5 py-1 text-xs font-semibold rounded-xl bg-[#DFFFE6] text-[#0E2A16] border border-[#5BF07B]/40 hover:bg-[#cbf7d4] transition inline-flex items-center gap-1 cursor-pointer"
                           title="Convert to Purchase Invoice"
                         >
                           <span>Convert to Bill</span>

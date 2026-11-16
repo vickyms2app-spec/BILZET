@@ -271,7 +271,7 @@ export default function Customers() {
 
   // Predefined palette of soft, professional colors for deterministic avatar assignment
   const AVATAR_PALETTES = [
-    { bg: "#EBF5FF", text: "#007AFF", border: "#D0E2FF" }, // Blue
+    { bg: "#DFFFE6", text: "#0E2A16", border: "#5BF07B" }, // Mint
     { bg: "#F3E8FF", text: "#7C3AED", border: "#E9D5FF" }, // Purple
     { bg: "#E6FFFA", text: "#0D9488", border: "#B2F5EA" }, // Teal
     { bg: "#EDF8F0", text: "#248A3D", border: "#CCE8D4" }, // Green
@@ -293,25 +293,25 @@ export default function Customers() {
   };
 
   return (
-    <div className="space-y-5 pb-12 fade-up font-sans text-[#1D1D1F]">
+    <div className="space-y-5 pb-12 fade-up text-[#111318]">
       {/* ══════════════════════════════════════════════════
           TOP HEADER
       ══════════════════════════════════════════════════ */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 sm:p-6 rounded-2xl border border-[#E5E5EA] shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#F6F6F8] p-6 rounded-[28px] border border-[#E7E8EC] shadow-fintech">
         <div className="flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-[#F5F5F7] text-[#007AFF] border border-[#E5E5EA] flex items-center justify-center shrink-0">
+          <div className="w-10 h-10 rounded-full bg-[#12151C] text-[#5BF07B] flex items-center justify-center shrink-0 shadow-xs">
             <Users size={20} strokeWidth={2} />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-lg sm:text-xl font-semibold text-[#1D1D1F] tracking-tight">
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-xl sm:text-2xl font-bold text-[#111318] tracking-tight font-heading">
                 Customer Details
               </h1>
-              <span className="text-[11px] font-medium text-[#007AFF] bg-[#EBF5FF] border border-[#D0E2FF] px-2.5 py-0.5 rounded-full">
+              <span className="text-[10px] font-bold text-[#111318] bg-[#FAFAFB] border border-[#E7E8EC] px-3 py-0.5 rounded-full uppercase tracking-wider shadow-2xs">
                 Directory
               </span>
             </div>
-            <p className="text-xs text-[#6E6E73] font-normal mt-0.5">
+            <p className="text-xs text-[#7C7F8A] font-medium mt-1">
               Customer profiles, contact info, purchase history, and outstanding balances
             </p>
           </div>
@@ -320,9 +320,9 @@ export default function Customers() {
         <button
           type="button"
           onClick={() => setOpenAddModal(true)}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#007AFF] hover:bg-[#0062CC] text-white transition cursor-pointer shadow-[0_1px_2px_rgba(0,122,255,0.25)]"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold bg-[#12151C] hover:bg-[#202530] text-white transition cursor-pointer shadow-fintech"
         >
-          <UserPlus size={15} />
+          <UserPlus size={15} className="text-[#5BF07B]" />
           <span>Add Customer</span>
         </button>
       </div>
@@ -331,52 +331,52 @@ export default function Customers() {
           KPI SUMMARY CARDS
       ══════════════════════════════════════════════════ */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white p-4 rounded-2xl border border-[#E5E5EA] shadow-[0_1px_3px_rgba(0,0,0,0.04)] flex items-center justify-between">
+        <div className="bg-[#F6F6F8] p-6 rounded-[24px] border border-[#E7E8EC] shadow-fintech flex items-center justify-between">
           <div>
-            <p className="text-[11px] font-medium text-[#6E6E73] uppercase tracking-wider">
+            <p className="text-[11px] font-bold text-[#7C7F8A] uppercase tracking-wider">
               Registered Customers
             </p>
-            <p className="text-2xl font-bold text-[#1D1D1F] mt-1">{customers.length}</p>
-            <p className="text-xs text-[#6E6E73] mt-0.5">Active directory records</p>
+            <p className="text-3xl font-black text-[#111318] font-mono mt-1">{customers.length}</p>
+            <p className="text-xs text-[#7C7F8A] mt-0.5 font-medium">Active directory records</p>
           </div>
-          <div className="w-9 h-9 rounded-xl bg-[#F5F5F7] text-[#007AFF] border border-[#E5E5EA] flex items-center justify-center shrink-0">
-            <Users size={17} />
+          <div className="w-10 h-10 rounded-full bg-[#EDEDEF] text-[#111318] flex items-center justify-center shrink-0">
+            <Users size={18} />
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-[#E5E5EA] shadow-[0_1px_3px_rgba(0,0,0,0.04)] flex items-center justify-between">
+        <div className="bg-[#F6F6F8] p-6 rounded-[24px] border border-[#E7E8EC] shadow-fintech flex items-center justify-between">
           <div>
-            <p className="text-[11px] font-medium text-[#6E6E73] uppercase tracking-wider">
+            <p className="text-[11px] font-bold text-[#7C7F8A] uppercase tracking-wider">
               Total Purchases Volume
             </p>
-            <p className="text-2xl font-bold text-[#1D1D1F] font-mono mt-1">
+            <p className="text-3xl font-black text-[#111318] font-mono mt-1">
               ₹{totalPurchasesVolume.toLocaleString("en-IN")}
             </p>
-            <p className="text-xs text-[#6E6E73] mt-0.5">Cumulative billing value</p>
+            <p className="text-xs text-[#7C7F8A] mt-0.5 font-medium">Cumulative billing value</p>
           </div>
-          <div className="w-9 h-9 rounded-xl bg-[#F5F5F7] text-[#248A3D] border border-[#E5E5EA] flex items-center justify-center shrink-0">
-            <Receipt size={17} />
+          <div className="w-10 h-10 rounded-full bg-[#12151C] text-[#5BF07B] flex items-center justify-center shrink-0 shadow-xs">
+            <Receipt size={18} />
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-[#E5E5EA] shadow-[0_1px_3px_rgba(0,0,0,0.04)] flex items-center justify-between">
+        <div className="bg-[#F6F6F8] p-6 rounded-[24px] border border-[#E7E8EC] shadow-fintech flex items-center justify-between">
           <div>
-            <p className="text-[11px] font-medium text-[#6E6E73] uppercase tracking-wider">
+            <p className="text-[11px] font-bold text-[#7C7F8A] uppercase tracking-wider">
               Total Outstanding Dues
             </p>
             <p
-              className={`text-2xl font-bold font-mono mt-1 ${
-                totalOutstanding > 0 ? "text-[#D70015]" : "text-[#1D1D1F]"
+              className={`text-3xl font-black font-mono mt-1 ${
+                totalOutstanding > 0 ? "text-[#E5484D]" : "text-[#111318]"
               }`}
             >
               ₹{totalOutstanding.toLocaleString("en-IN")}
             </p>
-            <p className="text-xs text-[#6E6E73] mt-0.5">
+            <p className="text-xs text-[#7C7F8A] mt-0.5 font-medium">
               From {customers.filter((c) => (c.balance || 0) > 0).length} customers with dues
             </p>
           </div>
-          <div className="w-9 h-9 rounded-xl bg-[#F5F5F7] text-[#D70015] border border-[#E5E5EA] flex items-center justify-center shrink-0">
-            <IndianRupee size={17} />
+          <div className="w-10 h-10 rounded-full bg-[#EDEDEF] text-[#E5484D] flex items-center justify-center shrink-0">
+            <IndianRupee size={18} />
           </div>
         </div>
       </div>
@@ -384,7 +384,7 @@ export default function Customers() {
       {/* ══════════════════════════════════════════════════
           SEARCH & FILTER TOOLBAR
       ══════════════════════════════════════════════════ */}
-      <div className="bg-white p-4 rounded-2xl border border-[#E5E5EA] shadow-[0_1px_3px_rgba(0,0,0,0.04)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="bg-[#F6F6F8] p-4 rounded-[24px] border border-[#E7E8EC] shadow-fintech flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <SearchBar
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -394,33 +394,33 @@ export default function Customers() {
         />
 
         <div className="flex items-center gap-2 self-start sm:self-auto">
-          <div className="flex items-center bg-[#F5F5F7] p-1 rounded-xl border border-[#E5E5EA] text-xs font-medium">
+          <div className="flex items-center bg-[#EDEDEF] p-1 rounded-full border border-[#E7E8EC] text-xs font-semibold">
             <button
               onClick={() => setFilterDueOnly("all")}
-              className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+              className={`px-3.5 py-1.5 rounded-full transition cursor-pointer ${
                 filterDueOnly === "all"
-                  ? "bg-white text-[#1D1D1F] shadow-[0_1px_2px_rgba(0,0,0,0.06)] font-semibold"
-                  : "text-[#6E6E73] hover:text-[#1D1D1F]"
+                  ? "bg-[#12151C] text-white shadow-xs"
+                  : "text-[#7C7F8A] hover:text-[#111318]"
               }`}
             >
               All ({customers.length})
             </button>
             <button
               onClick={() => setFilterDueOnly("due")}
-              className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+              className={`px-3.5 py-1.5 rounded-full transition cursor-pointer ${
                 filterDueOnly === "due"
-                  ? "bg-white text-[#D70015] shadow-[0_1px_2px_rgba(0,0,0,0.06)] font-semibold"
-                  : "text-[#6E6E73] hover:text-[#D70015]"
+                  ? "bg-[#12151C] text-white shadow-xs"
+                  : "text-[#7C7F8A] hover:text-[#111318]"
               }`}
             >
               Has Dues ({customers.filter((c) => (c.balance || 0) > 0).length})
             </button>
             <button
               onClick={() => setFilterDueOnly("settled")}
-              className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+              className={`px-3.5 py-1.5 rounded-full transition cursor-pointer ${
                 filterDueOnly === "settled"
-                  ? "bg-white text-[#248A3D] shadow-[0_1px_2px_rgba(0,0,0,0.06)] font-semibold"
-                  : "text-[#6E6E73] hover:text-[#248A3D]"
+                  ? "bg-[#12151C] text-white shadow-xs"
+                  : "text-[#7C7F8A] hover:text-[#111318]"
               }`}
             >
               Settled ({customers.filter((c) => (c.balance || 0) <= 0).length})
@@ -430,9 +430,9 @@ export default function Customers() {
       </div>
 
       {/* ══════════════════════════════════════════════════
-          CUSTOMER DETAILS TABLE — macOS INSPIRED
+          CUSTOMER DETAILS TABLE
       ══════════════════════════════════════════════════ */}
-      <div className="bg-white rounded-2xl border border-[#E5E5EA] shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden">
+      <div className="bg-[#F6F6F8] rounded-[28px] border border-[#E7E8EC] shadow-fintech overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-xs text-left">
             <thead className="bg-[#F5F5F7] border-b border-[#E5E5EA] text-[#6E6E73] font-medium text-[11px] uppercase tracking-wider">
@@ -462,9 +462,9 @@ export default function Customers() {
                     </p>
                     <button
                       onClick={() => setOpenAddModal(true)}
-                      className="mt-4 px-3.5 py-1.5 rounded-xl bg-[#007AFF] hover:bg-[#0062CC] text-white text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer shadow-[0_1px_2px_rgba(0,122,255,0.25)]"
+                      className="mt-4 px-3.5 py-1.5 rounded-xl bg-[#12151C] hover:bg-black text-white text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer shadow-fintech"
                     >
-                      <UserPlus size={13} />
+                      <UserPlus size={13} className="text-[#5BF07B]" />
                       <span>Add Customer</span>
                     </button>
                   </td>
@@ -502,7 +502,7 @@ export default function Customers() {
                             {initial}
                           </div>
                           <div>
-                            <p className="font-semibold text-[#1D1D1F] group-hover:text-[#007AFF] transition leading-snug">
+                            <p className="font-semibold text-[#111318] group-hover:text-[#12151C] transition leading-snug">
                               {c.name}
                             </p>
                             <span className="text-[11px] text-[#6E6E73] font-mono leading-none block mt-0.5">
@@ -597,7 +597,7 @@ export default function Customers() {
                             type="button"
                             onClick={() => handleOpenEdit(c)}
                             title="Edit Customer"
-                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-lg text-[#6E6E73] hover:text-[#007AFF] hover:bg-[#EBF5FF] transition cursor-pointer"
+                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-lg text-[#7C7F8A] hover:text-[#111318] hover:bg-[#EDEDEF] transition cursor-pointer"
                           >
                             <Pencil size={12} />
                             <span>Edit</span>
@@ -605,7 +605,7 @@ export default function Customers() {
                           <button
                             type="button"
                             onClick={() => setSelectedCustomer(c)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-lg text-[#007AFF] hover:bg-[#EBF5FF] transition cursor-pointer"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg text-[#111318] hover:bg-[#EDEDEF] transition cursor-pointer"
                           >
                             <span>Details</span>
                             <span aria-hidden="true">&rarr;</span>
@@ -631,7 +631,7 @@ export default function Customers() {
           title={selectedCustomer.name}
           subtitle={`Customer ID: ${getDisplayId(selectedCustomer)}`}
           icon={Users}
-          iconColor="text-[#007AFF] bg-[#F5F5F7] border-[#E5E5EA]"
+          iconColor="text-[#5BF07B] bg-[#12151C] border-[#12151C]"
           maxWidth="max-w-2xl"
           footer={
             <div className="w-full flex items-center justify-between">
@@ -661,7 +661,7 @@ export default function Customers() {
                   onClick={() => handleOpenEdit(selectedCustomer)}
                   className="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 border border-[#E5E5EA] text-[#1D1D1F] font-semibold text-xs transition inline-flex items-center gap-1.5 cursor-pointer shadow-2xs"
                 >
-                  <Pencil size={13} className="text-[#007AFF]" />
+                  <Pencil size={13} className="text-[#12151C]" />
                   <span>Edit</span>
                 </button>
                 <Button
@@ -689,7 +689,7 @@ export default function Customers() {
                   {selectedCustomer.phone && (
                     <a
                       href={`tel:${selectedCustomer.phone}`}
-                      className="text-[#007AFF] hover:underline text-[11px] ml-1 font-semibold"
+                      className="text-[#111318] hover:underline text-[11px] ml-1 font-bold"
                     >
                       Call
                     </a>
@@ -707,7 +707,7 @@ export default function Customers() {
                   {selectedCustomer.email && (
                     <a
                       href={`mailto:${selectedCustomer.email}`}
-                      className="text-[#007AFF] hover:underline text-[11px] ml-1 font-semibold"
+                      className="text-[#111318] hover:underline text-[11px] ml-1 font-bold"
                     >
                       Mail
                     </a>
@@ -874,7 +874,7 @@ export default function Customers() {
         title="Add New Customer"
         subtitle="For automatic invoice lookup and credit tracking"
         icon={Users}
-        iconColor="text-[#007AFF] bg-[#F5F5F7] border-[#E5E5EA]"
+        iconColor="text-[#5BF07B] bg-[#12151C] border-[#12151C]"
         maxWidth="max-w-md"
         footer={
           <>
@@ -920,7 +920,7 @@ export default function Customers() {
               placeholder="e.g. Ramesh Hardware"
               value={newCust.name}
               onChange={(e) => setNewCust({ ...newCust, name: e.target.value })}
-              className="w-full px-3 py-2 border border-[#E5E5EA] rounded-xl text-xs outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/15 transition text-[#1D1D1F] bg-white placeholder-[#6E6E73]/60"
+              className="w-full px-3 py-2 border border-[#E5E5EA] rounded-xl text-xs outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 transition text-[#1D1D1F] bg-white placeholder-[#6E6E73]/60"
             />
           </div>
 
@@ -931,7 +931,7 @@ export default function Customers() {
                 placeholder="10-digit mobile"
                 value={newCust.phone}
                 onChange={(e) => setNewCust({ ...newCust, phone: e.target.value })}
-                className="w-full px-3 py-2 border border-[#E5E5EA] rounded-xl text-xs outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/15 transition text-[#1D1D1F] bg-white placeholder-[#6E6E73]/60"
+                className="w-full px-3 py-2 border border-[#E5E5EA] rounded-xl text-xs outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 transition text-[#1D1D1F] bg-white placeholder-[#6E6E73]/60"
               />
             </div>
             <div>
@@ -941,7 +941,7 @@ export default function Customers() {
                 placeholder="0"
                 value={newCust.balance}
                 onChange={(e) => setNewCust({ ...newCust, balance: e.target.value })}
-                className="w-full px-3 py-2 border border-[#E5E5EA] rounded-xl text-xs outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/15 transition tabular-nums text-[#1D1D1F] bg-white placeholder-[#6E6E73]/60"
+                className="w-full px-3 py-2 border border-[#E5E5EA] rounded-xl text-xs outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 transition tabular-nums text-[#1D1D1F] bg-white placeholder-[#6E6E73]/60"
               />
             </div>
           </div>
@@ -953,7 +953,7 @@ export default function Customers() {
               placeholder="customer@domain.com"
               value={newCust.email}
               onChange={(e) => setNewCust({ ...newCust, email: e.target.value })}
-              className="w-full px-3 py-2 border border-[#E5E5EA] rounded-xl text-xs outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/15 transition text-[#1D1D1F] bg-white placeholder-[#6E6E73]/60"
+              className="w-full px-3 py-2 border border-[#E5E5EA] rounded-xl text-xs outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 transition text-[#1D1D1F] bg-white placeholder-[#6E6E73]/60"
             />
           </div>
 
@@ -966,7 +966,7 @@ export default function Customers() {
                   id="customer-country"
                   value={newCust.country}
                   onChange={(e) => handleNewCustCountryChange(e.target.value)}
-                  className="w-full px-3 py-2 border border-[#E5E5EA] rounded-xl text-xs outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/15 transition text-[#1D1D1F] bg-white cursor-pointer appearance-none pr-7"
+                  className="w-full px-3 py-2 border border-[#E5E5EA] rounded-xl text-xs outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 transition text-[#1D1D1F] bg-white cursor-pointer appearance-none pr-7"
                 >
                   {getCountries().map((c) => (
                     <option key={c.name} value={c.name}>
@@ -987,7 +987,7 @@ export default function Customers() {
                   id="customer-state"
                   value={newCust.state}
                   onChange={(e) => setNewCust({ ...newCust, state: e.target.value })}
-                  className="w-full px-3 py-2 border border-[#E5E5EA] rounded-xl text-xs outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/15 transition text-[#1D1D1F] bg-white cursor-pointer appearance-none pr-7"
+                  className="w-full px-3 py-2 border border-[#E5E5EA] rounded-xl text-xs outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 transition text-[#1D1D1F] bg-white cursor-pointer appearance-none pr-7"
                 >
                   <option value="" disabled>
                     {getStatesForCountry(newCust.country).length > 0 ? "Select State / Region" : "No regions available"}
@@ -1011,7 +1011,7 @@ export default function Customers() {
               placeholder="Shop/Street, City, Pin Code"
               value={newCust.address}
               onChange={(e) => setNewCust({ ...newCust, address: e.target.value })}
-              className="w-full px-3 py-2 border border-[#E5E5EA] rounded-xl text-xs outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/15 transition text-[#1D1D1F] bg-white placeholder-[#6E6E73]/60"
+              className="w-full px-3 py-2 border border-[#E5E5EA] rounded-xl text-xs outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 transition text-[#1D1D1F] bg-white placeholder-[#6E6E73]/60"
             />
           </div>
 
@@ -1021,7 +1021,7 @@ export default function Customers() {
               placeholder="33AAAAA0000A1Z5"
               value={newCust.gstin}
               onChange={(e) => setNewCust({ ...newCust, gstin: e.target.value.toUpperCase() })}
-              className="w-full px-3 py-2 border border-[#E5E5EA] rounded-xl text-xs outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/15 font-mono transition text-[#1D1D1F] bg-white uppercase placeholder-[#6E6E73]/60"
+              className="w-full px-3 py-2 border border-[#E5E5EA] rounded-xl text-xs outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 font-mono transition text-[#1D1D1F] bg-white uppercase placeholder-[#6E6E73]/60"
             />
           </div>
         </form>
@@ -1036,7 +1036,7 @@ export default function Customers() {
         title="Edit Customer"
         subtitle="Update customer profile, address, and state/region"
         icon={Users}
-        iconColor="text-[#007AFF] bg-[#F5F5F7] border-[#E5E5EA]"
+        iconColor="text-[#5BF07B] bg-[#12151C] border-[#12151C]"
         maxWidth="max-w-md"
         footer={
           <>
@@ -1080,7 +1080,7 @@ export default function Customers() {
               placeholder="e.g. Ramesh Hardware"
               value={editCust.name}
               onChange={(e) => setEditCust({ ...editCust, name: e.target.value })}
-              className="w-full px-3 py-2 border border-[#E5E5EA] rounded-xl text-xs outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/15 transition text-[#1D1D1F] bg-white placeholder-[#6E6E73]/60"
+              className="w-full px-3 py-2 border border-[#E5E5EA] rounded-xl text-xs outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 transition text-[#1D1D1F] bg-white placeholder-[#6E6E73]/60"
             />
           </div>
 
@@ -1091,7 +1091,7 @@ export default function Customers() {
                 placeholder="10-digit mobile"
                 value={editCust.phone}
                 onChange={(e) => setEditCust({ ...editCust, phone: e.target.value })}
-                className="w-full px-3 py-2 border border-[#E5E5EA] rounded-xl text-xs outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/15 transition text-[#1D1D1F] bg-white placeholder-[#6E6E73]/60"
+                className="w-full px-3 py-2 border border-[#E5E5EA] rounded-xl text-xs outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 transition text-[#1D1D1F] bg-white placeholder-[#6E6E73]/60"
               />
             </div>
             <div>
@@ -1101,7 +1101,7 @@ export default function Customers() {
                 placeholder="0"
                 value={editCust.balance}
                 onChange={(e) => setEditCust({ ...editCust, balance: e.target.value })}
-                className="w-full px-3 py-2 border border-[#E5E5EA] rounded-xl text-xs outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/15 transition tabular-nums text-[#1D1D1F] bg-white placeholder-[#6E6E73]/60"
+                className="w-full px-3 py-2 border border-[#E5E5EA] rounded-xl text-xs outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 transition tabular-nums text-[#1D1D1F] bg-white placeholder-[#6E6E73]/60"
               />
             </div>
           </div>
@@ -1113,7 +1113,7 @@ export default function Customers() {
               placeholder="customer@domain.com"
               value={editCust.email}
               onChange={(e) => setEditCust({ ...editCust, email: e.target.value })}
-              className="w-full px-3 py-2 border border-[#E5E5EA] rounded-xl text-xs outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/15 transition text-[#1D1D1F] bg-white placeholder-[#6E6E73]/60"
+              className="w-full px-3 py-2 border border-[#E5E5EA] rounded-xl text-xs outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 transition text-[#1D1D1F] bg-white placeholder-[#6E6E73]/60"
             />
           </div>
 
@@ -1126,7 +1126,7 @@ export default function Customers() {
                   id="edit-customer-country"
                   value={editCust.country}
                   onChange={(e) => handleEditCustCountryChange(e.target.value)}
-                  className="w-full px-3 py-2 border border-[#E5E5EA] rounded-xl text-xs outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/15 transition text-[#1D1D1F] bg-white cursor-pointer appearance-none pr-7"
+                  className="w-full px-3 py-2 border border-[#E5E5EA] rounded-xl text-xs outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 transition text-[#1D1D1F] bg-white cursor-pointer appearance-none pr-7"
                 >
                   {getCountries().map((c) => (
                     <option key={c.name} value={c.name}>
@@ -1147,7 +1147,7 @@ export default function Customers() {
                   id="edit-customer-state"
                   value={editCust.state}
                   onChange={(e) => setEditCust({ ...editCust, state: e.target.value })}
-                  className="w-full px-3 py-2 border border-[#E5E5EA] rounded-xl text-xs outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/15 transition text-[#1D1D1F] bg-white cursor-pointer appearance-none pr-7"
+                  className="w-full px-3 py-2 border border-[#E5E5EA] rounded-xl text-xs outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 transition text-[#1D1D1F] bg-white cursor-pointer appearance-none pr-7"
                 >
                   <option value="" disabled>
                     {getStatesForCountry(editCust.country).length > 0 ? "Select State / Region" : "No regions available"}
@@ -1171,7 +1171,7 @@ export default function Customers() {
               placeholder="Shop/Street, City, Pin Code"
               value={editCust.address}
               onChange={(e) => setEditCust({ ...editCust, address: e.target.value })}
-              className="w-full px-3 py-2 border border-[#E5E5EA] rounded-xl text-xs outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/15 transition text-[#1D1D1F] bg-white placeholder-[#6E6E73]/60"
+              className="w-full px-3 py-2 border border-[#E5E5EA] rounded-xl text-xs outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 transition text-[#1D1D1F] bg-white placeholder-[#6E6E73]/60"
             />
           </div>
 
@@ -1181,7 +1181,7 @@ export default function Customers() {
               placeholder="33AAAAA0000A1Z5"
               value={editCust.gstin}
               onChange={(e) => setEditCust({ ...editCust, gstin: e.target.value.toUpperCase() })}
-              className="w-full px-3 py-2 border border-[#E5E5EA] rounded-xl text-xs outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/15 font-mono transition text-[#1D1D1F] bg-white uppercase placeholder-[#6E6E73]/60"
+              className="w-full px-3 py-2 border border-[#E5E5EA] rounded-xl text-xs outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 font-mono transition text-[#1D1D1F] bg-white uppercase placeholder-[#6E6E73]/60"
             />
           </div>
         </form>

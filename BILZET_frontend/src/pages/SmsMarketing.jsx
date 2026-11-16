@@ -355,14 +355,14 @@ export default function SmsMarketing() {
           >
             <RefreshCw
               size={14}
-              className={refreshing ? "animate-spin text-[#007AFF]" : "text-[#6E6E73]"}
+              className={refreshing ? "animate-spin text-[#12151C]" : "text-[#7C7F8A]"}
             />
           </button>
 
           <button
             type="button"
             onClick={() => handleOpenCreateModal("ALL")}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#007AFF] hover:bg-[#0062CC] active:scale-98 text-white font-semibold text-xs transition cursor-pointer shadow-2xs"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#12151C] hover:bg-black active:scale-98 text-white font-semibold text-xs transition cursor-pointer shadow-fintech"
           >
             <Plus size={14} strokeWidth={2.5} />
             <span>Create Campaign</span>
@@ -402,7 +402,7 @@ export default function SmsMarketing() {
         <div className="bg-white p-3.5 rounded-xl border border-[#E5E5EA] shadow-2xs">
           <div className="flex items-center justify-between text-[#86868B] mb-1">
             <span className="text-[12px] font-medium">Total Campaigns</span>
-            <MessageSquare size={14} className="text-[#007AFF]" />
+            <MessageSquare size={14} className="text-[#12151C]" />
           </div>
           <div className="text-2xl font-semibold text-[#1D1D1F] font-mono tracking-tight">
             {totalCampaigns}
@@ -503,7 +503,7 @@ export default function SmsMarketing() {
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Search by name or content…"
-                    className="w-full pl-7 pr-3 py-1.5 text-xs rounded-lg border border-[#E5E5EA] bg-white text-[#1D1D1F] outline-none focus:border-[#007AFF] transition"
+                    className="w-full pl-7 pr-3 py-1.5 text-xs rounded-lg border border-[#E5E5EA] bg-white text-[#1D1D1F] outline-none focus:border-[#5BF07B] transition"
                   />
                 </div>
 
@@ -513,7 +513,7 @@ export default function SmsMarketing() {
                   <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
-                    className="px-2.5 py-1.5 rounded-lg border border-[#E5E5EA] bg-white text-xs font-medium text-[#1D1D1F] cursor-pointer outline-none focus:border-[#007AFF] transition"
+                    className="px-2.5 py-1.5 rounded-lg border border-[#E5E5EA] bg-white text-xs font-medium text-[#1D1D1F] cursor-pointer outline-none focus:border-[#5BF07B] transition"
                   >
                     <option value="ALL">All Statuses</option>
                     <option value="SENT">Sent</option>
@@ -527,7 +527,7 @@ export default function SmsMarketing() {
                   <button
                     type="button"
                     onClick={clearFilters}
-                    className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-[#007AFF] hover:bg-[#F2F2F7] rounded-lg transition cursor-pointer"
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-[#111318] hover:bg-[#EDEDEF] rounded-lg transition cursor-pointer"
                   >
                     <X size={12} />
                     <span>Clear</span>
@@ -536,23 +536,23 @@ export default function SmsMarketing() {
               </div>
 
               {/* Result Count */}
-              <div className="text-xs text-[#86868B] self-end sm:self-center font-medium">
-                Showing <strong className="text-[#1D1D1F] font-semibold">{filteredCampaigns.length}</strong> of{" "}
+              <div className="text-xs text-[#7C7F8A] self-end sm:self-center font-medium">
+                Showing <strong className="text-[#111318] font-semibold">{filteredCampaigns.length}</strong> of{" "}
                 {campaigns.length} campaigns
               </div>
             </div>
 
             {/* Table */}
             {loading ? (
-              <div className="py-20 flex flex-col items-center justify-center text-[#86868B] gap-2.5">
-                <Loader2 size={24} className="animate-spin text-[#007AFF]" />
-                <p className="text-xs font-medium text-[#6E6E73]">Loading campaigns…</p>
+              <div className="py-20 flex flex-col items-center justify-center text-[#7C7F8A] gap-2.5">
+                <Loader2 size={24} className="animate-spin text-[#12151C]" />
+                <p className="text-xs font-medium text-[#7C7F8A]">Loading campaigns…</p>
               </div>
             ) : filteredCampaigns.length === 0 ? (
-              <div className="py-16 text-center text-[#86868B] px-4">
-                <MessageSquare size={36} className="mx-auto text-[#C7C7CC] mb-2" />
-                <p className="text-sm font-semibold text-[#1D1D1F]">No campaigns yet</p>
-                <p className="text-xs text-[#86868B] mt-0.5 max-w-sm mx-auto">
+              <div className="py-16 text-center text-[#7C7F8A] px-4">
+                <MessageSquare size={36} className="mx-auto text-[#C3C5CE] mb-2" />
+                <p className="text-sm font-semibold text-[#111318]">No campaigns yet</p>
+                <p className="text-xs text-[#7C7F8A] mt-0.5 max-w-sm mx-auto">
                   {hasActiveFilters
                     ? "No campaigns match your active search or status filter."
                     : "Create your first campaign to announce offers and engage with customers."}
@@ -561,7 +561,7 @@ export default function SmsMarketing() {
                   <button
                     type="button"
                     onClick={clearFilters}
-                    className="mt-3.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#E5E5EA] bg-white hover:bg-[#F5F5F7] text-xs font-medium text-[#1D1D1F] transition cursor-pointer"
+                    className="mt-3.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#E7E8EC] bg-white hover:bg-[#EDEDEF] text-xs font-medium text-[#111318] transition cursor-pointer"
                   >
                     <span>Clear active filters</span>
                   </button>
@@ -569,9 +569,9 @@ export default function SmsMarketing() {
                   <button
                     type="button"
                     onClick={() => handleOpenCreateModal("ALL")}
-                    className="mt-3.5 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#007AFF] hover:bg-[#0062CC] text-white text-xs font-medium transition cursor-pointer shadow-2xs"
+                    className="mt-3.5 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#12151C] hover:bg-black text-white text-xs font-semibold transition cursor-pointer shadow-fintech"
                   >
-                    <Plus size={13} />
+                    <Plus size={13} className="text-[#5BF07B]" />
                     <span>Create Campaign</span>
                   </button>
                 )}
@@ -710,7 +710,7 @@ export default function SmsMarketing() {
                   <button
                     type="button"
                     onClick={() => handleOpenCreateModal(seg.id)}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-[#E5E5EA] bg-white hover:bg-[#F5F5F7] text-xs font-medium text-[#007AFF] transition cursor-pointer"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-[#E7E8EC] bg-white hover:bg-[#EDEDEF] text-xs font-semibold text-[#111318] transition cursor-pointer"
                   >
                     <span>Launch</span>
                     <ArrowUpRight size={12} />
@@ -742,7 +742,7 @@ export default function SmsMarketing() {
               disabled={refreshing}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#E5E5EA] bg-white hover:bg-[#F5F5F7] text-xs font-medium text-[#1D1D1F] transition cursor-pointer self-start sm:self-center"
             >
-              <RefreshCw size={12} className={refreshing ? "animate-spin text-[#007AFF]" : ""} />
+              <RefreshCw size={12} className={refreshing ? "animate-spin text-[#12151C]" : ""} />
               <span>Refresh Log</span>
             </button>
           </div>
@@ -859,7 +859,7 @@ export default function SmsMarketing() {
               </div>
               <div>
                 <span className="text-[10px] text-[#86868B] font-medium">ESTIMATED CREDITS</span>
-                <div className="text-sm font-semibold text-[#007AFF] font-mono mt-0.5">
+                <div className="text-sm font-semibold text-[#111318] font-mono mt-0.5">
                   ~{estimatedCredits} credits
                 </div>
               </div>
@@ -885,7 +885,7 @@ export default function SmsMarketing() {
                     setCampaignName(e.target.value);
                     if (validationErrors.name) setValidationErrors((prev) => ({ ...prev, name: undefined }));
                   }}
-                  className={`w-full px-3 py-2 bg-white border rounded-xl text-[#1D1D1F] placeholder:text-[#86868B] outline-none focus:border-[#007AFF] transition ${
+                  className={`w-full px-3 py-2 bg-white border rounded-xl text-[#1D1D1F] placeholder:text-[#86868B] outline-none focus:border-[#5BF07B] transition ${
                     validationErrors.name ? "border-rose-400 bg-rose-50/20" : "border-[#E5E5EA]"
                   }`}
                 />
@@ -902,7 +902,7 @@ export default function SmsMarketing() {
                 <select
                   value={targetAudience}
                   onChange={(e) => setTargetAudience(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-[#E5E5EA] rounded-xl text-[#1D1D1F] outline-none focus:border-[#007AFF] transition cursor-pointer"
+                  className="w-full px-3 py-2 bg-white border border-[#E5E5EA] rounded-xl text-[#1D1D1F] outline-none focus:border-[#5BF07B] transition cursor-pointer"
                 >
                   {segments.map((s) => (
                     <option key={s.id} value={s.id}>
@@ -941,7 +941,7 @@ export default function SmsMarketing() {
                     if (validationErrors.message)
                       setValidationErrors((prev) => ({ ...prev, message: undefined }));
                   }}
-                  className={`w-full p-2.5 bg-white border rounded-xl text-[#1D1D1F] outline-none focus:border-[#007AFF] transition ${
+                  className={`w-full p-2.5 bg-white border rounded-xl text-[#1D1D1F] outline-none focus:border-[#5BF07B] transition ${
                     validationErrors.message ? "border-rose-400 bg-rose-50/20" : "border-[#E5E5EA]"
                   }`}
                 />
@@ -970,7 +970,7 @@ export default function SmsMarketing() {
                     if (validationErrors.date)
                       setValidationErrors((prev) => ({ ...prev, date: undefined }));
                   }}
-                  className="w-full sm:w-64 px-3 py-1.5 border border-[#E5E5EA] rounded-xl text-xs text-[#1D1D1F] outline-none focus:border-[#007AFF]"
+                  className="w-full sm:w-64 px-3 py-1.5 border border-[#E5E5EA] rounded-xl text-xs text-[#1D1D1F] outline-none focus:border-[#5BF07B]"
                 />
                 {validationErrors.date && (
                   <p className="text-[11px] text-rose-600 font-medium mt-1">{validationErrors.date}</p>
@@ -988,7 +988,7 @@ export default function SmsMarketing() {
                     placeholder="Enter 10-digit mobile number"
                     value={testPhone}
                     onChange={(e) => setTestPhone(e.target.value)}
-                    className="flex-1 px-3 py-1.5 rounded-lg border border-[#E5E5EA] text-xs bg-white text-[#1D1D1F] outline-none focus:border-[#007AFF]"
+                    className="flex-1 px-3 py-1.5 rounded-lg border border-[#E5E5EA] text-xs bg-white text-[#1D1D1F] outline-none focus:border-[#5BF07B]"
                   />
                   <button
                     type="button"
@@ -996,7 +996,7 @@ export default function SmsMarketing() {
                     disabled={testSending}
                     className="px-3 py-1.5 rounded-lg border border-[#E5E5EA] bg-white hover:bg-[#F5F5F7] text-[#1D1D1F] font-medium text-xs flex items-center gap-1 cursor-pointer disabled:opacity-50"
                   >
-                    {testSending ? <RefreshCw size={12} className="animate-spin text-[#007AFF]" /> : <Send size={12} />}
+                    {testSending ? <RefreshCw size={12} className="animate-spin text-[#12151C]" /> : <Send size={12} />}
                     <span>{testSending ? "Sending…" : "Test SMS"}</span>
                   </button>
                 </div>
@@ -1024,7 +1024,7 @@ export default function SmsMarketing() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-[#007AFF] hover:bg-[#0062CC] active:scale-98 text-white font-semibold text-xs shadow-2xs transition disabled:opacity-50 cursor-pointer"
+                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-[#12151C] hover:bg-black active:scale-98 text-white font-semibold text-xs shadow-fintech transition disabled:opacity-50 cursor-pointer"
                 >
                   {submitting ? (
                     <>

@@ -364,40 +364,37 @@ export default function Expenses() {
   };
 
   return (
-    <div
-      style={{ fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}
-      className="space-y-4 max-w-7xl mx-auto px-4 sm:px-6 pb-12 fade-up text-[#1D1D1F]"
-    >
+    <div className="space-y-5 max-w-7xl mx-auto px-4 sm:px-6 pb-12 fade-up text-[#111318]">
       {/* ── Page Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 sm:p-5 rounded-2xl border border-[#E5E5EA] shadow-2xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#F6F6F8] p-6 rounded-[28px] border border-[#E7E8EC] shadow-fintech">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-lg sm:text-xl font-semibold text-[#1D1D1F] tracking-tight">
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-xl sm:text-2xl font-bold text-[#111318] tracking-tight font-heading">
               Business Expenses
             </h1>
             {shopSettings?.name || shopSettings?.shopName ? (
-              <span className="text-[11px] font-semibold text-[#007AFF] bg-[#EBF5FF] border border-[#D0E2FF] px-2 py-0.5 rounded-full flex items-center gap-1 uppercase tracking-wider">
-                <Building2 size={11} />
+              <span className="text-[10px] font-bold text-[#111318] bg-[#FAFAFB] border border-[#E7E8EC] px-3 py-0.5 rounded-full flex items-center gap-1.5 uppercase tracking-wider shadow-2xs">
+                <Building2 size={11} className="text-[#5BF07B]" />
                 <span>{shopSettings?.name || shopSettings?.shopName}</span>
               </span>
             ) : null}
           </div>
-          <p className="text-xs text-[#6E6E73] font-normal mt-0.5">
-            Track and manage business expenses.
+          <p className="text-xs text-[#7C7F8A] font-medium mt-1">
+            Track and manage business expenses, categorize payouts, and analyze cash outflow.
           </p>
         </div>
 
         {/* Action Buttons: Sync | Export PDF | + Add Expense */}
-        <div className="flex flex-wrap items-center gap-2 self-start sm:self-center">
+        <div className="flex flex-wrap items-center gap-2.5 self-start sm:self-center">
           {/* Sync Button */}
           <button
             type="button"
             onClick={() => loadExpenses(true)}
             disabled={refreshing}
-            className="p-2 rounded-xl border border-[#E5E5EA] bg-white text-[#1D1D1F] hover:bg-[#F5F5F7] transition flex items-center justify-center shrink-0 cursor-pointer shadow-2xs disabled:opacity-60"
+            className="p-2.5 rounded-full border border-[#E7E8EC] bg-white text-[#111318] hover:bg-[#EDEDEF] transition flex items-center justify-center shrink-0 cursor-pointer shadow-2xs disabled:opacity-60"
             title="Sync latest records"
           >
-            <RefreshCw size={14} className={refreshing ? "animate-spin text-[#007AFF]" : "text-[#6E6E73]"} />
+            <RefreshCw size={14} className={refreshing ? "animate-spin text-[#111318]" : "text-[#7C7F8A]"} />
           </button>
 
           {/* Export PDF Button */}
@@ -405,13 +402,13 @@ export default function Expenses() {
             type="button"
             onClick={handleExportPdf}
             disabled={exportingPdf || loading || filteredExpenses.length === 0}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium border border-[#E5E5EA] bg-white hover:bg-[#F5F5F7] text-[#1D1D1F] transition cursor-pointer shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-xs font-semibold border border-[#E7E8EC] bg-white hover:bg-[#EDEDEF] text-[#111318] transition cursor-pointer shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed"
             title="Download PDF report of current expenses"
           >
             {exportingPdf ? (
-              <Loader2 size={13} className="animate-spin text-[#007AFF]" />
+              <Loader2 size={13} className="animate-spin text-[#111318]" />
             ) : (
-              <Download size={13} className="text-[#6E6E73]" />
+              <Download size={13} className="text-[#7C7F8A]" />
             )}
             <span>Export PDF</span>
           </button>
@@ -421,7 +418,7 @@ export default function Expenses() {
             type="button"
             onClick={handlePrintExpenses}
             disabled={loading || filteredExpenses.length === 0}
-            className="p-2 rounded-xl border border-[#E5E5EA] bg-white text-[#6E6E73] hover:text-[#1D1D1F] hover:bg-[#F5F5F7] transition flex items-center justify-center shrink-0 cursor-pointer shadow-2xs disabled:opacity-50"
+            className="p-2.5 rounded-full border border-[#E7E8EC] bg-white text-[#7C7F8A] hover:text-[#111318] hover:bg-[#EDEDEF] transition flex items-center justify-center shrink-0 cursor-pointer shadow-2xs disabled:opacity-50"
             title="Print expenses ledger"
           >
             <Printer size={14} />
@@ -432,9 +429,9 @@ export default function Expenses() {
             <button
               type="button"
               onClick={handleOpenAddModal}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#007AFF] hover:bg-[#0062CC] active:scale-98 text-white font-semibold text-xs transition cursor-pointer shadow-2xs"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#12151C] hover:bg-[#202530] text-white font-bold text-xs transition cursor-pointer shadow-fintech"
             >
-              <Plus size={14} strokeWidth={2.5} />
+              <Plus size={14} strokeWidth={2.5} className="text-[#5BF07B]" />
               <span>Add Expense</span>
             </button>
           )}
@@ -443,100 +440,108 @@ export default function Expenses() {
 
       {/* ── Status Messages ── */}
       {error && (
-        <div className="flex items-center gap-2.5 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs animate-in fade-in">
-          <AlertCircle size={15} className="shrink-0 text-rose-600" />
-          <span className="font-medium flex-1">{error}</span>
-          <button onClick={() => setError("")} className="text-rose-500 hover:text-rose-700 cursor-pointer">
+        <div className="flex items-center gap-2.5 p-3.5 rounded-full bg-[#FBD3D3] border border-[#E5484D]/30 text-[#E5484D] text-xs animate-in fade-in">
+          <AlertCircle size={15} className="shrink-0 text-[#E5484D]" />
+          <span className="font-semibold flex-1">{error}</span>
+          <button onClick={() => setError("")} className="text-[#E5484D] hover:opacity-80 cursor-pointer mr-2">
             <X size={14} />
           </button>
         </div>
       )}
 
       {successMsg && (
-        <div className="flex items-center gap-2.5 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs animate-in fade-in">
-          <CheckCircle2 size={15} className="shrink-0 text-emerald-600" />
-          <span className="font-medium flex-1">{successMsg}</span>
-          <button onClick={() => setSuccessMsg("")} className="text-emerald-500 hover:text-emerald-700 cursor-pointer">
+        <div className="flex items-center gap-2.5 p-3.5 rounded-full bg-[#DFFFE6] border border-[#5BF07B]/40 text-[#0E2A16] text-xs animate-in fade-in">
+          <CheckCircle2 size={15} className="shrink-0 text-[#0E2A16]" />
+          <span className="font-semibold flex-1">{successMsg}</span>
+          <button onClick={() => setSuccessMsg("")} className="text-[#0E2A16] hover:opacity-80 cursor-pointer mr-2">
             <X size={14} />
           </button>
         </div>
       )}
 
       {/* ── Summary Metrics (4 Compact Cards) ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* 1. Total Expenses */}
-        <div className="bg-white p-3.5 rounded-xl border border-[#E5E5EA] shadow-2xs flex flex-col justify-between">
-          <div className="flex items-center justify-between text-[#86868B] mb-1">
-            <span className="text-[12px] font-medium">Total Expenses</span>
-            <Receipt size={14} className="text-[#007AFF]" />
+        <div className="bg-[#12151C] text-white p-5 rounded-[24px] border border-white/10 shadow-fintech flex flex-col justify-between">
+          <div className="flex items-center justify-between text-white/70 mb-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider">Total Outflows</span>
+            <div className="w-8 h-8 rounded-full bg-white/10 text-[#5BF07B] flex items-center justify-center">
+              <Receipt size={14} />
+            </div>
           </div>
-          <div className="text-xl sm:text-2xl font-semibold text-[#1D1D1F] font-mono tracking-tight">
+          <div className="text-2xl sm:text-3xl font-black text-[#5BF07B] font-mono tracking-tight">
             {formatINR(stats.total)}
           </div>
-          <div className="text-[11px] text-[#86868B] mt-0.5">All recorded outflows</div>
+          <div className="text-[11px] text-white/60 mt-1">All recorded vouchers</div>
         </div>
 
         {/* 2. This Month */}
-        <div className="bg-white p-3.5 rounded-xl border border-[#E5E5EA] shadow-2xs flex flex-col justify-between">
-          <div className="flex items-center justify-between text-[#86868B] mb-1">
-            <span className="text-[12px] font-medium">This Month</span>
-            <Calendar size={14} className="text-[#34C759]" />
+        <div className="bg-[#F6F6F8] p-5 rounded-[24px] border border-[#E7E8EC] shadow-fintech flex flex-col justify-between">
+          <div className="flex items-center justify-between text-[#7C7F8A] mb-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider">This Month</span>
+            <div className="w-8 h-8 rounded-full bg-[#EDEDEF] text-[#111318] flex items-center justify-center">
+              <Calendar size={14} />
+            </div>
           </div>
-          <div className="text-xl sm:text-2xl font-semibold text-[#1D1D1F] font-mono tracking-tight">
+          <div className="text-2xl sm:text-3xl font-black text-[#111318] font-mono tracking-tight">
             {formatINR(stats.thisMonthTotal)}
           </div>
-          <div className="text-[11px] text-[#86868B] mt-0.5">Current month spending</div>
+          <div className="text-[11px] text-[#7C7F8A] mt-1 font-medium">Current calendar month</div>
         </div>
 
         {/* 3. Today's Payouts */}
-        <div className="bg-white p-3.5 rounded-xl border border-[#E5E5EA] shadow-2xs flex flex-col justify-between">
-          <div className="flex items-center justify-between text-[#86868B] mb-1">
-            <span className="text-[12px] font-medium">Today's Payouts</span>
-            <CreditCard size={14} className="text-[#FF9500]" />
+        <div className="bg-[#F6F6F8] p-5 rounded-[24px] border border-[#E7E8EC] shadow-fintech flex flex-col justify-between">
+          <div className="flex items-center justify-between text-[#7C7F8A] mb-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider">Today's Payouts</span>
+            <div className="w-8 h-8 rounded-full bg-[#EDEDEF] text-[#111318] flex items-center justify-center">
+              <CreditCard size={14} />
+            </div>
           </div>
-          <div className="text-xl sm:text-2xl font-semibold text-[#1D1D1F] font-mono tracking-tight">
+          <div className="text-2xl sm:text-3xl font-black text-[#111318] font-mono tracking-tight">
             {formatINR(stats.todayTotal)}
           </div>
-          <div className="text-[11px] text-[#86868B] mt-0.5">Disbursed today</div>
+          <div className="text-[11px] text-[#7C7F8A] mt-1 font-medium">Disbursed today</div>
         </div>
 
         {/* 4. Total Entries */}
-        <div className="bg-white p-3.5 rounded-xl border border-[#E5E5EA] shadow-2xs flex flex-col justify-between">
-          <div className="flex items-center justify-between text-[#86868B] mb-1">
-            <span className="text-[12px] font-medium">Total Entries</span>
-            <FileText size={14} className="text-[#5856D6]" />
+        <div className="bg-[#F6F6F8] p-5 rounded-[24px] border border-[#E7E8EC] shadow-fintech flex flex-col justify-between">
+          <div className="flex items-center justify-between text-[#7C7F8A] mb-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider">Total Entries</span>
+            <div className="w-8 h-8 rounded-full bg-[#EDEDEF] text-[#111318] flex items-center justify-center">
+              <FileText size={14} />
+            </div>
           </div>
-          <div className="text-xl sm:text-2xl font-semibold text-[#1D1D1F] font-mono tracking-tight">
+          <div className="text-2xl sm:text-3xl font-black text-[#111318] font-mono tracking-tight">
             {stats.count}
           </div>
-          <div className="text-[11px] text-[#86868B] mt-0.5">Recorded vouchers</div>
+          <div className="text-[11px] text-[#7C7F8A] mt-1 font-medium">Recorded vouchers</div>
         </div>
       </div>
 
       {/* ── Table Card & Toolbar ── */}
-      <div className="bg-white rounded-xl border border-[#E5E5EA] shadow-2xs overflow-hidden">
+      <div className="bg-[#F6F6F8] rounded-[28px] border border-[#E7E8EC] shadow-fintech overflow-hidden">
         {/* Compact Search & Category Filter Toolbar */}
-        <div className="p-3 border-b border-[#E5E5EA] flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-[#FAFAFC]">
-          <div className="flex flex-wrap items-center gap-2 flex-1">
+        <div className="p-4 border-b border-[#E7E8EC] flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#FAFAFB]">
+          <div className="flex flex-wrap items-center gap-2.5 flex-1">
             {/* Search Input */}
-            <div className="relative min-w-44 max-w-xs flex-1">
-              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#86868B]" />
+            <div className="relative min-w-48 max-w-sm flex-1">
+              <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#7C7F8A]" />
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search title, payee, or amount…"
-                className="w-full pl-7 pr-3 py-1.5 text-xs rounded-lg border border-[#E5E5EA] bg-white text-[#1D1D1F] outline-none focus:border-[#007AFF] transition"
+                className="w-full pl-9 pr-3.5 py-2 text-xs rounded-full border border-[#E7E8EC] bg-white text-[#111318] outline-none focus:border-[#12151C] transition shadow-2xs"
               />
             </div>
 
             {/* Category Dropdown */}
             <div className="flex items-center gap-1.5">
-              <Filter size={13} className="text-[#86868B] shrink-0" />
+              <Filter size={13} className="text-[#7C7F8A] shrink-0" />
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
-                className="px-2.5 py-1.5 rounded-lg border border-[#E5E5EA] bg-white text-xs font-medium text-[#1D1D1F] cursor-pointer outline-none focus:border-[#007AFF] transition"
+                className="px-3.5 py-2 rounded-full border border-[#E7E8EC] bg-white text-xs font-semibold text-[#111318] cursor-pointer outline-none focus:border-[#12151C] transition shadow-2xs"
               >
                 <option value="ALL">All Categories</option>
                 {EXPENSE_CATEGORIES.map((cat) => (
@@ -552,7 +557,7 @@ export default function Expenses() {
               <button
                 type="button"
                 onClick={clearFilters}
-                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-[#007AFF] hover:bg-[#F2F2F7] rounded-lg transition cursor-pointer"
+                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-[#111318] hover:bg-[#EDEDEF] rounded-full transition cursor-pointer"
               >
                 <X size={12} />
                 <span>Clear</span>
@@ -561,15 +566,15 @@ export default function Expenses() {
           </div>
 
           {/* Compact Result Count */}
-          <div className="text-xs text-[#86868B] self-end sm:self-center font-medium">
-            Showing <strong className="text-[#1D1D1F] font-semibold">{filteredExpenses.length}</strong> of {expenses.length} expenses
+          <div className="text-xs text-[#7C7F8A] self-end sm:self-center font-medium">
+            Showing <strong className="text-[#111318] font-bold">{filteredExpenses.length}</strong> of {expenses.length} expenses
           </div>
         </div>
 
         {/* Expenses Table */}
         {loading ? (
           <div className="py-20 flex flex-col items-center justify-center text-[#86868B] gap-2.5">
-            <Loader2 size={24} className="animate-spin text-[#007AFF]" />
+            <Loader2 size={24} className="animate-spin text-[#12151C]" />
             <p className="text-xs font-medium text-[#6E6E73]">Loading business expenses…</p>
           </div>
         ) : filteredExpenses.length === 0 ? (
@@ -593,7 +598,7 @@ export default function Expenses() {
               <button
                 type="button"
                 onClick={handleOpenAddModal}
-                className="mt-3.5 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#007AFF] hover:bg-[#0062CC] text-white text-xs font-medium transition cursor-pointer shadow-2xs"
+                className="mt-3.5 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#12151C] hover:bg-black text-white text-xs font-semibold transition cursor-pointer shadow-fintech"
               >
                 <Plus size={13} />
                 <span>Record First Expense</span>
@@ -716,7 +721,7 @@ export default function Expenses() {
                 type="button"
                 onClick={handleExportPdf}
                 disabled={exportingPdf}
-                className="inline-flex items-center gap-1 text-[#007AFF] hover:underline font-medium cursor-pointer"
+                className="inline-flex items-center gap-1 text-[#111318] hover:underline font-semibold cursor-pointer"
               >
                 <Download size={12} />
                 <span>Export current view as PDF</span>
@@ -728,19 +733,19 @@ export default function Expenses() {
 
       {/* ── CREATE / EDIT EXPENSE MODAL ── */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#12151C]/75 backdrop-blur-xs animate-in fade-in">
           <div
             className="fixed inset-0"
             onClick={() => !submitting && setIsModalOpen(false)}
           />
-          <div className="relative bg-white rounded-2xl border border-[#E5E5EA] shadow-xl max-w-lg w-full max-h-[92vh] overflow-y-auto p-5 sm:p-6 space-y-4 z-10 animate-in zoom-in-95">
+          <div className="relative bg-[#F6F6F8] rounded-[28px] border border-[#E7E8EC] shadow-2xl max-w-lg w-full max-h-[92vh] overflow-y-auto p-6 sm:p-7 space-y-4 z-10 animate-in zoom-in-95">
             {/* Modal Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-[#E5E5EA]">
+            <div className="flex items-center justify-between pb-3.5 border-b border-[#E7E8EC]">
               <div>
-                <h2 className="text-base font-semibold text-[#1D1D1F] leading-tight">
+                <h2 className="text-base font-bold text-[#111318] leading-tight font-heading">
                   {editingExpense ? "Edit Expense" : "Record Expense"}
                 </h2>
-                <p className="text-xs text-[#86868B] mt-0.5">
+                <p className="text-xs text-[#7C7F8A] mt-0.5 font-medium">
                   {editingExpense
                     ? "Update expense details and ledger notes."
                     : "Record operational outflow with instant ledger persistence."}
@@ -750,7 +755,7 @@ export default function Expenses() {
                 type="button"
                 disabled={submitting}
                 onClick={() => setIsModalOpen(false)}
-                className="p-1.5 rounded-lg text-[#86868B] hover:text-[#1D1D1F] hover:bg-[#F2F2F7] transition cursor-pointer"
+                className="w-8 h-8 rounded-full flex items-center justify-center text-[#7C7F8A] hover:text-[#111318] hover:bg-[#EDEDEF] transition cursor-pointer"
               >
                 <X size={16} />
               </button>
@@ -758,16 +763,16 @@ export default function Expenses() {
 
             {/* Error display inside modal */}
             {error && (
-              <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
+              <div className="p-3 rounded-full bg-[#FBD3D3] border border-[#E5484D]/30 text-[#E5484D] text-xs flex items-center gap-2">
                 <AlertCircle size={14} className="shrink-0" />
                 <span>{error}</span>
               </div>
             )}
 
-            <form onSubmit={handleSaveExpense} className="space-y-3.5 text-xs">
+            <form onSubmit={handleSaveExpense} className="space-y-4 text-xs">
               {/* Title / Payee */}
               <div>
-                <label className="block text-xs font-semibold text-[#1D1D1F] mb-1">
+                <label className="block text-xs font-semibold text-[#111318] mb-1.5">
                   Expense Title / Payee *
                 </label>
                 <input
@@ -776,25 +781,25 @@ export default function Expenses() {
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   placeholder="e.g. Shop Rent October, Electricity Bill, Staff Salary"
-                  className={`w-full px-3 py-2 bg-white border rounded-xl text-[#1D1D1F] placeholder:text-[#86868B] outline-none focus:border-[#007AFF] transition ${
-                    formErrors.title ? "border-rose-500 bg-rose-50/20" : "border-[#E5E5EA]"
+                  className={`w-full px-4 py-2.5 bg-white border rounded-full text-[#111318] placeholder:text-[#A9ABB5] outline-none focus:border-[#12151C] transition shadow-2xs ${
+                    formErrors.title ? "border-[#E5484D] bg-[#FBD3D3]/20" : "border-[#E7E8EC]"
                   }`}
                 />
                 {formErrors.title && (
-                  <p className="text-[11px] text-rose-600 font-medium mt-1">{formErrors.title}</p>
+                  <p className="text-[11px] text-[#E5484D] font-medium mt-1">{formErrors.title}</p>
                 )}
               </div>
 
               {/* Category & Amount */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
-                  <label className="block text-xs font-semibold text-[#1D1D1F] mb-1">
+                  <label className="block text-xs font-semibold text-[#111318] mb-1.5">
                     Category *
                   </label>
                   <select
                     value={formData.category}
                     onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border border-[#E5E5EA] rounded-xl text-[#1D1D1F] outline-none focus:border-[#007AFF] transition cursor-pointer"
+                    className="w-full px-4 py-2.5 bg-white border border-[#E7E8EC] rounded-full text-[#111318] outline-none focus:border-[#12151C] transition cursor-pointer shadow-2xs font-medium"
                   >
                     {EXPENSE_CATEGORIES.map((cat) => (
                       <option key={cat.id} value={cat.id}>
@@ -805,11 +810,11 @@ export default function Expenses() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[#1D1D1F] mb-1">
+                  <label className="block text-xs font-semibold text-[#111318] mb-1.5">
                     Amount (₹) *
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#86868B] font-medium">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#7C7F8A] font-medium">
                       ₹
                     </span>
                     <input
@@ -820,27 +825,27 @@ export default function Expenses() {
                       value={formData.amount}
                       onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
                       placeholder="0.00"
-                      className={`w-full pl-7 pr-3 py-2 bg-white border rounded-xl text-[#1D1D1F] font-semibold outline-none focus:border-[#007AFF] transition ${
-                        formErrors.amount ? "border-rose-500 bg-rose-50/20" : "border-[#E5E5EA]"
+                      className={`w-full pl-8 pr-4 py-2.5 bg-white border rounded-full text-[#111318] font-semibold outline-none focus:border-[#12151C] transition shadow-2xs ${
+                        formErrors.amount ? "border-[#E5484D] bg-[#FBD3D3]/20" : "border-[#E7E8EC]"
                       }`}
                     />
                   </div>
                   {formErrors.amount && (
-                    <p className="text-[11px] text-rose-600 font-medium mt-1">{formErrors.amount}</p>
+                    <p className="text-[11px] text-[#E5484D] font-medium mt-1">{formErrors.amount}</p>
                   )}
                 </div>
               </div>
 
               {/* Payment Method & Date */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
-                  <label className="block text-xs font-semibold text-[#1D1D1F] mb-1">
+                  <label className="block text-xs font-semibold text-[#111318] mb-1.5">
                     Payment Method
                   </label>
                   <select
                     value={formData.paymentMethod}
                     onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border border-[#E5E5EA] rounded-xl text-[#1D1D1F] outline-none focus:border-[#007AFF] transition cursor-pointer"
+                    className="w-full px-4 py-2.5 bg-white border border-[#E7E8EC] rounded-full text-[#111318] outline-none focus:border-[#12151C] transition cursor-pointer shadow-2xs font-medium"
                   >
                     {PAYMENT_METHODS.map((pm) => (
                       <option key={pm.id} value={pm.id}>
@@ -851,7 +856,7 @@ export default function Expenses() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[#1D1D1F] mb-1">
+                  <label className="block text-xs font-semibold text-[#111318] mb-1.5">
                     Expense Date *
                   </label>
                   <input
@@ -859,14 +864,14 @@ export default function Expenses() {
                     required
                     value={formData.date}
                     onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border border-[#E5E5EA] rounded-xl text-[#1D1D1F] outline-none focus:border-[#007AFF] transition cursor-pointer"
+                    className="w-full px-4 py-2.5 bg-white border border-[#E7E8EC] rounded-full text-[#111318] outline-none focus:border-[#12151C] transition cursor-pointer shadow-2xs font-medium"
                   />
                 </div>
               </div>
 
               {/* Remarks / Description */}
               <div>
-                <label className="block text-xs font-semibold text-[#1D1D1F] mb-1">
+                <label className="block text-xs font-semibold text-[#111318] mb-1.5">
                   Notes / Bill Remarks (Optional)
                 </label>
                 <textarea
@@ -874,28 +879,28 @@ export default function Expenses() {
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   placeholder="Additional remarks, invoice number, or voucher reference…"
-                  className="w-full px-3 py-2 bg-white border border-[#E5E5EA] rounded-xl text-[#1D1D1F] placeholder:text-[#86868B] outline-none focus:border-[#007AFF] transition"
+                  className="w-full px-4 py-2.5 bg-white border border-[#E7E8EC] rounded-[18px] text-[#111318] placeholder:text-[#A9ABB5] outline-none focus:border-[#12151C] transition shadow-2xs font-medium"
                 />
               </div>
 
               {/* Action Buttons */}
-              <div className="pt-3 border-t border-[#E5E5EA] flex items-center justify-end gap-2">
+              <div className="pt-3 border-t border-[#E7E8EC] flex items-center justify-end gap-2.5">
                 <button
                   type="button"
                   disabled={submitting}
                   onClick={() => setIsModalOpen(false)}
-                  className="px-3.5 py-2 rounded-xl border border-[#E5E5EA] text-[#1D1D1F] hover:bg-[#F5F5F7] font-medium text-xs transition cursor-pointer"
+                  className="px-4 py-2.5 rounded-full border border-[#E7E8EC] text-[#111318] hover:bg-[#EDEDEF] font-semibold text-xs transition cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-[#007AFF] hover:bg-[#0062CC] active:scale-98 text-white font-semibold text-xs shadow-2xs transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  className="inline-flex items-center justify-center gap-1.5 px-6 py-2.5 rounded-full bg-[#12151C] hover:bg-[#202530] text-white font-bold text-xs shadow-fintech transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 >
                   {submitting ? (
                     <>
-                      <Loader2 size={13} className="animate-spin" />
+                      <Loader2 size={13} className="animate-spin text-[#5BF07B]" />
                       <span>Saving…</span>
                     </>
                   ) : (
@@ -910,36 +915,36 @@ export default function Expenses() {
 
       {/* ── DELETE CONFIRMATION MODAL ── */}
       {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#12151C]/75 backdrop-blur-xs animate-in fade-in">
           <div
             className="fixed inset-0"
             onClick={() => !deleting && setDeleteTarget(null)}
           />
-          <div className="relative bg-white rounded-2xl border border-[#E5E5EA] shadow-xl max-w-sm w-full p-5 space-y-4 z-10 animate-in zoom-in-95">
+          <div className="relative bg-[#F6F6F8] rounded-[28px] border border-[#E7E8EC] shadow-2xl max-w-sm w-full p-6 space-y-4 z-10 animate-in zoom-in-95">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-full bg-[#FBD3D3] text-[#E5484D] border border-[#E5484D]/30 flex items-center justify-center shrink-0">
                 <Trash2 size={18} />
               </div>
               <div>
-                <h3 className="text-sm font-semibold text-[#1D1D1F]">Delete Expense</h3>
-                <p className="text-xs text-[#86868B] mt-0.5">This action cannot be undone.</p>
+                <h3 className="text-sm font-bold text-[#111318] font-heading">Delete Expense</h3>
+                <p className="text-xs text-[#7C7F8A] mt-0.5">This action cannot be undone.</p>
               </div>
             </div>
 
-            <div className="p-3 bg-[#F9F9FB] rounded-xl border border-[#E5E5EA] text-xs space-y-1">
-              <div className="font-semibold text-[#1D1D1F]">{deleteTarget.title}</div>
-              <div className="text-[#86868B] flex items-center justify-between">
-                <span>Amount: <strong className="text-[#1D1D1F] font-mono">{formatINR(deleteTarget.amount)}</strong></span>
+            <div className="p-3.5 bg-[#FAFAFB] rounded-[18px] border border-[#E7E8EC] text-xs space-y-1.5">
+              <div className="font-semibold text-[#111318]">{deleteTarget.title}</div>
+              <div className="text-[#7C7F8A] flex items-center justify-between">
+                <span>Amount: <strong className="text-[#111318] font-mono">{formatINR(deleteTarget.amount)}</strong></span>
                 <span>Date: {deleteTarget.date ? new Date(deleteTarget.date).toLocaleDateString("en-IN") : "—"}</span>
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-1">
+            <div className="flex items-center justify-end gap-2.5 pt-2">
               <button
                 type="button"
                 disabled={deleting}
                 onClick={() => setDeleteTarget(null)}
-                className="px-3.5 py-1.5 rounded-xl border border-[#E5E5EA] text-[#1D1D1F] hover:bg-[#F5F5F7] text-xs font-medium transition cursor-pointer"
+                className="px-4 py-2 rounded-full border border-[#E7E8EC] text-[#111318] hover:bg-[#EDEDEF] text-xs font-semibold transition cursor-pointer"
               >
                 Cancel
               </button>
@@ -947,7 +952,7 @@ export default function Expenses() {
                 type="button"
                 disabled={deleting}
                 onClick={handleConfirmDelete}
-                className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow-2xs transition cursor-pointer disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-5 py-2 rounded-full bg-[#E5484D] hover:bg-[#d43f44] text-white text-xs font-bold shadow-xs transition cursor-pointer disabled:opacity-50"
               >
                 {deleting ? (
                   <>

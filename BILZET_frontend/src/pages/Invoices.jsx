@@ -38,7 +38,7 @@ import useRealtimeSync from "../hooks/useRealtimeSync";
 
 // Predefined palette of soft, professional colors for deterministic avatar assignment
 const AVATAR_PALETTES = [
-  { bg: "#EBF5FF", text: "#007AFF", border: "#D0E2FF" }, // Blue
+  { bg: "#DFFFE6", text: "#0E2A16", border: "#5BF07B" }, // Mint
   { bg: "#F3E8FF", text: "#7C3AED", border: "#E9D5FF" }, // Purple
   { bg: "#E6FFFA", text: "#0D9488", border: "#B2F5EA" }, // Teal
   { bg: "#EDF8F0", text: "#248A3D", border: "#CCE8D4" }, // Green
@@ -372,28 +372,24 @@ export default function Invoices() {
       {/* ══════════════════════════════════════════════════
           TOP HEADER WITH DOCUMENT TYPE SWITCHER
       ══════════════════════════════════════════════════ */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/90 shadow-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#F6F6F8] p-5 sm:p-6 rounded-[28px] border border-[#E7E8EC] shadow-fintech">
         <div className="flex items-center gap-3.5">
           <div
-            className={`w-11 h-11 rounded-xl border grid place-items-center shrink-0 shadow-2xs transition ${
-              activeTab === "quotations"
-                ? "bg-purple-50 text-purple-600 border-purple-200"
-                : "bg-blue-50 text-blue-600 border-blue-100"
-            }`}
+            className="w-11 h-11 rounded-2xl bg-[#12151C] text-[#5BF07B] border border-[#202530] grid place-items-center shrink-0 shadow-2xs transition"
           >
             {activeTab === "quotations" ? (
-              <FileSpreadsheet size={22} />
+              <FileSpreadsheet size={20} />
             ) : (
-              <FileText size={22} />
+              <FileText size={20} />
             )}
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="page-title">
+              <h1 className="page-title text-[#111318] font-heading font-bold">
                 {activeTab === "quotations" ? "Quotations & Proposals" : "Invoices & Sales History"}
               </h1>
               {activeTab === "quotations" ? (
-                <span className="badge font-mono bg-purple-50 text-purple-700 border border-purple-200">
+                <span className="badge font-mono bg-[#FAFAFB] text-[#111318] border border-[#E7E8EC]">
                   {filteredQuotations.length} {filteredQuotations.length === 1 ? "Quote" : "Quotes"}
                 </span>
               ) : (
@@ -402,7 +398,7 @@ export default function Invoices() {
                 </span>
               )}
             </div>
-            <p className="page-desc">
+            <p className="page-desc text-[#7C7F8A]">
               {activeTab === "quotations"
                 ? "Manage customer cost proposals, track approvals, and convert accepted quotes into tax invoices"
                 : "Complete invoice lifecycle tracking, GST adjustments, partial payments & returns"}
@@ -412,20 +408,20 @@ export default function Invoices() {
 
         <div className="flex flex-wrap items-center gap-2.5 self-start sm:self-center">
           {/* Top Document Tab Switcher (Sales Invoices vs Quotations) */}
-          <div className="inline-flex p-1 bg-slate-100/80 rounded-xl border border-slate-200 shadow-2xs">
+          <div className="inline-flex p-1 bg-[#EDEDEF] rounded-full border border-[#D8D9DE] shadow-2xs">
             <button
               type="button"
               id="invoices-tab-btn"
               onClick={() => handleSwitchTab("invoices")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold transition cursor-pointer ${
                 activeTab === "invoices"
-                  ? "bg-white text-blue-600 shadow-xs"
-                  : "text-slate-500 hover:text-slate-800"
+                  ? "bg-[#12151C] text-white shadow-xs"
+                  : "text-[#7C7F8A] hover:text-[#111318]"
               }`}
             >
-              <FileText size={13} />
+              <FileText size={13} className={activeTab === "invoices" ? "text-[#5BF07B]" : ""} />
               <span>Invoices</span>
-              <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-slate-100 text-slate-700 font-bold">
+              <span className={`ml-1 px-1.5 py-0.2 rounded-full text-[10px] font-bold ${activeTab === "invoices" ? "bg-white/20 text-white" : "bg-white text-[#7C7F8A]"}`}>
                 {safeInvoices.length}
               </span>
             </button>
@@ -433,15 +429,15 @@ export default function Invoices() {
               type="button"
               id="quotations-tab-btn"
               onClick={() => handleSwitchTab("quotations")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold transition cursor-pointer ${
                 activeTab === "quotations"
-                  ? "bg-white text-purple-700 shadow-xs"
-                  : "text-slate-500 hover:text-slate-800"
+                  ? "bg-[#12151C] text-white shadow-xs"
+                  : "text-[#7C7F8A] hover:text-[#111318]"
               }`}
             >
-              <FileSpreadsheet size={13} />
+              <FileSpreadsheet size={13} className={activeTab === "quotations" ? "text-[#5BF07B]" : ""} />
               <span>Quotations</span>
-              <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-purple-100 text-purple-800 font-bold">
+              <span className={`ml-1 px-1.5 py-0.2 rounded-full text-[10px] font-bold ${activeTab === "quotations" ? "bg-white/20 text-white" : "bg-white text-[#7C7F8A]"}`}>
                 {safeQuotations.length}
               </span>
             </button>
@@ -667,11 +663,11 @@ export default function Invoices() {
                         onClick={() => handleOpenInvoice(inv)}
                       >
                         <td className="py-3.5 px-4">
-                          <span className="font-mono font-semibold text-blue-600 block">
+                          <span className="font-mono font-semibold text-[#111318] block hover:underline">
                             {inv.invoiceNumber}
                           </span>
                           {inv.referenceQuotationNumber && (
-                            <span className="inline-flex items-center gap-1 text-[9px] font-semibold text-purple-700 bg-purple-50 border border-purple-200 rounded px-1.5 py-0.2 mt-0.5" title="Generated from Quotation">
+                            <span className="inline-flex items-center gap-1 text-[9px] font-semibold text-[#111318] bg-[#FAFAFB] border border-[#E7E8EC] rounded-full px-2 py-0.2 mt-0.5" title="Generated from Quotation">
                               From Quote #{inv.referenceQuotationNumber}
                             </span>
                           )}
@@ -977,12 +973,12 @@ export default function Invoices() {
                         {/* Linked Invoice status */}
                         <td className="py-3.5 px-4 text-center">
                           {isConverted ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
-                              <CheckCircle2 size={11} className="text-blue-600" />
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#DFFFE6] text-[#0E2A16] border border-[#5BF07B]/40">
+                              <CheckCircle2 size={11} className="text-[#0E2A16]" />
                               <span>{convertedInvNum}</span>
                             </span>
                           ) : (
-                            <span className="text-[10px] text-slate-400 font-medium">Pending Conversion</span>
+                            <span className="text-[10px] text-[#7C7F8A] font-medium">Pending Conversion</span>
                           )}
                         </td>
 

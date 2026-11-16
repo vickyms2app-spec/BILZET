@@ -292,16 +292,16 @@ export default function BarcodeScannerModal({
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
-      <div className="bg-white rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 my-auto">
+      <div className="bg-[#F6F6F8] rounded-[24px] max-w-lg w-full overflow-hidden shadow-fintech border border-[#E7E8EC] animate-in fade-in zoom-in-95 my-auto">
         {/* Header */}
-        <div className="bg-slate-900 text-white px-5 py-4 flex items-center justify-between">
+        <div className="bg-[#12151C] text-white px-5 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-xs">
+            <div className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center text-[#5BF07B] shadow-xs">
               <Scan size={18} />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-slate-100">Live Camera Barcode Scanner</h3>
-              <p className="text-[11px] text-slate-400">
+              <h3 className="text-sm font-bold text-white">Live Camera Barcode Scanner</h3>
+              <p className="text-[11px] text-[#A9ABB5]">
                 Point camera at product barcode or enter SKU
               </p>
             </div>
@@ -310,7 +310,7 @@ export default function BarcodeScannerModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition"
+            className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-[#A9ABB5] hover:text-white transition cursor-pointer"
             title="Close scanner"
           >
             <X size={16} />
@@ -318,24 +318,24 @@ export default function BarcodeScannerModal({
         </div>
 
         {/* Camera Viewport & Overlay */}
-        <div className="relative bg-slate-950 aspect-4/3 max-h-72 w-full flex items-center justify-center overflow-hidden">
+        <div className="relative bg-[#12151C] aspect-4/3 max-h-72 w-full flex items-center justify-center overflow-hidden">
           {cameraLoading ? (
-            <div className="text-center text-slate-400 space-y-2">
-              <RefreshCw size={24} className="animate-spin text-blue-500 mx-auto" />
+            <div className="text-center text-[#A9ABB5] space-y-2">
+              <RefreshCw size={24} className="animate-spin text-[#5BF07B] mx-auto" />
               <p className="text-xs font-medium">Requesting camera access...</p>
             </div>
           ) : cameraError ? (
             <div className="p-6 text-center max-w-sm space-y-3">
-              <AlertCircle size={32} className="text-amber-400 mx-auto" />
-              <p className="text-xs text-slate-300 leading-relaxed font-medium">
+              <AlertCircle size={32} className="text-[#E5484D] mx-auto" />
+              <p className="text-xs text-white leading-relaxed font-medium">
                 {cameraError}
               </p>
               <button
                 type="button"
                 onClick={startCamera}
-                className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold inline-flex items-center gap-1.5 shadow-sm"
+                className="px-3.5 py-1.5 rounded-xl bg-[#12151C] hover:bg-black text-white text-xs font-semibold inline-flex items-center gap-1.5 shadow-fintech border border-[#5BF07B]/40 cursor-pointer"
               >
-                <RefreshCw size={13} />
+                <RefreshCw size={13} className="text-[#5BF07B]" />
                 <span>Retry Camera</span>
               </button>
             </div>
@@ -414,13 +414,13 @@ export default function BarcodeScannerModal({
                   placeholder="Type barcode or scan with USB gun..."
                   value={manualCode}
                   onChange={(e) => setManualCode(e.target.value)}
-                  className="w-full pl-8 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-blue-500 font-mono font-medium focus:bg-white transition"
+                  className="w-full pl-8 pr-3 py-2 text-xs bg-white border border-[#E7E8EC] rounded-xl outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 font-mono font-medium text-[#111318] transition"
                 />
               </div>
               <button
                 type="submit"
                 disabled={searching || !manualCode.trim()}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-xs transition"
+                className="px-4 py-2 bg-[#12151C] hover:bg-black disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-fintech transition cursor-pointer"
               >
                 {searching ? "Searching…" : "Add"}
               </button>
@@ -430,7 +430,7 @@ export default function BarcodeScannerModal({
           {/* Quick Click Chips for Products with Barcodes (For testing/convenience) */}
           {availableProducts.length > 0 && (
             <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+              <p className="text-[10px] font-bold text-[#7C7F8A] uppercase tracking-wider mb-1.5">
                 Quick Test From Catalog:
               </p>
               <div className="flex flex-wrap gap-1.5 max-h-20 overflow-y-auto">
@@ -441,7 +441,7 @@ export default function BarcodeScannerModal({
                       key={p.id || p._id}
                       type="button"
                       onClick={() => processBarcode(code)}
-                      className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-blue-50 hover:text-blue-700 border border-slate-200 text-[11px] font-medium text-slate-700 transition"
+                      className="px-2.5 py-1 rounded-lg bg-[#EDEDEF] hover:bg-[#DFFFE6] hover:text-[#0E2A16] border border-[#E7E8EC] text-[11px] font-medium text-[#111318] transition cursor-pointer"
                       title={`Add ${p.name}`}
                     >
                       {p.name} ({code})

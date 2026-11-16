@@ -26,7 +26,7 @@ import Button from "../components/common/Button";
 
 // Predefined palette of soft, professional colors for deterministic avatar assignment
 const PRODUCT_AVATAR_PALETTES = [
-  { bg: "#EBF5FF", text: "#007AFF", border: "#D0E2FF" }, // Blue
+  { bg: "#DFFFE6", text: "#0E2A16", border: "#5BF07B" }, // Mint
   { bg: "#F3E8FF", text: "#7C3AED", border: "#E9D5FF" }, // Purple
   { bg: "#E6FFFA", text: "#0D9488", border: "#B2F5EA" }, // Teal
   { bg: "#EDF8F0", text: "#248A3D", border: "#CCE8D4" }, // Green
@@ -786,8 +786,8 @@ export default function Inventory() {
                     onClick={() => setSelectedCat(cat)}
                     className={`px-3 py-1.5 rounded-xl text-xs font-medium transition cursor-pointer whitespace-nowrap ${
                       selectedCat === cat
-                        ? "bg-[#007AFF] text-white shadow-xs font-semibold"
-                        : "bg-[#F5F5F7] text-[#6E6E73] hover:text-[#1D1D1F] border border-[#E5E5EA]"
+                        ? "bg-[#12151C] text-white shadow-xs font-semibold"
+                        : "bg-[#EDEDEF] text-[#7C7F8A] hover:text-[#111318] border border-[#E7E8EC]"
                     }`}
                   >
                     {cat}
@@ -799,7 +799,7 @@ export default function Inventory() {
                 <button
                   type="button"
                   onClick={clearFilters}
-                  className="px-2.5 py-1.5 text-xs text-[#007AFF] hover:underline whitespace-nowrap cursor-pointer font-medium ml-1"
+                  className="px-2.5 py-1.5 text-xs text-[#111318] hover:underline whitespace-nowrap cursor-pointer font-semibold ml-1"
                 >
                   Clear filters
                 </button>
@@ -808,12 +808,12 @@ export default function Inventory() {
           </div>
 
           {/* ══════════════════════════════════════════════════
-              CURRENT STOCK TABLE — APPLE macOS DESIGN
+              CURRENT STOCK TABLE — KEEL FINTECH MONOCHROME
           ══════════════════════════════════════════════════ */}
-          <div className="bg-white rounded-2xl border border-[#E5E5EA] shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden">
+          <div className="bg-[#F6F6F8] rounded-[24px] border border-[#E7E8EC] shadow-fintech overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-xs text-left border-collapse">
-                <thead className="bg-[#F5F5F7] border-b border-[#E5E5EA] text-[11px] font-medium text-[#6E6E73] uppercase tracking-wider">
+              <table className="w-full text-xs text-left border-collapse bg-white">
+                <thead className="bg-[#FAFAFB] border-b border-[#E7E8EC] text-[11px] font-bold text-[#7C7F8A] uppercase tracking-wider">
                   <tr>
                     <th className="py-2.5 px-4 min-w-[170px]">Product Name</th>
                     <th className="py-2.5 px-3 min-w-[100px]">SKU / Barcode</th>
@@ -828,12 +828,12 @@ export default function Inventory() {
                     <th className="py-2.5 px-3 text-center min-w-[80px]">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#E5E5EA] bg-white">
+                <tbody className="divide-y divide-[#E7E8EC] bg-white">
                   {loading ? (
                     <tr>
                       <td colSpan={11} className="py-14 text-center">
-                        <RefreshCw size={22} className="animate-spin text-[#007AFF] mx-auto mb-2" />
-                        <p className="text-xs text-[#6E6E73]">Loading inventory records…</p>
+                        <RefreshCw size={22} className="animate-spin text-[#5BF07B] mx-auto mb-2" />
+                        <p className="text-xs text-[#7C7F8A]">Loading inventory records…</p>
                       </td>
                     </tr>
                   ) : filtered.length === 0 ? (
@@ -990,9 +990,9 @@ export default function Inventory() {
                             <button
                               type="button"
                               onClick={() => openAdjustModalFor(item)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-lg text-[#007AFF] hover:bg-[#EBF5FF] transition cursor-pointer"
+                              className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg text-[#111318] hover:bg-[#EDEDEF] transition cursor-pointer"
                             >
-                              <ArrowUpDown size={12} />
+                              <ArrowUpDown size={12} className="text-[#5BF07B]" />
                               <span>Adjust</span>
                             </button>
                           </td>
@@ -1007,15 +1007,15 @@ export default function Inventory() {
         </>
       ) : (
         /* ══════════════════════════════════════════════════
-            ADJUSTMENT & STOCK HISTORY TAB — macOS DESIGN
+            ADJUSTMENT & STOCK HISTORY TAB — KEEL FINTECH DESIGN
         ══════════════════════════════════════════════════ */
-        <div className="bg-white rounded-2xl border border-[#E5E5EA] shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden">
-          <div className="p-4 border-b border-[#E5E5EA] flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white">
+        <div className="bg-[#F6F6F8] rounded-[24px] border border-[#E7E8EC] shadow-fintech overflow-hidden">
+          <div className="p-4 border-b border-[#E7E8EC] flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#F6F6F8]">
             <div>
-              <h3 className="text-xs font-semibold text-[#1D1D1F]">
+              <h3 className="text-xs font-bold text-[#111318]">
                 Stock Transaction &amp; Audit Log
               </h3>
-              <p className="text-[11px] text-[#6E6E73] font-normal mt-0.5">
+              <p className="text-[11px] text-[#7C7F8A] font-normal mt-0.5">
                 Every stock addition, reduction, sale, and adjustment is recorded with timestamp and reason
               </p>
             </div>
@@ -1024,12 +1024,12 @@ export default function Inventory() {
                 type="button"
                 onClick={handleExportPdf}
                 disabled={history.length === 0 || pdfExporting}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold border border-[#E5E5EA] bg-white text-[#1D1D1F] hover:bg-[#F5F5F7] rounded-xl transition cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.02)] disabled:opacity-40 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold border border-[#E7E8EC] bg-white text-[#111318] hover:bg-[#EDEDEF] rounded-xl transition cursor-pointer shadow-xs disabled:opacity-40 disabled:cursor-not-allowed"
                 title="Export Stock Adjustment History as PDF"
               >
                 <FileText
                   size={13}
-                  className={pdfExporting ? "animate-spin text-[#007AFF]" : "text-[#007AFF]"}
+                  className={pdfExporting ? "animate-spin text-[#5BF07B]" : "text-[#111318]"}
                 />
                 <span>{pdfExporting ? "Exporting PDF…" : "Export PDF"}</span>
               </button>
@@ -1038,11 +1038,11 @@ export default function Inventory() {
                 type="button"
                 onClick={loadHistory}
                 disabled={historyLoading}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-[#E5E5EA] bg-white text-[#1D1D1F] hover:bg-[#F5F5F7] rounded-xl transition cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.02)]"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-[#E7E8EC] bg-white text-[#111318] hover:bg-[#EDEDEF] rounded-xl transition cursor-pointer shadow-xs"
               >
                 <RefreshCw
                   size={12}
-                  className={historyLoading ? "animate-spin text-[#007AFF]" : "text-[#6E6E73]"}
+                  className={historyLoading ? "animate-spin text-[#5BF07B]" : "text-[#7C7F8A]"}
                 />
                 <span>Refresh Log</span>
               </button>
@@ -1050,8 +1050,8 @@ export default function Inventory() {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left border-collapse">
-              <thead className="bg-[#F5F5F7] border-b border-[#E5E5EA] text-[11px] font-medium text-[#6E6E73] uppercase tracking-wider">
+            <table className="w-full text-xs text-left border-collapse bg-white">
+              <thead className="bg-[#FAFAFB] border-b border-[#E7E8EC] text-[11px] font-bold text-[#7C7F8A] uppercase tracking-wider">
                 <tr>
                   <th className="py-2.5 px-4 min-w-[150px]">Date &amp; Time</th>
                   <th className="py-2.5 px-4 min-w-[180px]">Product</th>
@@ -1061,11 +1061,11 @@ export default function Inventory() {
                   <th className="py-2.5 px-4 min-w-[200px]">Reason / Details</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#E5E5EA] bg-white">
+              <tbody className="divide-y divide-[#E7E8EC] bg-white">
                 {historyLoading ? (
                   <tr>
-                    <td colSpan={6} className="py-12 text-center text-[#6E6E73]">
-                      <RefreshCw size={20} className="animate-spin text-[#007AFF] mx-auto mb-2" />
+                    <td colSpan={6} className="py-12 text-center text-[#7C7F8A]">
+                      <RefreshCw size={20} className="animate-spin text-[#5BF07B] mx-auto mb-2" />
                       <span>Loading stock transaction history…</span>
                     </td>
                   </tr>
@@ -1143,7 +1143,7 @@ export default function Inventory() {
         title="Adjust Stock Level"
         subtitle="Record inventory additions, deductions or physical count reconciliation"
         icon={Boxes}
-        iconColor="text-[#007AFF] bg-[#F5F5F7] border-[#E5E5EA]"
+        iconColor="text-[#5BF07B] bg-[#12151C] border-[#12151C]"
         maxWidth="max-w-lg"
         footer={
           <div className="w-full flex items-center justify-end gap-2">
@@ -1172,13 +1172,13 @@ export default function Inventory() {
         <form id="adjust-stock-form" onSubmit={handleSaveAdjust} className="space-y-4 text-xs">
           {/* Product selection */}
           <div>
-            <label className="block text-xs font-semibold text-[#1D1D1F] mb-1.5">
-              Product <span className="text-[#D70015]">*</span>
+            <label className="block text-xs font-semibold text-[#111318] mb-1.5">
+              Product <span className="text-[#E5484D]">*</span>
             </label>
             <select
               value={formProductId || (selectedProduct?.id || selectedProduct?._id || "")}
               onChange={(e) => setFormProductId(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-white border border-[#E5E5EA] rounded-xl text-xs font-medium text-[#1D1D1F] outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/15 transition"
+              className="w-full px-3.5 py-2.5 bg-white border border-[#E7E8EC] rounded-xl text-xs font-medium text-[#111318] outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 transition"
               required
             >
               {inventory.map((prod) => (
@@ -1190,9 +1190,9 @@ export default function Inventory() {
           </div>
 
           {/* Current Stock info display */}
-          <div className="bg-[#F5F5F7] border border-[#E5E5EA] rounded-xl p-3 flex items-center justify-between">
-            <span className="text-xs font-medium text-[#6E6E73]">Current Available Stock</span>
-            <span className="text-sm font-semibold text-[#1D1D1F] font-mono">
+          <div className="bg-[#EDEDEF] border border-[#E7E8EC] rounded-xl p-3 flex items-center justify-between">
+            <span className="text-xs font-semibold text-[#7C7F8A]">Current Available Stock</span>
+            <span className="text-sm font-bold text-[#111318] font-mono">
               {currentStock} {selectedProduct?.unit || "pcs"}
             </span>
           </div>
@@ -1255,17 +1255,17 @@ export default function Inventory() {
               placeholder="10"
               value={adjustQty}
               onChange={(e) => setAdjustQty(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-white border border-[#E5E5EA] rounded-xl text-xs font-semibold text-[#1D1D1F] outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/15 font-mono transition"
+              className="w-full px-3.5 py-2.5 bg-white border border-[#E7E8EC] rounded-xl text-xs font-semibold text-[#111318] outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 font-mono transition"
               required
             />
             {isInvalidRemoval && (
-              <p className="text-[#D70015] text-[11px] font-medium mt-1 flex items-center gap-1">
+              <p className="text-[#E5484D] text-[11px] font-medium mt-1 flex items-center gap-1">
                 <AlertTriangle size={12} />
                 Quantity to remove cannot exceed current stock ({currentStock} available).
               </p>
             )}
             {!isValidQty && adjustQty !== "" && (
-              <p className="text-[#D70015] text-[11px] font-medium mt-1">
+              <p className="text-[#E5484D] text-[11px] font-medium mt-1">
                 Quantity must be a positive whole number (&gt; 0).
               </p>
             )}
@@ -1275,10 +1275,10 @@ export default function Inventory() {
           <div
             className={`rounded-xl p-3 border flex items-center justify-between transition ${
               isInvalidRemoval
-                ? "bg-[#FFF1F2] border-[#FECDD3] text-[#D70015]"
+                ? "bg-[#FBD3D3] border-[#E5484D]/40 text-[#E5484D]"
                 : adjustType === "ADD"
-                ? "bg-[#EDF8F0] border-[#CCE8D4] text-[#248A3D]"
-                : "bg-[#EBF5FF] border-[#D0E2FF] text-[#007AFF]"
+                ? "bg-[#DFFFE6] border-[#5BF07B]/40 text-[#0E2A16]"
+                : "bg-[#EDEDEF] border-[#E7E8EC] text-[#111318]"
             }`}
           >
             <div>
@@ -1296,8 +1296,8 @@ export default function Inventory() {
 
           {/* Reason */}
           <div>
-            <label className="block text-xs font-semibold text-[#1D1D1F] mb-1.5">
-              Reason / Adjustment Notes <span className="text-[#D70015]">*</span>
+            <label className="block text-xs font-semibold text-[#111318] mb-1.5">
+              Reason / Adjustment Notes <span className="text-[#E5484D]">*</span>
             </label>
             <div className="space-y-2">
               <select
@@ -1308,7 +1308,7 @@ export default function Inventory() {
                     setCustomReason("");
                   }
                 }}
-                className="w-full px-3.5 py-2.5 bg-white border border-[#E5E5EA] rounded-xl text-xs font-medium text-[#1D1D1F] outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/15 transition"
+                className="w-full px-3.5 py-2.5 bg-white border border-[#E7E8EC] rounded-xl text-xs font-medium text-[#111318] outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 transition"
                 required
               >
                 <option value="New Purchase">New Purchase</option>
@@ -1326,7 +1326,7 @@ export default function Inventory() {
                   placeholder="Enter specific adjustment reason…"
                   value={customReason}
                   onChange={(e) => setCustomReason(e.target.value)}
-                  className="w-full px-3.5 py-2 bg-white border border-[#E5E5EA] rounded-xl text-xs text-[#1D1D1F] outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/15 transition"
+                  className="w-full px-3.5 py-2 bg-white border border-[#E7E8EC] rounded-xl text-xs text-[#111318] outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 transition"
                   required
                 />
               )}

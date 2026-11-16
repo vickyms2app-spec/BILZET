@@ -21,7 +21,7 @@ import Button from "../components/common/Button";
 
 // Predefined palette of soft, professional colors for deterministic avatar assignment
 const SUPPLIER_AVATAR_PALETTES = [
-  { bg: "#EBF5FF", text: "#007AFF", border: "#D0E2FF" }, // Blue
+  { bg: "#DFFFE6", text: "#0E2A16", border: "#5BF07B" }, // Mint
   { bg: "#F3E8FF", text: "#7C3AED", border: "#E9D5FF" }, // Purple
   { bg: "#E6FFFA", text: "#0D9488", border: "#B2F5EA" }, // Teal
   { bg: "#EDF8F0", text: "#248A3D", border: "#CCE8D4" }, // Green
@@ -151,21 +151,21 @@ export default function Suppliers() {
       {/* ══════════════════════════════════════════════════
           TOP HEADER
       ══════════════════════════════════════════════════ */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/90 shadow-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#F6F6F8] p-6 rounded-[28px] border border-[#E7E8EC] shadow-fintech">
         <div className="flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-xl border border-blue-100 grid place-items-center text-blue-600 bg-blue-50/70 shadow-2xs shrink-0">
-            <Truck size={22} />
+          <div className="w-11 h-11 rounded-full bg-[#12151C] text-[#5BF07B] flex items-center justify-center shrink-0 shadow-xs">
+            <Truck size={20} />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="page-title">
+              <h1 className="text-xl sm:text-2xl font-bold text-[#111318] tracking-tight font-heading">
                 Suppliers &amp; Vendors
               </h1>
-              <span className="badge badge-info uppercase tracking-wider">
+              <span className="text-[10px] font-bold text-[#111318] bg-[#FAFAFB] border border-[#E7E8EC] px-3 py-0.5 rounded-full uppercase tracking-wider shadow-2xs">
                 Procurement
               </span>
             </div>
-            <p className="page-desc">
+            <p className="text-xs text-[#7C7F8A] font-medium mt-1">
               Manage vendors, purchase records, and outstanding payable balances
             </p>
           </div>
@@ -184,16 +184,16 @@ export default function Suppliers() {
       {/* Notifications */}
       {notification && (
         <div
-          className={`p-3.5 rounded-xl text-xs font-medium flex items-center gap-2 ${
+          className={`p-3.5 rounded-full text-xs font-semibold flex items-center gap-2.5 ${
             notification.type === "success"
-              ? "bg-emerald-50 border border-emerald-200 text-emerald-800"
-              : "bg-rose-50 border border-rose-200 text-rose-800"
+              ? "bg-[#DFFFE6] border border-[#5BF07B]/40 text-[#0E2A16]"
+              : "bg-[#FBD3D3] border border-[#E5484D]/30 text-[#E5484D]"
           }`}
         >
           {notification.type === "success" ? (
-            <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+            <CheckCircle2 size={16} className="text-[#0E2A16] shrink-0" />
           ) : (
-            <AlertTriangle size={16} className="text-rose-600 shrink-0" />
+            <AlertTriangle size={16} className="text-[#E5484D] shrink-0" />
           )}
           <span>{notification.message}</span>
         </div>
@@ -203,35 +203,35 @@ export default function Suppliers() {
           KPI SUMMARY CARDS
       ══════════════════════════════════════════════════ */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4">
-        <div className="card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center shrink-0">
+        <div className="bg-[#F6F6F8] rounded-[24px] border border-[#E7E8EC] p-5 shadow-fintech flex items-center gap-3.5">
+          <div className="w-10 h-10 rounded-full bg-[#EDEDEF] text-[#111318] flex items-center justify-center shrink-0">
             <Truck size={18} />
           </div>
           <div>
-            <p className="text-[11px] font-medium text-slate-500">Total Suppliers</p>
-            <p className="text-xl font-bold text-slate-900">{suppliers.length}</p>
+            <p className="text-[11px] font-bold text-[#7C7F8A] uppercase tracking-wider">Total Suppliers</p>
+            <p className="text-2xl font-black text-[#111318] font-mono">{suppliers.length}</p>
           </div>
         </div>
 
-        <div className="card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center shrink-0">
+        <div className="bg-[#F6F6F8] rounded-[24px] border border-[#E7E8EC] p-5 shadow-fintech flex items-center gap-3.5">
+          <div className="w-10 h-10 rounded-full bg-[#EDEDEF] text-[#E5484D] flex items-center justify-center shrink-0">
             <IndianRupee size={18} />
           </div>
           <div>
-            <p className="text-[11px] font-medium text-slate-500">Payable Balance</p>
-            <p className="text-xl font-bold text-amber-700">
+            <p className="text-[11px] font-bold text-[#7C7F8A] uppercase tracking-wider">Payable Balance</p>
+            <p className="text-2xl font-black text-[#111318] font-mono">
               ₹{totalBalance.toLocaleString("en-IN")}
             </p>
           </div>
         </div>
 
-        <div className="card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shrink-0">
+        <div className="bg-[#F6F6F8] rounded-[24px] border border-[#E7E8EC] p-5 shadow-fintech flex items-center gap-3.5">
+          <div className="w-10 h-10 rounded-full bg-[#12151C] text-[#5BF07B] flex items-center justify-center shrink-0 shadow-xs">
             <CheckCircle2 size={18} />
           </div>
           <div>
-            <p className="text-[11px] font-medium text-slate-500">Active Vendors</p>
-            <p className="text-xl font-bold text-emerald-700">
+            <p className="text-[11px] font-bold text-[#7C7F8A] uppercase tracking-wider">Active Vendors</p>
+            <p className="text-2xl font-black text-[#0E2A16] font-mono">
               {suppliers.filter((s) => s.isActive !== false).length}
             </p>
           </div>
@@ -241,8 +241,8 @@ export default function Suppliers() {
       {/* ══════════════════════════════════════════════════
           TABLE CARD & SEARCH
       ══════════════════════════════════════════════════ */}
-      <div className="card overflow-hidden">
-        <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white">
+      <div className="bg-[#F6F6F8] rounded-[28px] border border-[#E7E8EC] shadow-fintech overflow-hidden">
+        <div className="p-4 border-b border-[#E7E8EC] flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#FAFAFB]">
           <SearchBar
             value={search}
             onChange={(e) => setSearch(e.target.value)}

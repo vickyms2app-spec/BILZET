@@ -68,7 +68,7 @@ const DEFAULT_ATTENDANCE_SETTINGS = {
 
 // Predefined palette of soft, professional colors for deterministic avatar assignment
 const STAFF_AVATAR_PALETTES = [
-  { bg: "#EBF5FF", text: "#007AFF", border: "#D0E2FF" }, // Blue
+  { bg: "#DFFFE6", text: "#0E2A16", border: "#5BF07B" }, // Mint
   { bg: "#F3E8FF", text: "#7C3AED", border: "#E9D5FF" }, // Purple
   { bg: "#E6FFFA", text: "#0D9488", border: "#B2F5EA" }, // Teal
   { bg: "#EDF8F0", text: "#248A3D", border: "#CCE8D4" }, // Green
@@ -1043,7 +1043,7 @@ export default function StaffManagement({ defaultTab = "directory" }) {
                 <select
                   value={staffStatusFilter}
                   onChange={(e) => setStaffStatusFilter(e.target.value)}
-                  className="px-2.5 py-1 rounded-lg border border-[#E5E5EA] text-[#1D1D1F] bg-white text-xs outline-none cursor-pointer focus:border-[#007AFF]"
+                  className="px-2.5 py-1 rounded-lg border border-[#E7E8EC] text-[#111318] bg-white text-xs outline-none cursor-pointer focus:border-[#5BF07B]"
                 >
                   <option value="ALL">All ({staffList.length})</option>
                   <option value="ACTIVE">Active ({staffList.filter((s) => (s.status || "ACTIVE") === "ACTIVE").length})</option>
@@ -1274,7 +1274,7 @@ export default function StaffManagement({ defaultTab = "directory" }) {
                     type="date"
                     value={selectedDate}
                     onChange={(e) => setSelectedDate(e.target.value)}
-                    className="px-2.5 py-1 text-xs font-medium rounded-lg border border-[#E5E5EA] bg-white text-[#1D1D1F] cursor-pointer outline-none focus:border-[#007AFF]"
+                    className="px-2.5 py-1 text-xs font-medium rounded-lg border border-[#E7E8EC] bg-white text-[#111318] cursor-pointer outline-none focus:border-[#5BF07B]"
                   />
                   <button
                     type="button"
@@ -1283,7 +1283,7 @@ export default function StaffManagement({ defaultTab = "directory" }) {
                       d.setDate(d.getDate() + 1);
                       setSelectedDate(d.toISOString().split("T")[0]);
                     }}
-                    className="p-1.5 rounded-lg border border-[#E5E5EA] bg-white hover:bg-[#F5F5F7] text-[#1D1D1F] transition cursor-pointer"
+                    className="p-1.5 rounded-lg border border-[#E7E8EC] bg-white hover:bg-[#EDEDEF] text-[#111318] transition cursor-pointer"
                     title="Next Day"
                   >
                     <ChevronRight size={14} />
@@ -1291,17 +1291,17 @@ export default function StaffManagement({ defaultTab = "directory" }) {
                   <button
                     type="button"
                     onClick={() => setSelectedDate(new Date().toISOString().split("T")[0])}
-                    className="px-2.5 py-1 text-xs font-medium rounded-lg border border-[#E5E5EA] bg-white hover:bg-[#F5F5F7] text-[#1D1D1F] transition cursor-pointer"
+                    className="px-2.5 py-1 text-xs font-medium rounded-lg border border-[#E7E8EC] bg-white hover:bg-[#EDEDEF] text-[#111318] transition cursor-pointer"
                   >
                     Today
                   </button>
 
-                  <div className="h-4 w-px bg-[#E5E5EA] mx-1" />
+                  <div className="h-4 w-px bg-[#E7E8EC] mx-1" />
 
                   <button
                     type="button"
                     onClick={() => setShowMoreStats(!showMoreStats)}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg text-[#007AFF] hover:bg-[#F2F2F7] transition cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg text-[#111318] hover:bg-[#EDEDEF] transition cursor-pointer"
                   >
                     <span>{showMoreStats ? "Less Stats" : "More Statistics"}</span>
                     <ChevronRight
@@ -1315,10 +1315,10 @@ export default function StaffManagement({ defaultTab = "directory" }) {
               {/* 3 Primary Attendance Metrics */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {/* 1. Total Staff */}
-                <div className="bg-white rounded-xl border border-[#E5E5EA] p-3.5 shadow-2xs">
-                  <div className="flex items-center justify-between text-[#86868B] mb-1">
-                    <span className="text-[12px] font-medium">Total Staff</span>
-                    <Users size={15} className="text-[#007AFF]" />
+                <div className="bg-white rounded-xl border border-[#E7E8EC] p-3.5 shadow-2xs">
+                  <div className="flex items-center justify-between text-[#7C7F8A] mb-1">
+                    <span className="text-[12px] font-semibold">Total Staff</span>
+                    <Users size={15} className="text-[#12151C]" />
                   </div>
                   <div className="text-2xl font-semibold text-[#1D1D1F] font-mono tracking-tight">
                     {dashboardKpis.totalStaff}
@@ -1368,37 +1368,37 @@ export default function StaffManagement({ defaultTab = "directory" }) {
                     </div>
                     <div className="text-[10px] text-[#86868B] mt-0.5">&lt; {attendanceSettings.halfDayThreshold}h shift</div>
                   </div>
-                  <div className="bg-white rounded-lg border border-[#E5E5EA] p-3">
-                    <div className="text-[11px] font-medium text-[#86868B]">On Leave</div>
-                    <div className="text-lg font-semibold text-[#007AFF] font-mono mt-0.5">
+                  <div className="bg-white rounded-lg border border-[#E7E8EC] p-3">
+                    <div className="text-[11px] font-semibold text-[#7C7F8A]">On Leave</div>
+                    <div className="text-lg font-bold text-[#111318] font-mono mt-0.5">
                       {dashboardKpis.leave}
                     </div>
-                    <div className="text-[10px] text-[#86868B] mt-0.5">Approved leaves</div>
+                    <div className="text-[10px] text-[#7C7F8A] mt-0.5">Approved leaves</div>
                   </div>
-                  <div className="bg-white rounded-lg border border-[#E5E5EA] p-3">
-                    <div className="text-[11px] font-medium text-[#86868B]">Attendance Rate</div>
-                    <div className="text-lg font-semibold text-[#5856D6] font-mono mt-0.5">
+                  <div className="bg-white rounded-lg border border-[#E7E8EC] p-3">
+                    <div className="text-[11px] font-semibold text-[#7C7F8A]">Attendance Rate</div>
+                    <div className="text-lg font-bold text-[#111318] font-mono mt-0.5">
                       {dashboardKpis.percentage}%
                     </div>
-                    <div className="text-[10px] text-[#86868B] mt-0.5">Turnout rate</div>
+                    <div className="text-[10px] text-[#7C7F8A] mt-0.5">Turnout rate</div>
                   </div>
                 </div>
               )}
 
               {/* Attendance Table & Toolbar */}
-              <div className="bg-white rounded-xl border border-[#E5E5EA] shadow-2xs overflow-hidden">
+              <div className="bg-white rounded-xl border border-[#E7E8EC] shadow-2xs overflow-hidden">
                 {/* Compact Toolbar */}
-                <div className="p-3 border-b border-[#E5E5EA] flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-[#FAFAFC]">
+                <div className="p-3 border-b border-[#E7E8EC] flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-[#FAFAFB]">
                   <div className="flex flex-wrap items-center gap-2 flex-1">
                     {/* Search */}
                     <div className="relative min-w-44 max-w-xs flex-1">
-                      <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#86868B]" />
+                      <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#7C7F8A]" />
                       <input
                         type="text"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         placeholder="Filter employee or ID…"
-                        className="w-full pl-7 pr-3 py-1.5 text-xs rounded-lg border border-[#E5E5EA] bg-white text-[#1D1D1F] outline-none focus:border-[#007AFF]"
+                        className="w-full pl-7 pr-3 py-1.5 text-xs rounded-lg border border-[#E7E8EC] bg-white text-[#111318] outline-none focus:border-[#5BF07B]"
                       />
                     </div>
 
@@ -1406,7 +1406,7 @@ export default function StaffManagement({ defaultTab = "directory" }) {
                     <select
                       value={filterDepartment}
                       onChange={(e) => setFilterDepartment(e.target.value)}
-                      className="px-2.5 py-1.5 rounded-lg border border-[#E5E5EA] bg-white text-xs font-medium text-[#1D1D1F] cursor-pointer outline-none focus:border-[#007AFF]"
+                      className="px-2.5 py-1.5 rounded-lg border border-[#E7E8EC] bg-white text-xs font-semibold text-[#111318] cursor-pointer outline-none focus:border-[#5BF07B]"
                     >
                       <option value="ALL">All Departments</option>
                       {departmentsList.map((d) => (
@@ -1420,7 +1420,7 @@ export default function StaffManagement({ defaultTab = "directory" }) {
                     <select
                       value={filterStatus}
                       onChange={(e) => setFilterStatus(e.target.value)}
-                      className="px-2.5 py-1.5 rounded-lg border border-[#E5E5EA] bg-white text-xs font-medium text-[#1D1D1F] cursor-pointer outline-none focus:border-[#007AFF]"
+                      className="px-2.5 py-1.5 rounded-lg border border-[#E7E8EC] bg-white text-xs font-semibold text-[#111318] cursor-pointer outline-none focus:border-[#5BF07B]"
                     >
                       <option value="ALL">All Statuses</option>
                       <option value="PRESENT">Present</option>
@@ -1449,9 +1449,9 @@ export default function StaffManagement({ defaultTab = "directory" }) {
                           setDailyDrafts(updated);
                           notify("success", "Marked all staff as Present in draft!");
                         }}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#E5E5EA] bg-white hover:bg-[#F5F5F7] text-xs font-medium text-[#1D1D1F] transition cursor-pointer shadow-2xs"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#E7E8EC] bg-white hover:bg-[#EDEDEF] text-xs font-semibold text-[#111318] transition cursor-pointer shadow-xs"
                       >
-                        <Check size={13} className="text-[#34C759]" />
+                        <Check size={13} className="text-[#0E2A16]" />
                         <span>Mark All Present</span>
                       </button>
                     )}
@@ -1461,12 +1461,12 @@ export default function StaffManagement({ defaultTab = "directory" }) {
                         type="button"
                         disabled={submitting}
                         onClick={handleSaveAllDailyAttendance}
-                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#007AFF] hover:bg-[#0062CC] text-white text-xs font-semibold shadow-2xs transition cursor-pointer disabled:opacity-50"
+                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#12151C] hover:bg-black text-white text-xs font-semibold shadow-fintech transition cursor-pointer disabled:opacity-50"
                       >
                         {submitting ? (
-                          <RefreshCw size={13} className="animate-spin" />
+                          <RefreshCw size={13} className="animate-spin text-[#5BF07B]" />
                         ) : (
-                          <Save size={13} />
+                          <Save size={13} className="text-[#5BF07B]" />
                         )}
                         <span>Save Changes</span>
                       </button>
@@ -1553,7 +1553,7 @@ export default function StaffManagement({ defaultTab = "directory" }) {
                                   onChange={(e) =>
                                     handleDraftFieldChange(staff.id, "checkIn", e.target.value)
                                   }
-                                  className="w-20 px-2 py-1 text-xs rounded-md border border-[#E5E5EA] bg-white text-[#1D1D1F] disabled:bg-[#F2F2F7] disabled:text-[#86868B] outline-none focus:border-[#007AFF]"
+                                  className="w-20 px-2 py-1 text-xs rounded-md border border-[#E7E8EC] bg-white text-[#111318] disabled:bg-[#EDEDEF] disabled:text-[#7C7F8A] outline-none focus:border-[#5BF07B]"
                                 />
                               </td>
 
@@ -1566,7 +1566,7 @@ export default function StaffManagement({ defaultTab = "directory" }) {
                                   onChange={(e) =>
                                     handleDraftFieldChange(staff.id, "checkOut", e.target.value)
                                   }
-                                  className="w-20 px-2 py-1 text-xs rounded-md border border-[#E5E5EA] bg-white text-[#1D1D1F] disabled:bg-[#F2F2F7] disabled:text-[#86868B] outline-none focus:border-[#007AFF]"
+                                  className="w-20 px-2 py-1 text-xs rounded-md border border-[#E7E8EC] bg-white text-[#111318] disabled:bg-[#EDEDEF] disabled:text-[#7C7F8A] outline-none focus:border-[#5BF07B]"
                                 />
                               </td>
 
@@ -1582,7 +1582,7 @@ export default function StaffManagement({ defaultTab = "directory" }) {
                                   onChange={(e) =>
                                     handleDraftFieldChange(staff.id, "hours", e.target.value)
                                   }
-                                  className="w-16 px-2 py-1 text-xs font-mono rounded-md border border-[#E5E5EA] bg-white text-[#1D1D1F] disabled:bg-[#F2F2F7] disabled:text-[#86868B] outline-none focus:border-[#007AFF]"
+                                  className="w-16 px-2 py-1 text-xs font-mono rounded-md border border-[#E7E8EC] bg-white text-[#111318] disabled:bg-[#EDEDEF] disabled:text-[#7C7F8A] outline-none focus:border-[#5BF07B]"
                                 />
                               </td>
 
@@ -1663,12 +1663,12 @@ export default function StaffManagement({ defaultTab = "directory" }) {
                         type="button"
                         disabled={submitting}
                         onClick={handleSaveAllDailyAttendance}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#007AFF] hover:bg-[#0062CC] text-white text-xs font-semibold shadow-2xs transition cursor-pointer disabled:opacity-50"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#12151C] hover:bg-black text-white text-xs font-semibold shadow-fintech transition cursor-pointer disabled:opacity-50"
                       >
                         {submitting ? (
-                          <RefreshCw size={13} className="animate-spin" />
+                          <RefreshCw size={13} className="animate-spin text-[#5BF07B]" />
                         ) : (
-                          <Save size={13} />
+                          <Save size={13} className="text-[#5BF07B]" />
                         )}
                         <span>Save Changes</span>
                       </button>
