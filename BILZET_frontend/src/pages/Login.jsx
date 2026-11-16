@@ -237,21 +237,80 @@ export default function Login({ initialMode = "login" }) {
 
       {/* ══════════════════════════════════════════════════════════════
           RIGHT SECTION — ~45% Width Desktop
-          Premium Floating White Login Card
+          Premium Floating Login Card with Decorative Elements
           ══════════════════════════════════════════════════════════════ */}
       <div className="w-full lg:w-[45%] xl:w-[44%] relative z-10 flex flex-col justify-center items-center lg:items-end p-4 sm:p-8 lg:pr-16 xl:pr-20 py-8 lg:py-12 min-h-auto lg:min-h-screen">
-        <div className="w-full max-w-[460px] bg-[#FAFAFB] rounded-[28px] border border-white p-7 sm:p-[44px] shadow-[0_15px_50px_rgba(0,0,0,0.08)] animate-card-enter relative">
-          {/* Card Heading & Subtitle */}
-          <div className="mb-7">
-            <h2 className="text-2xl sm:text-[32px] font-semibold text-[#111318] tracking-tight leading-tight mb-2">
+        <div
+          className="w-full max-w-[460px] rounded-[30px] border border-white/90 animate-card-enter relative overflow-hidden"
+          style={{
+            background: "#FAFAFB",
+            boxShadow: "0 15px 45px rgba(17,19,24,0.07)",
+            padding: "40px",
+          }}
+        >
+          {/* ── Decorative top-right mint glow + logo badge ─────────── */}
+          <div className="absolute top-0 right-0 w-[200px] h-[200px] pointer-events-none select-none" aria-hidden="true">
+            {/* Soft ambient glow blobs */}
+            <div
+              className="absolute top-[-30px] right-[-30px] w-[160px] h-[160px] rounded-full animate-mint-glow"
+              style={{
+                background: "radial-gradient(circle at 60% 40%, #CDEBE7 0%, #E2F6F3 55%, transparent 80%)",
+                opacity: 0.65,
+                filter: "blur(18px)",
+              }}
+            />
+            <div
+              className="absolute top-[10px] right-[10px] w-[100px] h-[100px] rounded-full"
+              style={{
+                background: "radial-gradient(circle at 50% 50%, #A9DAD3 0%, #CDEBE7 50%, transparent 80%)",
+                opacity: 0.40,
+                filter: "blur(12px)",
+              }}
+            />
+            {/* Logo badge container */}
+            <div
+              className="absolute top-[18px] right-[18px] w-[90px] h-[90px] sm:w-[100px] sm:h-[100px] rounded-[22px] animate-logo-badge flex items-center justify-center"
+              style={{
+                background: "linear-gradient(135deg, rgba(226,246,243,0.95) 0%, rgba(205,235,231,0.90) 100%)",
+                border: "1px solid rgba(255,255,255,0.90)",
+                boxShadow: "0 6px 24px rgba(169,218,211,0.35), 0 2px 8px rgba(17,19,24,0.06)",
+              }}
+            >
+              <img
+                src="/assets/bilzet-logo-dark.png"
+                alt="BILZET"
+                className="w-[64px] sm:w-[72px] h-auto object-contain"
+                onError={(e) => { e.target.src = "/assets/bilzet-logo-transparent.png"; }}
+                loading="eager"
+                draggable={false}
+              />
+            </div>
+          </div>
+
+          {/* ── Heading + Underline ──────────────────────────────────── */}
+          <div className="mb-6 pr-[110px] sm:pr-[120px]">
+            <h2
+              className="font-bold text-[#111318] leading-[1.2] mb-2"
+              style={{ fontSize: "clamp(22px, 4vw, 32px)", fontFamily: "Inter, sans-serif" }}
+            >
               Welcome Back to BILZET
             </h2>
-            <p className="text-[15px] sm:text-[16px] text-[#7C7F8A] leading-normal font-normal">
+            {/* Mint-green accent underline */}
+            <div
+              className="mb-3"
+              style={{
+                width: "130px",
+                height: "5px",
+                borderRadius: "999px",
+                background: "linear-gradient(90deg, #5BF07B 0%, #91D9C0 100%)",
+              }}
+            />
+            <p className="text-[15px] text-[#7C7F8A] leading-normal font-normal">
               Sign in to manage your business.
             </p>
           </div>
 
-          {/* Error & Success Alerts */}
+          {/* ── Error & Success Alerts ───────────────────────────────── */}
           {error && (
             <div
               role="alert"
@@ -265,20 +324,21 @@ export default function Login({ initialMode = "login" }) {
           {success && (
             <div
               role="alert"
-              className="mb-5 p-3.5 rounded-[16px] bg-[#DFFFE6] border border-[#5BF07B]/40 text-[#0E2A16] text-xs sm:text-[13px] flex items-start gap-2.5 animate-fadeIn"
+              className="mb-5 p-3.5 rounded-[16px] bg-[#E2F6F3] border border-[#A9DAD3]/50 text-[#1A5C53] text-xs sm:text-[13px] flex items-start gap-2.5 animate-fadeIn"
             >
-              <Check size={16} className="shrink-0 text-[#0E2A16] mt-0.5" />
+              <Check size={16} className="shrink-0 text-[#1A5C53] mt-0.5" />
               <div className="flex-1 font-semibold">{success}</div>
             </div>
           )}
 
-          {/* Login Form */}
+          {/* ── Login Form ───────────────────────────────────────────── */}
           <form onSubmit={handleSubmit} noValidate className="space-y-4">
+
             {/* Field: Email Address */}
             <div>
               <label
                 htmlFor="signin-email"
-                className="block text-[14px] font-semibold text-[#111318] mb-1.5"
+                className="block text-[13px] font-semibold text-[#111318] mb-1.5"
               >
                 Email Address
               </label>
@@ -294,7 +354,19 @@ export default function Login({ initialMode = "login" }) {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Enter your email"
-                  className="w-full h-[50px] pl-11 pr-4 rounded-full border border-[#E7E8EC] bg-white text-[14px] text-[#111318] placeholder:text-[#A9ABB5] focus:outline-none focus:border-[#A9DAD3] focus:ring-2 focus:ring-[#CDEBE7]/60 transition-all font-sans"
+                  className="w-full h-[54px] pl-11 pr-4 rounded-full border text-[14px] text-[#111318] placeholder:text-[#A9ABB5] focus:outline-none transition-all font-sans"
+                  style={{
+                    background: "#EAF1FC",
+                    borderColor: "#DFE5EF",
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = "#5BF07B";
+                    e.target.style.boxShadow = "0 0 0 3px rgba(91,240,123,0.18)";
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = "#DFE5EF";
+                    e.target.style.boxShadow = "none";
+                  }}
                 />
               </div>
             </div>
@@ -303,7 +375,7 @@ export default function Login({ initialMode = "login" }) {
             <div>
               <label
                 htmlFor="signin-password"
-                className="block text-[14px] font-semibold text-[#111318] mb-1.5"
+                className="block text-[13px] font-semibold text-[#111318] mb-1.5"
               >
                 Password
               </label>
@@ -318,7 +390,19 @@ export default function Login({ initialMode = "login" }) {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
-                  className="w-full h-[50px] pl-11 pr-12 rounded-full border border-[#E7E8EC] bg-white text-[14px] text-[#111318] placeholder:text-[#A9ABB5] focus:outline-none focus:border-[#A9DAD3] focus:ring-2 focus:ring-[#CDEBE7]/60 transition-all font-sans"
+                  className="w-full h-[54px] pl-11 pr-12 rounded-full border text-[14px] text-[#111318] placeholder:text-[#A9ABB5] focus:outline-none transition-all font-sans"
+                  style={{
+                    background: "#EAF1FC",
+                    borderColor: "#DFE5EF",
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = "#5BF07B";
+                    e.target.style.boxShadow = "0 0 0 3px rgba(91,240,123,0.18)";
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = "#DFE5EF";
+                    e.target.style.boxShadow = "none";
+                  }}
                 />
                 <button
                   type="button"
@@ -333,14 +417,14 @@ export default function Login({ initialMode = "login" }) {
             </div>
 
             {/* Remember Me & Forgot Password */}
-            <div className="flex items-center justify-between pt-1">
+            <div className="flex items-center justify-between pt-0.5">
               <label className="flex items-center gap-2 cursor-pointer select-none">
                 <input
                   id="signin-remember-me"
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-4 h-4 rounded text-[#12151C] border-[#E7E8EC] focus:ring-[#A9DAD3] cursor-pointer accent-[#12151C]"
+                  className="w-4 h-4 rounded cursor-pointer accent-[#12151C]"
                 />
                 <span className="text-[13px] text-[#7C7F8A] font-medium">Remember me</span>
               </label>
@@ -348,38 +432,47 @@ export default function Login({ initialMode = "login" }) {
               <button
                 type="button"
                 onClick={() => setError("Please contact your Store Administrator or support@bilzet.app to reset your credentials.")}
-                className="text-[13px] font-medium text-[#111318] hover:underline focus:outline-none cursor-pointer"
+                className="text-[13px] font-semibold text-[#2D7A70] hover:text-[#1A5C53] hover:underline focus:outline-none cursor-pointer transition-colors"
               >
                 Forgot password?
               </button>
             </div>
 
-            {/* Primary Button: Sign In → */}
+            {/* Primary Sign In Button */}
             <button
               type="submit"
               id="signin-submit-btn"
               disabled={busy}
-              className="w-full h-[56px] rounded-full font-semibold text-[15px] text-white bg-[#12151C] hover:bg-[#202530] active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed mt-4 shadow-fintech"
+              className="w-full rounded-full font-semibold text-[15px] text-white bg-[#12151C] hover:bg-[#1E2330] active:scale-[0.985] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed mt-2"
+              style={{
+                height: "56px",
+                boxShadow: "0 4px 18px rgba(17,19,24,0.18)",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "0 8px 28px rgba(17,19,24,0.28)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "0 4px 18px rgba(17,19,24,0.18)"; }}
             >
               {busy ? (
                 <>
-                  <Loader2 size={18} className="animate-spin text-[#A9DAD3]" />
+                  <Loader2 size={18} className="animate-spin text-[#91D9C0]" />
                   <span>Signing in…</span>
                 </>
               ) : (
                 <>
                   <span>Sign In</span>
-                  <ArrowRight size={17} strokeWidth={2.4} className="text-[#A9DAD3]" />
+                  <ArrowRight size={17} strokeWidth={2.4} className="text-[#5BF07B]" />
                 </>
               )}
             </button>
 
-            {/* Divider: "or continue with" */}
-            <div className="relative flex items-center justify-center my-4">
+            {/* Divider */}
+            <div className="relative flex items-center justify-center my-1">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-[#E7E8EC]" />
               </div>
-              <span className="relative px-3 bg-[#FAFAFB] text-[12px] text-[#A9ABB5] font-medium">
+              <span
+                className="relative px-3 text-[12px] text-[#A9ABB5] font-medium"
+                style={{ background: "#FAFAFB" }}
+              >
                 or continue with
               </span>
             </div>
@@ -391,7 +484,8 @@ export default function Login({ initialMode = "login" }) {
                 onError={setError}
                 setBusy={setBusy}
                 busy={busy}
-                className="w-full h-[50px] rounded-full border border-[#E7E8EC] bg-white hover:bg-[#F6F6F8] text-[#111318] text-[14px] font-semibold transition-all flex items-center justify-center gap-2.5 cursor-pointer shadow-xs"
+                className="w-full h-[54px] rounded-full border border-[#E7E8EC] bg-white hover:bg-[#F6F6F8] text-[#111318] text-[14px] font-semibold transition-all flex items-center justify-center gap-2.5 cursor-pointer"
+                style={{ boxShadow: "0 1px 4px rgba(17,19,24,0.06)" }}
               />
             ) : (
               <button
@@ -405,40 +499,74 @@ export default function Login({ initialMode = "login" }) {
                     setError("Google Sign-In is initializing. Please wait a moment or sign in with your email.");
                   }
                 }}
-                className="w-full h-[50px] rounded-full border border-[#E7E8EC] bg-white hover:bg-[#F6F6F8] text-[#111318] text-[14px] font-semibold transition-all flex items-center justify-center gap-2.5 cursor-pointer shadow-xs"
+                className="w-full h-[54px] rounded-full border border-[#E7E8EC] bg-white hover:bg-[#F6F6F8] text-[#111318] text-[14px] font-semibold transition-all flex items-center justify-center gap-2.5 cursor-pointer"
+                style={{ boxShadow: "0 1px 4px rgba(17,19,24,0.06)" }}
               >
                 <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
-                  <path
-                    fill="#4285F4"
-                    d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.65v3h3.88c2.27-2.09 3.665-5.17 3.665-9.09z"
-                  />
-                  <path
-                    fill="#34A853"
-                    d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.26v3.09C3.29 21.43 7.37 24 12 24z"
-                  />
-                  <path
-                    fill="#FBBC05"
-                    d="M5.28 14.32c-.25-.72-.38-1.49-.38-2.32s.13-1.6.38-2.32V6.59H1.26C.46 8.19 0 9.99 0 12s.46 3.81 1.26 5.41l4.02-3.09z"
-                  />
-                  <path
-                    fill="#EA4335"
-                    d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.37 0 3.29 2.57 1.26 6.59l4.02 3.09c.95-2.83 3.6-4.93 6.72-4.93z"
-                  />
+                  <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.65v3h3.88c2.27-2.09 3.665-5.17 3.665-9.09z" />
+                  <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.26v3.09C3.29 21.43 7.37 24 12 24z" />
+                  <path fill="#FBBC05" d="M5.28 14.32c-.25-.72-.38-1.49-.38-2.32s.13-1.6.38-2.32V6.59H1.26C.46 8.19 0 9.99 0 12s.46 3.81 1.26 5.41l4.02-3.09z" />
+                  <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.37 0 3.29 2.57 1.26 6.59l4.02 3.09c.95-2.83 3.6-4.93 6.72-4.93z" />
                 </svg>
                 <span>Continue with Google</span>
               </button>
             )}
 
-            {/* Bottom Registration Link */}
-            <div className="pt-4 text-center text-[13px] text-[#7C7F8A]">
-              <span>Don't have an account? </span>
-              <Link
-                to="/sign-up"
-                className="text-[#1A5C53] font-bold underline decoration-[#A9DAD3] decoration-2 underline-offset-4 hover:opacity-80 transition-opacity"
+            {/* ── Bottom Wave Decoration ───────────────────────────────── */}
+            <div className="relative mt-3 -mx-[40px] -mb-[40px] h-[72px] overflow-hidden rounded-b-[30px]" aria-hidden="true">
+              <svg
+                viewBox="0 0 460 72"
+                xmlns="http://www.w3.org/2000/svg"
+                preserveAspectRatio="none"
+                className="absolute inset-0 w-full h-full"
               >
-                Create a new account
-              </Link>
+                <defs>
+                  <linearGradient id="bwL1" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stopColor="#E2F6F3" stopOpacity="0.80" />
+                    <stop offset="100%" stopColor="#CDEBE7" stopOpacity="0.60" />
+                  </linearGradient>
+                  <linearGradient id="bwL2" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stopColor="#CDEBE7" stopOpacity="0.75" />
+                    <stop offset="60%" stopColor="#A9DAD3" stopOpacity="0.65" />
+                    <stop offset="100%" stopColor="#A9DAD3" stopOpacity="0.80" />
+                  </linearGradient>
+                  <linearGradient id="bwL3" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stopColor="#A9DAD3" stopOpacity="0.90" />
+                    <stop offset="50%" stopColor="#5BF07B" stopOpacity="0.12" />
+                    <stop offset="100%" stopColor="#A9DAD3" stopOpacity="0.85" />
+                  </linearGradient>
+                </defs>
+                {/* Wave 1 — pale mint, highest crest */}
+                <path
+                  d="M0,40 C60,24 120,54 200,36 C280,18 360,46 460,30 L460,72 L0,72 Z"
+                  fill="url(#bwL1)"
+                />
+                {/* Wave 2 — soft aqua, mid */}
+                <path
+                  d="M0,50 C80,34 160,58 260,44 C340,33 400,54 460,42 L460,72 L0,72 Z"
+                  fill="url(#bwL2)"
+                />
+                {/* Wave 3 — deeper aqua + subtle mint tint, bottom fill */}
+                <path
+                  d="M0,58 C100,46 200,66 300,56 C380,48 420,60 460,54 L460,72 L0,72 Z"
+                  fill="url(#bwL3)"
+                />
+              </svg>
+
+              {/* Account creation link sits above the waves */}
+              <div className="relative z-10 flex items-center justify-center h-full pb-1">
+                <p className="text-[13px] text-[#4A5568] text-center">
+                  <span>Don't have an account? </span>
+                  <Link
+                    to="/sign-up"
+                    className="font-bold text-[#1A5C53] hover:text-[#2D7A70] hover:underline transition-colors"
+                  >
+                    Create a new account
+                  </Link>
+                </p>
+              </div>
             </div>
+
           </form>
         </div>
       </div>
