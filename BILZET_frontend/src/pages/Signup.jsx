@@ -447,339 +447,408 @@ export default function Signup() {
       </div>
 
       {/* ══════════════════════════════════════════════════════════════
-          RIGHT SIGNUP PANEL — ~40% Width Desktop
-          Keel Bento Card
+          RIGHT SIGNUP PANEL — ~41% Width Desktop
+          Premium Card: Black Border & Concentric Circular Rings
           ══════════════════════════════════════════════════════════════ */}
       <div className="w-full lg:w-[41%] xl:w-[40%] relative z-10 flex flex-col justify-center items-center lg:items-end p-4 sm:p-6 lg:pr-14 lg:py-8 min-h-screen">
-        <div className="w-full max-w-[475px] bg-[#FAFAFB] rounded-[28px] border border-white shadow-[0_15px_50px_rgba(0,0,0,0.08)] p-6 sm:p-7 relative font-sans">
-          {/* Top Header: Logo on Left, Login Link on Top-Right */}
-          <div className="flex items-center justify-between mb-4">
-            <BrandHeader logoHeight="h-7.5" />
-            <div className="text-right">
-              <span className="text-[12px] text-[#7C7F8A]">
-                Already registered?{" "}
-              </span>
-              <Link
-                to="/sign-in"
-                className="text-[12px] font-bold text-[#111318] hover:underline transition-colors"
-              >
-                Log in
-              </Link>
-            </div>
+        <div
+          className="w-full max-w-[calc(100%-16px)] sm:max-w-[495px] rounded-[24px] sm:rounded-[32px] animate-card-enter relative overflow-hidden bg-white"
+          style={{
+            border: "2.5px solid #12151C",
+            boxShadow: "0 18px 45px rgba(17,19,24,0.13)",
+            padding: "clamp(24px, 4vw, 36px)",
+          }}
+        >
+          {/* ── 1. Top-Right Concentric Rings (4 rings) ──────────────── */}
+          <div
+            className="absolute top-0 right-0 w-[190px] h-[190px] sm:w-[230px] sm:h-[230px] pointer-events-none select-none z-0 overflow-hidden"
+            aria-hidden="true"
+          >
+            <svg
+              viewBox="0 0 200 200"
+              className="w-full h-full"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              {/* Ring 1 (outermost): Thin charcoal outline */}
+              <circle cx="200" cy="0" r="170" stroke="#12151C" strokeWidth="1.8" strokeOpacity="0.25" />
+              {/* Ring 2: Intermediate light-grey outline */}
+              <circle cx="200" cy="0" r="126" stroke="#DDE1E6" strokeWidth="1.6" strokeOpacity="0.85" />
+              {/* Ring 3: Mint-green accent outline */}
+              <circle cx="200" cy="0" r="82" stroke="#5BF07B" strokeWidth="2" strokeOpacity="0.95" />
+              {/* Ring 4 (innermost): Thin charcoal outline with soft pale-mint circular fill */}
+              <circle cx="200" cy="0" r="42" stroke="#12151C" strokeWidth="1.8" fill="#DFFFE6" fillOpacity="0.85" />
+            </svg>
           </div>
 
-          {/* Heading and Supporting Text */}
-          <div className="mb-4">
-            <h1 className="text-xl sm:text-[23px] font-bold text-[#111318] tracking-tight leading-tight mb-1 font-heading">
-              Create your account
-            </h1>
-            <p className="text-[12.5px] text-[#7C7F8A] leading-normal font-normal">
-              Get started with BILZET and manage your business smarter.
-            </p>
+          {/* ── 2. Bottom-Left Concentric Rings (4 rings) ─────────────── */}
+          <div
+            className="absolute bottom-0 left-0 w-[180px] h-[180px] sm:w-[220px] sm:h-[220px] pointer-events-none select-none z-0 overflow-hidden"
+            aria-hidden="true"
+          >
+            <svg
+              viewBox="0 0 200 200"
+              className="w-full h-full"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <defs>
+                <radialGradient id="blSignupMintGradient" cx="20%" cy="80%" r="70%">
+                  <stop offset="0%" stopColor="#5BF07B" stopOpacity="0.45" />
+                  <stop offset="65%" stopColor="#DFFFE6" stopOpacity="0.75" />
+                  <stop offset="100%" stopColor="#DFFFE6" stopOpacity="0.25" />
+                </radialGradient>
+              </defs>
+              {/* Ring 1 (outermost): Light-grey outline */}
+              <circle cx="0" cy="200" r="165" stroke="#DDE1E6" strokeWidth="1.6" strokeOpacity="0.8" />
+              {/* Ring 2: Thin charcoal outline */}
+              <circle cx="0" cy="200" r="122" stroke="#12151C" strokeWidth="1.8" strokeOpacity="0.25" />
+              {/* Ring 3: Mint-green accent outline */}
+              <circle cx="0" cy="200" r="80" stroke="#5BF07B" strokeWidth="2" strokeOpacity="0.95" />
+              {/* Ring 4 (innermost): Black outline with subtle mint-green circular gradient */}
+              <circle cx="0" cy="200" r="40" stroke="#12151C" strokeWidth="1.8" fill="url(#blSignupMintGradient)" />
+            </svg>
           </div>
 
-          {/* Referral Badge if Active */}
-          {referralCode && (
-            <div className="mb-4 px-3.5 py-2 rounded-full bg-[#DFFFE6] border border-[#5BF07B]/40 text-[#0E2A16] text-xs font-semibold flex items-center justify-between">
-              <span>
-                Referral code applied: <strong>{referralCode}</strong>
-              </span>
-              <span className="bg-[#12151C] text-[#5BF07B] text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
-                10% Discount
-              </span>
-            </div>
-          )}
-
-          {/* Error / Success Alerts */}
-          {error && (
-            <div
-              role="alert"
-              className="mb-4 p-3.5 rounded-[16px] bg-[#FBD3D3] border border-[#E5484D]/30 text-[#E5484D] text-xs sm:text-[13px] flex items-start gap-2.5 animate-fadeIn"
-            >
-              <AlertCircle size={15} className="shrink-0 text-[#E5484D] mt-0.5" />
-              <div className="flex-1 font-semibold">
-                <div>{error}</div>
-                {(String(error).toLowerCase().includes("already exists") || String(error).toLowerCase().includes("sign in instead")) && (
-                  <div className="mt-2">
-                    <Link
-                      to={`/sign-in?email=${encodeURIComponent(email)}`}
-                      className="inline-flex items-center gap-1 font-bold text-[#111318] hover:underline text-xs"
-                    >
-                      Click here to sign in with this email &rarr;
-                    </Link>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {success && (
-            <div
-              role="alert"
-              className="mb-4 p-3.5 rounded-[16px] bg-[#DFFFE6] border border-[#5BF07B]/40 text-[#0E2A16] text-xs sm:text-[13px] flex items-start gap-2.5 animate-fadeIn"
-            >
-              <Check size={15} className="shrink-0 text-[#0E2A16] mt-0.5" />
-              <div className="flex-1 font-semibold">{success}</div>
-            </div>
-          )}
-
-          {/* Registration Form */}
-          <form onSubmit={handleSubmit} noValidate className="space-y-3">
-            {/* Verified Team Invitation Notice (if arrived with invitation link) */}
-            {verifiedInvite && (
-              <div className="p-3 rounded-2xl bg-[#FAFAFB] border border-[#E7E8EC] text-[#111318] flex items-start gap-2.5">
-                <ShieldCheck size={18} className="text-[#5BF07B] shrink-0 mt-0.5" />
-                <div className="flex-1">
-                  <p className="text-[12.5px] font-bold text-[#111318]">
-                    Joining {verifiedInvite.business?.name || "Business Store"}
-                  </p>
-                  <p className="text-[11.5px] text-[#7C7F8A] mt-0.5">
-                    Role assigned by business owner: <strong className="text-[#111318]">{verifiedInvite.role}</strong>
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* ─── Field 2: Full Name ─── */}
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#7C7F8A]">
-                <User size={15} strokeWidth={1.8} />
-              </div>
-              <input
-                id="signup-full-name"
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Full Name"
-                className="w-full h-[44px] pl-10 pr-4 rounded-full border border-[#E7E8EC] bg-white text-[13px] text-[#111318] placeholder:text-[#A9ABB5] focus:outline-none focus:border-[#111318] focus:ring-2 focus:ring-[#111318]/10 transition-all font-sans"
-              />
-            </div>
-
-            {/* ─── Field 3: Email Address ─── */}
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#7C7F8A]">
-                <Mail size={15} strokeWidth={1.8} />
-              </div>
-              <input
-                id="signup-email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Email address"
-                className="w-full h-[44px] pl-10 pr-4 rounded-full border border-[#E7E8EC] bg-white text-[13px] text-[#111318] placeholder:text-[#A9ABB5] focus:outline-none focus:border-[#111318] focus:ring-2 focus:ring-[#111318]/10 transition-all font-mono"
-              />
-            </div>
-
-            {/* ─── Field 4: Combined Mobile Number with Country Code ─── */}
-            <div className="flex h-[44px] rounded-full border border-[#E7E8EC] bg-white overflow-hidden focus-within:border-[#111318] focus-within:ring-2 focus-within:ring-[#111318]/10 transition-all">
-              <div className="relative flex items-center pl-3.5 pr-2.5 shrink-0 border-r border-[#E7E8EC] text-[#7C7F8A] gap-2">
-                <Phone size={14} strokeWidth={1.8} />
-                <IndiaFlag />
-                <select
-                  id="signup-country-code"
-                  aria-label="Country Code"
-                  value={countryCode}
-                  onChange={(e) => setCountryCode(e.target.value)}
-                  className="bg-transparent text-[13px] font-semibold text-[#111318] focus:outline-none cursor-pointer pr-3.5 appearance-none"
-                >
-                  {COUNTRY_CODES.map((c) => (
-                    <option key={c.code} value={c.code}>
-                      {c.code}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown size={12} className="text-[#7C7F8A] pointer-events-none absolute right-1" />
-              </div>
-              <input
-                id="signup-phone"
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="Mobile Number"
-                className="w-full h-full px-3 text-[13px] text-[#111318] placeholder:text-[#A9ABB5] focus:outline-none font-mono"
-              />
-            </div>
-
-            {/* ─── Field 5: Password with Show/Hide Control ─── */}
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#7C7F8A]">
-                <Lock size={15} strokeWidth={1.8} />
-              </div>
-              <input
-                id="signup-password"
-                type={showPassword ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Password"
-                className="w-full h-[44px] pl-10 pr-11 rounded-full border border-[#E7E8EC] bg-white text-[13px] text-[#111318] placeholder:text-[#A9ABB5] focus:outline-none focus:border-[#111318] focus:ring-2 focus:ring-[#111318]/10 transition-all font-mono"
-              />
-              <button
-                type="button"
-                id="toggle-password-visibility"
-                aria-label={showPassword ? "Hide password" : "Show password"}
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[#7C7F8A] hover:text-[#111318] transition-colors focus:outline-none cursor-pointer"
-              >
-                {showPassword ? <Eye size={16} /> : <EyeOff size={16} />}
-              </button>
-            </div>
-
-            {/* ─── Field 6: Country and State Dropdowns Side by Side ─── */}
-            <div className="grid grid-cols-2 gap-2.5">
-              {/* Country */}
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#7C7F8A]">
-                  <Globe size={14} strokeWidth={1.8} />
-                </div>
-                <select
-                  id="signup-country"
-                  value={country}
-                  onChange={(e) => handleCountryChange(e.target.value)}
-                  className="w-full h-[44px] pl-9 pr-7 rounded-full border border-[#E7E8EC] bg-white text-[13px] font-semibold text-[#111318] focus:outline-none focus:border-[#111318] focus:ring-2 focus:ring-[#111318]/10 transition-all appearance-none cursor-pointer"
-                >
-                  {getCountries().map((c) => (
-                    <option key={c.name} value={c.name}>
-                      {c.label || c.name}
-                    </option>
-                  ))}
-                </select>
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-[#7C7F8A]">
-                  <ChevronDown size={13} />
-                </div>
-              </div>
-
-              {/* State */}
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#7C7F8A]">
-                  <MapPin size={14} strokeWidth={1.8} />
-                </div>
-                <select
-                  id="signup-state"
-                  value={state}
-                  onChange={(e) => setState(e.target.value)}
-                  className="w-full h-[44px] pl-9 pr-7 rounded-full border border-[#E7E8EC] bg-white text-[13px] font-semibold text-[#111318] focus:outline-none focus:border-[#111318] focus:ring-2 focus:ring-[#111318]/10 transition-all appearance-none cursor-pointer"
-                >
-                  <option value="" disabled>
-                    {getStatesForCountry(country).length > 0 ? "Select State / Region" : "No regions available"}
-                  </option>
-                  {getStatesForCountry(country).map((st) => (
-                    <option key={st} value={st}>
-                      {st}
-                    </option>
-                  ))}
-                </select>
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-[#7C7F8A]">
-                  <ChevronDown size={13} />
-                </div>
-              </div>
-            </div>
-
-            {/* ─── Terms & Privacy Consent Checkbox ─── */}
-            <div className="pt-0.5">
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <input
-                  id="signup-consent-checkbox"
-                  type="checkbox"
-                  checked={agreedToTerms}
-                  onChange={(e) => setAgreedToTerms(e.target.checked)}
-                  className="w-4 h-4 rounded text-[#111318] border-[#E7E8EC] focus:ring-[#111318] cursor-pointer accent-[#111318]"
-                />
-                <span className="text-[12px] text-[#7C7F8A] leading-tight">
-                  I agree to the{" "}
-                  <button
-                    type="button"
-                    onClick={() => setModalContent("terms")}
-                    className="text-[#111318] font-bold underline hover:text-black focus:outline-none"
-                  >
-                    Terms of Service
-                  </button>{" "}
-                  and{" "}
-                  <button
-                    type="button"
-                    onClick={() => setModalContent("privacy")}
-                    className="text-[#111318] font-bold underline hover:text-black focus:outline-none"
-                  >
-                    Privacy Policy
-                  </button>
-                  .
+          {/* ── 3. Content Area Protected by relative z-10 ──────────── */}
+          <div className="relative z-10">
+            {/* Top Header: Logo on Left, Login Link on Top-Right */}
+            <div className="flex items-center justify-between mb-4">
+              <BrandHeader logoHeight="h-7.5" />
+              <div className="text-right">
+                <span className="text-[12px] text-[#7C7F8A]">
+                  Already registered?{" "}
                 </span>
-              </label>
-            </div>
-
-            {/* ─── Primary CTA Button (Keel Dark Charcoal) ─── */}
-            <button
-              type="submit"
-              id="signup-submit-btn"
-              disabled={busy}
-              className="w-full h-[46px] rounded-full font-bold text-[14px] text-white bg-[#12151C] hover:bg-[#202530] active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed mt-2 shadow-fintech"
-            >
-              {busy ? (
-                <>
-                  <Loader2 size={17} className="animate-spin text-[#5BF07B]" />
-                  <span>Creating your account...</span>
-                </>
-              ) : (
-                <>
-                  <span>Create my account</span>
-                  <ArrowRight size={16} strokeWidth={2.4} className="text-[#5BF07B]" />
-                </>
-              )}
-            </button>
-
-            {/* ─── Divider: "or" ─── */}
-            <div className="relative flex items-center justify-center my-2.5">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-[#E7E8EC]" />
+                <Link
+                  to="/sign-in"
+                  className="text-[12px] font-bold text-[#16C957] hover:underline transition-colors"
+                >
+                  Log in
+                </Link>
               </div>
-              <span className="relative px-3 bg-[#F6F6F8] text-[11px] text-[#A9ABB5] font-semibold uppercase tracking-wider">
-                or
-              </span>
             </div>
 
-            {/* ─── Google OAuth Button ─── */}
-            {hasClerk ? (
-              <ClerkGoogleButton
-                mode="register"
-                onError={setError}
-                setBusy={setBusy}
-                busy={busy}
-              />
-            ) : (
-              <button
-                type="button"
-                id="signup-google-btn"
-                disabled={busy}
-                onClick={() => {
-                  if (window.google?.accounts?.id) {
-                    window.google.accounts.id.prompt();
-                  } else {
-                    setError("Google Sign-In is initializing. Please wait a moment or sign up with your email.");
-                  }
-                }}
-                className="w-full h-[44px] rounded-full border border-[#E7E8EC] bg-white hover:bg-[#EDEDEF] text-[#111318] text-[13px] font-semibold transition-all flex items-center justify-center gap-2.5 cursor-pointer shadow-xs"
+            {/* Heading and Supporting Text */}
+            <div className="mb-4">
+              <h1
+                className="font-bold text-[#111318] leading-[1.15] mb-2 font-sans"
+                style={{ fontSize: "clamp(22px, 3.8vw, 30px)" }}
               >
-                <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
-                  <path
-                    fill="#4285F4"
-                    d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.65v3h3.88c2.27-2.09 3.665-5.17 3.665-9.09z"
-                  />
-                  <path
-                    fill="#34A853"
-                    d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.26v3.09C3.29 21.43 7.37 24 12 24z"
-                  />
-                  <path
-                    fill="#FBBC05"
-                    d="M5.28 14.32c-.25-.72-.38-1.49-.38-2.32s.13-1.6.38-2.32V6.59H1.26C.46 8.19 0 9.99 0 12s.46 3.81 1.26 5.41l4.02-3.09z"
-                  />
-                  <path
-                    fill="#EA4335"
-                    d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.37 0 3.29 2.57 1.26 6.59l4.02 3.09c.95-2.83 3.6-4.93 6.72-4.93z"
-                  />
-                </svg>
-                <span>Continue with Google</span>
-              </button>
+                Create your account
+              </h1>
+              {/* Mint-Green Gradient Underline */}
+              <div
+                className="w-[140px] h-[5px] rounded-full mb-3 bg-gradient-to-r from-[#16C957] to-[#5BF07B]"
+              />
+              <p className="text-[13.5px] text-[#7C7F8A] leading-normal font-normal">
+                Get started with BILZET and manage your business smarter.
+              </p>
+            </div>
+
+            {/* Referral Badge if Active */}
+            {referralCode && (
+              <div className="mb-4 px-3.5 py-2 rounded-full bg-[#DFFFE6] border border-[#5BF07B]/40 text-[#0E2A16] text-xs font-semibold flex items-center justify-between">
+                <span>
+                  Referral code applied: <strong>{referralCode}</strong>
+                </span>
+                <span className="bg-[#12151C] text-[#5BF07B] text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
+                  10% Discount
+                </span>
+              </div>
             )}
-          </form>
+
+            {/* Error / Success Alerts */}
+            {error && (
+              <div
+                role="alert"
+                className="mb-4 p-3.5 rounded-[16px] bg-[#FBD3D3] border border-[#E5484D]/30 text-[#E5484D] text-xs sm:text-[13px] flex items-start gap-2.5 animate-fadeIn"
+              >
+                <AlertCircle size={15} className="shrink-0 text-[#E5484D] mt-0.5" />
+                <div className="flex-1 font-semibold">
+                  <div>{error}</div>
+                  {(String(error).toLowerCase().includes("already exists") || String(error).toLowerCase().includes("sign in instead")) && (
+                    <div className="mt-2">
+                      <Link
+                        to={`/sign-in?email=${encodeURIComponent(email)}`}
+                        className="inline-flex items-center gap-1 font-bold text-[#16C957] hover:underline text-xs"
+                      >
+                        Click here to sign in with this email &rarr;
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {success && (
+              <div
+                role="alert"
+                className="mb-4 p-3.5 rounded-[16px] bg-[#DFFFE6] border border-[#5BF07B]/40 text-[#0E2A16] text-xs sm:text-[13px] flex items-start gap-2.5 animate-fadeIn"
+              >
+                <Check size={15} className="shrink-0 text-[#0E2A16] mt-0.5" />
+                <div className="flex-1 font-semibold">{success}</div>
+              </div>
+            )}
+
+            {/* Registration Form */}
+            <form onSubmit={handleSubmit} noValidate className="space-y-3">
+              {/* Verified Team Invitation Notice (if arrived with invitation link) */}
+              {verifiedInvite && (
+                <div className="p-3 rounded-2xl bg-[#FAFAFB] border border-[#E7E8EC] text-[#111318] flex items-start gap-2.5">
+                  <ShieldCheck size={18} className="text-[#5BF07B] shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-[12.5px] font-bold text-[#111318]">
+                      Joining {verifiedInvite.business?.name || "Business Store"}
+                    </p>
+                    <p className="text-[11.5px] text-[#7C7F8A] mt-0.5">
+                      Role assigned by business owner: <strong className="text-[#111318]">{verifiedInvite.role}</strong>
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* ─── Field 1: Full Name ─── */}
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-[#7C7F8A]">
+                  <User size={16} strokeWidth={1.8} />
+                </div>
+                <input
+                  id="signup-full-name"
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Full Name"
+                  className="w-full h-[50px] pl-11 pr-4 rounded-[16px] border border-[#E1E3E8] bg-[#F2F3F5] text-[13.5px] text-[#111318] placeholder:text-[#A9ABB5] focus:outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/30 transition-all font-sans"
+                />
+              </div>
+
+              {/* ─── Field 2: Email Address ─── */}
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-[#7C7F8A]">
+                  <Mail size={16} strokeWidth={1.8} />
+                </div>
+                <input
+                  id="signup-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Email address"
+                  className="w-full h-[50px] pl-11 pr-4 rounded-[16px] border border-[#E1E3E8] bg-[#F2F3F5] text-[13.5px] text-[#111318] placeholder:text-[#A9ABB5] focus:outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/30 transition-all font-sans"
+                />
+              </div>
+
+              {/* ─── Field 3: Combined Mobile Number with Country Code ─── */}
+              <div className="flex h-[50px] rounded-[16px] border border-[#E1E3E8] bg-[#F2F3F5] overflow-hidden focus-within:border-[#5BF07B] focus-within:ring-2 focus-within:ring-[#5BF07B]/30 transition-all">
+                <div className="relative flex items-center pl-3.5 pr-2.5 shrink-0 border-r border-[#E1E3E8] text-[#7C7F8A] gap-2">
+                  <Phone size={15} strokeWidth={1.8} />
+                  <IndiaFlag />
+                  <select
+                    id="signup-country-code"
+                    aria-label="Country Code"
+                    value={countryCode}
+                    onChange={(e) => setCountryCode(e.target.value)}
+                    className="bg-transparent text-[13px] font-semibold text-[#111318] focus:outline-none cursor-pointer pr-3.5 appearance-none"
+                  >
+                    {COUNTRY_CODES.map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {c.code}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown size={12} className="text-[#7C7F8A] pointer-events-none absolute right-1" />
+                </div>
+                <input
+                  id="signup-phone"
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="Mobile Number"
+                  className="w-full h-full px-3 text-[13.5px] text-[#111318] placeholder:text-[#A9ABB5] focus:outline-none bg-transparent font-sans"
+                />
+              </div>
+
+              {/* ─── Field 4: Password with Show/Hide Control ─── */}
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-[#7C7F8A]">
+                  <Lock size={16} strokeWidth={1.8} />
+                </div>
+                <input
+                  id="signup-password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Password"
+                  className="w-full h-[50px] pl-11 pr-12 rounded-[16px] border border-[#E1E3E8] bg-[#F2F3F5] text-[13.5px] text-[#111318] placeholder:text-[#A9ABB5] focus:outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/30 transition-all font-sans"
+                />
+                <button
+                  type="button"
+                  id="toggle-password-visibility"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-[#7C7F8A] hover:text-[#111318] transition-colors focus:outline-none cursor-pointer"
+                >
+                  {showPassword ? <Eye size={17} /> : <EyeOff size={17} />}
+                </button>
+              </div>
+
+              {/* ─── Field 5: Country and State Dropdowns Side by Side ─── */}
+              <div className="grid grid-cols-2 gap-2.5">
+                {/* Country */}
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#7C7F8A]">
+                    <Globe size={15} strokeWidth={1.8} />
+                  </div>
+                  <select
+                    id="signup-country"
+                    value={country}
+                    onChange={(e) => handleCountryChange(e.target.value)}
+                    className="w-full h-[50px] pl-9 pr-7 rounded-[16px] border border-[#E1E3E8] bg-[#F2F3F5] text-[13px] font-semibold text-[#111318] focus:outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/30 transition-all appearance-none cursor-pointer"
+                  >
+                    {getCountries().map((c) => (
+                      <option key={c.name} value={c.name}>
+                        {c.label || c.name}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-[#7C7F8A]">
+                    <ChevronDown size={13} />
+                  </div>
+                </div>
+
+                {/* State */}
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#7C7F8A]">
+                    <MapPin size={15} strokeWidth={1.8} />
+                  </div>
+                  <select
+                    id="signup-state"
+                    value={state}
+                    onChange={(e) => setState(e.target.value)}
+                    className="w-full h-[50px] pl-9 pr-7 rounded-[16px] border border-[#E1E3E8] bg-[#F2F3F5] text-[13px] font-semibold text-[#111318] focus:outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/30 transition-all appearance-none cursor-pointer"
+                  >
+                    <option value="" disabled>
+                      {getStatesForCountry(country).length > 0 ? "Select State / Region" : "No regions available"}
+                    </option>
+                    {getStatesForCountry(country).map((st) => (
+                      <option key={st} value={st}>
+                        {st}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-[#7C7F8A]">
+                    <ChevronDown size={13} />
+                  </div>
+                </div>
+              </div>
+
+              {/* ─── Terms & Privacy Consent Checkbox ─── */}
+              <div className="pt-0.5">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    id="signup-consent-checkbox"
+                    type="checkbox"
+                    checked={agreedToTerms}
+                    onChange={(e) => setAgreedToTerms(e.target.checked)}
+                    className="w-4 h-4 rounded border-[#E1E3E8] text-[#16C957] accent-[#16C957] cursor-pointer"
+                  />
+                  <span className="text-[12px] text-[#7C7F8A] leading-tight">
+                    I agree to the{" "}
+                    <button
+                      type="button"
+                      onClick={() => setModalContent("terms")}
+                      className="text-[#111318] font-bold underline hover:text-[#16C957] focus:outline-none"
+                    >
+                      Terms of Service
+                    </button>{" "}
+                    and{" "}
+                    <button
+                      type="button"
+                      onClick={() => setModalContent("privacy")}
+                      className="text-[#111318] font-bold underline hover:text-[#16C957] focus:outline-none"
+                    >
+                      Privacy Policy
+                    </button>
+                    .
+                  </span>
+                </label>
+              </div>
+
+              {/* ─── Primary CTA Button ─── */}
+              <button
+                type="submit"
+                id="signup-submit-btn"
+                disabled={busy}
+                className="w-full h-[54px] rounded-full font-bold text-[15px] text-white bg-[#12151C] hover:-translate-y-0.5 hover:shadow-[0_8px_25px_rgba(18,21,28,0.28)] active:translate-y-0 active:scale-[0.99] transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed mt-2 shadow-md"
+              >
+                {busy ? (
+                  <>
+                    <Loader2 size={17} className="animate-spin text-[#5BF07B]" />
+                    <span>Creating your account...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Create my account</span>
+                    <ArrowRight size={16} strokeWidth={2.4} className="text-[#5BF07B]" />
+                  </>
+                )}
+              </button>
+
+              {/* ─── Divider: "or continue with" ─── */}
+              <div className="relative flex items-center justify-center my-2.5">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-[#E1E3E8]" />
+                </div>
+                <span className="relative px-3 bg-white text-[11px] text-[#A9ABB5] font-semibold uppercase tracking-wider">
+                  or continue with
+                </span>
+              </div>
+
+              {/* ─── Google OAuth Button ─── */}
+              {hasClerk ? (
+                <ClerkGoogleButton
+                  mode="register"
+                  onError={setError}
+                  setBusy={setBusy}
+                  busy={busy}
+                  className="w-full h-[50px] rounded-full border border-[#E1E3E8] bg-white hover:bg-[#F6F6F8] text-[#111318] text-[13.5px] font-semibold transition-all flex items-center justify-center gap-2.5 cursor-pointer shadow-xs"
+                />
+              ) : (
+                <button
+                  type="button"
+                  id="signup-google-btn"
+                  disabled={busy}
+                  onClick={() => {
+                    if (window.google?.accounts?.id) {
+                      window.google.accounts.id.prompt();
+                    } else {
+                      setError("Google Sign-In is initializing. Please wait a moment or sign up with your email.");
+                    }
+                  }}
+                  className="w-full h-[50px] rounded-full border border-[#E1E3E8] bg-white hover:bg-[#F6F6F8] text-[#111318] text-[13.5px] font-semibold transition-all flex items-center justify-center gap-2.5 cursor-pointer shadow-xs"
+                >
+                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                    <path
+                      fill="#4285F4"
+                      d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.65v3h3.88c2.27-2.09 3.665-5.17 3.665-9.09z"
+                    />
+                    <path
+                      fill="#34A853"
+                      d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.26v3.09C3.29 21.43 7.37 24 12 24z"
+                    />
+                    <path
+                      fill="#FBBC05"
+                      d="M5.28 14.32c-.25-.72-.38-1.49-.38-2.32s.13-1.6.38-2.32V6.59H1.26C.46 8.19 0 9.99 0 12s.46 3.81 1.26 5.41l4.02-3.09z"
+                    />
+                    <path
+                      fill="#EA4335"
+                      d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.37 0 3.29 2.57 1.26 6.59l4.02 3.09c.95-2.83 3.6-4.93 6.72-4.93z"
+                    />
+                  </svg>
+                  <span>Continue with Google</span>
+                </button>
+              )}
+            </form>
+          </div>
         </div>
       </div>
 
