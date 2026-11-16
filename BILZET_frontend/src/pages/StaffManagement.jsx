@@ -834,22 +834,34 @@ export default function StaffManagement({ defaultTab = "directory" }) {
   return (
     <div
       style={{ fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}
-      className="space-y-4 max-w-7xl mx-auto fade-up pb-12 text-[#1D1D1F]"
+      className="space-y-4 max-w-7xl mx-auto fade-up pb-12 text-[#111318]"
     >
       {/* ── Page Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 sm:p-5 rounded-2xl border border-[#E5E5EA] shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#F6F6F8] p-4 sm:p-5 rounded-[24px] border border-[#E7E8EC] shadow-fintech">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-lg sm:text-xl font-semibold text-[#1D1D1F] tracking-tight">
-              Staff &amp; Payroll
+            <h1 className="text-lg sm:text-xl font-bold text-[#111318] tracking-tight">
+              {activeTab === "payroll"
+                ? "Payroll"
+                : activeTab === "attendance"
+                ? "Attendance"
+                : activeTab === "invitations"
+                ? "Invitations & Roles"
+                : "Staff Management"}
             </h1>
-            <span className="text-[11px] font-semibold text-[#007AFF] bg-[#EBF5FF] border border-[#D0E2FF] px-2 py-0.5 rounded-full flex items-center gap-1 uppercase tracking-wider">
-              <Building2 size={11} />
+            <span className="text-[11px] font-semibold text-[#0E2A16] bg-[#DFFFE6] border border-[#5BF07B]/40 px-2.5 py-0.5 rounded-full flex items-center gap-1 uppercase tracking-wider">
+              <Building2 size={11} className="text-[#0E2A16]" />
               <span>{activeStoreName}</span>
             </span>
           </div>
-          <p className="text-xs text-[#6E6E73] font-normal mt-0.5">
-            Manage employees, attendance and payroll in one place.
+          <p className="text-xs text-[#7C7F8A] font-normal mt-0.5">
+            {activeTab === "payroll"
+              ? "Manage employee salaries, disbursements, and attendance-linked payouts."
+              : activeTab === "attendance"
+              ? "Monitor shift attendance, biometric logs, check-ins, and leave statuses."
+              : activeTab === "invitations"
+              ? "Invite team members and manage role-based security permissions."
+              : "Manage employees, roles, store credentials, and team access."}
           </p>
         </div>
 
@@ -859,9 +871,9 @@ export default function StaffManagement({ defaultTab = "directory" }) {
             <button
               type="button"
               onClick={() => setShowAddModal(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#007AFF] hover:bg-[#0062CC] text-white transition cursor-pointer shadow-[0_1px_2px_rgba(0,122,255,0.25)]"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#12151C] hover:bg-black text-white transition cursor-pointer shadow-fintech"
             >
-              <Plus size={14} strokeWidth={2.5} />
+              <Plus size={14} strokeWidth={2.5} className="text-[#5BF07B]" />
               <span>Add Staff</span>
             </button>
           )}
@@ -870,9 +882,9 @@ export default function StaffManagement({ defaultTab = "directory" }) {
             <button
               type="button"
               onClick={() => setShowSettingsModal(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium border border-[#E5E5EA] bg-white text-[#1D1D1F] hover:bg-[#F5F5F7] rounded-xl transition cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.02)]"
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium border border-[#E7E8EC] bg-white text-[#111318] hover:bg-[#EDEDEF] rounded-xl transition cursor-pointer shadow-xs"
             >
-              <SettingsIcon size={14} className="text-[#6E6E73]" />
+              <SettingsIcon size={14} className="text-[#7C7F8A]" />
               <span>Attendance Settings</span>
             </button>
           )}
@@ -883,10 +895,10 @@ export default function StaffManagement({ defaultTab = "directory" }) {
                 <button
                   type="button"
                   onClick={() => setShowSalaries(!showSalaries)}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium border border-[#E5E5EA] bg-white text-[#1D1D1F] hover:bg-[#F5F5F7] rounded-xl transition cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.02)]"
+                  className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium border border-[#E7E8EC] bg-white text-[#111318] hover:bg-[#EDEDEF] rounded-xl transition cursor-pointer shadow-xs"
                   title="Toggle confidential salary visibility"
                 >
-                  {revealSalaries ? <EyeOff size={14} className="text-[#6E6E73]" /> : <Eye size={14} className="text-[#6E6E73]" />}
+                  {revealSalaries ? <EyeOff size={14} className="text-[#7C7F8A]" /> : <Eye size={14} className="text-[#7C7F8A]" />}
                   <span>{revealSalaries ? "Mask Salaries" : "Reveal Salaries"}</span>
                 </button>
               )}
@@ -894,9 +906,9 @@ export default function StaffManagement({ defaultTab = "directory" }) {
               <button
                 type="button"
                 onClick={() => setShowPayrollModal(true)}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#007AFF] hover:bg-[#0062CC] text-white transition cursor-pointer shadow-[0_1px_2px_rgba(0,122,255,0.25)]"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#12151C] hover:bg-black text-white transition cursor-pointer shadow-fintech"
               >
-                <DollarSign size={14} />
+                <DollarSign size={14} className="text-[#5BF07B]" />
                 <span>Process Payroll</span>
               </button>
             </>
@@ -931,8 +943,8 @@ export default function StaffManagement({ defaultTab = "directory" }) {
       )}
 
       {/* ── Main Module Navigation Tabs ── */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-[#E5E5EA] shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-        <div className="flex items-center gap-1 p-1 bg-[#F5F5F7] rounded-xl border border-[#E5E5EA] w-full sm:w-auto overflow-x-auto">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-[#F6F6F8] p-3 rounded-[24px] border border-[#E7E8EC] shadow-fintech">
+        <div className="flex items-center gap-1 p-1 bg-[#EDEDEF] rounded-xl border border-[#E7E8EC] w-full sm:w-auto overflow-x-auto shadow-2xs">
           <button
             type="button"
             onClick={() => {
@@ -941,12 +953,12 @@ export default function StaffManagement({ defaultTab = "directory" }) {
             }}
             className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
               activeTab === "directory"
-                ? "bg-white text-[#007AFF] shadow-xs border border-[#E5E5EA]"
-                : "text-[#6E6E73] hover:text-[#1D1D1F]"
+                ? "bg-[#12151C] text-white shadow-xs"
+                : "text-[#7C7F8A] hover:text-[#111318]"
             }`}
           >
-            <Users size={14} />
-            <span>Staff Roster ({staffList.length})</span>
+            <Users size={14} className={activeTab === "directory" ? "text-[#5BF07B]" : ""} />
+            <span>Staff Management ({staffList.length})</span>
           </button>
 
           <button
@@ -957,11 +969,11 @@ export default function StaffManagement({ defaultTab = "directory" }) {
             }}
             className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
               activeTab === "attendance"
-                ? "bg-white text-[#007AFF] shadow-xs border border-[#E5E5EA]"
-                : "text-[#6E6E73] hover:text-[#1D1D1F]"
+                ? "bg-[#12151C] text-white shadow-xs"
+                : "text-[#7C7F8A] hover:text-[#111318]"
             }`}
           >
-            <CalendarCheck2 size={14} />
+            <CalendarCheck2 size={14} className={activeTab === "attendance" ? "text-[#5BF07B]" : ""} />
             <span>Attendance</span>
           </button>
 
@@ -973,11 +985,11 @@ export default function StaffManagement({ defaultTab = "directory" }) {
             }}
             className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
               activeTab === "payroll"
-                ? "bg-white text-[#007AFF] shadow-xs border border-[#E5E5EA]"
-                : "text-[#6E6E73] hover:text-[#1D1D1F]"
+                ? "bg-[#12151C] text-white shadow-xs"
+                : "text-[#7C7F8A] hover:text-[#111318]"
             }`}
           >
-            <DollarSign size={14} />
+            <DollarSign size={14} className={activeTab === "payroll" ? "text-[#5BF07B]" : ""} />
             <span>Payroll ({payrolls.length})</span>
           </button>
 
@@ -989,11 +1001,11 @@ export default function StaffManagement({ defaultTab = "directory" }) {
             }}
             className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
               activeTab === "invitations"
-                ? "bg-white text-[#007AFF] shadow-xs border border-[#E5E5EA]"
-                : "text-[#6E6E73] hover:text-[#1D1D1F]"
+                ? "bg-[#12151C] text-white shadow-xs"
+                : "text-[#7C7F8A] hover:text-[#111318]"
             }`}
           >
-            <Mail size={14} />
+            <Mail size={14} className={activeTab === "invitations" ? "text-[#5BF07B]" : ""} />
             <span>Invitations &amp; Roles</span>
           </button>
         </div>
@@ -2134,13 +2146,13 @@ export default function StaffManagement({ defaultTab = "directory" }) {
            TAB 3: INTEGRATED PAYROLL & SALARIES
         ══════════════════════════════════════════════════════ */
         <div className="space-y-4">
-          <div className="bg-white rounded-xl border border-[#E5E5EA] shadow-2xs overflow-hidden">
-            <div className="p-3.5 border-b border-[#E5E5EA] bg-[#FAFAFC] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="bg-[#F6F6F8] rounded-[24px] border border-[#E7E8EC] shadow-fintech overflow-hidden">
+            <div className="p-4 border-b border-[#E7E8EC] bg-[#F6F6F8] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <h2 className="text-xs font-semibold text-[#1D1D1F]">
+                <h2 className="text-sm font-bold text-[#111318]">
                   Attendance-Integrated Monthly Payroll
                 </h2>
-                <p className="text-[11px] text-[#86868B] mt-0.5">
+                <p className="text-[12px] text-[#7C7F8A] mt-0.5">
                   Calculates Paid Days, Unpaid Days, Leave Deductions, and Overtime Pay directly from Attendance logs.
                 </p>
               </div>
@@ -2150,18 +2162,18 @@ export default function StaffManagement({ defaultTab = "directory" }) {
                   <button
                     type="button"
                     onClick={() => setShowSalaries(!showSalaries)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-[#E5E5EA] bg-white text-[#1D1D1F] hover:bg-[#F5F5F7] rounded-lg transition cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-[#E7E8EC] bg-white text-[#111318] hover:bg-[#EDEDEF] rounded-xl transition cursor-pointer shadow-xs"
                   >
-                    {revealSalaries ? <EyeOff size={13} className="text-[#6E6E73]" /> : <Eye size={13} className="text-[#6E6E73]" />}
+                    {revealSalaries ? <EyeOff size={13} className="text-[#7C7F8A]" /> : <Eye size={13} className="text-[#7C7F8A]" />}
                     <span>{revealSalaries ? "Mask" : "Reveal"}</span>
                   </button>
                 )}
                 <button
                   type="button"
                   onClick={() => setShowPayrollModal(true)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#007AFF] hover:bg-[#0062CC] text-white text-xs font-semibold shadow-2xs transition cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#12151C] hover:bg-black text-white text-xs font-semibold shadow-fintech transition cursor-pointer"
                 >
-                  <DollarSign size={13} />
+                  <DollarSign size={13} className="text-[#5BF07B]" />
                   <span>Process Payroll</span>
                 </button>
               </div>
@@ -2878,33 +2890,33 @@ export default function StaffManagement({ defaultTab = "directory" }) {
       ══════════════════════════════════════════════════════ */}
       {showPayrollModal && (
         <div className="fixed inset-0 z-50 overflow-y-auto p-4 flex items-center justify-center bg-black/60 backdrop-blur-xs">
-          <div className="relative w-full max-w-md my-auto bg-white rounded-[8px] p-6 shadow-xl border border-slate-200 animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
-              <h3 className="font-bold text-slate-800 text-sm">Process Attendance-Linked Payroll</h3>
+          <div className="relative w-full max-w-md my-auto bg-[#F6F6F8] rounded-[24px] p-6 shadow-fintech border border-[#E7E8EC] animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between pb-3 border-b border-[#E7E8EC]">
+              <h3 className="font-bold text-[#111318] text-sm">Process Attendance-Linked Payroll</h3>
               <button
                 type="button"
                 onClick={() => setShowPayrollModal(false)}
-                className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                className="text-[#7C7F8A] hover:text-[#111318] p-1 cursor-pointer"
               >
                 <X size={18} />
               </button>
             </div>
 
             <form onSubmit={handleGeneratePayroll} className="space-y-4 pt-4 text-xs">
-              <p className="text-slate-500 leading-relaxed">
+              <p className="text-[#7C7F8A] leading-relaxed">
                 The ERP engine will automatically calculate:
-                <br />• <strong>Paid Days &amp; Unpaid Days</strong>
-                <br />• <strong>Leave Deductions</strong>
-                <br />• <strong>Late Arrival Penalties</strong>
-                <br />• <strong>Overtime Pay calculation</strong>
+                <br />• <strong className="text-[#111318]">Paid Days &amp; Unpaid Days</strong>
+                <br />• <strong className="text-[#111318]">Leave Deductions</strong>
+                <br />• <strong className="text-[#111318]">Late Arrival Penalties</strong>
+                <br />• <strong className="text-[#111318]">Overtime Pay calculation</strong>
               </p>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Target Month</label>
+                <label className="block font-semibold text-[#111318] mb-1">Target Month</label>
                 <select
                   value={payrollForm.month}
                   onChange={(e) => setPayrollForm({ ...payrollForm, month: e.target.value })}
-                  className="w-full px-3 py-2 rounded-[6px] border border-slate-300 bg-white font-semibold"
+                  className="w-full px-3 py-2 rounded-xl border border-[#E7E8EC] bg-white font-semibold text-[#111318] outline-none focus:border-[#5BF07B]"
                 >
                   {[
                     "January", "February", "March", "April", "May", "June",
@@ -2918,16 +2930,16 @@ export default function StaffManagement({ defaultTab = "directory" }) {
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Year</label>
+                <label className="block font-semibold text-[#111318] mb-1">Year</label>
                 <input
                   type="number"
                   value={payrollForm.year}
                   onChange={(e) => setPayrollForm({ ...payrollForm, year: e.target.value })}
-                  className="w-full px-3 py-2 rounded-[6px] border border-slate-300 font-mono"
+                  className="w-full px-3 py-2 rounded-xl border border-[#E7E8EC] bg-white font-mono text-[#111318] outline-none focus:border-[#5BF07B]"
                 />
               </div>
 
-              <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-200">
+              <div className="flex justify-end gap-2.5 pt-4 border-t border-[#E7E8EC]">
                 <Button
                   variant="secondary"
                   size="sm"

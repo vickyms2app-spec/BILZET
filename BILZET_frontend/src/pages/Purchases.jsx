@@ -27,7 +27,7 @@ import {
   Check,
   Download,
 } from "lucide-react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { purchasesApi, suppliersApi, productsApi } from "../api";
 import Modal from "../components/common/Modal";
 import SearchBar from "../components/common/SearchBar";
@@ -37,6 +37,7 @@ import { handleSmartFormKeyDown } from "../utils/keyboardNavigation";
 
 export default function Purchases({ defaultTab = "invoices" }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const activeTab = location.pathname.includes("orders")
     ? "orders"
     : location.pathname.includes("debit-notes")
@@ -495,7 +496,7 @@ export default function Purchases({ defaultTab = "invoices" }) {
   const pageMeta = {
     invoices: {
       icon: ShoppingBag,
-      title: "Purchase Invoices",
+      title: "Purchase Overview & Invoices",
       subtitle: "Manage incoming vendor bills, payment receipts, and inward inventory entries.",
       actionLabel: "Record Purchase",
       onAction: () => {
@@ -519,7 +520,7 @@ export default function Purchases({ defaultTab = "invoices" }) {
     },
     debitNotes: {
       icon: Receipt,
-      title: "Debit Notes & Purchase Returns",
+      title: "Debit Notes",
       subtitle: "Manage vendor debit notes, return adjustments, and credit balances.",
       actionLabel: "Issue Debit Note",
       onAction: () => setShowDebitModal(true),
@@ -528,7 +529,7 @@ export default function Purchases({ defaultTab = "invoices" }) {
     },
   }[activeTab] || {
     icon: ShoppingBag,
-    title: "Purchases",
+    title: "Purchase Overview",
     subtitle: "Vendor purchases and orders",
     actionLabel: "New Action",
     onAction: () => {},
@@ -659,20 +660,20 @@ export default function Purchases({ defaultTab = "invoices" }) {
 
   return (
     <div
-      className="space-y-6 max-w-7xl mx-auto pb-12 fade-up text-[#1D1D1F]"
+      className="space-y-6 max-w-7xl mx-auto pb-12 fade-up text-[#111318]"
       style={{ fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}
     >
       {/* ── Page Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 sm:p-6 rounded-2xl border border-[#E5E5EA] shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#F6F6F8] p-5 sm:p-6 rounded-[24px] border border-[#E7E8EC] shadow-fintech">
         <div className="flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-[#F5F5F7] text-[#007AFF] border border-[#E5E5EA] flex items-center justify-center shrink-0">
+          <div className="w-10 h-10 rounded-2xl bg-[#12151C] text-[#5BF07B] border border-[#12151C] flex items-center justify-center shrink-0 shadow-xs">
             <PageIcon size={20} strokeWidth={2} />
           </div>
           <div>
-            <h1 className="text-[26px] sm:text-[28px] font-semibold text-[#1D1D1F] tracking-tight leading-tight">
+            <h1 className="text-[26px] sm:text-[28px] font-bold text-[#111318] tracking-tight leading-tight">
               {pageMeta.title}
             </h1>
-            <p className="text-[13.5px] text-[#6E6E73] font-normal mt-0.5">
+            <p className="text-[13.5px] text-[#7C7F8A] font-normal mt-0.5">
               {pageMeta.subtitle}
             </p>
           </div>
@@ -681,10 +682,79 @@ export default function Purchases({ defaultTab = "invoices" }) {
         <button
           type="button"
           onClick={pageMeta.onAction}
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-[13.5px] font-medium bg-[#007AFF] hover:bg-[#0062CC] text-white transition cursor-pointer shadow-[0_1px_2px_rgba(0,122,255,0.25)] self-start sm:self-auto"
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-[13.5px] font-medium bg-[#12151C] hover:bg-black text-white transition cursor-pointer shadow-fintech self-start sm:self-auto"
         >
-          <Plus size={15} strokeWidth={2.5} />
+          <Plus size={15} strokeWidth={2.5} className="text-[#5BF07B]" />
           <span>{pageMeta.actionLabel}</span>
+        </button>
+      </div>
+
+      {/* ── Module Sub-Navigation Tabs ── */}
+      <div className="flex items-center gap-1 p-1 bg-[#EDEDEF] rounded-xl border border-[#E7E8EC] w-full sm:w-auto overflow-x-auto shadow-2xs">
+        <button
+          type="button"
+          onClick={() => navigate("/purchases")}
+          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+            activeTab === "invoices"
+              ? "bg-[#12151C] text-white shadow-xs"
+              : "text-[#7C7F8A] hover:text-[#111318]"
+          }`}
+        >
+          <ShoppingBag size={14} className={activeTab === "invoices" ? "text-[#5BF07B]" : ""} />
+          <span>Purchase Overview &amp; Invoices</span>
+          <span
+            className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+              activeTab === "invoices"
+                ? "bg-[#5BF07B] text-[#0E2A16]"
+                : "bg-white text-[#7C7F8A]"
+            }`}
+          >
+            {safeInvoices.length}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => navigate("/purchases/orders")}
+          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+            activeTab === "orders"
+              ? "bg-[#12151C] text-white shadow-xs"
+              : "text-[#7C7F8A] hover:text-[#111318]"
+          }`}
+        >
+          <ClipboardList size={14} className={activeTab === "orders" ? "text-[#5BF07B]" : ""} />
+          <span>Purchase Orders</span>
+          <span
+            className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+              activeTab === "orders"
+                ? "bg-[#5BF07B] text-[#0E2A16]"
+                : "bg-white text-[#7C7F8A]"
+            }`}
+          >
+            {safeOrders.length}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => navigate("/purchases/debit-notes")}
+          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+            activeTab === "debitNotes"
+              ? "bg-[#12151C] text-white shadow-xs"
+              : "text-[#7C7F8A] hover:text-[#111318]"
+          }`}
+        >
+          <Receipt size={14} className={activeTab === "debitNotes" ? "text-[#5BF07B]" : ""} />
+          <span>Debit Notes</span>
+          <span
+            className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+              activeTab === "debitNotes"
+                ? "bg-[#5BF07B] text-[#0E2A16]"
+                : "bg-white text-[#7C7F8A]"
+            }`}
+          >
+            {safeDebitNotes.length}
+          </span>
         </button>
       </div>
 
@@ -693,27 +763,27 @@ export default function Purchases({ defaultTab = "invoices" }) {
         <div
           className={`p-3.5 rounded-xl text-xs font-medium flex items-center gap-2 ${
             message.type === "success"
-              ? "bg-[#EDF8F0] border border-[#CCE8D4] text-[#248A3D]"
-              : "bg-[#FFF2F2] border border-[#FFD0D0] text-[#D70015]"
+              ? "bg-[#DFFFE6] border border-[#5BF07B]/40 text-[#0E2A16]"
+              : "bg-[#FBD3D3] border border-[#E5484D]/40 text-[#E5484D]"
           }`}
         >
           {message.type === "success" ? (
-            <CheckCircle2 size={16} className="text-[#248A3D] shrink-0" />
+            <CheckCircle2 size={16} className="text-[#0E2A16] shrink-0" />
           ) : (
-            <AlertTriangle size={16} className="text-[#D70015] shrink-0" />
+            <AlertTriangle size={16} className="text-[#E5484D] shrink-0" />
           )}
           <span>{message.text}</span>
         </div>
       )}
 
       {/* ── Search Bar & Actions Toolbar ── */}
-      <div className="p-4 rounded-2xl border border-[#E5E5EA] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)] flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+      <div className="p-4 rounded-[24px] border border-[#E7E8EC] bg-[#F6F6F8] shadow-fintech flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 flex-1 max-w-2xl">
           {/* Search field */}
           <div className="relative flex-1">
             <Search
               size={15}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6E6E73]"
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-[#7C7F8A]"
             />
             <input
               type="text"
@@ -723,7 +793,7 @@ export default function Purchases({ defaultTab = "invoices" }) {
                 setSearch(e.target.value);
                 setCurrentPage(1);
               }}
-              className="w-full pl-9 pr-3 py-2 text-[13.5px] border border-[#E5E5EA] rounded-xl outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/15 transition bg-white text-[#1D1D1F] placeholder-[#6E6E73]/60"
+              className="w-full pl-9 pr-3 py-2 text-[13.5px] border border-[#E7E8EC] rounded-xl outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 transition bg-white text-[#111318] placeholder-[#7C7F8A]/60"
             />
           </div>
 
@@ -735,7 +805,7 @@ export default function Purchases({ defaultTab = "invoices" }) {
                 setDateFilter(e.target.value);
                 setCurrentPage(1);
               }}
-              className="px-3 py-2 text-[13.5px] border border-[#E5E5EA] rounded-xl bg-white text-[#1D1D1F] outline-none focus:border-[#007AFF] cursor-pointer"
+              className="px-3 py-2 text-[13.5px] border border-[#E7E8EC] rounded-xl bg-white text-[#111318] outline-none focus:border-[#5BF07B] cursor-pointer"
             >
               <option value="all">All Dates</option>
               <option value="today">Today</option>
@@ -751,10 +821,10 @@ export default function Purchases({ defaultTab = "invoices" }) {
             <button
               type="button"
               onClick={handleExportInvoices}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-[13.5px] font-medium border border-[#E5E5EA] bg-white text-[#1D1D1F] hover:bg-[#F5F5F7] rounded-xl transition cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.02)]"
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-[13.5px] font-medium border border-[#E7E8EC] bg-white text-[#111318] hover:bg-[#EDEDEF] rounded-xl transition cursor-pointer shadow-xs"
               title="Export filtered invoices as CSV"
             >
-              <Download size={14} className="text-[#6E6E73]" />
+              <Download size={14} className="text-[#7C7F8A]" />
               <span>Export CSV</span>
             </button>
           )}
@@ -763,12 +833,12 @@ export default function Purchases({ defaultTab = "invoices" }) {
             type="button"
             onClick={loadData}
             disabled={loading}
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-[13.5px] font-medium border border-[#E5E5EA] bg-white text-[#1D1D1F] hover:bg-[#F5F5F7] rounded-xl transition cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.02)]"
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-[13.5px] font-medium border border-[#E7E8EC] bg-white text-[#111318] hover:bg-[#EDEDEF] rounded-xl transition cursor-pointer shadow-xs"
             title="Refresh records"
           >
             <RefreshCw
               size={14}
-              className={loading ? "animate-spin text-[#007AFF]" : "text-[#6E6E73]"}
+              className={loading ? "animate-spin text-[#5BF07B]" : "text-[#7C7F8A]"}
             />
             <span>Refresh</span>
           </button>
@@ -1068,24 +1138,24 @@ export default function Purchases({ defaultTab = "invoices" }) {
         </div>
       ) : (
         /* Debit Notes Table */
-        <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-xs">
-          <div className="p-4 border-b border-slate-200/80 flex items-center justify-between">
+        <div className="bg-[#F6F6F8] rounded-[24px] border border-[#E7E8EC] overflow-hidden shadow-fintech">
+          <div className="p-5 border-b border-[#E7E8EC] bg-[#F6F6F8] flex items-center justify-between">
             <div>
-              <h3 className="font-bold text-slate-800 text-xs">Debit Notes &amp; Purchase Returns</h3>
-              <p className="text-[11px] text-slate-400">Claims and return credits against vendor invoices</p>
+              <h3 className="font-bold text-[#111318] text-sm">Debit Notes &amp; Purchase Returns</h3>
+              <p className="text-[12px] text-[#7C7F8A] mt-0.5">Claims and return credits against vendor invoices</p>
             </div>
             <button
               onClick={() => setShowDebitModal(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 transition"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-[#12151C] text-white hover:bg-black transition cursor-pointer shadow-fintech"
             >
-              <Plus size={13} />
+              <Plus size={13} className="text-[#5BF07B]" />
               <span>Issue Debit Note</span>
             </button>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
+            <table className="w-full text-left border-collapse text-xs bg-white">
               <thead>
-                <tr className="bg-slate-50/75 border-b border-slate-200/80 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                <tr className="bg-[#FAFAFB] border-b border-[#E7E8EC] text-[11px] font-bold text-[#7C7F8A] uppercase tracking-wider">
                   <th className="py-3 px-4">Note #</th>
                   <th className="py-3 px-4">Reference Invoice</th>
                   <th className="py-3 px-4">Reason / Notes</th>
@@ -1093,7 +1163,7 @@ export default function Purchases({ defaultTab = "invoices" }) {
                   <th className="py-3 px-4">Date</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-[#E7E8EC]">
                 {filteredDebitNotes.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="py-12 text-center text-slate-400">

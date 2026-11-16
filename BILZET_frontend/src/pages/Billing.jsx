@@ -1097,18 +1097,14 @@ export default function Billing() {
   return (
     <>
       {/* ══════════════════════════════════════════════════
-          POS SCREEN — macOS-INSPIRED PREMIUM UI
+          POS SCREEN — MONOCHROME + NEON MINT FINTECH UI
       ══════════════════════════════════════════════════ */}
-      <div className="pos-screen min-h-screen bg-[#F5F5F7] text-[#1D1D1F] p-3 sm:p-5 lg:p-7 space-y-5 fade-up font-sans">
+      <div className="pos-screen min-h-screen bg-[#E3E3E5] text-[#111318] p-3 sm:p-5 lg:p-7 space-y-5 fade-up font-sans antialiased">
         {/* ── 1. POS Page Header ── */}
-        <header className="bg-white rounded-2xl border border-[#E5E5EA] px-5 py-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)] flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <header className="bg-[#F6F6F8] rounded-[24px] border border-[#E7E8EC] px-5 py-4 shadow-fintech flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
             <div
-              className={`w-10 h-10 rounded-xl border flex items-center justify-center transition ${
-                documentType === "quotation"
-                  ? "bg-purple-50 border-purple-200 text-purple-600"
-                  : "bg-[#F5F5F7] border-[#E5E5EA] text-[#007AFF]"
-              }`}
+              className="w-10 h-10 rounded-2xl border border-[#12151C] bg-[#12151C] text-[#5BF07B] flex items-center justify-center shrink-0 transition shadow-xs"
             >
               {documentType === "quotation" ? (
                 <FileSpreadsheet size={20} strokeWidth={2} />
@@ -1118,23 +1114,23 @@ export default function Billing() {
             </div>
             <div>
               <div className="flex items-center gap-2.5 flex-wrap">
-                <h1 className="text-[20px] sm:text-[22px] font-semibold text-[#111827] tracking-normal leading-[1.3]">
-                  {documentType === "quotation" ? "Create Quotation" : "Point of Sale & New Bill"}
+                <h1 className="text-[20px] sm:text-[22px] font-bold text-[#111318] tracking-tight leading-[1.3]">
+                  {documentType === "quotation" ? "Create Quotation" : "New Bill"}
                 </h1>
                 {documentType === "quotation" ? (
-                  <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 text-[11px] font-medium border border-purple-200">
-                    <span className="w-1.5 h-1.5 rounded-full bg-purple-600 animate-pulse" />
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#EDEDEF] text-[#111318] text-[11px] font-semibold border border-[#E7E8EC]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#7C7F8A] animate-pulse" />
                     <span>Quotation Mode</span>
                   </div>
                 ) : (
-                  <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#EDF8F0] text-[#248A3D] text-[11px] font-medium border border-[#CCE8D4]">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#248A3D] animate-pulse" />
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#DFFFE6] text-[#0E2A16] text-[11px] font-semibold border border-[#5BF07B]/40">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#5BF07B] animate-pulse" />
                     <span>Active POS</span>
                   </div>
                 )}
               </div>
-              <div className="flex items-center gap-2.5 text-[12px] leading-[1.5] text-[#4B5563] mt-0.5 font-normal">
-                <span>
+              <div className="flex items-center gap-2.5 text-[12px] leading-[1.5] text-[#7C7F8A] mt-0.5 font-normal">
+                <span className="font-medium text-[#111318]">
                   {documentType === "quotation"
                     ? `Quotation #${quotationNumber}`
                     : `Invoice #${billNumber}`}
@@ -1154,18 +1150,18 @@ export default function Billing() {
           {/* Action buttons & Document Type Selector */}
           <div className="flex flex-wrap items-center gap-2.5 self-start md:self-center">
             {/* Document Type Segmented Control */}
-            <div className="inline-flex p-1 bg-[#F5F5F7] rounded-xl border border-[#E5E5EA] shadow-2xs">
+            <div className="inline-flex p-1 bg-[#EDEDEF] rounded-xl border border-[#E7E8EC] shadow-2xs">
               <button
                 type="button"
                 id="doc-type-invoice-btn"
                 onClick={() => handleSwitchDocumentType("invoice")}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
                   documentType === "invoice"
-                    ? "bg-white text-[#007AFF] shadow-xs"
-                    : "text-[#6E6E73] hover:text-[#1D1D1F]"
+                    ? "bg-[#12151C] text-white shadow-xs"
+                    : "text-[#7C7F8A] hover:text-[#111318]"
                 }`}
               >
-                <Receipt size={13} />
+                <Receipt size={13} className={documentType === "invoice" ? "text-[#5BF07B]" : ""} />
                 <span>Invoice</span>
               </button>
               <button
@@ -1174,11 +1170,11 @@ export default function Billing() {
                 onClick={() => handleSwitchDocumentType("quotation")}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
                   documentType === "quotation"
-                    ? "bg-white text-purple-700 shadow-xs"
-                    : "text-[#6E6E73] hover:text-[#1D1D1F]"
+                    ? "bg-[#12151C] text-white shadow-xs"
+                    : "text-[#7C7F8A] hover:text-[#111318]"
                 }`}
               >
-                <FileSpreadsheet size={13} />
+                <FileSpreadsheet size={13} className={documentType === "quotation" ? "text-[#5BF07B]" : ""} />
                 <span>Quotation</span>
               </button>
             </div>
@@ -1188,16 +1184,16 @@ export default function Billing() {
               <button
                 type="button"
                 onClick={() => setShowHeldBillsModal(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border border-[#E5E5EA] bg-white text-[#1D1D1F] hover:bg-[#F5F5F7] transition cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.03)]"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border border-[#E7E8EC] bg-white text-[#111318] hover:bg-[#EDEDEF] transition cursor-pointer shadow-xs"
                 title="View & Resume Parked Bills"
               >
                 <Clock
                   size={14}
-                  className={heldBills.length > 0 ? "text-[#9A6700]" : "text-[#6E6E73]"}
+                  className={heldBills.length > 0 ? "text-[#5BF07B]" : "text-[#7C7F8A]"}
                 />
                 <span>Held Bills</span>
                 {heldBills.length > 0 && (
-                  <span className="px-1.5 py-0.2 rounded-full bg-[#9A6700] text-white text-[10px] font-bold">
+                  <span className="px-1.5 py-0.2 rounded-full bg-[#12151C] text-[#5BF07B] text-[10px] font-bold">
                     {heldBills.length}
                   </span>
                 )}
@@ -1208,10 +1204,10 @@ export default function Billing() {
             <button
               type="button"
               onClick={() => setShowBarcodeScanner(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border border-[#E5E5EA] bg-white text-[#1D1D1F] hover:bg-[#F5F5F7] transition cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.03)]"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border border-[#E7E8EC] bg-white text-[#111318] hover:bg-[#EDEDEF] transition cursor-pointer shadow-xs"
               title="Scan product barcode with device camera"
             >
-              <Scan size={14} className="text-[#007AFF]" />
+              <Scan size={14} className="text-[#12151C]" />
               <span>Scan Barcode</span>
             </button>
 
@@ -1219,10 +1215,10 @@ export default function Billing() {
             <button
               type="button"
               onClick={() => handleStartNewBill(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border border-[#E5E5EA] bg-white text-[#1D1D1F] hover:bg-[#F5F5F7] transition cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.03)]"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border border-[#E7E8EC] bg-white text-[#111318] hover:bg-[#EDEDEF] transition cursor-pointer shadow-xs"
               title={documentType === "quotation" ? "Start a fresh blank quotation" : "Start a fresh blank invoice"}
             >
-              <FilePlus size={14} className="text-[#6E6E73]" />
+              <FilePlus size={14} className="text-[#7C7F8A]" />
               <span>{documentType === "quotation" ? "New Quotation" : "New Bill"}</span>
             </button>
 
@@ -1230,13 +1226,9 @@ export default function Billing() {
             <button
               type="button"
               onClick={handleOpenAddItem}
-              className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-white transition cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.15)] ${
-                documentType === "quotation"
-                  ? "bg-purple-600 hover:bg-purple-700"
-                  : "bg-[#007AFF] hover:bg-[#0062CC]"
-              }`}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-white bg-[#12151C] hover:bg-black transition cursor-pointer shadow-fintech"
             >
-              <Plus size={15} strokeWidth={2.5} />
+              <Plus size={15} strokeWidth={2.5} className="text-[#5BF07B]" />
               <span>Add Item</span>
             </button>
           </div>
@@ -1244,9 +1236,9 @@ export default function Billing() {
 
         {/* Quotation Conversion Banner */}
         {sourceQuotationId && documentType === "invoice" && (
-          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 rounded-2xl border border-blue-200 bg-blue-50 text-blue-900 shadow-xs text-xs animate-in fade-in">
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 rounded-2xl border border-[#E7E8EC] bg-[#FAFAFB] text-[#111318] shadow-xs text-xs animate-in fade-in">
             <div className="flex items-center gap-2.5">
-              <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
+              <span className="w-2 h-2 rounded-full bg-[#5BF07B] animate-pulse" />
               <span>
                 <strong>Converting Quotation #{referenceQuotationNumber} into Tax Invoice.</strong> Customer details and items are pre-filled below. Review and edit any items or prices, then click <em>Save &amp; Print Invoice</em> to issue the invoice.
               </span>
@@ -1258,7 +1250,7 @@ export default function Billing() {
                 setReferenceQuotationNumber(null);
                 notify("info", "Disconnected quotation conversion reference.");
               }}
-              className="text-blue-700 hover:text-blue-900 font-semibold underline text-[11px] cursor-pointer"
+              className="text-[#111318] hover:underline font-bold text-[11px] cursor-pointer"
             >
               Cancel Conversion Link
             </button>
@@ -1267,14 +1259,14 @@ export default function Billing() {
 
         {/* Free Plan Bill Credits Quota Banner */}
         {billCredits && !billCredits.isUnlimited && (
-          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 rounded-xl border border-slate-200 bg-white shadow-xs text-xs">
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 rounded-2xl border border-[#E7E8EC] bg-[#F6F6F8] shadow-xs text-xs">
             <div className="flex items-center gap-2">
-              <span className="font-bold text-slate-800">Free Bill Allowance:</span>
-              <span className={`font-medium ${billCredits.totalRemaining <= 10 ? 'text-amber-600 font-bold' : 'text-slate-600'}`}>
+              <span className="font-bold text-[#111318]">Free Bill Allowance:</span>
+              <span className={`font-medium ${billCredits.totalRemaining <= 10 ? 'text-[#E5484D] font-bold' : 'text-[#7C7F8A]'}`}>
                 {billCredits.totalRemaining} bills remaining ({billCredits.includedRemaining}/100 included{billCredits.purchasedRemaining > 0 ? ` + ${billCredits.purchasedRemaining} extra pack` : ''})
               </span>
               {billCredits.totalRemaining <= 0 && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700 ml-1">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FBD3D3] text-[#E5484D] ml-1">
                   Allowance Exhausted
                 </span>
               )}
@@ -1283,14 +1275,14 @@ export default function Billing() {
               <button
                 type="button"
                 onClick={() => nav("/plans?buyPack=true")}
-                className="font-semibold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                className="font-semibold text-[#111318] hover:underline cursor-pointer"
               >
                 + Buy 500-Bill Pack (₹299)
               </button>
               <button
                 type="button"
                 onClick={() => nav("/plans?tier=PRO")}
-                className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 font-semibold border border-blue-200 transition cursor-pointer"
+                className="px-3.5 py-1.5 rounded-full bg-[#12151C] hover:bg-[#202530] text-white font-semibold transition cursor-pointer"
               >
                 Upgrade to Pro (Unlimited) &rarr;
               </button>
@@ -2412,10 +2404,10 @@ export default function Billing() {
                       type="button"
                       id="convert-quote-to-invoice-btn"
                       onClick={() => handleConvertLoadedQuotationToInvoice(savedQuotationRecord)}
-                      className="w-full py-2 px-3 rounded-xl border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1.5"
+                      className="w-full py-2.5 px-3 rounded-full border border-[#E7E8EC] bg-[#FAFAFB] hover:bg-[#EDEDEF] text-[#111318] text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1.5"
                       title="Convert this quotation into an active Tax Invoice"
                     >
-                      <ArrowRight size={14} className="text-blue-600" />
+                      <ArrowRight size={14} className="text-[#5BF07B]" />
                       <span>Convert to Tax Invoice &rarr;</span>
                     </button>
                   )}
@@ -2939,29 +2931,29 @@ export default function Billing() {
                     setShowQuotationActionsModal(false);
                     handleConvertLoadedQuotationToInvoice(savedQuotationRecord);
                   }}
-                  className="p-3 rounded-xl border border-blue-200 bg-blue-50/80 hover:bg-blue-100 transition cursor-pointer text-left flex items-center gap-3 group"
+                  className="p-3.5 rounded-[20px] border border-[#E7E8EC] bg-[#FAFAFB] hover:bg-[#EDEDEF] transition cursor-pointer text-left flex items-center gap-3 group"
                 >
-                  <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0">
+                  <div className="w-9 h-9 rounded-xl bg-[#12151C] text-[#5BF07B] flex items-center justify-center shrink-0">
                     <ArrowRight size={16} />
                   </div>
                   <div>
-                    <strong className="text-xs font-semibold text-blue-900 block">Convert to Invoice</strong>
-                    <span className="text-[10px] text-blue-700">Pre-fill details into POS for sale</span>
+                    <strong className="text-xs font-bold text-[#111318] block">Convert to Invoice</strong>
+                    <span className="text-[11px] text-[#7C7F8A]">Pre-fill details into POS for sale</span>
                   </div>
                 </button>
               </div>
 
               {/* Footer buttons */}
-              <div className="flex items-center justify-between pt-3 border-t border-[#E5E5EA]">
+              <div className="flex items-center justify-between pt-3.5 border-t border-[#E7E8EC]">
                 <button
                   type="button"
                   onClick={() => {
                     setShowQuotationActionsModal(false);
                     handleStartNewBill(true);
                   }}
-                  className="text-xs font-medium text-purple-700 hover:text-purple-900 hover:underline cursor-pointer flex items-center gap-1"
+                  className="text-xs font-semibold text-[#111318] hover:underline cursor-pointer flex items-center gap-1.5"
                 >
-                  <Plus size={13} />
+                  <Plus size={13} className="text-[#5BF07B]" />
                   <span>Create Another Quotation</span>
                 </button>
                 <button

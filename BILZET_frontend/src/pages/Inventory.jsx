@@ -563,22 +563,22 @@ export default function Inventory() {
   return (
     <div
       style={{ fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}
-      className="space-y-4 pb-12 fade-up text-[#1D1D1F]"
+      className="space-y-4 pb-12 fade-up text-[#111318]"
     >
       {/* ══════════════════════════════════════════════════
-          PAGE HEADER — APPLE macOS COMPACT STYLE
+          PAGE HEADER — MONOCHROME + NEON MINT FINTECH STYLE
       ══════════════════════════════════════════════════ */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 sm:p-5 rounded-2xl border border-[#E5E5EA] shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#F6F6F8] p-4 sm:p-5 rounded-[24px] border border-[#E7E8EC] shadow-fintech">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-lg sm:text-xl font-semibold text-[#1D1D1F] tracking-tight">
+            <h1 className="text-lg sm:text-xl font-bold text-[#111318] tracking-tight">
               Stock Overview
             </h1>
-            <span className="text-[11px] font-semibold text-[#007AFF] bg-[#EBF5FF] border border-[#D0E2FF] px-2 py-0.5 rounded-full uppercase tracking-wider">
+            <span className="text-[11px] font-semibold text-[#0E2A16] bg-[#DFFFE6] border border-[#5BF07B]/40 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
               Inventory
             </span>
           </div>
-          <p className="text-xs text-[#6E6E73] font-normal mt-0.5">
+          <p className="text-xs text-[#7C7F8A] font-normal mt-0.5">
             Monitor stock levels, inventory value and adjustments.
           </p>
         </div>
@@ -588,12 +588,12 @@ export default function Inventory() {
             type="button"
             onClick={handleSyncData}
             disabled={loading}
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border border-[#E5E5EA] bg-white text-[#1D1D1F] hover:bg-[#F5F5F7] rounded-xl transition cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.02)] disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border border-[#E7E8EC] bg-white text-[#111318] hover:bg-[#EDEDEF] rounded-xl transition cursor-pointer shadow-xs disabled:opacity-50"
             title="Sync Inventory Data"
           >
             <RefreshCw
               size={13}
-              className={loading ? "animate-spin text-[#007AFF]" : "text-[#6E6E73]"}
+              className={loading ? "animate-spin text-[#5BF07B]" : "text-[#7C7F8A]"}
             />
             <span>{loading ? "Syncing…" : "Sync"}</span>
           </button>
@@ -602,10 +602,10 @@ export default function Inventory() {
             type="button"
             onClick={handleExportStockCsv}
             disabled={filtered.length === 0}
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border border-[#E5E5EA] bg-white text-[#1D1D1F] hover:bg-[#F5F5F7] rounded-xl transition cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.02)] disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border border-[#E7E8EC] bg-white text-[#111318] hover:bg-[#EDEDEF] rounded-xl transition cursor-pointer shadow-xs disabled:opacity-50"
             title="Export Stock Report to Excel/CSV"
           >
-            <FileSpreadsheet size={13} className="text-[#248A3D]" />
+            <FileSpreadsheet size={13} className="text-[#0E2A16]" />
             <span>Export Stock</span>
           </button>
 
@@ -613,9 +613,9 @@ export default function Inventory() {
             type="button"
             id="adjust-stock-btn"
             onClick={() => openAdjustModalFor(null)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#007AFF] hover:bg-[#0062CC] text-white transition cursor-pointer shadow-[0_1px_2px_rgba(0,122,255,0.25)]"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#12151C] hover:bg-black text-white transition cursor-pointer shadow-fintech"
           >
-            <Plus size={14} strokeWidth={2.5} />
+            <Plus size={14} strokeWidth={2.5} className="text-[#5BF07B]" />
             <span>Adjust Stock</span>
           </button>
         </div>
@@ -712,23 +712,23 @@ export default function Inventory() {
       {/* ══════════════════════════════════════════════════
           TABS (STOCK OVERVIEW vs HISTORY)
       ══════════════════════════════════════════════════ */}
-      <div className="flex items-center gap-6 border-b border-[#E5E5EA] pt-1">
+      <div className="flex items-center gap-6 border-b border-[#E7E8EC] pt-1">
         <button
           type="button"
           onClick={() => setActiveTab("overview")}
           className={`pb-2.5 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 cursor-pointer ${
             activeTab === "overview"
-              ? "border-[#007AFF] text-[#007AFF]"
-              : "border-transparent text-[#6E6E73] hover:text-[#1D1D1F]"
+              ? "border-[#12151C] text-[#111318]"
+              : "border-transparent text-[#7C7F8A] hover:text-[#111318]"
           }`}
         >
-          <Boxes size={14} />
+          <Boxes size={14} className={activeTab === "overview" ? "text-[#12151C]" : ""} />
           <span>Current Stock Overview</span>
           <span
-            className={`text-[11px] px-2 py-0.2 rounded-full font-mono ${
+            className={`text-[11px] px-2 py-0.2 rounded-full font-mono font-bold ${
               activeTab === "overview"
-                ? "bg-[#EBF5FF] text-[#007AFF]"
-                : "bg-[#F5F5F7] text-[#6E6E73]"
+                ? "bg-[#DFFFE6] text-[#0E2A16] border border-[#5BF07B]/40"
+                : "bg-[#EDEDEF] text-[#7C7F8A]"
             }`}
           >
             {filtered.length}
@@ -740,17 +740,17 @@ export default function Inventory() {
           onClick={() => setActiveTab("history")}
           className={`pb-2.5 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 cursor-pointer ${
             activeTab === "history"
-              ? "border-[#007AFF] text-[#007AFF]"
-              : "border-transparent text-[#6E6E73] hover:text-[#1D1D1F]"
+              ? "border-[#12151C] text-[#111318]"
+              : "border-transparent text-[#7C7F8A] hover:text-[#111318]"
           }`}
         >
-          <History size={14} />
+          <History size={14} className={activeTab === "history" ? "text-[#12151C]" : ""} />
           <span>Adjustment &amp; Stock History</span>
           <span
-            className={`text-[11px] px-2 py-0.2 rounded-full font-mono ${
+            className={`text-[11px] px-2 py-0.2 rounded-full font-mono font-bold ${
               activeTab === "history"
-                ? "bg-[#EBF5FF] text-[#007AFF]"
-                : "bg-[#F5F5F7] text-[#6E6E73]"
+                ? "bg-[#DFFFE6] text-[#0E2A16] border border-[#5BF07B]/40"
+                : "bg-[#EDEDEF] text-[#7C7F8A]"
             }`}
           >
             {history.length}
