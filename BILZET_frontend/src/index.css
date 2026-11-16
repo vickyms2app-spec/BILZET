@@ -67,9 +67,10 @@
   --shadow-hover:            0 14px 38px rgba(0,0,0,0.09);
   --shadow-floating:         0 15px 50px rgba(0, 0, 0, 0.08);
 
-  /* Fonts */
-  --font-inter:              'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-heading:            'Manrope', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  /* Standardized Global Modern Sans-Serif Font Stack */
+  --font-sans:               'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-inter:              'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-heading:            'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 
   /* Legacy variable mappings for seamless whole-app theme propagation */
   --color-page-bg:           #E3E3E5;
@@ -108,8 +109,8 @@
 }
 
 @theme {
-  --font-sans:            'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-heading:         'Manrope', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-sans:            'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-heading:         'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --color-page-bg:        #E3E3E5;
   --color-surface:        #F6F6F8;
   --color-surface-secondary: #FAFAFB;
@@ -143,12 +144,12 @@
   box-shadow: 0 14px 40px rgba(0, 0, 0, 0.09);
 }
 .font-heading {
-  font-family: var(--font-heading), 'Manrope', 'Inter', sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
 }
 
 /* ── Global Reset & Typography ────────────────────────────── */
 :root, html, body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   color: #111318;
   background-color: #E3E3E5;
   font-synthesis: none;
@@ -162,10 +163,11 @@
   box-sizing: border-box;
 }
 
+.font-heading,
 .font-jakarta,
 .font-sans,
 .font-macos {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
 }
 
 body {
@@ -173,9 +175,37 @@ body {
   min-width: 320px;
   background-color: #E3E3E5;
   color: #111318;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   font-size: 13px;
   line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button,
+input,
+textarea,
+select {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@layer base {
+  html {
+    @apply antialiased;
+  }
+
+  body {
+    @apply font-sans antialiased;
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    @apply font-sans antialiased;
+  }
 }
 
 /* Custom Sleek Scrollbar */
