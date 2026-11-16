@@ -3,15 +3,10 @@ import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "../store/auth";
 import { apiError } from "../api/http";
 import { getWorkspaceRedirectPath } from "../utils/workspaceRouter";
-import Logo from "../components/common/Logo";
 import { ClerkGoogleButton } from "../components/auth/ClerkAuth";
 import { hasClerk } from "../config/clerk";
+import WaveBackground from "../components/auth/WaveBackground";
 import {
-  FileText,
-  Boxes,
-  Box,
-  Users,
-  ShieldCheck,
   Mail,
   Lock,
   Eye,
@@ -20,11 +15,9 @@ import {
   Loader2,
   AlertCircle,
   Check,
-  CheckCircle,
-  Shield,
-  Cloud,
-  Sparkles,
-  Landmark,
+  ShieldCheck,
+  Users,
+  BarChart3,
 } from "lucide-react";
 
 // Official BILZET Brand Header with High-Resolution Logo & Subtitle
@@ -40,7 +33,7 @@ function BrandHeader({ className = "", logoHeight = "h-10" }) {
         }}
         loading="eager"
       />
-      <span className="text-[9px] font-bold tracking-[0.22em] text-[#64748B] mt-1.5 uppercase pl-0.5 font-macos">
+      <span className="text-[9px] font-bold tracking-[0.24em] text-[#7C7F8A] mt-1.5 uppercase pl-0.5 font-sans">
         BUSINESS MADE SIMPLE
       </span>
     </div>
@@ -54,7 +47,7 @@ export default function Login({ initialMode = "login" }) {
   const returnUrl = searchParams.get("returnUrl") || "";
   const queryEmail = searchParams.get("email") || "";
 
-  // If URL points to sign-up, redirect to new Signup page immediately
+  // If URL points to sign-up, redirect to Signup page immediately
   useEffect(() => {
     if (location.pathname.startsWith("/sign-up") || location.pathname === "/register") {
       nav("/sign-up" + (location.search || ""), { replace: true });
@@ -78,7 +71,7 @@ export default function Login({ initialMode = "login" }) {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  // Redirect if already authenticated — honour returnUrl if present and safe
+  // Redirect if already authenticated
   useEffect(() => {
     if (!loading && user) {
       const isAuthPath = (p) =>
@@ -97,7 +90,7 @@ export default function Login({ initialMode = "login" }) {
     }
   }, [user, loading, nav, returnUrl, location.pathname]);
 
-  // Google Identity Services client (GIS fallback if Clerk is inactive)
+  // Google Identity Services fallback if Clerk is inactive
   useEffect(() => {
     const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
     if (!googleClientId || hasClerk) return;
@@ -175,263 +168,123 @@ export default function Login({ initialMode = "login" }) {
   }
 
   return (
-    <div
-      className="min-h-screen w-full relative overflow-x-hidden font-macos antialiased text-[#526B87] flex flex-col lg:flex-row"
-      style={{
-        background: "#F7FBFF",
-      }}
-    >
-      {/* Full-bleed layered flowing SVG waves spanning across the entire desktop viewport */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden select-none z-0">
-        <svg
-          className="absolute inset-0 w-full h-full"
-          preserveAspectRatio="none"
-          viewBox="0 0 1440 900"
-        >
-          <defs>
-            <linearGradient id="loginTopCircleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.95" />
-              <stop offset="60%" stopColor="#EEF7FF" stopOpacity="0.85" />
-              <stop offset="100%" stopColor="#D8EBFF" stopOpacity="0.6" />
-            </linearGradient>
-
-            <linearGradient id="loginWaveMainFlowGrad" x1="100%" y1="15%" x2="15%" y2="95%">
-              <stop offset="0%" stopColor="#EEF7FF" />
-              <stop offset="25%" stopColor="#E0EFFE" />
-              <stop offset="70%" stopColor="#D8EBFF" />
-              <stop offset="100%" stopColor="#C7E1FF" />
-            </linearGradient>
-
-            <linearGradient id="loginWaveMidDeepGrad" x1="100%" y1="40%" x2="25%" y2="95%">
-              <stop offset="0%" stopColor="#D8EBFF" />
-              <stop offset="50%" stopColor="#C7E1FF" />
-              <stop offset="100%" stopColor="#B3D7FF" />
-            </linearGradient>
-
-            <linearGradient id="loginWaveDeepNavyGrad" x1="100%" y1="65%" x2="40%" y2="98%">
-              <stop offset="0%" stopColor="#EAF4FF" />
-              <stop offset="55%" stopColor="#D8EBFF" />
-              <stop offset="100%" stopColor="#C7E1FF" />
-            </linearGradient>
-
-            <linearGradient id="loginWaveRimHighlight" x1="100%" y1="20%" x2="25%" y2="95%">
-              <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.95" />
-              <stop offset="50%" stopColor="#D8EBFF" stopOpacity="0.85" />
-              <stop offset="100%" stopColor="#2563EB" stopOpacity="0.25" />
-            </linearGradient>
-          </defs>
-
-          {/* Top-Right Soft Blue Circle */}
-          <ellipse cx="1200" cy="110" rx="380" ry="380" fill="url(#loginTopCircleGrad)" />
-
-          {/* Main Sweeping Wave */}
-          <path
-            d="M 1440,300 C 1180,360 840,550 660,720 C 580,795 530,850 490,900 L 1440,900 Z"
-            fill="url(#loginWaveMainFlowGrad)"
-          />
-
-          {/* Edge Highlight */}
-          <path
-            d="M 1440,300 C 1180,360 840,550 660,720 C 580,795 530,850 490,900"
-            fill="none"
-            stroke="url(#loginWaveRimHighlight)"
-            strokeWidth="3"
-          />
-
-          {/* Second Cascading Deep Blue Wave */}
-          <path
-            d="M 1440,540 C 1200,580 960,710 800,810 C 730,855 680,880 630,900 L 1440,900 Z"
-            fill="url(#loginWaveMidDeepGrad)"
-          />
-
-          {/* Third Cascading Deep Navy Wave */}
-          <path
-            d="M 1440,730 C 1260,750 1080,830 960,875 C 910,890 870,898 820,900 L 1440,900 Z"
-            fill="url(#loginWaveDeepNavyGrad)"
-          />
-        </svg>
-      </div>
+    <div className="min-h-screen w-full relative overflow-x-hidden font-sans antialiased text-[#111318] bg-[#FAFAFB] flex flex-col lg:flex-row selection:bg-[#CDEBE7] selection:text-[#1A3A36]">
+      {/* ── Flowing Wave Gradient Background ────────────────────────── */}
+      <WaveBackground />
 
       {/* ══════════════════════════════════════════════════════════════
-          LEFT MARKETING PANEL — ~60% Width Desktop
+          LEFT SECTION — ~55% Width Desktop
+          Clean Minimalist Typography + Feature Badges (NO illustrations)
           ══════════════════════════════════════════════════════════════ */}
-      <div className="w-full lg:w-[59%] xl:w-[60%] relative z-10 flex flex-col justify-between p-6 sm:p-10 lg:pl-16 lg:pr-10 lg:py-10 shrink-0 min-h-screen">
+      <div className="w-full lg:w-[55%] xl:w-[56%] relative z-10 flex flex-col justify-between p-6 sm:p-10 lg:pl-16 xl:pl-20 lg:pr-8 py-8 lg:py-12 shrink-0 min-h-auto lg:min-h-screen">
         <div className="flex flex-col h-full justify-between max-w-xl">
-          {/* Top Brand Logo & Compact Pill Badge */}
-          <div className="mb-6 lg:mb-8">
-            <BrandHeader logoHeight="h-10" />
-
-            {/* Small pill matching reference: “Smart Billing · Inventory · GST · CA Connect” */}
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EEF7FF] border border-[#D8EBFF] text-[11.5px] font-semibold tracking-tight shadow-2xs mt-3 select-none font-macos">
-              <span className="text-[#2563EB] text-xs leading-none">✧</span>
-              <span className="text-[#2563EB]">Smart Billing</span>
-              <span className="text-[#7188A3]">&middot; Inventory &middot; GST &middot; CA Connect</span>
-            </div>
+          {/* Top: BILZET Logo */}
+          <div className="mb-8 lg:mb-12">
+            <BrandHeader logoHeight="h-10 sm:h-11" />
           </div>
 
-          {/* Main Headline & Supporting Paragraph with Apple / macOS Typography */}
-          <div className="my-auto py-2">
-            <h1 className="text-3xl sm:text-4xl lg:text-[42px] font-extrabold tracking-tight leading-[1.12] text-[#526B87] mb-3.5 font-macos">
-              Manage Billing,<br />
-              Inventory and GST<br />
-              <span className="bg-gradient-to-r from-[#2563EB] to-[#8AAED8] bg-clip-text text-transparent font-black">
-                in One Place.
+          {/* Center: Main Headline, Description & 3 Feature Badges */}
+          <div className="my-auto py-4">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-[54px] xl:text-[58px] font-semibold text-[#111318] tracking-tight leading-[1.12] mb-5">
+              One Platform for<br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#2D7A70] via-[#4BA89B] to-[#A9DAD3]">
+                Your Business Finance.
               </span>
             </h1>
 
-            <p className="text-[14.5px] sm:text-[15.5px] text-[#7188A3] leading-relaxed font-normal mb-7 lg:mb-8 max-w-md font-macos">
-              A simple and powerful platform to run your business, stay GST compliant and collaborate with your team and CA — all in one place.
+            <p className="text-[15px] sm:text-[16px] text-[#7C7F8A] leading-relaxed font-normal mb-8 max-w-lg">
+              Billing, Inventory, GST Compliance, CA Collaboration, and Business Analytics — All in One.
             </p>
 
-            {/* Four Feature Rows with Compact Rounded-Square Icons */}
-            <div className="space-y-3.5 lg:space-y-4">
-              {/* Feature 1: GST Ready Invoicing */}
-              <div className="flex items-start gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-[#EEF7FF] border border-[#D8EBFF] flex items-center justify-center shrink-0">
-                  <FileText size={18} className="text-[#2563EB]" strokeWidth={2} />
+            {/* Three Compact Feature Badges */}
+            <div className="flex flex-wrap items-center gap-3 pt-1">
+              {/* Badge 1: GST Compliant */}
+              <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-white/90 backdrop-blur-xs border border-[#E7E8EC] shadow-2xs hover:border-[#A9DAD3]/80 transition-all cursor-default select-none">
+                <div className="w-6 h-6 rounded-full bg-[#E2F6F3] text-[#2D7A70] border border-[#CDEBE7]/60 flex items-center justify-center shrink-0">
+                  <ShieldCheck size={13} strokeWidth={2.2} />
                 </div>
-                <div className="pt-0.5">
-                  <h2 className="text-[14.5px] font-bold text-[#526B87] tracking-tight leading-snug font-macos">
-                    GST Ready Invoicing
-                  </h2>
-                  <p className="text-[13px] text-[#7188A3] leading-normal mt-0.5 font-macos">
-                    Create and share GST-compliant invoices in seconds.
-                  </p>
-                </div>
+                <span className="text-xs font-semibold text-[#111318]">GST Compliant</span>
               </div>
 
-              {/* Feature 2: Inventory Management */}
-              <div className="flex items-start gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-[#ECF9F1] border border-[#C8E6C9] flex items-center justify-center shrink-0">
-                  <Box size={18} className="text-[#166534]" strokeWidth={2} />
+              {/* Badge 2: CA Connect */}
+              <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-white/90 backdrop-blur-xs border border-[#E7E8EC] shadow-2xs hover:border-[#A9DAD3]/80 transition-all cursor-default select-none">
+                <div className="w-6 h-6 rounded-full bg-[#E2F6F3] text-[#2D7A70] border border-[#CDEBE7]/60 flex items-center justify-center shrink-0">
+                  <Users size={13} strokeWidth={2.2} />
                 </div>
-                <div className="pt-0.5">
-                  <h2 className="text-[14.5px] font-bold text-[#526B87] tracking-tight leading-snug font-macos">
-                    Inventory Management
-                  </h2>
-                  <p className="text-[13px] text-[#7188A3] leading-normal mt-0.5 font-macos">
-                    Track stock, purchases and sales easily.
-                  </p>
-                </div>
+                <span className="text-xs font-semibold text-[#111318]">CA Connect</span>
               </div>
 
-              {/* Feature 3: CA Connect */}
-              <div className="flex items-start gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-[#F0F7FF] border border-[#D8EBFF] flex items-center justify-center shrink-0">
-                  <Users size={18} className="text-[#2563EB]" strokeWidth={2} />
+              {/* Badge 3: Business Analytics */}
+              <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-white/90 backdrop-blur-xs border border-[#E7E8EC] shadow-2xs hover:border-[#A9DAD3]/80 transition-all cursor-default select-none">
+                <div className="w-6 h-6 rounded-full bg-[#E2F6F3] text-[#2D7A70] border border-[#CDEBE7]/60 flex items-center justify-center shrink-0">
+                  <BarChart3 size={13} strokeWidth={2.2} />
                 </div>
-                <div className="pt-0.5">
-                  <h2 className="text-[14.5px] font-bold text-[#526B87] tracking-tight leading-snug font-macos">
-                    CA Connect
-                  </h2>
-                  <p className="text-[13px] text-[#7188A3] leading-normal mt-0.5 font-macos">
-                    Share data and reports with your CA without manual work.
-                  </p>
-                </div>
-              </div>
-
-              {/* Feature 4: Secure & Reliable */}
-              <div className="flex items-start gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-[#FFF6E9] border border-[#FDE68A] flex items-center justify-center shrink-0">
-                  <ShieldCheck size={18} className="text-[#B45309]" strokeWidth={2} />
-                </div>
-                <div className="pt-0.5">
-                  <h2 className="text-[14.5px] font-bold text-[#526B87] tracking-tight leading-snug font-macos">
-                    Secure &amp; Reliable
-                  </h2>
-                  <p className="text-[13px] text-[#7188A3] leading-normal mt-0.5 font-macos">
-                    Your business data is safe and always accessible.
-                  </p>
-                </div>
+                <span className="text-xs font-semibold text-[#111318]">Business Analytics</span>
               </div>
             </div>
           </div>
 
-          {/* Left Panel Footer with Small Outline Icons Matching Reference Image */}
-          <div className="pt-5 border-t border-[#E3EDF8] flex flex-wrap items-center justify-between gap-3 text-xs text-[#7188A3] font-macos">
+          {/* Bottom Left Footer */}
+          <div className="pt-8 border-t border-[#D8D9DE]/60 hidden lg:flex items-center justify-between text-xs text-[#7C7F8A]">
             <span>&copy; {new Date().getFullYear()} BILZET. All rights reserved.</span>
-            <div className="flex items-center gap-3 text-[11.5px] font-medium text-[#2563EB]">
-              <span className="flex items-center gap-1.5">
-                <ShieldCheck size={14} className="text-[#2563EB]" strokeWidth={2} />
-                GST Ready
-              </span>
-              <span className="text-[#8AAED8]">|</span>
-              <span className="flex items-center gap-1.5">
-                <Landmark size={14} className="text-[#2563EB]" strokeWidth={2} />
-                Bank Grade Security
-              </span>
-              <span className="text-[#8AAED8]">|</span>
-              <span className="flex items-center gap-1.5">
-                <Cloud size={14} className="text-[#2563EB]" strokeWidth={2} />
-                Cloud Access
-              </span>
+            <div className="flex items-center gap-2 font-medium text-[#111318]">
+              <span className="w-2 h-2 rounded-full bg-[#A9DAD3]" />
+              <span>Enterprise Grade Fintech ERP</span>
             </div>
           </div>
         </div>
       </div>
 
       {/* ══════════════════════════════════════════════════════════════
-          RIGHT PANEL — ~40% Width Desktop
-          macOS-Inspired White Card Floating Over Waves
+          RIGHT SECTION — ~45% Width Desktop
+          Premium Floating White Login Card
           ══════════════════════════════════════════════════════════════ */}
-      <div className="w-full lg:w-[41%] xl:w-[40%] relative z-10 flex flex-col justify-center items-center lg:items-end p-4 sm:p-6 lg:pr-12 lg:py-8 min-h-screen">
-        {/* Floating Centered White Form Card */}
-        <div className="w-full max-w-[460px] bg-white rounded-[26px] border border-[#E3EDF8] shadow-xl p-6 sm:p-7 relative font-macos">
-          {/* Top Brand Logo */}
-          <div className="flex items-center justify-between mb-4">
-            <BrandHeader logoHeight="h-7.5" />
-            <Link
-              to="/sign-up"
-              className="text-[12px] font-bold text-[#2563EB] hover:text-[#1D4ED8] hover:underline transition-colors font-macos"
-            >
-              Create Account &rarr;
-            </Link>
-          </div>
-
-          {/* Heading and Supporting Text */}
-          <div className="mb-6">
-            <h1 className="text-2xl sm:text-[26px] font-bold text-[#526B87] tracking-tight leading-tight mb-1 font-macos">
-              Sign in to your account
-            </h1>
-            <p className="text-[13px] text-[#7188A3] leading-normal font-normal font-macos">
-              Enter your credentials to access your store workspace.
+      <div className="w-full lg:w-[45%] xl:w-[44%] relative z-10 flex flex-col justify-center items-center lg:items-end p-4 sm:p-8 lg:pr-16 xl:pr-20 py-8 lg:py-12 min-h-auto lg:min-h-screen">
+        <div className="w-full max-w-[460px] bg-[#FAFAFB] rounded-[28px] border border-white p-7 sm:p-[44px] shadow-[0_15px_50px_rgba(0,0,0,0.08)] animate-card-enter relative">
+          {/* Card Heading & Subtitle */}
+          <div className="mb-7">
+            <h2 className="text-2xl sm:text-[32px] font-semibold text-[#111318] tracking-tight leading-tight mb-2">
+              Welcome Back to BILZET
+            </h2>
+            <p className="text-[15px] sm:text-[16px] text-[#7C7F8A] leading-normal font-normal">
+              Sign in to manage your business.
             </p>
           </div>
 
-          {/* Error / Success Alerts */}
+          {/* Error & Success Alerts */}
           {error && (
             <div
               role="alert"
-              className="mb-4 p-3 rounded-lg bg-[#FFF0F2] border border-[#FECDD3] text-[#991B1B] text-xs sm:text-[13px] flex items-start gap-2.5 animate-fadeIn font-macos"
+              className="mb-5 p-3.5 rounded-[16px] bg-[#FBD3D3] border border-[#E5484D]/30 text-[#E5484D] text-xs sm:text-[13px] flex items-start gap-2.5 animate-fadeIn"
             >
-              <AlertCircle size={15} className="shrink-0 text-[#EF4444] mt-0.5" />
-              <div className="flex-1 font-medium">{error}</div>
+              <AlertCircle size={16} className="shrink-0 text-[#E5484D] mt-0.5" />
+              <div className="flex-1 font-semibold">{error}</div>
             </div>
           )}
 
           {success && (
             <div
               role="alert"
-              className="mb-4 p-3 rounded-lg bg-[#ECF9F1] border border-[#C8E6C9] text-[#166534] text-xs sm:text-[13px] flex items-start gap-2.5 animate-fadeIn font-macos"
+              className="mb-5 p-3.5 rounded-[16px] bg-[#DFFFE6] border border-[#5BF07B]/40 text-[#0E2A16] text-xs sm:text-[13px] flex items-start gap-2.5 animate-fadeIn"
             >
-              <Check size={15} className="shrink-0 text-[#166534] mt-0.5" />
-              <div className="flex-1 font-medium">{success}</div>
+              <Check size={16} className="shrink-0 text-[#0E2A16] mt-0.5" />
+              <div className="flex-1 font-semibold">{success}</div>
             </div>
           )}
 
-          {/* Sign In Form */}
-          <form onSubmit={handleSubmit} noValidate className="space-y-4 font-macos">
-            {/* ─── Field 1: Email Address ─── */}
+          {/* Login Form */}
+          <form onSubmit={handleSubmit} noValidate className="space-y-4">
+            {/* Field: Email Address */}
             <div>
               <label
                 htmlFor="signin-email"
-                className="block text-xs font-semibold text-[#526B87] mb-1.5 font-macos"
+                className="block text-[14px] font-semibold text-[#111318] mb-1.5"
               >
-                Email address <span className="text-[#EF4444]">*</span>
+                Email Address
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#8AAED8]">
-                  <Mail size={16} strokeWidth={1.8} />
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-[#7C7F8A]">
+                  <Mail size={17} strokeWidth={1.8} />
                 </div>
                 <input
                   id="signin-email"
@@ -440,25 +293,23 @@ export default function Login({ initialMode = "login" }) {
                   autoFocus
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="name@company.com"
-                  className="w-full h-[42px] pl-9 pr-3.5 rounded-[9px] border border-[#E3EDF8] bg-[#F4F9FF] text-[13px] text-[#526B87] placeholder:text-[#94A8BE] focus:outline-none focus:border-[#8AAED8] focus:ring-2 focus:ring-[#8AAED8]/15 transition-all font-macos"
+                  placeholder="Enter your email"
+                  className="w-full h-[50px] pl-11 pr-4 rounded-full border border-[#E7E8EC] bg-white text-[14px] text-[#111318] placeholder:text-[#A9ABB5] focus:outline-none focus:border-[#A9DAD3] focus:ring-2 focus:ring-[#CDEBE7]/60 transition-all font-sans"
                 />
               </div>
             </div>
 
-            {/* ─── Field 2: Password ─── */}
+            {/* Field: Password */}
             <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label
-                  htmlFor="signin-password"
-                  className="block text-xs font-semibold text-[#526B87] font-macos"
-                >
-                  Password <span className="text-[#EF4444]">*</span>
-                </label>
-              </div>
+              <label
+                htmlFor="signin-password"
+                className="block text-[14px] font-semibold text-[#111318] mb-1.5"
+              >
+                Password
+              </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#8AAED8]">
-                  <Lock size={15} strokeWidth={1.8} />
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-[#7C7F8A]">
+                  <Lock size={16} strokeWidth={1.8} />
                 </div>
                 <input
                   id="signin-password"
@@ -467,79 +318,80 @@ export default function Login({ initialMode = "login" }) {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
-                  className="w-full h-[42px] pl-9 pr-10 rounded-[9px] border border-[#E3EDF8] bg-[#F4F9FF] text-[13px] text-[#526B87] placeholder:text-[#94A8BE] focus:outline-none focus:border-[#8AAED8] focus:ring-2 focus:ring-[#8AAED8]/15 transition-all font-macos"
+                  className="w-full h-[50px] pl-11 pr-12 rounded-full border border-[#E7E8EC] bg-white text-[14px] text-[#111318] placeholder:text-[#A9ABB5] focus:outline-none focus:border-[#A9DAD3] focus:ring-2 focus:ring-[#CDEBE7]/60 transition-all font-sans"
                 />
                 <button
                   type="button"
                   id="toggle-password-visibility"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-[#94A8BE] hover:text-[#526B87] transition-colors focus:outline-none cursor-pointer"
+                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-[#7C7F8A] hover:text-[#111318] transition-colors focus:outline-none cursor-pointer"
                 >
-                  {showPassword ? <Eye size={16} /> : <EyeOff size={16} />}
+                  {showPassword ? <Eye size={17} /> : <EyeOff size={17} />}
                 </button>
               </div>
             </div>
 
-            {/* ─── Remember Me & Forgot Password ─── */}
-            <div className="flex items-center justify-between pt-0.5">
+            {/* Remember Me & Forgot Password */}
+            <div className="flex items-center justify-between pt-1">
               <label className="flex items-center gap-2 cursor-pointer select-none">
                 <input
                   id="signin-remember-me"
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-4 h-4 rounded text-[#2563EB] border-[#E3EDF8] focus:ring-[#8AAED8] cursor-pointer"
+                  className="w-4 h-4 rounded text-[#12151C] border-[#E7E8EC] focus:ring-[#A9DAD3] cursor-pointer accent-[#12151C]"
                 />
-                <span className="text-xs text-[#7188A3] font-medium font-macos">Remember my device</span>
+                <span className="text-[13px] text-[#7C7F8A] font-medium">Remember me</span>
               </label>
 
               <button
                 type="button"
                 onClick={() => setError("Please contact your Store Administrator or support@bilzet.app to reset your credentials.")}
-                className="text-xs font-semibold text-[#2563EB] hover:text-[#1D4ED8] hover:underline focus:outline-none font-macos"
+                className="text-[13px] font-medium text-[#111318] hover:underline focus:outline-none cursor-pointer"
               >
                 Forgot password?
               </button>
             </div>
 
-            {/* ─── Primary CTA Button (Warm Yellow #FFC533) ─── */}
+            {/* Primary Button: Sign In → */}
             <button
               type="submit"
               id="signin-submit-btn"
               disabled={busy}
-              className="w-full h-[42px] rounded-[10px] font-bold text-[14px] text-[#111827] bg-[#FFC533] hover:bg-[#F5B822] active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed mt-2 font-macos shadow-[0_2px_8px_rgba(255,197,51,0.35)]"
+              className="w-full h-[56px] rounded-full font-semibold text-[15px] text-white bg-[#12151C] hover:bg-[#202530] active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed mt-4 shadow-fintech"
             >
               {busy ? (
                 <>
-                  <Loader2 size={17} className="animate-spin text-[#111827]" />
+                  <Loader2 size={18} className="animate-spin text-[#A9DAD3]" />
                   <span>Signing in…</span>
                 </>
               ) : (
                 <>
-                  <span>Sign In to Workspace</span>
-                  <ArrowRight size={16} strokeWidth={2.2} />
+                  <span>Sign In</span>
+                  <ArrowRight size={17} strokeWidth={2.4} className="text-[#A9DAD3]" />
                 </>
               )}
             </button>
 
-            {/* ─── Divider: "or" ─── */}
-            <div className="relative flex items-center justify-center my-2.5">
+            {/* Divider: "or continue with" */}
+            <div className="relative flex items-center justify-center my-4">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-[#EDF3FA]" />
+                <div className="w-full border-t border-[#E7E8EC]" />
               </div>
-              <span className="relative px-3 bg-white text-[11px] text-[#94A8BE] lowercase font-medium font-macos">
-                or
+              <span className="relative px-3 bg-[#FAFAFB] text-[12px] text-[#A9ABB5] font-medium">
+                or continue with
               </span>
             </div>
 
-            {/* ─── Google OAuth Button ─── */}
+            {/* Google OAuth Button */}
             {hasClerk ? (
               <ClerkGoogleButton
                 mode="login"
                 onError={setError}
                 setBusy={setBusy}
                 busy={busy}
+                className="w-full h-[50px] rounded-full border border-[#E7E8EC] bg-white hover:bg-[#F6F6F8] text-[#111318] text-[14px] font-semibold transition-all flex items-center justify-center gap-2.5 cursor-pointer shadow-xs"
               />
             ) : (
               <button
@@ -553,7 +405,7 @@ export default function Login({ initialMode = "login" }) {
                     setError("Google Sign-In is initializing. Please wait a moment or sign in with your email.");
                   }
                 }}
-                className="w-full h-[42px] rounded-[9px] border border-[#E3EDF8] bg-white hover:bg-[#F4F9FF] text-[#526B87] text-[13px] font-medium transition-all flex items-center justify-center gap-2.5 cursor-pointer font-macos"
+                className="w-full h-[50px] rounded-full border border-[#E7E8EC] bg-white hover:bg-[#F6F6F8] text-[#111318] text-[14px] font-semibold transition-all flex items-center justify-center gap-2.5 cursor-pointer shadow-xs"
               >
                 <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                   <path
@@ -576,6 +428,17 @@ export default function Login({ initialMode = "login" }) {
                 <span>Continue with Google</span>
               </button>
             )}
+
+            {/* Bottom Registration Link */}
+            <div className="pt-4 text-center text-[13px] text-[#7C7F8A]">
+              <span>Don't have an account? </span>
+              <Link
+                to="/sign-up"
+                className="text-[#1A5C53] font-bold underline decoration-[#A9DAD3] decoration-2 underline-offset-4 hover:opacity-80 transition-opacity"
+              >
+                Create a new account
+              </Link>
+            </div>
           </form>
         </div>
       </div>
