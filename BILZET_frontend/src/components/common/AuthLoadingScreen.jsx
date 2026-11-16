@@ -27,7 +27,7 @@ export default function AuthLoadingScreen({ message = "Verifying Workspace & Per
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "#F7FBFF",
+        background: "#E3E3E5",
         fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
         padding: "16px",
       }}
@@ -39,8 +39,13 @@ export default function AuthLoadingScreen({ message = "Verifying Workspace & Per
           alignItems: "center",
           gap: "12px",
           textAlign: "center",
-          maxWidth: "340px",
+          maxWidth: "360px",
           width: "100%",
+          background: "#F6F6F8",
+          border: "1px solid #E7E8EC",
+          borderRadius: "28px",
+          padding: "32px 24px",
+          boxShadow: "0 8px 30px rgba(0,0,0,0.06)",
         }}
       >
         <div style={{ marginBottom: "8px" }}>
@@ -51,16 +56,16 @@ export default function AuthLoadingScreen({ message = "Verifying Workspace & Per
             width: "36px",
             height: "36px",
             borderRadius: "50%",
-            border: "3px solid #DCEBFA",
-            borderTopColor: "#1A5CFF",
+            border: "3px solid #E7E8EC",
+            borderTopColor: "#5BF07B",
             animation: "spin 0.8s linear infinite",
           }}
         />
         <style>{"@keyframes spin { to { transform: rotate(360deg); } }"}</style>
-        <p style={{ fontSize: "14px", fontWeight: "700", color: "#1E293B", margin: "4px 0 0" }}>
+        <p style={{ fontSize: "14px", fontWeight: "700", color: "#111318", margin: "4px 0 0" }}>
           {message}
         </p>
-        <p style={{ fontSize: "12px", color: "#64748B", margin: 0 }}>
+        <p style={{ fontSize: "12px", color: "#7C7F8A", margin: 0 }}>
           Synchronizing role profile and business data
         </p>
 
@@ -79,10 +84,10 @@ export default function AuthLoadingScreen({ message = "Verifying Workspace & Per
               onClick={handleReload}
               style={{
                 padding: "8px 16px",
-                background: "#1A5CFF",
+                background: "#12151C",
                 color: "#ffffff",
                 border: "none",
-                borderRadius: "10px",
+                borderRadius: "999px",
                 fontSize: "12px",
                 fontWeight: "600",
                 cursor: "pointer",
@@ -95,7 +100,7 @@ export default function AuthLoadingScreen({ message = "Verifying Workspace & Per
               href="/sign-in"
               style={{
                 fontSize: "11px",
-                color: "#64748B",
+                color: "#7C7F8A",
                 textDecoration: "underline",
                 marginTop: "4px",
               }}

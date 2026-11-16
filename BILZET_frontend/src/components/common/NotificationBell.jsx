@@ -243,35 +243,29 @@ export default function NotificationBell({ theme = "light" }) {
         type="button"
         id="notification-bell-btn"
         onClick={() => setIsOpen(!isOpen)}
-        className={`relative p-2 rounded-xl transition cursor-pointer border ${
-          theme === "dark"
-            ? "text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border-white/10"
-            : "text-slate-500 hover:text-slate-800 hover:bg-slate-100 border-transparent"
-        }`}
+        className="w-9 h-9 rounded-full bg-white hover:bg-[#F6F6F8] text-[#111318] border border-[#E7E8EC] transition cursor-pointer shadow-xs flex items-center justify-center relative"
         title="Notifications & Invitations"
         aria-label="Notifications"
       >
-        <Bell size={18} />
+        <Bell size={16} />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-rose-500 rounded-full ring-2 ring-slate-900 shadow-sm animate-pulse">
-            {unreadCount > 9 ? "9+" : unreadCount}
-          </span>
+          <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#5BF07B] ring-2 ring-white shadow-xs animate-pulse" />
         )}
       </button>
 
       {/* Dropdown Panel */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-84 sm:w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 z-50 animate-in fade-in zoom-in-95 overflow-hidden">
+        <div className="absolute right-0 mt-2 w-84 sm:w-96 bg-[#F6F6F8] rounded-[24px] shadow-[0_12px_36px_rgba(0,0,0,0.08)] border border-[#E7E8EC] z-50 animate-in fade-in zoom-in-95 overflow-hidden">
           {/* Header */}
-          <div className="p-3.5 border-b border-slate-100 bg-slate-50/70">
+          <div className="p-3.5 border-b border-[#E7E8EC] bg-white">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
-                  <Bell size={15} />
+                <div className="w-7 h-7 rounded-full bg-[#12151C] text-[#5BF07B] flex items-center justify-center font-bold">
+                  <Bell size={14} />
                 </div>
                 <div>
-                  <h4 className="text-xs font-bold text-slate-800">Notification Center</h4>
-                  <p className="text-[10px] text-slate-400">Activity and role invitations</p>
+                  <h4 className="text-xs font-bold text-[#111318]">Notification Center</h4>
+                  <p className="text-[10px] text-[#7C7F8A]">Activity and role invitations</p>
                 </div>
               </div>
 
@@ -279,7 +273,7 @@ export default function NotificationBell({ theme = "light" }) {
                 <button
                   type="button"
                   onClick={handleMarkAllRead}
-                  className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
+                  className="text-[11px] font-semibold text-[#111318] hover:underline cursor-pointer"
                 >
                   Mark all as read
                 </button>

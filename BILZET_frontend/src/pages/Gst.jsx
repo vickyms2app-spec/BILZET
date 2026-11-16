@@ -171,17 +171,18 @@ export default function Gst() {
       {/* ══════════════════════════════════════════════════
           TOP HEADER
       ══════════════════════════════════════════════════ */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/90 shadow-xs">
+      {/* ── Page Header Card ────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#F6F6F8] p-5 sm:p-6 rounded-[28px] border border-[#E7E8EC] shadow-fintech">
         <div className="flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 grid place-items-center shrink-0 shadow-2xs">
-            <Percent size={22} />
+          <div className="w-11 h-11 rounded-2xl bg-[#12151C] text-[#5BF07B] border border-[#202530] grid place-items-center shrink-0 shadow-2xs">
+            <Percent size={20} />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="page-title">GST &amp; Tax Center</h1>
+              <h1 className="page-title text-[#111318] font-heading font-bold">GST &amp; Tax Center</h1>
               <span className="badge badge-info uppercase tracking-wider">Taxation</span>
             </div>
-            <p className="page-desc">
+            <p className="page-desc text-[#7C7F8A]">
               GSTR-1, GSTR-3B summaries, HSN breakdown, and automated GST portal exports
             </p>
           </div>
@@ -190,19 +191,19 @@ export default function Gst() {
           <button
             onClick={loadData}
             disabled={loading}
-            className="p-2 border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-600 transition-colors shadow-2xs cursor-pointer"
+            className="p-2.5 border border-[#E7E8EC] rounded-full bg-white hover:bg-[#EDEDEF] text-[#111318] transition-colors shadow-2xs cursor-pointer"
             title="Refresh Tax Data"
           >
             <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
           </button>
           <span
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border ${
+            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold border ${
               readiness >= 80
-                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                : "bg-amber-50 text-amber-700 border-amber-200"
+                ? "bg-[#DFFFE6] text-[#0E2A16] border-[#5BF07B]/40"
+                : "bg-[#FAFAFB] text-[#7C7F8A] border-[#E7E8EC]"
             }`}
           >
-            <ShieldCheck size={14} />
+            <ShieldCheck size={14} className={readiness >= 80 ? "text-[#0E2A16]" : "text-[#7C7F8A]"} />
             <span>Data Readiness: {readiness}/100</span>
           </span>
         </div>
@@ -211,23 +212,23 @@ export default function Gst() {
       {/* Export Feedback Notification */}
       {exportFeedback && (
         <div
-          className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 text-xs animate-in fade-in ${
+          className={`p-4 rounded-[20px] border flex items-center justify-between gap-3 text-xs animate-in fade-in ${
             exportFeedback.type === "success"
-              ? "bg-emerald-50 border-emerald-200 text-emerald-800"
-              : "bg-rose-50 border-rose-200 text-rose-800"
+              ? "bg-[#DFFFE6] border-[#5BF07B]/40 text-[#0E2A16]"
+              : "bg-[#FBD3D3] border-[#E5484D]/30 text-[#E5484D]"
           }`}
         >
           <div className="flex items-center gap-2">
             {exportFeedback.type === "success" ? (
-              <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+              <CheckCircle2 size={16} className="text-[#0E2A16] shrink-0" />
             ) : (
-              <XCircle size={16} className="text-rose-600 shrink-0" />
+              <XCircle size={16} className="text-[#E5484D] shrink-0" />
             )}
-            <p className="font-medium">{exportFeedback.text}</p>
+            <p className="font-semibold">{exportFeedback.text}</p>
           </div>
           <button
             onClick={() => setExportFeedback(null)}
-            className="text-[11px] font-bold text-slate-500 hover:text-slate-800 cursor-pointer"
+            className="text-[11px] font-bold text-[#7C7F8A] hover:text-[#111318] cursor-pointer"
           >
             Dismiss
           </button>
@@ -236,39 +237,39 @@ export default function Gst() {
 
       {/* Overview Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="card p-4 border border-slate-200/80">
-          <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total Taxable Sales</p>
-          <p className="text-lg font-bold text-slate-900 mt-1">₹{Number(gstData.totalTaxable || 0).toLocaleString("en-IN")}</p>
-          <p className="text-[11px] text-slate-400 mt-0.5">Excluding GST charges</p>
+        <div className="card p-5 border border-[#E7E8EC] bg-[#F6F6F8] rounded-[24px]">
+          <p className="text-[11px] font-semibold text-[#7C7F8A] uppercase tracking-wider">Total Taxable Sales</p>
+          <p className="text-xl font-bold text-[#111318] mt-1.5 font-heading">₹{Number(gstData.totalTaxable || 0).toLocaleString("en-IN")}</p>
+          <p className="text-[11px] text-[#A9ABB5] mt-0.5">Excluding GST charges</p>
         </div>
-        <div className="card p-4 border border-slate-200/80">
-          <p className="text-[11px] font-bold text-blue-600 uppercase tracking-wider">CGST (Central Tax)</p>
-          <p className="text-lg font-bold text-slate-900 mt-1">₹{Number(gstData.totalCgst || 0).toLocaleString("en-IN")}</p>
-          <p className="text-[11px] text-slate-400 mt-0.5">Central Government share</p>
+        <div className="card p-5 border border-[#E7E8EC] bg-[#F6F6F8] rounded-[24px]">
+          <p className="text-[11px] font-semibold text-[#7C7F8A] uppercase tracking-wider">CGST (Central Tax)</p>
+          <p className="text-xl font-bold text-[#111318] mt-1.5 font-heading">₹{Number(gstData.totalCgst || 0).toLocaleString("en-IN")}</p>
+          <p className="text-[11px] text-[#A9ABB5] mt-0.5">Central Government share</p>
         </div>
-        <div className="card p-4 border border-slate-200/80">
-          <p className="text-[11px] font-bold text-indigo-600 uppercase tracking-wider">SGST (State Tax)</p>
-          <p className="text-lg font-bold text-slate-900 mt-1">₹{Number(gstData.totalSgst || 0).toLocaleString("en-IN")}</p>
-          <p className="text-[11px] text-slate-400 mt-0.5">State Government share</p>
+        <div className="card p-5 border border-[#E7E8EC] bg-[#F6F6F8] rounded-[24px]">
+          <p className="text-[11px] font-semibold text-[#7C7F8A] uppercase tracking-wider">SGST (State Tax)</p>
+          <p className="text-xl font-bold text-[#111318] mt-1.5 font-heading">₹{Number(gstData.totalSgst || 0).toLocaleString("en-IN")}</p>
+          <p className="text-[11px] text-[#A9ABB5] mt-0.5">State Government share</p>
         </div>
-        <div className="card p-4 border border-slate-200/80 bg-blue-50/40">
-          <p className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">Total GST Collected</p>
-          <p className="text-lg font-bold text-blue-700 mt-1">₹{Number(gstData.totalGst || 0).toLocaleString("en-IN")}</p>
-          <p className="text-[11px] text-slate-500 mt-0.5">{gstData.invoices?.length || 0} Invoices generated</p>
+        {/* Card 4: Contrast Dark Bento Card */}
+        <div className="card card-dark p-5 bg-[#12151C] text-white border border-[#202530] rounded-[24px] shadow-fintech">
+          <p className="text-[11px] font-semibold text-[#A9ABB5] uppercase tracking-wider">Total GST Collected</p>
+          <p className="text-xl font-bold text-[#5BF07B] mt-1.5 font-heading">₹{Number(gstData.totalGst || 0).toLocaleString("en-IN")}</p>
+          <p className="text-[11px] text-[#A9ABB5] mt-0.5">{gstData.invoices?.length || 0} Invoices generated</p>
         </div>
       </div>
 
       {/* 3 GST Action Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-stretch">
         {/* GSTR-1 */}
-        <div className="card p-6 flex flex-col justify-between relative overflow-hidden border border-slate-200/80 shadow-xs">
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-600 to-indigo-600" />
+        <div className="card p-6 flex flex-col justify-between relative overflow-hidden border border-[#E7E8EC] bg-[#F6F6F8] rounded-[28px] shadow-fintech">
           <div>
-            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center mb-4">
+            <div className="w-11 h-11 rounded-2xl bg-[#12151C] text-[#5BF07B] border border-[#202530] flex items-center justify-center mb-4 shadow-2xs">
               <FileText size={18} />
             </div>
-            <h3 className="font-bold text-slate-900">GSTR-1 Draft Pack</h3>
-            <p className="text-xs text-slate-500 font-normal mt-1.5 leading-relaxed">
+            <h3 className="font-bold text-[#111318] font-heading text-base">GSTR-1 Draft Pack</h3>
+            <p className="text-xs text-[#7C7F8A] font-normal mt-1.5 leading-relaxed">
               Sales, B2B invoices, B2C retail orders, and HSN schedule formatted for GST portal JSON and official summary PDF.
             </p>
           </div>
@@ -284,7 +285,7 @@ export default function Gst() {
             <button
               onClick={handleDownloadGstr1Pdf}
               disabled={exportingPdf}
-              className="btn-primary text-xs font-semibold w-full justify-between cursor-pointer bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
+              className="btn-primary text-xs font-semibold w-full justify-between cursor-pointer disabled:opacity-50"
             >
               <span>{exportingPdf ? "Generating PDF..." : "Export GSTR-1 PDF"}</span>
               {exportingPdf ? <RefreshCw size={13} className="animate-spin" /> : <FileText size={13} />}
@@ -293,10 +294,9 @@ export default function Gst() {
         </div>
 
         {/* GSTR-3B */}
-        <div className="card p-6 flex flex-col justify-between relative overflow-hidden border border-slate-200/80 shadow-xs">
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-teal-500" />
+        <div className="card p-6 flex flex-col justify-between relative overflow-hidden border border-[#E7E8EC] bg-[#F6F6F8] rounded-[28px] shadow-fintech">
           <div>
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center mb-4">
+            <div className="w-11 h-11 rounded-2xl bg-[#12151C] text-[#5BF07B] border border-[#202530] flex items-center justify-center mb-4 shadow-2xs">
               <CheckCircle size={18} />
             </div>
             <h3 className="font-bold text-slate-900">GSTR-3B Summary</h3>
@@ -314,23 +314,22 @@ export default function Gst() {
         </div>
 
         {/* HSN Summary */}
-        <div className="card p-6 flex flex-col justify-between relative overflow-hidden border border-slate-200/80 shadow-xs">
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-violet-500 to-indigo-500" />
+        <div className="bg-[#F6F6F8] rounded-[28px] p-6 flex flex-col justify-between relative overflow-hidden border border-[#E7E8EC] shadow-fintech">
           <div>
-            <div className="w-10 h-10 rounded-xl bg-violet-50 text-violet-600 border border-violet-100 flex items-center justify-center mb-4">
+            <div className="w-10 h-10 rounded-full bg-[#12151C] text-[#5BF07B] flex items-center justify-center mb-4 shadow-xs">
               <FileText size={18} />
             </div>
-            <h3 className="font-bold text-slate-900">HSN / SAC Summary</h3>
-            <p className="text-xs text-slate-500 font-normal mt-1.5 leading-relaxed">
+            <h3 className="font-bold text-[#111318] font-heading">HSN / SAC Summary</h3>
+            <p className="text-xs text-[#7C7F8A] font-normal mt-1.5 leading-relaxed">
               HSN-wise invoice details, quantity totals, rate brackets, and tax breakdown.
             </p>
           </div>
           <button
             onClick={handleExportHsnCsv}
-            className="mt-5 btn-secondary text-xs font-semibold w-full justify-between"
+            className="mt-5 px-4 py-2.5 rounded-full bg-[#12151C] hover:bg-[#202530] text-white text-xs font-semibold w-full flex items-center justify-between transition cursor-pointer shadow-xs"
           >
             <span>Export HSN CSV</span>
-            <Download size={13} />
+            <Download size={13} className="text-[#5BF07B]" />
           </button>
         </div>
       </div>

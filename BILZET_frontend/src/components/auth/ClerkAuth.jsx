@@ -114,7 +114,7 @@ export function ClerkAuthSync() {
  * Official Google OAuth button powered by Clerk's social connection.
  * Initiates the real Google account chooser flow without window.prompt or mock data.
  */
-export function ClerkGoogleButton({ mode = "login", onError, setBusy, busy }) {
+export function ClerkGoogleButton({ mode = "login", onError, setBusy, busy, className = "" }) {
   const { signIn, isLoaded: isSignInLoaded } = useSignIn();
   const { signUp, isLoaded: isSignUpLoaded } = useSignUp();
 
@@ -168,7 +168,10 @@ export function ClerkGoogleButton({ mode = "login", onError, setBusy, busy }) {
       id={mode === "register" ? "signup-google-btn" : "signin-google-btn"}
       disabled={busy}
       onClick={handleGoogleClick}
-      className="w-full h-[42px] rounded-[9px] border border-[#E3EDF8] bg-white hover:bg-[#F4F9FF] text-[#526B87] text-[13px] font-medium transition-all flex items-center justify-center gap-2.5 cursor-pointer font-macos"
+      className={
+        className ||
+        "w-full h-[48px] rounded-full border border-[#E7E8EC] bg-white hover:bg-[#F6F6F8] text-[#111318] text-[14px] font-semibold transition-all flex items-center justify-center gap-2.5 cursor-pointer shadow-xs"
+      }
     >
       {busy ? (
         <>

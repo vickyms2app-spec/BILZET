@@ -317,25 +317,25 @@ export default function Support() {
       {/* ══════════════════════════════════════════════════
           HERO & HEADER BANNER
       ══════════════════════════════════════════════════ */}
-      <div className="relative overflow-hidden rounded-2xl p-6 bg-gradient-to-br from-[#0c1628] via-[#0d1f45] to-[#091228] border border-slate-800/60 shadow-lg text-white">
+      <div className="relative overflow-hidden rounded-[28px] p-6 sm:p-7 bg-[#12151C] border border-white/10 shadow-fintech text-white">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2 max-w-2xl">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase bg-cyan-500/12 text-cyan-300 border border-cyan-500/20">
-                <Sparkles size={11} />
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase bg-white/10 text-white border border-white/15">
+                <Sparkles size={11} className="text-[#5BF07B]" />
                 24/7 ERP Support Desk
               </span>
-              <span className="inline-flex items-center gap-1 text-[11px] text-emerald-400 font-semibold bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="inline-flex items-center gap-1.5 text-[11px] text-[#5BF07B] font-semibold bg-[#DFFFE6]/10 px-3 py-0.5 rounded-full border border-[#5BF07B]/30">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#5BF07B] animate-pulse" />
                 Support Engineers Online
               </span>
             </div>
 
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight font-heading">
               Customer Support Desk &amp; Help Center
             </h1>
 
-            <p className="text-xs text-slate-300 leading-relaxed">
+            <p className="text-xs text-white/70 leading-relaxed font-medium">
               Ticket tracking, thermal printer setup assistance, UPI settlement support, and GST filing help
             </p>
           </div>

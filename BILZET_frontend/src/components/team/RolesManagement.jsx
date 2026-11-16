@@ -350,19 +350,19 @@ export default function RolesManagement() {
 
       {/* Premium Lock Banner for Free & Pro tiers */}
       {!isPremium && (
-        <div className="bg-gradient-to-r from-indigo-50 via-purple-50 to-blue-50 border border-indigo-200/90 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-2xs animate-in fade-in">
+        <div className="bg-[#F6F6F8] border border-[#E7E8EC] rounded-[28px] p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-fintech animate-in fade-in">
           <div className="flex items-start gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-indigo-100 border border-indigo-200 text-indigo-700 flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-full bg-[#12151C] text-[#5BF07B] flex items-center justify-center shrink-0 shadow-xs">
               <Lock className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h4 className="font-bold text-sm text-slate-900">Custom Roles &amp; Permissions Studio</h4>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 border border-indigo-200 uppercase tracking-wide">
+                <h4 className="font-bold text-sm text-[#111318] font-heading">Custom Roles &amp; Permissions Studio</h4>
+                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#DFFFE6] text-[#0E2A16] border border-[#5BF07B]/40 uppercase tracking-wide">
                   Premium Feature
                 </span>
               </div>
-              <p className="text-xs text-slate-600 mt-1 leading-relaxed max-w-xl">
+              <p className="text-xs text-[#7C7F8A] mt-1 leading-relaxed max-w-xl font-medium">
                 Upgrade to Premium to unlock advanced team management, build tailored custom roles, and configure granular action privileges.
               </p>
             </div>
@@ -370,9 +370,9 @@ export default function RolesManagement() {
           <button
             type="button"
             onClick={() => navigate("/plans?tier=PREMIUM&redirect=/roles")}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-sm transition shrink-0 cursor-pointer"
+            className="px-5 py-2.5 bg-[#12151C] hover:bg-[#202530] text-[#5BF07B] rounded-full text-xs font-bold flex items-center gap-2 shadow-xs transition shrink-0 cursor-pointer"
           >
-            <Crown className="w-4 h-4" />
+            <Crown className="w-4 h-4 text-[#5BF07B]" />
             Upgrade to Premium
           </button>
         </div>

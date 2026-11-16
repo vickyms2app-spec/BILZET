@@ -50,59 +50,59 @@ import {
 export const CIRCLE_VARIANTS = {
   primary: {
     circle:
-      "bg-blue-50 text-blue-600 border border-blue-200 shadow-2xs group-hover:bg-blue-600 group-hover:text-white group-hover:border-blue-700",
-    activeCircle: "bg-blue-600 text-white border-blue-700",
-    border: "border-slate-200/90 hover:border-blue-300",
-    bg: "bg-white hover:bg-blue-50/20 active:bg-blue-50/40",
+      "bg-[#12151C] text-[#5BF07B] border border-[#12151C] shadow-2xs group-hover:bg-black group-hover:text-white",
+    activeCircle: "bg-[#5BF07B] text-[#0E2A16] border-[#5BF07B]",
+    border: "border-[#E7E8EC] hover:border-[#111318]",
+    bg: "bg-white hover:bg-[#F6F6F8] active:bg-[#FAFAFB]",
   },
   success: {
     circle:
-      "bg-emerald-50 text-emerald-600 border border-emerald-200 shadow-2xs group-hover:bg-emerald-600 group-hover:text-white group-hover:border-emerald-700",
-    activeCircle: "bg-emerald-600 text-white border-emerald-700",
-    border: "border-slate-200/90 hover:border-emerald-300",
-    bg: "bg-white hover:bg-emerald-50/20 active:bg-emerald-50/40",
+      "bg-[#DFFFE6] text-[#0E2A16] border border-[#5BF07B]/40 shadow-2xs group-hover:bg-[#5BF07B] group-hover:text-[#0E2A16]",
+    activeCircle: "bg-[#5BF07B] text-[#0E2A16] border-[#5BF07B]",
+    border: "border-[#E7E8EC] hover:border-[#5BF07B]",
+    bg: "bg-white hover:bg-[#FAFAFB] active:bg-[#F6F6F8]",
   },
   danger: {
     circle:
-      "bg-rose-50 text-rose-600 border border-rose-200 shadow-2xs group-hover:bg-rose-600 group-hover:text-white group-hover:border-rose-700",
-    activeCircle: "bg-rose-600 text-white border-rose-700",
-    border: "border-slate-200/90 hover:border-rose-300",
-    bg: "bg-white hover:bg-rose-50/20 active:bg-rose-50/40",
+      "bg-[#FBD3D3] text-[#E5484D] border border-[#E5484D]/30 shadow-2xs group-hover:bg-[#E5484D] group-hover:text-white",
+    activeCircle: "bg-[#E5484D] text-white border-[#E5484D]",
+    border: "border-[#E7E8EC] hover:border-[#E5484D]",
+    bg: "bg-white hover:bg-[#FAFAFB] active:bg-[#F6F6F8]",
   },
   warning: {
     circle:
-      "bg-amber-50 text-amber-600 border border-amber-200 shadow-2xs group-hover:bg-amber-600 group-hover:text-white group-hover:border-amber-700",
-    activeCircle: "bg-amber-600 text-white border-amber-700",
-    border: "border-slate-200/90 hover:border-amber-300",
-    bg: "bg-white hover:bg-amber-50/20 active:bg-amber-50/40",
+      "bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A] shadow-2xs group-hover:bg-[#F59E0B] group-hover:text-white",
+    activeCircle: "bg-[#F59E0B] text-white border-[#D97706]",
+    border: "border-[#E7E8EC] hover:border-[#F59E0B]",
+    bg: "bg-white hover:bg-[#FAFAFB] active:bg-[#F6F6F8]",
   },
   info: {
     circle:
-      "bg-sky-50 text-sky-600 border border-sky-200 shadow-2xs group-hover:bg-sky-600 group-hover:text-white group-hover:border-sky-700",
-    activeCircle: "bg-sky-600 text-white border-sky-700",
-    border: "border-slate-200/90 hover:border-sky-300",
-    bg: "bg-white hover:bg-sky-50/20 active:bg-sky-50/40",
+      "bg-[#FAFAFB] text-[#111318] border border-[#E7E8EC] shadow-2xs group-hover:bg-[#12151C] group-hover:text-white",
+    activeCircle: "bg-[#12151C] text-white border-[#12151C]",
+    border: "border-[#E7E8EC] hover:border-[#111318]",
+    bg: "bg-white hover:bg-[#FAFAFB] active:bg-[#F6F6F8]",
   },
   neutral: {
     circle:
-      "bg-slate-100 text-slate-600 border border-slate-200 shadow-2xs group-hover:bg-slate-700 group-hover:text-white group-hover:border-slate-800",
-    activeCircle: "bg-slate-700 text-white border-slate-800",
-    border: "border-slate-200/90 hover:border-slate-300",
-    bg: "bg-white hover:bg-slate-50 active:bg-slate-100/60",
+      "bg-[#E7E8EC] text-[#111318] border border-[#E7E8EC] shadow-2xs group-hover:bg-[#12151C] group-hover:text-white",
+    activeCircle: "bg-[#12151C] text-white border-[#12151C]",
+    border: "border-[#E7E8EC] hover:border-[#111318]",
+    bg: "bg-white hover:bg-[#FAFAFB] active:bg-[#F6F6F8]",
   },
   secondary: {
     circle:
-      "bg-slate-100 text-slate-600 border border-slate-200 shadow-2xs group-hover:bg-slate-700 group-hover:text-white group-hover:border-slate-800",
-    activeCircle: "bg-slate-700 text-white border-slate-800",
-    border: "border-slate-200/90 hover:border-slate-300",
-    bg: "bg-white hover:bg-slate-50 active:bg-slate-100/60",
+      "bg-[#E7E8EC] text-[#7C7F8A] border border-[#E7E8EC] shadow-2xs group-hover:bg-[#12151C] group-hover:text-white",
+    activeCircle: "bg-[#12151C] text-white border-[#12151C]",
+    border: "border-[#E7E8EC] hover:border-[#111318]",
+    bg: "bg-white hover:bg-[#FAFAFB] active:bg-[#F6F6F8]",
   },
   outline: {
     circle:
-      "bg-blue-50 text-blue-600 border border-blue-200 shadow-2xs group-hover:bg-blue-600 group-hover:text-white",
-    activeCircle: "bg-blue-600 text-white border-blue-700",
-    border: "border-blue-200 hover:border-blue-300",
-    bg: "bg-white hover:bg-blue-50/20 active:bg-blue-50/40",
+      "bg-[#12151C] text-[#5BF07B] border border-[#12151C] shadow-2xs group-hover:bg-black group-hover:text-white",
+    activeCircle: "bg-[#5BF07B] text-[#0E2A16] border-[#5BF07B]",
+    border: "border-[#E7E8EC] hover:border-[#111318]",
+    bg: "bg-white hover:bg-[#F6F6F8] active:bg-[#FAFAFB]",
   },
 };
 
@@ -134,22 +134,22 @@ const Button = forwardRef(function Button(
   // Size hierarchy
   const sizeClasses = {
     xs: {
-      btn: "h-[28px] min-h-[28px] pl-1 pr-2.5 rounded-[14px] text-[11px] gap-1.5",
+      btn: "h-[28px] min-h-[28px] pl-1 pr-2.5 rounded-full text-[11px] gap-1.5",
       circle: "w-[20px] h-[20px] text-[10px]",
       iconSize: 11,
     },
     sm: {
-      btn: "h-[36px] min-h-[36px] pl-1.5 pr-3 rounded-[18px] text-xs gap-2",
+      btn: "h-[36px] min-h-[36px] pl-1.5 pr-3 rounded-full text-xs gap-2",
       circle: "w-[26px] h-[26px] text-xs",
       iconSize: 13,
     },
     md: {
-      btn: "h-[44px] min-h-[44px] pl-2 pr-4 rounded-[22px] text-xs sm:text-sm gap-2.5",
+      btn: "h-[44px] min-h-[44px] pl-2 pr-4 rounded-full text-xs sm:text-sm gap-2.5",
       circle: "w-[32px] h-[32px] text-sm",
       iconSize: 15,
     },
     lg: {
-      btn: "h-[50px] min-h-[50px] pl-2.5 pr-5 rounded-[25px] text-sm gap-3",
+      btn: "h-[50px] min-h-[50px] pl-2.5 pr-5 rounded-full text-sm gap-3",
       circle: "w-[36px] h-[36px] text-base",
       iconSize: 17,
     },
@@ -183,7 +183,7 @@ const Button = forwardRef(function Button(
         styles.border
       } ${styles.bg} ${
         currentSize.btn
-      } shadow-[0_1px_2px_rgba(15,23,42,0.04)] hover:shadow-[0_2px_6px_rgba(15,23,42,0.08)] active:translate-y-[0.5px] disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30 ${className}`}
+      } shadow-[0_1px_2px_rgba(15,23,42,0.04)] hover:shadow-[0_2px_6px_rgba(15,23,42,0.08)] active:translate-y-[0.5px] disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#111318]/30 ${className}`}
       {...props}
     >
       {/* ── Circular Colored Icon Container ── */}
@@ -207,11 +207,11 @@ const Button = forwardRef(function Button(
       {/* ── Dark Charcoal Button Text Label ── */}
       {children && (
         <span className="flex flex-col text-left leading-tight truncate">
-          <span className="text-[#111827] font-semibold tracking-[-0.01em] group-hover:text-black">
+          <span className="text-[#111318] font-semibold tracking-[-0.01em] group-hover:text-black">
             {children}
           </span>
           {description && (
-            <span className="text-[10px] text-[#4b5563] font-normal leading-none mt-0.5">
+            <span className="text-[10px] text-[#7C7F8A] font-normal leading-none mt-0.5">
               {description}
             </span>
           )}
@@ -222,7 +222,7 @@ const Button = forwardRef(function Button(
       {dropdown && (
         <ChevronDown
           size={13}
-          className="text-slate-400 group-hover:text-slate-600 shrink-0 ml-0.5"
+          className="text-[#7C7F8A] group-hover:text-[#111318] shrink-0 ml-0.5"
         />
       )}
     </button>
@@ -340,7 +340,7 @@ export function IconCircleAction({
           onClick?.();
         }
       }}
-      className={`group relative rounded-2xl p-4 bg-white border border-slate-200/90 shadow-[0_1px_3px_rgba(15,23,42,0.04)] hover:shadow-[0_4px_12px_rgba(15,23,42,0.07)] hover:border-slate-300 transition-all duration-150 cursor-pointer select-none text-left flex items-start gap-3.5 ${className}`}
+      className={`group relative rounded-[24px] p-4 bg-[#F6F6F8] border border-[#E7E8EC] shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] hover:border-[#111318] transition-all duration-150 cursor-pointer select-none text-left flex items-start gap-3.5 ${className}`}
       {...props}
     >
       {/* ── Large Circular Colored Icon Container ── */}
@@ -360,17 +360,17 @@ export function IconCircleAction({
       {/* ── Title & Description (Dark / Neutral) ── */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2">
-          <h4 className="text-sm font-bold text-[#111827] tracking-tight group-hover:text-black">
+          <h4 className="text-sm font-bold text-[#111318] tracking-tight group-hover:text-black">
             {title}
           </h4>
           {badge && (
-            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-700">
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#E7E8EC] text-[#111318]">
               {badge}
             </span>
           )}
         </div>
         {description && (
-          <p className="text-xs text-[#4b5563] font-normal mt-0.5 leading-snug">
+          <p className="text-xs text-[#7C7F8A] font-normal mt-0.5 leading-snug">
             {description}
           </p>
         )}
@@ -425,7 +425,7 @@ export function IconCircleDropdown({
       </Button>
 
       {open && items.length > 0 && (
-        <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-white shadow-xl border border-slate-200 z-50 p-1.5 animate-in fade-in zoom-in-95 duration-100">
+        <div className="absolute right-0 mt-2 w-56 rounded-[24px] bg-[#F6F6F8] shadow-[0_8px_30px_rgba(0,0,0,0.08)] border border-[#E7E8EC] z-50 p-2 animate-in fade-in zoom-in-95 duration-100">
           {items.map((item, idx) => {
             const ItemIcon = item.icon || User;
             const itemVariant = item.variant || "neutral";
@@ -440,7 +440,7 @@ export function IconCircleDropdown({
                   setOpen(false);
                   item.onClick?.();
                 }}
-                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left text-xs font-semibold text-[#111827] hover:bg-slate-50 transition cursor-pointer"
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left text-xs font-semibold text-[#111318] hover:bg-white transition cursor-pointer"
               >
                 <span
                   className={`w-6 h-6 rounded-full shrink-0 flex items-center justify-center ${itemStyles.circle}`}

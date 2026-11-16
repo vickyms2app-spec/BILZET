@@ -56,7 +56,7 @@ export default function SearchBar({
         placeholder={placeholder}
         autoFocus={autoFocus}
         disabled={disabled}
-        className="w-full h-10 pl-10 pr-9 text-sm text-slate-800 placeholder-slate-400 bg-white border border-slate-200 rounded-xl outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/10 transition-all font-medium disabled:bg-slate-50 disabled:cursor-not-allowed shadow-2xs"
+        className="w-full h-10 pl-10 pr-9 text-xs sm:text-sm text-[#111318] placeholder-[#A9ABB5] bg-white border border-[#E7E8EC] rounded-full outline-none focus:border-[#111318] focus:ring-2 focus:ring-[#111318]/10 transition-all font-medium disabled:bg-[#FAFAFB] disabled:cursor-not-allowed shadow-xs"
       />
       {Boolean(displayVal) && (
         <button

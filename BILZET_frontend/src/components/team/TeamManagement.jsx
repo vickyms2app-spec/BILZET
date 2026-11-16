@@ -674,16 +674,16 @@ export default function TeamManagement() {
 
       {/* Free Plan Pro Feature Banner */}
       {isFree && !isExpired && (
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/80 text-blue-900 px-4 py-3 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-xs animate-in fade-in">
+        <div className="bg-[#F6F6F8] border border-[#E7E8EC] text-[#111318] px-5 py-4 rounded-[20px] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-fintech animate-in fade-in">
           <div className="flex items-center gap-2.5">
-            <Lock className="w-4 h-4 text-blue-600 shrink-0" />
+            <Lock className="w-4 h-4 text-[#111318] shrink-0" />
             <span>
               <strong>Free Starter Plan:</strong> Team &amp; Sub-User access requires a Pro or Premium subscription. You have 1 Owner account (0 sub-users). Upgrade to Pro to invite up to 5 team members.
             </span>
           </div>
           <button
             onClick={() => navigate("/plans?tier=PRO")}
-            className="px-3.5 py-1.5 bg-[#D8EBFF] hover:bg-[#C7E1FF] text-[#2563EB] font-semibold rounded-lg shrink-0 transition cursor-pointer shadow-xs"
+            className="px-4 py-2 bg-[#12151C] hover:bg-[#202530] text-[#5BF07B] font-bold rounded-full shrink-0 transition cursor-pointer shadow-xs"
           >
             Upgrade to Pro
           </button>
@@ -1769,11 +1769,11 @@ export default function TeamManagement() {
                 {lockedModal.description}
               </p>
             </div>
-            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-2">
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-2.5">
               <button
                 type="button"
                 onClick={() => setLockedModal(null)}
-                className="w-full sm:w-auto px-4 py-2 border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-xl text-xs font-semibold transition cursor-pointer"
+                className="w-full sm:w-auto px-5 py-2.5 border border-[#E7E8EC] text-[#7C7F8A] hover:bg-[#EDEDEF] rounded-full text-xs font-semibold transition cursor-pointer"
               >
                 Dismiss
               </button>
@@ -1783,10 +1783,10 @@ export default function TeamManagement() {
                   setLockedModal(null);
                   navigate("/plans?tier=PRO&redirect=/team");
                 }}
-                className="w-full sm:w-auto px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm transition cursor-pointer"
+                className="w-full sm:w-auto px-5 py-2.5 bg-[#12151C] hover:bg-[#202530] text-white rounded-full text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition cursor-pointer"
               >
-                <Lock className="w-3.5 h-3.5" />
-                Choose Pro (5 Seats)
+                <Lock className="w-3.5 h-3.5 text-[#5BF07B]" />
+                <span>Choose Pro (5 Seats)</span>
               </button>
               <button
                 type="button"
@@ -1794,10 +1794,10 @@ export default function TeamManagement() {
                   setLockedModal(null);
                   navigate("/plans?tier=PREMIUM&redirect=/team");
                 }}
-                className="w-full sm:w-auto px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm transition cursor-pointer"
+                className="w-full sm:w-auto px-5 py-2.5 bg-[#5BF07B] hover:bg-[#4de66e] text-[#0E2A16] rounded-full text-xs font-bold flex items-center justify-center gap-2 shadow-fintech transition cursor-pointer"
               >
                 <Crown className="w-3.5 h-3.5" />
-                Choose Premium (Unlimited Seats)
+                <span>Choose Premium (Unlimited Seats)</span>
               </button>
             </div>
           </div>

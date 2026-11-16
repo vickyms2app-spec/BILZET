@@ -215,17 +215,24 @@ export default function StoreSwitcher({ variant = "header" }) {
   // ═════════════════════════════════════════════════════════════════════
   // VARIANT: HEADER (Top Header Bar)
   // ═════════════════════════════════════════════════════════════════════
+  const currentGstin = currentStore?.gstin || cachedStore?.gstin || user?.gstin || "33AAAAA0000A1Z5";
+
   if (!isAdmin || !hasMultipleStores) {
-    // Single store Admin or staff: clean subtle display
+    // Single store Admin or staff: clean subtle display with GSTIN
     return (
-      <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700">
-        <Store size={15} className="text-slate-500 shrink-0" />
-        <span className="font-semibold text-slate-800 truncate max-w-[150px]">{storeDisplayName}</span>
+      <div className="hidden sm:flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-white border border-[#E7E8EC] text-xs font-medium text-[#111318] shadow-xs">
+        <div className="w-6 h-6 rounded-full bg-[#12151C] text-[#5BF07B] flex items-center justify-center shrink-0">
+          <Store size={13} />
+        </div>
+        <div className="flex flex-col text-left leading-tight">
+          <span className="font-bold text-[#111318] truncate max-w-[130px]">{storeDisplayName}</span>
+          <span className="text-[10px] font-mono text-[#7C7F8A] truncate">GSTIN: {currentGstin}</span>
+        </div>
       </div>
     );
   }
 
-  // Multiple-store Admin: Clean minimal dropdown trigger
+  // Multiple-store Admin: Clean minimal dropdown trigger with GSTIN
   return (
     <>
       <div className="relative" ref={dropdownRef}>
@@ -233,22 +240,29 @@ export default function StoreSwitcher({ variant = "header" }) {
           type="button"
           onClick={() => setOpen(!open)}
           disabled={switching}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 text-xs font-medium text-slate-700 transition cursor-pointer"
-          title="Switch Store"
+          className="flex items-center gap-2.5 px-3 py-1.5 rounded-full hover:bg-[#F6F6F8] bg-white border border-[#E7E8EC] text-xs font-medium text-[#111318] transition cursor-pointer shadow-xs"
+          title="Switch Store / GSTIN"
         >
           {switching ? (
-            <RefreshCw size={15} className="animate-spin text-blue-600 shrink-0" />
+            <RefreshCw size={14} className="animate-spin text-[#111318] shrink-0" />
           ) : (
-            <Store size={15} className="text-slate-500 shrink-0" />
+            <div className="w-6 h-6 rounded-full bg-[#12151C] text-[#5BF07B] flex items-center justify-center shrink-0">
+              <Store size={13} />
+            </div>
           )}
 
-          <span className="font-semibold text-slate-800 truncate max-w-[140px]">
-            {storeDisplayName}
-          </span>
+          <div className="flex flex-col text-left leading-tight hidden sm:flex">
+            <span className="font-bold text-[#111318] truncate max-w-[130px]">
+              {storeDisplayName}
+            </span>
+            <span className="text-[10px] font-mono text-[#7C7F8A] truncate">
+              GSTIN: {currentGstin}
+            </span>
+          </div>
 
           <ChevronDown
             size={13}
-            className={`text-slate-400 transition-transform duration-200 ml-0.5 ${
+            className={`text-[#7C7F8A] transition-transform duration-200 ml-0.5 ${
               open ? "rotate-180" : ""
             }`}
           />
@@ -256,13 +270,13 @@ export default function StoreSwitcher({ variant = "header" }) {
 
         {/* Dropdown Menu */}
         {open && (
-          <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-200/90 p-2 z-50 animate-in fade-in zoom-in-95">
-            <div className="px-3 py-2 border-b border-slate-100 flex items-center justify-between">
+          <div className="absolute right-0 mt-2 w-64 bg-[#F6F6F8] rounded-[24px] shadow-[0_12px_36px_rgba(0,0,0,0.08)] border border-[#E7E8EC] p-2 z-50 animate-in fade-in zoom-in-95">
+            <div className="px-3 py-2 border-b border-[#E7E8EC] flex items-center justify-between">
               <div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                <p className="text-[10px] font-bold text-[#7C7F8A] uppercase tracking-wider">
                   Authorized Stores
                 </p>
-                <p className="text-[11px] text-slate-500">
+                <p className="text-[11px] text-[#7C7F8A]">
                   Select a store to switch application context
                 </p>
               </div>

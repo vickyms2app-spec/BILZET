@@ -340,7 +340,7 @@ export default function StaffDashboard({ defaultTab }) {
                     type="button"
                     onClick={handleCheckIn}
                     disabled={punching || isShiftCompleted}
-                    className="w-full py-3.5 px-6 rounded-xl font-bold text-sm bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md shadow-emerald-600/20 disabled:opacity-50 transition flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full py-3.5 px-6 rounded-full font-bold text-sm bg-[#12151C] hover:bg-[#202530] text-[#5BF07B] shadow-fintech disabled:opacity-50 transition flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <CheckCircle2 className="w-4 h-4" />
                     <span>{punching ? "Punching..." : isShiftCompleted ? "Shift Already Completed Today" : "Punch In / Start Shift"}</span>
@@ -350,7 +350,7 @@ export default function StaffDashboard({ defaultTab }) {
                     type="button"
                     onClick={handleCheckOut}
                     disabled={punching}
-                    className="w-full py-3.5 px-6 rounded-xl font-bold text-sm bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 text-white shadow-md shadow-rose-600/20 disabled:opacity-50 transition flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full py-3.5 px-6 rounded-full font-bold text-sm bg-[#E5484D] hover:bg-[#d43f44] text-white shadow-fintech disabled:opacity-50 transition flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <Timer className="w-4 h-4" />
                     <span>{punching ? "Punching Out..." : "Punch Out / End Shift"}</span>

@@ -529,23 +529,23 @@ export default function Reports() {
       {/* ══════════════════════════════════════════════════
           SCREEN ONLY: MAIN HEADER & CONTROLS
       ══════════════════════════════════════════════════ */}
-      <div className="screen-only flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/90 shadow-xs">
+      <div className="screen-only flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#F6F6F8] p-6 rounded-[28px] border border-[#E7E8EC] shadow-fintech">
         <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-xl border border-indigo-100 grid place-items-center text-indigo-600 bg-indigo-50/70 shadow-2xs shrink-0">
-            <BarChart3 size={24} />
+          <div className="w-12 h-12 rounded-full bg-[#12151C] text-[#5BF07B] flex items-center justify-center shrink-0 shadow-xs">
+            <BarChart3 size={22} />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-xl sm:text-2xl font-bold text-[#111318] tracking-tight font-heading">
                 Reports &amp; Analytics
               </h1>
-              <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+              <span className="text-[10px] font-bold text-[#111318] bg-[#FAFAFB] border border-[#E7E8EC] px-3 py-0.5 rounded-full uppercase tracking-wider shadow-2xs">
                 Live Analytics
               </span>
             </div>
-            <p className="text-xs text-slate-500 font-normal mt-0.5">
+            <p className="text-xs text-[#7C7F8A] font-medium mt-1">
               Business intelligence, revenue trend, margins &amp; sales overview for{" "}
-              <strong className="text-slate-800 font-semibold">{dateRange.displayPeriod}</strong>
+              <strong className="text-[#111318] font-bold">{dateRange.displayPeriod}</strong>
             </p>
           </div>
         </div>
@@ -616,10 +616,10 @@ export default function Reports() {
       {/* ══════════════════════════════════════════════════
           SCREEN ONLY: DATE FILTER PRESETS BAR (REQ 6)
       ══════════════════════════════════════════════════ */}
-      <div className="screen-only bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/90 shadow-2xs space-y-3">
+      <div className="screen-only bg-[#F6F6F8] p-4 sm:p-5 rounded-[24px] border border-[#E7E8EC] shadow-fintech space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
-            <Filter size={15} className="text-slate-400" />
+          <div className="flex items-center gap-2 text-xs font-bold text-[#7C7F8A]">
+            <Filter size={15} className="text-[#111318]" />
             <span>Select Period:</span>
           </div>
 
@@ -632,10 +632,10 @@ export default function Reports() {
                   key={preset.key}
                   type="button"
                   onClick={() => setSelectedPreset(preset.key)}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all duration-150 cursor-pointer ${
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all duration-150 cursor-pointer ${
                     isActive
-                      ? "bg-blue-600 text-white shadow-sm shadow-blue-500/25"
-                      : "bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200/80"
+                      ? "bg-[#12151C] text-white shadow-xs"
+                      : "bg-[#FAFAFB] text-[#7C7F8A] hover:bg-[#EDEDEF] hover:text-[#111318] border border-[#E7E8EC]"
                   }`}
                 >
                   {preset.label}
@@ -678,62 +678,62 @@ export default function Reports() {
       ══════════════════════════════════════════════════ */}
       <div className="screen-only grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
         {/* Total Revenue */}
-        <div className="card p-4 sm:p-5 flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shrink-0">
+        <div className="bg-[#12151C] text-white p-5 sm:p-6 rounded-[24px] border border-white/10 shadow-fintech flex items-center gap-4">
+          <div className="w-12 h-12 rounded-full bg-white/10 text-[#5BF07B] flex items-center justify-center shrink-0">
             <DollarSign size={20} />
           </div>
           <div className="min-w-0">
-            <p className="text-[11px] font-medium text-slate-500">Gross Sales Revenue</p>
-            <p className="text-lg sm:text-xl font-bold text-slate-900 truncate">
+            <p className="text-[11px] font-bold text-white/70 uppercase tracking-wider">Gross Sales Revenue</p>
+            <p className="text-2xl font-black text-[#5BF07B] font-mono truncate">
               ₹{totalRevenue.toLocaleString("en-IN")}
             </p>
-            <p className="text-[10px] text-slate-400 mt-0.5">
+            <p className="text-[10px] text-white/60 mt-0.5 font-medium">
               {totalInvoices} {totalInvoices === 1 ? "invoice" : "invoices"} generated
             </p>
           </div>
         </div>
 
         {/* Estimated Profit */}
-        <div className="card p-4 sm:p-5 flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shrink-0">
+        <div className="bg-[#F6F6F8] p-5 sm:p-6 rounded-[24px] border border-[#E7E8EC] shadow-fintech flex items-center gap-4">
+          <div className="w-12 h-12 rounded-full bg-[#EDEDEF] text-[#0E2A16] flex items-center justify-center shrink-0">
             <TrendingUp size={20} />
           </div>
           <div className="min-w-0">
-            <p className="text-[11px] font-medium text-slate-500">Net Estimated Profit</p>
-            <p className="text-lg sm:text-xl font-bold text-emerald-700 truncate">
+            <p className="text-[11px] font-bold text-[#7C7F8A] uppercase tracking-wider">Net Estimated Profit</p>
+            <p className="text-2xl font-black text-[#111318] font-mono truncate">
               ₹{calculatedNetProfit.toLocaleString("en-IN")}
             </p>
-            <p className="text-[10px] text-emerald-600 font-medium mt-0.5">
+            <p className="text-[10px] text-[#0E2A16] font-bold mt-0.5 bg-[#DFFFE6] px-2 py-0.5 rounded-full inline-block">
               {grossMargin}% gross margin
             </p>
           </div>
         </div>
 
         {/* Average Order Value & Volume */}
-        <div className="card p-4 sm:p-5 flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-xl bg-purple-50 text-purple-600 border border-purple-100 flex items-center justify-center shrink-0">
+        <div className="bg-[#F6F6F8] p-5 sm:p-6 rounded-[24px] border border-[#E7E8EC] shadow-fintech flex items-center gap-4">
+          <div className="w-12 h-12 rounded-full bg-[#EDEDEF] text-[#111318] flex items-center justify-center shrink-0">
             <ShoppingBag size={20} />
           </div>
           <div className="min-w-0">
-            <p className="text-[11px] font-medium text-slate-500">Average Bill Value</p>
-            <p className="text-lg sm:text-xl font-bold text-purple-700 truncate">
+            <p className="text-[11px] font-bold text-[#7C7F8A] uppercase tracking-wider">Average Bill Value</p>
+            <p className="text-2xl font-black text-[#111318] font-mono truncate">
               ₹{averageOrderValue.toLocaleString("en-IN")}
             </p>
-            <p className="text-[10px] text-slate-400 mt-0.5">Avg spending per transaction</p>
+            <p className="text-[10px] text-[#7C7F8A] mt-0.5 font-medium">Avg per transaction</p>
           </div>
         </div>
 
         {/* Taxes & GST Collected */}
-        <div className="card p-4 sm:p-5 flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center shrink-0">
+        <div className="bg-[#F6F6F8] p-5 sm:p-6 rounded-[24px] border border-[#E7E8EC] shadow-fintech flex items-center gap-4">
+          <div className="w-12 h-12 rounded-full bg-[#EDEDEF] text-[#111318] flex items-center justify-center shrink-0">
             <Percent size={20} />
           </div>
           <div className="min-w-0">
-            <p className="text-[11px] font-medium text-slate-500">Taxes / GST Collected</p>
-            <p className="text-lg sm:text-xl font-bold text-amber-700 truncate">
+            <p className="text-[11px] font-bold text-[#7C7F8A] uppercase tracking-wider">Taxes / GST Collected</p>
+            <p className="text-2xl font-black text-[#111318] font-mono truncate">
               ₹{totalTaxes.toLocaleString("en-IN")}
             </p>
-            <p className="text-[10px] text-slate-400 mt-0.5">
+            <p className="text-[10px] text-[#7C7F8A] mt-0.5 font-medium">
               ₹{totalDiscounts.toLocaleString("en-IN")} total discounts
             </p>
           </div>

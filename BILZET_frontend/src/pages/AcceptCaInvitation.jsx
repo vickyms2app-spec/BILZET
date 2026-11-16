@@ -496,16 +496,16 @@ export default function AcceptCaInvitation() {
                         <button
                           onClick={handleAccept}
                           disabled={accepting || declining}
-                          className="w-full sm:flex-1 py-3 px-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-sm font-bold rounded-xl transition shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
+                          className="w-full sm:flex-1 py-3 px-6 bg-[#12151C] hover:bg-[#202530] text-white text-sm font-bold rounded-full transition shadow-fintech flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
                         >
                           {accepting ? (
                             <>
-                              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                              <div className="w-4 h-4 border-2 border-white/30 border-t-[#5BF07B] rounded-full animate-spin" />
                               <span>Connecting Workspace…</span>
                             </>
                           ) : (
                             <>
-                              <ShieldCheck className="w-4 h-4" />
+                              <ShieldCheck className="w-4 h-4 text-[#5BF07B]" />
                               <span>Accept Invitation & Connect</span>
                             </>
                           )}

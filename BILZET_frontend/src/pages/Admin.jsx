@@ -492,19 +492,19 @@ export default function Admin() {
       ══════════════════════════════════════════════════ */}
       {activeTab === "vault" && (
         <div className="space-y-6">
-          <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border border-blue-200/80 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="bg-[#F6F6F8] border border-[#E7E8EC] rounded-[28px] p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-fintech">
             <div className="space-y-1">
-              <div className="flex items-center gap-2 text-blue-950 font-bold text-sm">
-                <Shield size={16} className="text-blue-600" />
+              <div className="flex items-center gap-2 text-[#111318] font-bold text-sm font-heading">
+                <Shield size={16} className="text-[#111318]" />
                 <span>Protected Internal Credentials &amp; Infrastructure</span>
               </div>
-              <p className="text-xs text-blue-900/80 leading-relaxed max-w-2xl">
+              <p className="text-xs text-[#7C7F8A] leading-relaxed max-w-2xl font-medium">
                 These confidential bank accounts, database connection strings, and authentication keys are strictly restricted to authenticated administrators. Standard users and staff members have zero access to these internal records.
               </p>
             </div>
             <div className="shrink-0 flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-white text-blue-700 border border-blue-200 shadow-2xs">
-                <CheckCircle2 size={13} className="text-emerald-500" />
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-[#DFFFE6] text-[#0E2A16] border border-[#5BF07B]/40 shadow-2xs">
+                <CheckCircle2 size={13} className="text-[#0E2A16]" />
                 <span>Admin Cleared</span>
               </span>
             </div>

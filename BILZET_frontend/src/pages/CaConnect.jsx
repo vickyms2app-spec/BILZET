@@ -512,19 +512,17 @@ export default function CaConnect() {
         </div>
 
         {/* LOCKED FEATURE PRESENTATION CARD */}
-        <div className="bg-white rounded-2xl border border-slate-200/90 p-8 sm:p-12 shadow-xs text-center relative overflow-hidden">
-          <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-amber-400 via-amber-500 to-indigo-600" />
-
-          <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200/80 text-amber-600 flex items-center justify-center mx-auto mb-5 shadow-xs">
-            <Lock size={30} />
+        <div className="bg-[#F6F6F8] rounded-[28px] border border-[#E7E8EC] p-8 sm:p-12 shadow-fintech text-center relative overflow-hidden">
+          <div className="w-16 h-16 rounded-full bg-[#12151C] text-[#5BF07B] flex items-center justify-center mx-auto mb-5 shadow-xs">
+            <Lock size={28} />
           </div>
 
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200 mb-3">
-            <Sparkles size={13} className="text-amber-600" />
+          <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-bold bg-[#DFFFE6] text-[#0E2A16] border border-[#5BF07B]/40 mb-3">
+            <Sparkles size={13} className="text-[#0E2A16]" />
             <span>Premium Feature</span>
           </div>
 
-          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight mb-2.5">
+          <h2 className="text-xl sm:text-2xl font-bold text-[#111318] tracking-tight mb-2.5 font-heading">
             {isExpired
               ? "Your Premium Subscription Has Expired"
               : isPro
@@ -532,7 +530,7 @@ export default function CaConnect() {
               : "CA Connect is available exclusively with the Premium plan."}
           </h2>
 
-          <p className="text-sm text-slate-500 max-w-xl mx-auto mb-8 font-normal leading-relaxed">
+          <p className="text-sm text-[#7C7F8A] max-w-xl mx-auto mb-8 font-normal leading-relaxed">
             {isExpired
               ? "Your access to the CA Connect portal is locked because your Premium subscription has expired. Renew your plan to re-enable secure tax audit and ledger access for your accountant."
               : isPro
@@ -754,29 +752,28 @@ export default function CaConnect() {
       {/* ══════════════════════════════════════════════════
           CA CONNECT AUDIT SUITE WORKSPACE BANNER
       ══════════════════════════════════════════════════ */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-6 rounded-3xl text-white shadow-xl border border-slate-800 space-y-4">
+      <div className="bg-[#12151C] p-7 rounded-[28px] text-white shadow-fintech border border-white/10 space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1.5">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-semibold border border-indigo-400/30">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 text-[#5BF07B] text-xs font-semibold border border-white/15">
               <ShieldCheck size={14} /> Chartered Accountant Workspace
             </div>
-            <h2 className="text-xl sm:text-2xl font-black tracking-tight">
+            <h2 className="text-xl sm:text-2xl font-black tracking-tight font-heading">
               Direct Auditor Collaboration &amp; Client Access
             </h2>
-            <p className="text-slate-300 text-xs max-w-2xl leading-relaxed">
+            <p className="text-white/70 text-xs max-w-2xl leading-relaxed">
               Active Store: <strong className="text-white">{businessName}</strong> • GSTIN: <strong className="text-white">{businessGstin}</strong>.
               Connected CAs receive instant, authorized access to audit ledgers, GSTR filing packs, and discrepancy workflows.
             </p>
           </div>
-          <Button
-            variant="primary"
-            size="lg"
-            icon={ArrowRight}
+          <button
+            type="button"
             onClick={() => navigate("/ca-portal/dashboard")}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-lg shrink-0"
+            className="px-6 py-3 rounded-full bg-[#5BF07B] hover:bg-[#4de66e] text-[#0E2A16] font-bold text-xs transition cursor-pointer flex items-center justify-center gap-2 shadow-fintech shrink-0"
           >
-            Preview CA Workspace
-          </Button>
+            <span>Preview CA Workspace</span>
+            <ArrowRight size={14} />
+          </button>
         </div>
 
         {/* Pillar links */}
@@ -1491,24 +1488,24 @@ export default function CaConnect() {
           INVITE CHARTERED ACCOUNTANT MODAL
       ══════════════════════════════════════════════════ */}
       {showInviteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-2xl w-full border border-slate-200 shadow-2xl overflow-hidden my-8">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#12151C]/75 backdrop-blur-xs overflow-y-auto animate-fade-in">
+          <div className="bg-[#F6F6F8] rounded-[28px] max-w-2xl w-full border border-[#E7E8EC] shadow-2xl overflow-hidden my-8">
             {/* Modal Header */}
-            <div className="p-6 bg-gradient-to-r from-slate-900 to-indigo-950 text-white flex items-center justify-between">
+            <div className="p-6 bg-[#12151C] text-white flex items-center justify-between border-b border-white/10">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center text-white">
+                <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-[#5BF07B]">
                   <UserPlus size={20} />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold">Invite Chartered Accountant</h3>
-                  <p className="text-xs text-slate-300">
+                  <h3 className="text-base font-bold font-heading">Invite Chartered Accountant</h3>
+                  <p className="text-xs text-white/70">
                     Connect your auditor via email with secure, single-use workspace authorization.
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setShowInviteModal(false)}
-                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition"
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition cursor-pointer"
               >
                 <X size={16} />
               </button>

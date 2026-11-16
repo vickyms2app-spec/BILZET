@@ -1,11 +1,13 @@
 <!doctype html>
 <html lang="en" class="antialiased font-sans">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#0f3d8a" />
   <meta name="bilzet-build" content="v10.4-react-production" />
-  <meta name="description" content="BILZET — professional billing, inventory, GST-ready reports and CA Connect for Indian businesses." />
+  <meta name="description"
+    content="BILZET — professional billing, inventory, GST-ready reports and CA Connect for Indian businesses." />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
@@ -14,20 +16,57 @@
   <link rel="icon" href="/assets/bilzet-icon-dark.png" type="image/png" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+    :root {
+      --font-primary: 'Inter', sans-serif;
+    }
+
+    body {
+      font-family: var(--font-primary);
+    }
+
+    *,
+    *::before,
+    *::after {
+      font-family: inherit;
+    }
+
+    html,
+    body,
+    #root {
+      font-family: var(--font-primary) !important;
+    }
+  </style>
   <title>BILZET — Shop Billing / POS</title>
 </head>
+
 <body class="bg-[#E3E3E5] text-[#111318] antialiased font-sans">
   <div id="root">
-    <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#F7FBFF;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+    <div
+      style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#F7FBFF;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
       <div style="text-align:center;">
-        <img src="/assets/bilzet-logo.png" alt="BILZET" style="height:44px;width:auto;margin:0 auto 18px;display:block;" onerror="this.onerror=null;this.src='/assets/bilzet-logo-white.png';" />
-        <div style="width:26px;height:26px;margin:0 auto 14px;border:3px solid #DCEBFA;border-top-color:#3978B8;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
-        <p style="color:#6B7280;font-size:12px;font-weight:600;letter-spacing:0.08em;margin:0;text-transform:uppercase;">Loading BILZET...</p>
+        <img src="/assets/bilzet-logo.png" alt="BILZET" style="height:44px;width:auto;margin:0 auto 18px;display:block;"
+          onerror="this.onerror=null;this.src='/assets/bilzet-logo-white.png';" />
+        <div
+          style="width:26px;height:26px;margin:0 auto 14px;border:3px solid #DCEBFA;border-top-color:#3978B8;border-radius:50%;animation:spin 0.8s linear infinite;">
+        </div>
+        <p
+          style="color:#6B7280;font-size:12px;font-weight:600;letter-spacing:0.08em;margin:0;text-transform:uppercase;">
+          Loading BILZET...</p>
       </div>
-      <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+      <style>
+        @keyframes spin {
+          to {
+            transform: rotate(360deg)
+          }
+        }
+      </style>
     </div>
   </div>
   <script type="module" src="/src/main.jsx"></script>
 </body>
+
 </html>

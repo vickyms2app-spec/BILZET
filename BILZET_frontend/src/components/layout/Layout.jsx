@@ -105,76 +105,97 @@ export const caNavSections = [
 
 const navSections = [
   {
-    title: "Overview",
+    title: "OVERVIEW",
     key: "overview",
     items: [
       { label: "Dashboard", path: "/dashboard", icon: LayoutGrid },
-      { label: "Staff Workspace", path: "/staff-dashboard", icon: UserCheck },
-      { label: "Reports & Analytics", path: "/reports", icon: BarChart3 },
     ],
   },
   {
-    title: "Sales & Billing",
+    title: "SALES",
     key: "sales",
     items: [
-      { label: "New Bill / POS", path: "/billing", icon: FilePlus, highlight: true },
-      { label: "Sales Invoices", path: "/invoices", icon: FileText },
-      { label: "Delivery Challans", path: "/sales/challans", icon: FileCheck },
-      { label: "Sales Returns", path: "/sales/returns", icon: RotateCcw },
-      { label: "Payments-In", path: "/sales/payments-in", icon: DollarSign },
+      { label: "Sales Overview", path: "/reports", icon: BarChart3 },
       { label: "Customers", path: "/customers", icon: Users },
+      { label: "Quotations", path: "/quotations", icon: ClipboardList },
+      { label: "Invoices", path: "/invoices", icon: FileText, highlight: true },
+      { label: "Payment Collection", path: "/sales/payments-in", icon: DollarSign },
+      { label: "Credit Notes / Return Invoices", path: "/sales/returns", icon: RotateCcw },
     ],
   },
   {
-    title: "Purchases",
+    title: "PURCHASE",
     key: "purchases",
     items: [
-      { label: "Purchase Invoices", path: "/purchases", icon: ShoppingBag },
-      { label: "Purchase Orders", path: "/purchases/orders", icon: ClipboardList },
-      { label: "Debit Notes / Returns", path: "/purchases/debit-notes", icon: Receipt },
+      { label: "Purchase Overview", path: "/purchases", icon: ShoppingBag },
       { label: "Suppliers", path: "/suppliers", icon: Truck },
+      { label: "Purchase Bills", path: "/purchases", icon: Receipt },
+      { label: "Debit Notes", path: "/purchases/debit-notes", icon: Receipt },
     ],
   },
   {
-    title: "Inventory & Stock",
+    title: "INVENTORY",
     key: "inventory",
     items: [
-      { label: "Stock Overview", path: "/inventory", icon: Boxes },
-      { label: "Product Catalog", path: "/products", icon: Package },
-      { label: "Warehouses & Godowns", path: "/warehouses", icon: Warehouse },
-      { label: "Stock Transfers", path: "/stock-transfers", icon: ArrowRightLeft },
+      { label: "Products & Services", path: "/products", icon: Package },
+      { label: "Stock Management", path: "/inventory", icon: Boxes },
+      { label: "Warehouse / Godown", path: "/warehouses", icon: Warehouse },
+      { label: "Stock Movements", path: "/stock-transfers", icon: ArrowRightLeft },
+      { label: "Low Stock Alerts", path: "/inventory", icon: AlertTriangle },
     ],
   },
   {
-    title: "Staff & Payroll",
-    key: "staff_payroll",
+    title: "FINANCE",
+    key: "finance",
     items: [
-      { label: "Staff", path: "/staff", icon: UserCheck },
+      { label: "Expenses", path: "/expenses", icon: Wallet },
+      { label: "Cash & Bank", path: "/expenses", icon: CreditCard },
+      { label: "Receivables", path: "/reports", icon: DollarSign },
+      { label: "Payables", path: "/purchases", icon: Receipt },
+      { label: "Business Analytics", path: "/reports", icon: BarChart3 },
+    ],
+  },
+  {
+    title: "GST & TAX",
+    key: "gst_tax",
+    items: [
+      { label: "GST Dashboard", path: "/gst", icon: Percent },
+      { label: "GSTR Reports", path: "/gst", icon: FileSpreadsheet },
+      { label: "Input Tax Credit", path: "/gst", icon: ArrowUpRight },
+      { label: "Output Tax", path: "/gst", icon: Receipt },
+      { label: "Tax Liability", path: "/gst", icon: Scale },
+      { label: "GST Reconciliation", path: "/gst", icon: CheckSquare },
+    ],
+  },
+  {
+    title: "CA CONNECT",
+    key: "ca_connect",
+    items: [
+      { label: "CA Dashboard", path: "/ca-connect", icon: Briefcase },
+      { label: "Shared Documents", path: "/ca-connect", icon: Paperclip },
+      { label: "Return Status", path: "/ca-connect", icon: FileCheck },
+      { label: "CA Communication", path: "/ca-connect", icon: MessageSquare },
+    ],
+  },
+  {
+    title: "BUSINESS MANAGEMENT",
+    key: "management",
+    items: [
+      { label: "Staff Management", path: "/staff", icon: UserCheck },
       { label: "Attendance", path: "/staff/attendance", icon: CalendarCheck2 },
       { label: "Payroll", path: "/staff/payroll", icon: DollarSign },
+      { label: "Broker Management", path: "/team", icon: Users },
     ],
   },
   {
-    title: "Operations & HR",
-    key: "tools",
+    title: "SETTINGS",
+    key: "settings",
     items: [
-      { label: "Team & Sub-Users", path: "/team", icon: Users },
-      { label: "Online Store Orders", path: "/online-orders", icon: OnlineIcon },
-      { label: "Expenses", path: "/expenses", icon: Wallet },
-      { label: "SMS Campaigns", path: "/sms-marketing", icon: MessageSquare },
-    ],
-  },
-  {
-    title: "System & Settings",
-    key: "system",
-    items: [
-      { label: "Business Settings", path: "/settings", icon: Settings },
-      { label: "Subscription Plan", path: "/subscription", icon: CreditCard },
-      { label: "GST & Tax Filing", path: "/gst", icon: Percent },
-      { label: "CA Connect", path: "/ca-connect", icon: Briefcase },
-      { label: "Refer & Earn", path: "/referral", icon: Star },
-      { label: "Security Audit Trail", path: "/audit-logs", icon: History },
-      { label: "Support & Help", path: "/support", icon: LifeBuoy },
+      { label: "Business Profile", path: "/settings", icon: Settings },
+      { label: "GST Configuration", path: "/settings", icon: Percent },
+      { label: "User Roles & Permissions", path: "/team", icon: Shield },
+      { label: "Subscription & Plans", path: "/subscription", icon: CreditCard },
+      { label: "Integrations", path: "/settings", icon: Store },
     ],
   },
 ];
@@ -214,7 +235,11 @@ export default function Layout({ children }) {
   }, [sidebarOpen]);
   const [collapsedSections, setCollapsedSections] = useState({});
   const [userDropdown, setUserDropdown] = useState(false);
+  const [quickCreateOpen, setQuickCreateOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [showShortcutsModal, setShowShortcutsModal] = useState(false);
+  const quickCreateRef = useRef(null);
+  const helpDropdownRef = useRef(null);
   const { user, logout } = useAuth();
   const { adminRevealed, toggleAdminReveal } = useSecurityStore();
   const { hasPermission, isOwner, isSuperAdmin } = usePermissions();
@@ -417,6 +442,19 @@ export default function Layout({ children }) {
   }, []);
 
   useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (quickCreateRef.current && !quickCreateRef.current.contains(e.target)) {
+        setQuickCreateOpen(false);
+      }
+      if (helpDropdownRef.current && !helpDropdownRef.current.contains(e.target)) {
+        setHelpOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, []);
+
+  useEffect(() => {
     if (!searchQuery.trim()) {
       setSearchResults({ customers: [], products: [], invoices: [] });
       setSearchOpen(false);
@@ -615,7 +653,7 @@ export default function Layout({ children }) {
   };
 
   return (
-    <div className="h-screen w-screen overflow-hidden flex bg-[#F7F9FC] text-[#64748B] antialiased font-sans selection:bg-[#E5F2FF] selection:text-[#202B3C]">
+    <div className="h-screen w-screen overflow-hidden flex bg-[#E3E3E5] text-[#111318] antialiased font-sans selection:bg-[#5BF07B]/30 selection:text-[#111318]">
       {/* ══════════════════════════════════════════════════
           DESKTOP & TABLET SIDEBAR
       ══════════════════════════════════════════════════ */}
@@ -624,13 +662,13 @@ export default function Layout({ children }) {
           sidebarOpen ? "w-[264px]" : "w-[72px]"
         }`}
         style={{
-          background: "linear-gradient(145deg, #E5F2FF 0%, #EDE8FF 52%, #F9F0FF 100%)",
-          borderRight: "1px solid #E7ECF3",
+          background: "#EDEDEF",
+          borderRight: "1px solid #D8D9DE",
         }}
       >
         {/* Brand Header */}
         <div
-          className={`flex items-center h-16 px-4 border-b border-[#DCEBFA] shrink-0 ${
+          className={`flex items-center h-16 px-4 border-b border-[#D8D9DE] shrink-0 ${
             sidebarOpen ? "justify-between" : "justify-center"
           }`}
         >
@@ -639,7 +677,7 @@ export default function Layout({ children }) {
             <button
               type="button"
               onClick={toggleSidebar}
-              className="text-[#648CB8] hover:text-[#111827] p-1.5 rounded-lg hover:bg-[#E3F1FF] transition duration-150 cursor-pointer"
+              className="text-[#7C7F8A] hover:text-[#111318] p-1.5 rounded-full hover:bg-white transition duration-150 cursor-pointer"
               title="Close Sidebar"
               aria-label="Close Sidebar"
             >
@@ -649,7 +687,7 @@ export default function Layout({ children }) {
             <button
               type="button"
               onClick={toggleSidebar}
-              className="text-[#648CB8] hover:text-[#111827] p-1.5 rounded-lg hover:bg-[#E3F1FF] transition duration-150 cursor-pointer"
+              className="text-[#7C7F8A] hover:text-[#111318] p-1.5 rounded-full hover:bg-white transition duration-150 cursor-pointer"
               title="Open Sidebar"
               aria-label="Open Sidebar"
             >
@@ -665,34 +703,34 @@ export default function Layout({ children }) {
               <div className="space-y-1.5">
                 <NavLink
                   to="/ca-portal/dashboard"
-                  className="w-full flex items-center justify-between px-3 py-2 rounded-[8px] font-semibold text-[13px] text-[#111827] bg-[#D4E9FF] hover:bg-[#C7E1FF] border border-[#DCEBFA] transition-colors shadow-2xs group"
+                  className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-full font-bold text-xs text-white bg-[#12151C] hover:bg-black border border-black/10 transition-all shadow-xs group"
                 >
                   <div className="flex items-center gap-2">
-                    <ShieldCheck size={16} className="text-[#3978B8] shrink-0" />
+                    <ShieldCheck size={16} className="text-[#5BF07B] shrink-0" />
                     <span>CA Audit Suite</span>
                   </div>
-                  <span className="px-1.5 py-0.5 rounded bg-white/70 text-[10px] font-mono tracking-tight text-[#111827]">
+                  <span className="px-2 py-0.5 rounded-full bg-white/15 text-[10px] font-mono tracking-tight text-[#5BF07B]">
                     AUDIT
                   </span>
                 </NavLink>
                 <NavLink
                   to="/dashboard"
-                  className="w-full flex items-center justify-center gap-1.5 py-1 px-2 text-[11px] font-medium text-[#374151] hover:text-[#111827] bg-white/50 hover:bg-[#E3F1FF] rounded-[8px] transition border border-[#DCEBFA]"
+                  className="w-full flex items-center justify-center gap-1.5 py-1.5 px-2 text-[11px] font-semibold text-[#7C7F8A] hover:text-[#111318] bg-white/60 hover:bg-white rounded-full transition border border-[#D8D9DE]"
                 >
-                  <ArrowRightLeft size={12} className="text-[#648CB8]" />
+                  <ArrowRightLeft size={12} className="text-[#7C7F8A]" />
                   <span>Exit to Shop Dashboard</span>
                 </NavLink>
               </div>
             ) : (
               <NavLink
                 to="/billing"
-                className="w-full flex items-center justify-between px-3 py-2 rounded-[8px] font-semibold text-[13px] text-[#111827] bg-[#D4E9FF] hover:bg-[#C7E1FF] border border-[#DCEBFA] transition-colors shadow-2xs group"
+                className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-full font-bold text-xs text-white bg-[#12151C] hover:bg-black border border-black/10 transition-all shadow-xs group"
               >
                 <div className="flex items-center gap-2">
-                  <Plus size={16} className="text-[#3978B8] shrink-0" />
+                  <Plus size={16} className="text-[#5BF07B] shrink-0" />
                   <span>New Bill</span>
                 </div>
-                <span className="px-1.5 py-0.5 rounded bg-white/70 text-[10px] font-mono tracking-wide text-[#111827]">
+                <span className="px-2 py-0.5 rounded-full bg-white/15 text-[10px] font-mono tracking-wide text-[#5BF07B]">
                   F2
                 </span>
               </NavLink>
@@ -705,25 +743,25 @@ export default function Layout({ children }) {
                 <NavLink
                   to="/ca-portal/dashboard"
                   title="CA Audit Suite"
-                  className="w-10 h-10 rounded-[8px] flex items-center justify-center text-[#111827] bg-[#D4E9FF] hover:bg-[#C7E1FF] border border-[#DCEBFA] transition-colors shadow-2xs"
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-[#12151C] hover:bg-black border border-black/10 transition-colors shadow-xs"
                 >
-                  <ShieldCheck size={18} className="text-[#3978B8]" />
+                  <ShieldCheck size={18} className="text-[#5BF07B]" />
                 </NavLink>
                 <NavLink
                   to="/dashboard"
                   title="Exit to Shop Dashboard"
-                  className="w-10 h-8 rounded-[8px] flex items-center justify-center text-[#374151] hover:text-[#111827] bg-white/50 hover:bg-[#E3F1FF] border border-[#DCEBFA] transition-colors"
+                  className="w-10 h-8 rounded-full flex items-center justify-center text-[#7C7F8A] hover:text-[#111318] bg-white hover:bg-[#F6F6F8] border border-[#D8D9DE] transition-colors"
                 >
-                  <ArrowRightLeft size={14} className="text-[#648CB8]" />
+                  <ArrowRightLeft size={14} className="text-[#7C7F8A]" />
                 </NavLink>
               </>
             ) : (
               <NavLink
                 to="/billing"
                 title="New Bill (F2)"
-                className="w-10 h-10 rounded-[8px] flex items-center justify-center text-[#111827] bg-[#D4E9FF] hover:bg-[#C7E1FF] border border-[#DCEBFA] transition-colors shadow-2xs"
+                className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-[#12151C] hover:bg-black border border-black/10 transition-colors shadow-xs"
               >
-                <Plus size={18} className="text-[#3978B8]" />
+                <Plus size={18} className="text-[#5BF07B]" />
               </NavLink>
             )}
           </div>
@@ -731,7 +769,7 @@ export default function Layout({ children }) {
 
         {/* Navigation list */}
         {isCA ? (
-          <div className="flex-1 flex flex-col justify-between overflow-y-auto px-3 py-2 scrollbar-thin scrollbar-thumb-[#D8EBFF] hover:scrollbar-thumb-[#8AAED8]">
+          <div className="flex-1 flex flex-col justify-between overflow-y-auto px-3 py-2 scrollbar-thin scrollbar-thumb-[#C3C5CE] hover:scrollbar-thumb-[#A9ABB5]">
             {/* Main navigation */}
             <nav className="space-y-1">
               {caMainNavItems.map((item) => {
@@ -743,22 +781,25 @@ export default function Layout({ children }) {
                     key={item.path}
                     to={item.path}
                     title={!sidebarOpen ? item.label : undefined}
-                    className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-[7px] text-[13px] font-medium transition-[background-color,color] duration-180 relative group ${
+                    className={`flex items-center gap-2.5 px-3 py-2 rounded-full text-xs font-semibold transition-all duration-150 relative group ${
                       isActive
-                        ? "bg-[#D4E9FF] text-[#111827] font-medium"
-                        : "text-[#111827] hover:bg-[#E3F1FF]"
-                    } ${!sidebarOpen ? "justify-center px-0 py-2" : ""}`}
+                        ? "bg-white text-[#111318] shadow-xs font-bold"
+                        : "text-[#7C7F8A] hover:text-[#111318] hover:bg-white/60"
+                    } ${!sidebarOpen ? "justify-center px-0 py-2.5" : ""}`}
                   >
                     <Icon
                       size={15}
-                      className={`shrink-0 transition-colors duration-180 ${
-                        isActive ? "text-[#3978B8]" : "text-[#648CB8] group-hover:text-[#3978B8]"
+                      className={`shrink-0 transition-colors duration-150 ${
+                        isActive ? "text-[#111318]" : "text-[#7C7F8A] group-hover:text-[#111318]"
                       }`}
                       strokeWidth={isActive ? 2.2 : 1.8}
                     />
                     {sidebarOpen && <span className="truncate">{item.label}</span>}
+                    {sidebarOpen && isActive && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#5BF07B] ml-auto shrink-0" />
+                    )}
                     {!sidebarOpen && (
-                      <div className="hidden group-hover:flex absolute left-full ml-2 z-50 px-2.5 py-1 bg-[#111827] text-white text-[11px] font-medium rounded-lg whitespace-nowrap shadow-xl pointer-events-none items-center animate-in fade-in zoom-in-95 duration-150">
+                      <div className="hidden group-hover:flex absolute left-full ml-2 z-50 px-2.5 py-1 bg-[#111318] text-white text-[11px] font-medium rounded-lg whitespace-nowrap shadow-xl pointer-events-none items-center animate-in fade-in zoom-in-95 duration-150">
                         {item.label}
                       </div>
                     )}
@@ -768,7 +809,7 @@ export default function Layout({ children }) {
             </nav>
 
             {/* Bottom navigation */}
-            <div className="pt-2.5 border-t border-[#DCEBFA] mt-auto space-y-0.5 shrink-0">
+            <div className="pt-2.5 border-t border-[#D8D9DE] mt-auto space-y-0.5 shrink-0">
               {caBottomNavItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = isCaItemActive(item.path);
@@ -778,22 +819,25 @@ export default function Layout({ children }) {
                     key={item.path}
                     to={item.path}
                     title={!sidebarOpen ? item.label : undefined}
-                    className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-[7px] text-[13px] font-medium transition-[background-color,color] duration-180 relative group ${
+                    className={`flex items-center gap-2.5 px-3 py-2 rounded-full text-xs font-semibold transition-all duration-150 relative group ${
                       isActive
-                        ? "bg-[#D4E9FF] text-[#111827] font-medium"
-                        : "text-[#111827] hover:bg-[#E3F1FF]"
-                    } ${!sidebarOpen ? "justify-center px-0 py-2" : ""}`}
+                        ? "bg-white text-[#111318] shadow-xs font-bold"
+                        : "text-[#7C7F8A] hover:text-[#111318] hover:bg-white/60"
+                    } ${!sidebarOpen ? "justify-center px-0 py-2.5" : ""}`}
                   >
                     <Icon
                       size={15}
-                      className={`shrink-0 transition-colors duration-180 ${
-                        isActive ? "text-[#3978B8]" : "text-[#648CB8] group-hover:text-[#3978B8]"
+                      className={`shrink-0 transition-colors duration-150 ${
+                        isActive ? "text-[#111318]" : "text-[#7C7F8A] group-hover:text-[#111318]"
                       }`}
                       strokeWidth={isActive ? 2.2 : 1.8}
                     />
                     {sidebarOpen && <span className="truncate">{item.label}</span>}
+                    {sidebarOpen && isActive && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#5BF07B] ml-auto shrink-0" />
+                    )}
                     {!sidebarOpen && (
-                      <div className="hidden group-hover:flex absolute left-full ml-2 z-50 px-2.5 py-1 bg-[#111827] text-white text-[11px] font-medium rounded-lg whitespace-nowrap shadow-xl pointer-events-none items-center animate-in fade-in zoom-in-95 duration-150">
+                      <div className="hidden group-hover:flex absolute left-full ml-2 z-50 px-2.5 py-1 bg-[#111318] text-white text-[11px] font-medium rounded-lg whitespace-nowrap shadow-xl pointer-events-none items-center animate-in fade-in zoom-in-95 duration-150">
                         {item.label}
                       </div>
                     )}
@@ -803,7 +847,7 @@ export default function Layout({ children }) {
             </div>
           </div>
         ) : (
-          <nav className="flex-1 overflow-y-auto px-2.5 py-1.5 space-y-1.5 scrollbar-thin scrollbar-thumb-[#D8EBFF] hover:scrollbar-thumb-[#8AAED8]">
+          <nav className="flex-1 overflow-y-auto px-2.5 py-2 space-y-1.5 scrollbar-thin scrollbar-thumb-[#C3C5CE] hover:scrollbar-thumb-[#A9ABB5]">
             {displayedNavSections.map((section, sIdx) => {
               const isSectionCollapsed = !!collapsedSections[section.key];
 
@@ -812,18 +856,18 @@ export default function Layout({ children }) {
                   {sidebarOpen ? (
                     <button
                       onClick={() => toggleSection(section.key)}
-                      className="w-full flex items-center justify-between px-2 pt-2 pb-0.5 text-[11px] font-medium uppercase tracking-[0.25px] text-[#374151] hover:text-[#111827] transition cursor-pointer"
+                      className="w-full flex items-center justify-between px-3 pt-2.5 pb-1 text-[10px] font-bold uppercase tracking-wider text-[#7C7F8A] hover:text-[#111318] transition cursor-pointer"
                     >
                       <span className="truncate">{section.title}</span>
                       <ChevronDown
                         size={12}
-                        className={`text-[#648CB8] transition-transform duration-200 ${
+                        className={`text-[#7C7F8A] transition-transform duration-200 ${
                           isSectionCollapsed ? "-rotate-90" : ""
                         }`}
                       />
                     </button>
                   ) : (
-                    sIdx > 0 && <div className="mx-2 my-1.5 border-t border-[#DCEBFA]" />
+                    sIdx > 0 && <div className="mx-3 my-1.5 border-t border-[#D8D9DE]" />
                   )}
 
                   {(!isSectionCollapsed || !sidebarOpen) && (
@@ -845,22 +889,25 @@ export default function Layout({ children }) {
                             key={item.path}
                             to={item.path}
                             title={!sidebarOpen ? item.label : undefined}
-                            className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-[7px] text-[13px] font-normal sm:font-medium transition-[background-color,color] duration-180 relative group ${
+                            className={`flex items-center gap-2.5 px-3 py-2 rounded-full text-xs font-semibold transition-all duration-150 relative group ${
                               isActive
-                                ? "bg-[#D4E9FF] text-[#111827] font-medium"
-                                : "text-[#111827] hover:bg-[#E3F1FF]"
-                            } ${!sidebarOpen ? "justify-center px-0 py-2" : ""}`}
+                                ? "bg-white text-[#111318] shadow-xs font-bold"
+                                : "text-[#7C7F8A] hover:text-[#111318] hover:bg-white/60"
+                            } ${!sidebarOpen ? "justify-center px-0 py-2.5" : ""}`}
                           >
                             <Icon
                               size={15}
-                              className={`shrink-0 transition-colors duration-180 ${
-                                isActive ? "text-[#3978B8]" : "text-[#648CB8] group-hover:text-[#3978B8]"
+                              className={`shrink-0 transition-colors duration-150 ${
+                                isActive ? "text-[#111318]" : "text-[#7C7F8A] group-hover:text-[#111318]"
                               }`}
                               strokeWidth={isActive ? 2.2 : 1.8}
                             />
                             {sidebarOpen && <span className="truncate">{item.label}</span>}
+                            {sidebarOpen && isActive && (
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#5BF07B] ml-auto shrink-0" />
+                            )}
                             {!sidebarOpen && (
-                              <div className="hidden group-hover:flex absolute left-full ml-2 z-50 px-2.5 py-1 bg-[#111827] text-white text-[11px] font-medium rounded-lg whitespace-nowrap shadow-xl pointer-events-none items-center animate-in fade-in zoom-in-95 duration-150">
+                              <div className="hidden group-hover:flex absolute left-full ml-2 z-50 px-2.5 py-1 bg-[#111318] text-white text-[11px] font-medium rounded-lg whitespace-nowrap shadow-xl pointer-events-none items-center animate-in fade-in zoom-in-95 duration-150">
                                 {item.label}
                               </div>
                             )}
@@ -877,24 +924,24 @@ export default function Layout({ children }) {
 
         {/* Admin Console & Vault — Only Bottom Item for non-CA */}
         {isAuthorizedAdmin && !isCA && (
-          <div className="p-2.5 border-t border-[#DCEBFA] shrink-0">
+          <div className="p-2.5 border-t border-[#D8D9DE] shrink-0">
             {sidebarOpen ? (
               <NavLink
                 to="/admin"
                 className={({ isActive }) =>
-                  `flex items-center gap-2.5 px-2.5 py-1.5 rounded-[7px] text-[13px] font-normal sm:font-medium transition-[background-color,color] duration-180 ${
+                  `flex items-center gap-2.5 px-3 py-2 rounded-full text-xs font-semibold transition-all duration-150 ${
                     isActive || location.pathname === "/app-admin"
-                      ? "bg-[#D4E9FF] text-[#111827] font-medium"
-                      : "text-[#111827] hover:bg-[#E3F1FF]"
+                      ? "bg-white text-[#111318] shadow-xs font-bold"
+                      : "text-[#7C7F8A] hover:text-[#111318] hover:bg-white/60"
                   }`
                 }
               >
                 <Shield
                   size={16}
-                  className={`shrink-0 transition-colors duration-180 ${
+                  className={`shrink-0 transition-colors duration-150 ${
                     location.pathname === "/admin" || location.pathname === "/app-admin"
-                      ? "text-[#3978B8]"
-                      : "text-[#648CB8]"
+                      ? "text-[#111318]"
+                      : "text-[#7C7F8A]"
                   }`}
                 />
                 <span className="truncate">Admin Console &amp; Vault</span>
@@ -905,16 +952,16 @@ export default function Layout({ children }) {
                   to="/admin"
                   title="Admin Console &amp; Vault"
                   className={({ isActive }) =>
-                    `w-10 h-10 rounded-[8px] flex items-center justify-center transition-[background-color,color] duration-180 ${
+                    `w-10 h-10 rounded-full flex items-center justify-center transition-all duration-150 ${
                       isActive || location.pathname === "/app-admin"
-                        ? "bg-[#D4E9FF] text-[#111827]"
-                        : "text-[#648CB8] hover:text-[#111827] hover:bg-[#E3F1FF]"
+                        ? "bg-white text-[#111318] shadow-xs"
+                        : "text-[#7C7F8A] hover:text-[#111318] hover:bg-white/60"
                     }`
                   }
                 >
                   <Shield size={18} />
                 </NavLink>
-                <div className="hidden group-hover:flex absolute left-full ml-2 z-50 px-2.5 py-1 bg-[#111827] text-white text-[11px] font-medium rounded-lg whitespace-nowrap shadow-xl pointer-events-none items-center animate-in fade-in zoom-in-95 duration-150">
+                <div className="hidden group-hover:flex absolute left-full ml-2 z-50 px-2.5 py-1 bg-[#12151C] text-white text-[11px] font-medium rounded-full whitespace-nowrap shadow-xl pointer-events-none items-center animate-in fade-in zoom-in-95 duration-150">
                   Admin Console &amp; Vault
                 </div>
               </div>
@@ -1125,14 +1172,14 @@ export default function Layout({ children }) {
       ══════════════════════════════════════════════════ */}
       <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
         {/* ── Top Header Bar ── */}
-        <header className="h-16 shrink-0 bg-white border-b border-[#E3EDF8] px-4 sm:px-6 flex items-center justify-between gap-4 z-20">
+        <header className="h-16 shrink-0 bg-[#E3E3E5] border-b border-[#D8D9DE] px-4 sm:px-6 flex items-center justify-between gap-4 z-20">
           {/* Left: Mobile trigger & Global Search with Ctrl+K */}
           <div className="flex items-center gap-2.5 min-w-0 flex-1 max-w-md">
             {/* Mobile Navigation Drawer Toggle */}
             <button
               type="button"
               onClick={() => setMobileDrawer(true)}
-              className="md:hidden inline-flex items-center justify-center w-9 h-9 rounded-xl text-[#3978B8] hover:text-[#1E40AF] bg-[#F4F9FF] hover:bg-[#E3F1FF] border border-[#DCEBFA] hover:border-[#B9D8FF] transition-all duration-200 cursor-pointer shadow-2xs active:scale-95 group shrink-0"
+              className="md:hidden inline-flex items-center justify-center w-9 h-9 rounded-full text-[#111318] bg-white hover:bg-[#F6F6F8] border border-[#E7E8EC] transition-all duration-200 cursor-pointer shadow-xs active:scale-95 group shrink-0"
               title="Open Navigation"
               aria-label="Open Navigation"
             >
@@ -1148,7 +1195,7 @@ export default function Layout({ children }) {
             <button
               type="button"
               onClick={toggleSidebar}
-              className="hidden md:inline-flex items-center justify-center w-9 h-9 rounded-xl text-[#3978B8] hover:text-[#1E40AF] bg-[#F4F9FF] hover:bg-[#E3F1FF] border border-[#DCEBFA] hover:border-[#B9D8FF] transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-xs active:scale-95 group shrink-0"
+              className="hidden md:inline-flex items-center justify-center w-9 h-9 rounded-full text-[#111318] bg-white hover:bg-[#F6F6F8] border border-[#E7E8EC] transition-all duration-200 cursor-pointer shadow-xs active:scale-95 group shrink-0"
               title={sidebarOpen ? "Close Sidebar" : "Open Sidebar"}
               aria-label={sidebarOpen ? "Close Sidebar" : "Open Sidebar"}
             >
@@ -1160,8 +1207,8 @@ export default function Layout({ children }) {
 
             {/* Compact Customer Search Bar with Ctrl+K */}
             <div className="relative w-full">
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-[#F4F9FF] border border-[#E3EDF8] rounded-lg text-xs text-[#94A8BE] w-full focus-within:border-[#8AAED8] focus-within:bg-white focus-within:ring-2 focus-within:ring-[#D8EBFF] transition">
-                <Search size={14} className="text-[#8AAED8] shrink-0" />
+              <div className="flex items-center gap-2 px-3.5 py-1.5 bg-white border border-[#E7E8EC] rounded-full text-xs text-[#7C7F8A] w-full focus-within:border-[#111318] focus-within:ring-1 focus-within:ring-[#111318] shadow-xs transition">
+                <Search size={14} className="text-[#7C7F8A] shrink-0" />
                 <input
                   ref={searchInputRef}
                   type="text"
@@ -1171,7 +1218,7 @@ export default function Layout({ children }) {
                     if (searchQuery.trim()) setSearchOpen(true);
                   }}
                   placeholder="Search customers, products, bills..."
-                  className="bg-transparent outline-none w-full text-[#526B87] text-xs placeholder:text-[#94A8BE] font-normal"
+                  className="bg-transparent outline-none w-full text-[#111318] text-xs placeholder:text-[#A9ABB5] font-normal"
                 />
                 {searchQuery ? (
                   <button
@@ -1180,12 +1227,12 @@ export default function Layout({ children }) {
                       setSearchQuery("");
                       setSearchOpen(false);
                     }}
-                    className="text-[#94A8BE] hover:text-[#526B87] p-0.5 cursor-pointer"
+                    className="text-[#7C7F8A] hover:text-[#111318] p-0.5 cursor-pointer"
                   >
                     <X size={13} />
                   </button>
                 ) : (
-                  <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 text-[10px] font-mono font-medium text-[#94A8BE] bg-white border border-[#E3EDF8] rounded shrink-0 select-none">
+                  <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 text-[10px] font-mono font-medium text-[#7C7F8A] bg-[#F6F6F8] border border-[#E7E8EC] rounded-full shrink-0 select-none">
                     Ctrl K
                   </kbd>
                 )}
@@ -1198,10 +1245,10 @@ export default function Layout({ children }) {
                     className="fixed inset-0 z-30"
                     onClick={() => setSearchOpen(false)}
                   />
-                  <div className="absolute left-0 right-0 mt-2 bg-white rounded-2xl p-3 shadow-2xl border border-[#E3EDF8] z-40 max-h-[80vh] overflow-y-auto animate-in fade-in zoom-in-95">
+                  <div className="absolute left-0 right-0 mt-2 bg-[#F6F6F8] rounded-[24px] p-3 shadow-[0_8px_30px_rgba(0,0,0,0.08)] border border-[#E7E8EC] z-40 max-h-[80vh] overflow-y-auto animate-in fade-in zoom-in-95">
                     {searchLoading ? (
-                      <div className="py-6 text-center text-xs text-[#94A8BE] flex items-center justify-center gap-2">
-                        <RefreshCw size={14} className="animate-spin text-[#2563EB]" />
+                      <div className="py-6 text-center text-xs text-[#7C7F8A] flex items-center justify-center gap-2">
+                        <RefreshCw size={14} className="animate-spin text-[#111318]" />
                         <span>Searching records…</span>
                       </div>
                     ) : (
@@ -1209,7 +1256,7 @@ export default function Layout({ children }) {
                         {/* CUSTOMERS */}
                         {searchResults.customers.length > 0 && (
                           <div>
-                            <p className="text-[10px] font-bold text-[#94A8BE] uppercase tracking-wider px-2 mb-1.5">
+                            <p className="text-[10px] font-bold text-[#7C7F8A] uppercase tracking-wider px-2 mb-1.5">
                               Customers ({searchResults.customers.length})
                             </p>
                             <div className="space-y-1">
@@ -1220,18 +1267,18 @@ export default function Layout({ children }) {
                                     setSearchOpen(false);
                                     nav(`/customers`);
                                   }}
-                                  className="flex items-center justify-between p-2 rounded-xl hover:bg-[#F4F9FF] cursor-pointer transition text-xs"
+                                  className="flex items-center justify-between p-2 rounded-xl hover:bg-white cursor-pointer transition text-xs"
                                 >
                                   <div className="flex items-center gap-2">
-                                    <div className="w-7 h-7 rounded-lg bg-[#D8EBFF] text-[#1E40AF] flex items-center justify-center font-bold text-[11px] border border-[#C7E1FF]">
+                                    <div className="w-7 h-7 rounded-full bg-[#12151C] text-[#5BF07B] flex items-center justify-center font-bold text-[11px]">
                                       {c.name?.[0] || "C"}
                                     </div>
                                     <div>
-                                      <p className="font-semibold text-[#526B87]">{c.name}</p>
-                                      <p className="text-[10px] text-[#94A8BE]">{c.phone || "No phone"}</p>
+                                      <p className="font-semibold text-[#111318]">{c.name}</p>
+                                      <p className="text-[10px] text-[#7C7F8A]">{c.phone || "No phone"}</p>
                                     </div>
                                   </div>
-                                  <span className="text-[11px] font-mono font-bold text-[#526B87]">
+                                  <span className="text-[11px] font-mono font-bold text-[#111318]">
                                     ₹{Number(c.balance || 0).toLocaleString("en-IN")}
                                   </span>
                                 </div>
@@ -1243,7 +1290,7 @@ export default function Layout({ children }) {
                         {/* PRODUCTS */}
                         {searchResults.products.length > 0 && (
                           <div>
-                            <p className="text-[10px] font-bold text-[#94A8BE] uppercase tracking-wider px-2 mb-1.5">
+                            <p className="text-[10px] font-bold text-[#7C7F8A] uppercase tracking-wider px-2 mb-1.5">
                               Products ({searchResults.products.length})
                             </p>
                             <div className="space-y-1">
@@ -1254,18 +1301,18 @@ export default function Layout({ children }) {
                                     setSearchOpen(false);
                                     nav(`/products`);
                                   }}
-                                  className="flex items-center justify-between p-2 rounded-xl hover:bg-[#ECF9F1] cursor-pointer transition text-xs"
+                                  className="flex items-center justify-between p-2 rounded-xl hover:bg-white cursor-pointer transition text-xs"
                                 >
                                   <div className="flex items-center gap-2">
-                                    <div className="w-7 h-7 rounded-lg bg-[#ECF9F1] text-[#166534] flex items-center justify-center border border-[#C8E6C9]">
+                                    <div className="w-7 h-7 rounded-full bg-[#DFFFE6] text-[#0E2A16] flex items-center justify-center">
                                       <Package size={14} />
                                     </div>
                                     <div>
-                                      <p className="font-semibold text-[#526B87]">{p.name}</p>
-                                      <p className="text-[10px] text-[#94A8BE]">Stock: {p.stock ?? 0} {p.unit || ""}</p>
+                                      <p className="font-semibold text-[#111318]">{p.name}</p>
+                                      <p className="text-[10px] text-[#7C7F8A]">Stock: {p.stock ?? 0} {p.unit || ""}</p>
                                     </div>
                                   </div>
-                                  <span className="text-[11px] font-mono font-bold text-[#166534]">
+                                  <span className="text-[11px] font-mono font-bold text-[#111318]">
                                     ₹{p.sellingPrice}
                                   </span>
                                 </div>
@@ -1277,7 +1324,7 @@ export default function Layout({ children }) {
                         {/* INVOICES */}
                         {searchResults.invoices.length > 0 && (
                           <div>
-                            <p className="text-[10px] font-bold text-[#94A8BE] uppercase tracking-wider px-2 mb-1.5">
+                            <p className="text-[10px] font-bold text-[#7C7F8A] uppercase tracking-wider px-2 mb-1.5">
                               Invoices ({searchResults.invoices.length})
                             </p>
                             <div className="space-y-1">
@@ -1288,18 +1335,18 @@ export default function Layout({ children }) {
                                     setSearchOpen(false);
                                     nav(`/invoices`);
                                   }}
-                                  className="flex items-center justify-between p-2 rounded-xl hover:bg-[#EEF7FF] cursor-pointer transition text-xs"
+                                  className="flex items-center justify-between p-2 rounded-xl hover:bg-white cursor-pointer transition text-xs"
                                 >
                                   <div className="flex items-center gap-2">
-                                    <div className="w-7 h-7 rounded-lg bg-[#D8EBFF] text-[#1E40AF] flex items-center justify-center font-mono text-[10px] font-bold border border-[#C7E1FF]">
+                                    <div className="w-7 h-7 rounded-full bg-[#12151C] text-white flex items-center justify-center font-mono text-[9px] font-bold">
                                       INV
                                     </div>
                                     <div>
-                                      <p className="font-semibold text-[#526B87]">{inv.invoiceNumber}</p>
-                                      <p className="text-[10px] text-[#94A8BE]">{inv.customer?.name || "Walk-in"}</p>
+                                      <p className="font-semibold text-[#111318]">{inv.invoiceNumber}</p>
+                                      <p className="text-[10px] text-[#7C7F8A]">{inv.customer?.name || "Walk-in"}</p>
                                     </div>
                                   </div>
-                                  <span className="text-[11px] font-mono font-bold text-[#526B87]">
+                                  <span className="text-[11px] font-mono font-bold text-[#111318]">
                                     ₹{Number(inv.grandTotal || 0).toLocaleString("en-IN")}
                                   </span>
                                 </div>
@@ -1311,7 +1358,7 @@ export default function Layout({ children }) {
                         {searchResults.customers.length === 0 &&
                           searchResults.products.length === 0 &&
                           searchResults.invoices.length === 0 && (
-                            <div className="py-6 text-center text-xs text-[#94A8BE] italic">
+                            <div className="py-6 text-center text-xs text-[#A9ABB5] italic">
                               No matching records found for &quot;{searchQuery}&quot;
                             </div>
                           )}
@@ -1321,30 +1368,105 @@ export default function Layout({ children }) {
                 </>
               )}
             </div>
+
+            {/* Quick Action Button (+ Create New) */}
+            <div className="relative shrink-0" ref={quickCreateRef}>
+              <button
+                type="button"
+                onClick={() => setQuickCreateOpen(!quickCreateOpen)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full font-semibold text-xs text-[#111318] bg-white hover:bg-[#F6F6F8] border border-[#E7E8EC] transition cursor-pointer shadow-xs active:scale-95"
+                title="Quick Create"
+              >
+                <Plus size={14} className="text-[#111318]" strokeWidth={2.5} />
+                <span className="hidden sm:inline">Create New</span>
+                <ChevronDown size={12} className={`text-[#7C7F8A] transition-transform ${quickCreateOpen ? "rotate-180" : ""}`} />
+              </button>
+
+              {quickCreateOpen && (
+                <div className="absolute left-0 mt-2 w-52 bg-[#F6F6F8] rounded-[24px] p-2 shadow-[0_8px_30px_rgba(0,0,0,0.08)] border border-[#E7E8EC] z-50 animate-in fade-in zoom-in-95">
+                  <div className="px-2.5 py-1.5 text-[10px] font-bold text-[#7C7F8A] uppercase tracking-wider">
+                    Quick Actions
+                  </div>
+                  <NavLink
+                    to="/billing"
+                    onClick={() => setQuickCreateOpen(false)}
+                    className="flex items-center gap-2.5 px-2.5 py-2 rounded-full text-xs font-semibold text-[#111318] hover:bg-white transition"
+                  >
+                    <div className="w-6 h-6 rounded-full bg-[#12151C] text-[#5BF07B] flex items-center justify-center">
+                      <FileText size={13} />
+                    </div>
+                    <div className="flex-1 flex items-center justify-between">
+                      <span>New Tax Invoice</span>
+                      <kbd className="text-[9px] font-mono px-1 py-0.5 rounded-full bg-[#E7E8EC] text-[#111318]">F2</kbd>
+                    </div>
+                  </NavLink>
+                  <NavLink
+                    to="/customers"
+                    onClick={() => setQuickCreateOpen(false)}
+                    className="flex items-center gap-2.5 px-2.5 py-2 rounded-full text-xs font-semibold text-[#111318] hover:bg-white transition"
+                  >
+                    <div className="w-6 h-6 rounded-full bg-[#E7E8EC] text-[#111318] flex items-center justify-center">
+                      <Users size={13} />
+                    </div>
+                    <span>Add Customer</span>
+                  </NavLink>
+                  <NavLink
+                    to="/products"
+                    onClick={() => setQuickCreateOpen(false)}
+                    className="flex items-center gap-2.5 px-2.5 py-2 rounded-full text-xs font-semibold text-[#111318] hover:bg-white transition"
+                  >
+                    <div className="w-6 h-6 rounded-full bg-[#DFFFE6] text-[#0E2A16] flex items-center justify-center">
+                      <Package size={13} />
+                    </div>
+                    <span>Add Product</span>
+                  </NavLink>
+                  <NavLink
+                    to="/expenses"
+                    onClick={() => setQuickCreateOpen(false)}
+                    className="flex items-center gap-2.5 px-2.5 py-2 rounded-full text-xs font-semibold text-[#111318] hover:bg-white transition"
+                  >
+                    <div className="w-6 h-6 rounded-full bg-[#FBD3D3] text-[#E5484D] flex items-center justify-center">
+                      <Wallet size={13} />
+                    </div>
+                    <span>Record Expense</span>
+                  </NavLink>
+                  <NavLink
+                    to="/purchases"
+                    onClick={() => setQuickCreateOpen(false)}
+                    className="flex items-center gap-2.5 px-2.5 py-2 rounded-full text-xs font-semibold text-[#111318] hover:bg-white transition"
+                  >
+                    <div className="w-6 h-6 rounded-full bg-[#E7E8EC] text-[#111318] flex items-center justify-center">
+                      <ShoppingBag size={13} />
+                    </div>
+                    <span>Add Purchase Bill</span>
+                  </NavLink>
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Right: Store, Online Status, Notifications, Primary New Bill, User Profile */}
+          {/* Right: Store, Online Status, Notifications, Help & Support, Primary New Bill, User Profile */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             {/* Store Switcher: Current store name with small store icon & dropdown */}
             <StoreSwitcher variant="header" />
 
             {/* Subtle Divider */}
-            <div className="h-5 w-px bg-[#EDF3FA] hidden sm:block" />
+            <div className="h-5 w-px bg-[#D8D9DE] hidden sm:block" />
 
-            {/* Online Status: Small green dot with subtle text */}
+            {/* Online Status: Small neon mint dot with subtle text */}
             {connStatus === "online" ? (
-              <div className="hidden sm:flex items-center gap-1.5 text-xs text-[#7188A3] select-none px-1">
-                <span className="w-2 h-2 rounded-full bg-[#16A34A] shrink-0" />
-                <span className="text-[11px] font-medium text-[#526B87]">Online</span>
+              <div className="hidden sm:flex items-center gap-1.5 text-xs text-[#7C7F8A] select-none px-1">
+                <span className="w-2 h-2 rounded-full bg-[#5BF07B] shrink-0" />
+                <span className="text-[11px] font-medium text-[#111318]">Online</span>
               </div>
             ) : (
               <button
                 type="button"
                 onClick={checkConnection}
-                className="hidden sm:flex items-center gap-1.5 text-xs text-rose-600 hover:text-rose-700 px-1 cursor-pointer"
+                className="hidden sm:flex items-center gap-1.5 text-xs text-[#E5484D] hover:underline px-1 cursor-pointer"
                 title="Click to retry server connection"
               >
-                <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping shrink-0" />
+                <span className="w-2 h-2 rounded-full bg-[#E5484D] animate-ping shrink-0" />
                 <span className="text-[11px] font-medium">Offline (Retry)</span>
               </button>
             )}
@@ -1352,49 +1474,110 @@ export default function Layout({ children }) {
             {/* Notifications & Persistent Invitations Center */}
             <NotificationBell />
 
+            {/* Help & Support Popover */}
+            <div className="relative" ref={helpDropdownRef}>
+              <button
+                type="button"
+                onClick={() => setHelpOpen(!helpOpen)}
+                className="w-9 h-9 rounded-full bg-white hover:bg-[#F6F6F8] border border-[#E7E8EC] text-[#111318] flex items-center justify-center transition cursor-pointer shadow-xs active:scale-95"
+                title="Help & Support"
+                aria-label="Help & Support"
+              >
+                <LifeBuoy size={16} />
+              </button>
+
+              {helpOpen && (
+                <div className="absolute right-0 mt-2 w-64 bg-[#F6F6F8] rounded-[24px] p-3 shadow-[0_8px_30px_rgba(0,0,0,0.08)] border border-[#E7E8EC] z-50 animate-in fade-in zoom-in-95 text-xs">
+                  <div className="px-2 py-1 border-b border-[#E7E8EC] mb-2">
+                    <p className="font-bold text-[#111318]">Help & GST Support</p>
+                    <p className="text-[10px] text-[#7C7F8A]">BILZET Business Assistance</p>
+                  </div>
+                  <div className="space-y-1">
+                    <a
+                      href="https://wa.me/919876543210"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-[#111318] hover:bg-white transition font-medium"
+                    >
+                      <MessageSquare size={14} className="text-[#5BF07B]" />
+                      <div>
+                        <p className="leading-tight font-semibold">WhatsApp GST Helpline</p>
+                        <p className="text-[10px] text-[#7C7F8A]">+91 98765 43210</p>
+                      </div>
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setHelpOpen(false);
+                        setShowShortcutsModal(true);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-[#111318] hover:bg-white transition font-medium text-left cursor-pointer"
+                    >
+                      <Keyboard size={14} className="text-[#111318]" />
+                      <div>
+                        <p className="leading-tight font-semibold">Keyboard Shortcuts Guide</p>
+                        <p className="text-[10px] text-[#7C7F8A]">Press Ctrl + / or ?</p>
+                      </div>
+                    </button>
+                    <NavLink
+                      to="/support"
+                      onClick={() => setHelpOpen(false)}
+                      className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-[#111318] hover:bg-white transition font-medium"
+                    >
+                      <LifeBuoy size={14} className="text-[#7C7F8A]" />
+                      <div>
+                        <p className="leading-tight font-semibold">Knowledge Base & Guides</p>
+                        <p className="text-[10px] text-[#7C7F8A]">GST E-Way & E-Invoicing FAQs</p>
+                      </div>
+                    </NavLink>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Keyboard Shortcuts Guide Trigger */}
             <button
               type="button"
               onClick={() => setShowShortcutsModal(true)}
-              className="p-2 rounded-lg text-[#8AAED8] hover:text-[#526B87] hover:bg-[#F4F9FF] transition cursor-pointer relative"
+              className="w-9 h-9 rounded-full bg-white hover:bg-[#F6F6F8] border border-[#E7E8EC] text-[#111318] flex items-center justify-center transition cursor-pointer shadow-xs active:scale-95"
               title="Keyboard Shortcuts (Ctrl + / or ?)"
               aria-label="Keyboard Shortcuts"
             >
-              <Keyboard size={18} />
+              <Keyboard size={16} />
             </button>
 
             {/* Subscription Plan Badge */}
             {isPremium ? (
-              <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#FFF6E9] text-[#92400E] border border-[#FDE68A] shrink-0">
-                <Crown size={12} className="text-amber-600" />
+              <span className="hidden sm:inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold bg-[#12151C] text-[#5BF07B] border border-[#12151C] shrink-0">
+                <Crown size={12} className="text-[#5BF07B]" />
                 <span>Premium</span>
               </span>
             ) : isProOrHigher ? (
               <div className="flex items-center gap-1.5 shrink-0">
-                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#EEF7FF] text-[#1D4ED8] border border-[#D8EBFF]">
-                  <Sparkles size={11} className="text-blue-600" />
+                <span className="hidden sm:inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold bg-[#12151C] text-[#5BF07B] border border-[#12151C]">
+                  <Sparkles size={11} className="text-[#5BF07B]" />
                   <span>Pro</span>
                 </span>
                 <NavLink
                   to="/plans?tier=PREMIUM&redirect=/dashboard"
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#D8EBFF] hover:bg-[#C7E1FF] text-[#1E40AF] text-[11px] font-bold transition border border-[#C7E1FF] shadow-2xs shrink-0"
+                  className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[#5BF07B] hover:brightness-105 text-[#0E2A16] text-[11px] font-bold transition shadow-xs shrink-0"
                   title="Upgrade to Premium"
                 >
-                  <Crown size={12} className="text-amber-600" />
+                  <Crown size={12} className="text-[#0E2A16]" />
                   <span className="hidden sm:inline">Upgrade</span>
                 </NavLink>
               </div>
             ) : (
               <div className="flex items-center gap-1.5 shrink-0">
-                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#F4F9FF] text-[#7188A3] border border-[#E3EDF8]">
+                <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium bg-white text-[#7C7F8A] border border-[#E7E8EC]">
                   <span>Free</span>
                 </span>
                 <NavLink
                   to="/plans?tier=PRO&redirect=/dashboard"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#D8EBFF] hover:bg-[#C7E1FF] text-[#1E40AF] text-xs font-bold transition border border-[#C7E1FF] shadow-2xs shrink-0"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#12151C] hover:bg-black text-white text-xs font-semibold transition shadow-xs shrink-0"
                   title="Upgrade to Pro"
                 >
-                  <Sparkles size={13} className="text-[#2563EB]" />
+                  <Sparkles size={13} className="text-[#5BF07B]" />
                   <span className="hidden sm:inline">Upgrade to Pro</span>
                   <span className="sm:hidden">Upgrade</span>
                 </NavLink>
@@ -1405,28 +1588,28 @@ export default function Layout({ children }) {
             <NewBillButton size="sm" showShortcut shortcutText="F2" className="shrink-0" />
 
             {/* Subtle Divider */}
-            <div className="h-5 w-px bg-[#EDF3FA] hidden sm:block" />
+            <div className="h-5 w-px bg-[#D8D9DE] hidden sm:block" />
 
             {/* Profile Section: Avatar, name, and dropdown together in one compact profile section */}
             <div className="relative">
               <button
                 type="button"
                 onClick={() => setUserDropdown(!userDropdown)}
-                className="flex items-center gap-2 p-1 sm:px-2 py-1 rounded-lg hover:bg-[#F4F9FF] transition cursor-pointer text-left group border border-transparent hover:border-[#E3EDF8]"
+                className="flex items-center gap-2 p-1 sm:px-2 py-1 rounded-full hover:bg-white transition cursor-pointer text-left group border border-transparent hover:border-[#E7E8EC]"
                 title="Account & Profile"
               >
-                <div className="w-8 h-8 rounded-full bg-[#D8EBFF] text-[#1E40AF] flex items-center justify-center font-bold text-xs shrink-0 border border-[#C7E1FF]">
+                <div className="w-8 h-8 rounded-full bg-[#12151C] text-[#5BF07B] flex items-center justify-center font-bold text-xs shrink-0">
                   {userInitials}
                 </div>
                 <div className="hidden lg:flex flex-col text-left leading-tight">
-                  <span className="text-xs font-semibold text-[#526B87] truncate max-w-[120px]">
+                  <span className="text-xs font-semibold text-[#111318] truncate max-w-[120px]">
                     {displayName}
                   </span>
-                  <span className="text-[10px] text-[#94A8BE] capitalize">
+                  <span className="text-[10px] text-[#7C7F8A] capitalize">
                     {displayRole}
                   </span>
                 </div>
-                <ChevronDown size={14} className="text-[#8AAED8] group-hover:text-[#526B87] transition shrink-0" />
+                <ChevronDown size={14} className="text-[#7C7F8A] group-hover:text-[#111318] transition shrink-0" />
               </button>
 
               {userDropdown && (
@@ -1435,11 +1618,11 @@ export default function Layout({ children }) {
                     className="fixed inset-0 z-40"
                     onClick={() => setUserDropdown(false)}
                   />
-                  <div className="absolute right-0 mt-2 w-60 bg-white rounded-2xl p-2 shadow-xl border border-[#E3EDF8] z-50 animate-in fade-in zoom-in-95">
-                    <div className="px-3 py-2 border-b border-[#EDF3FA] mb-1">
-                      <p className="text-xs font-bold text-[#526B87] truncate">{displayName}</p>
-                      <p className="text-[11px] text-[#94A8BE] truncate">{user?.email || "owner@bilzet.com"}</p>
-                      <span className="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#EEF7FF] text-[#1D4ED8] border border-[#D8EBFF]">
+                  <div className="absolute right-0 mt-2 w-60 bg-[#F6F6F8] rounded-[24px] p-2 shadow-[0_8px_30px_rgba(0,0,0,0.08)] border border-[#E7E8EC] z-50 animate-in fade-in zoom-in-95">
+                    <div className="px-3 py-2 border-b border-[#E7E8EC] mb-1">
+                      <p className="text-xs font-bold text-[#111318] truncate">{displayName}</p>
+                      <p className="text-[11px] text-[#7C7F8A] truncate">{user?.email || "owner@bilzet.com"}</p>
+                      <span className="inline-block mt-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#12151C] text-[#5BF07B]">
                         {displayRole}
                       </span>
                     </div>
@@ -1448,9 +1631,9 @@ export default function Layout({ children }) {
                       <NavLink
                         to="/ca-portal"
                         onClick={() => setUserDropdown(false)}
-                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-[#7188A3] hover:text-[#526B87] hover:bg-[#F4F9FF] font-medium transition"
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-[#7C7F8A] hover:text-[#111318] hover:bg-white font-medium transition"
                       >
-                        <Shield size={14} className="text-[#8AAED8]" />
+                        <Shield size={14} className="text-[#111318]" />
                         <span>CA Audit Portal</span>
                       </NavLink>
                     ) : (
@@ -1458,18 +1641,18 @@ export default function Layout({ children }) {
                         <NavLink
                           to="/settings"
                           onClick={() => setUserDropdown(false)}
-                          className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-[#7188A3] hover:text-[#526B87] hover:bg-[#F4F9FF] font-medium transition"
+                          className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-[#7C7F8A] hover:text-[#111318] hover:bg-white font-medium transition"
                         >
-                          <Settings size={14} className="text-[#8AAED8]" />
+                          <Settings size={14} className="text-[#7C7F8A]" />
                           <span>Business Settings</span>
                         </NavLink>
 
                         <NavLink
                           to="/subscription"
                           onClick={() => setUserDropdown(false)}
-                          className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-[#7188A3] hover:text-[#526B87] hover:bg-[#F4F9FF] font-medium transition"
+                          className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-[#7C7F8A] hover:text-[#111318] hover:bg-white font-medium transition"
                         >
-                          <CreditCard size={14} className="text-[#8AAED8]" />
+                          <CreditCard size={14} className="text-[#7C7F8A]" />
                           <span>Subscription &amp; Plans</span>
                         </NavLink>
                       </>
@@ -1478,9 +1661,9 @@ export default function Layout({ children }) {
                     <NavLink
                       to="/audit-logs"
                       onClick={() => setUserDropdown(false)}
-                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-[#7188A3] hover:text-[#526B87] hover:bg-[#F4F9FF] font-medium transition"
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-[#7C7F8A] hover:text-[#111318] hover:bg-white font-medium transition"
                     >
-                      <History size={14} className="text-[#8AAED8]" />
+                      <History size={14} className="text-[#7C7F8A]" />
                       <span>Security Logs</span>
                     </NavLink>
 
@@ -1489,9 +1672,9 @@ export default function Layout({ children }) {
                       <NavLink
                         to="/admin"
                         onClick={() => setUserDropdown(false)}
-                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-[#1E40AF] bg-[#EEF7FF] hover:bg-[#D8EBFF] font-semibold transition mt-1 border border-[#D8EBFF]"
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-[#111318] bg-white hover:bg-[#E7E8EC] font-semibold transition mt-1 border border-[#E7E8EC]"
                       >
-                        <Shield size={14} className="text-[#2563EB]" />
+                        <Shield size={14} className="text-[#111318]" />
                         <span>Admin Console &amp; Vault</span>
                       </NavLink>
                     )}
@@ -1504,17 +1687,17 @@ export default function Layout({ children }) {
                           toggleAdminReveal();
                           setUserDropdown(false);
                         }}
-                        className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs text-[#7188A3] hover:text-[#526B87] hover:bg-[#F4F9FF] font-medium transition"
+                        className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs text-[#7C7F8A] hover:text-[#111318] hover:bg-white font-medium transition"
                       >
                         <span className="flex items-center gap-2.5">
                           {adminRevealed ? (
-                            <Unlock size={14} className="text-amber-600" />
+                            <Unlock size={14} className="text-[#5BF07B]" />
                           ) : (
-                            <Lock size={14} className="text-[#8AAED8]" />
+                            <Lock size={14} className="text-[#7C7F8A]" />
                           )}
                           <span>{adminRevealed ? "Vault Unmasked" : "Secure Masked"}</span>
                         </span>
-                        <span className="text-[10px] text-[#94A8BE] font-mono">Toggle</span>
+                        <span className="text-[10px] text-[#A9ABB5] font-mono">Toggle</span>
                       </button>
                     )}
 
@@ -1527,15 +1710,15 @@ export default function Layout({ children }) {
                           setUserDropdown(false);
                         }}
                         disabled={headerPunching || Boolean(headerAttendance?.checkIn && headerAttendance?.checkOut)}
-                        className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs text-[#7188A3] hover:text-[#526B87] hover:bg-[#F4F9FF] font-medium transition"
+                        className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs text-[#7C7F8A] hover:text-[#111318] hover:bg-white font-medium transition"
                       >
                         <span className="flex items-center gap-2.5">
                           <span className={`w-2 h-2 rounded-full ${
                             headerAttendance?.checkIn && !headerAttendance?.checkOut
-                              ? "bg-emerald-500 animate-pulse"
+                              ? "bg-[#5BF07B] animate-pulse"
                               : headerAttendance?.checkIn && headerAttendance?.checkOut
                               ? "bg-slate-400"
-                              : "bg-[#2563EB]"
+                              : "bg-[#111318]"
                           }`} />
                           <span>
                             {headerPunching
@@ -1550,14 +1733,14 @@ export default function Layout({ children }) {
                       </button>
                     )}
 
-                    <div className="border-t border-[#EDF3FA] my-1" />
+                    <div className="border-t border-[#E7E8EC] my-1" />
 
                     <button
                       onClick={() => {
                         setUserDropdown(false);
                         handleLogout();
                       }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-rose-600 hover:bg-[#FFF0F2] font-semibold transition"
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-[#E5484D] hover:bg-[#FBD3D3]/40 font-semibold transition"
                     >
                       <LogOut size={14} />
                       <span>Log Out</span>
@@ -1570,18 +1753,18 @@ export default function Layout({ children }) {
         </header>
 
         {/* ── Main Content Canvas with Independent Vertical Scroll ── */}
-        <main key={storeRevision} className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8 bg-[#F7FBFF]">
+        <main key={storeRevision} className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8 bg-[#E3E3E5]">
           <div className="max-w-[1600px] w-full mx-auto pb-8">
             {children}
           </div>
         </main>
 
         {/* ── Fixed Clean Footer ── */}
-        <footer className="h-10 shrink-0 bg-white border-t border-[#E3EDF8] border-l-4 border-l-[#8AAED8] px-4 sm:px-6 flex items-center z-10">
+        <footer className="h-10 shrink-0 bg-[#EDEDEF] border-t border-[#D8D9DE] px-4 sm:px-6 flex items-center z-10">
           <div className="flex items-center gap-2.5 sm:gap-3 text-xs">
-            <span className="font-bold text-[#526B87] tracking-tight">Garden Greens</span>
-            <span className="h-3.5 w-px bg-[#EDF3FA]" aria-hidden="true" />
-            <span className="text-[#94A8BE] font-normal">© 2026 All rights reserved.</span>
+            <span className="font-bold text-[#111318] tracking-tight">Garden Greens</span>
+            <span className="h-3.5 w-px bg-[#D8D9DE]" aria-hidden="true" />
+            <span className="text-[#7C7F8A] font-normal">© 2026 BILZET. All rights reserved.</span>
           </div>
         </footer>
       </div>

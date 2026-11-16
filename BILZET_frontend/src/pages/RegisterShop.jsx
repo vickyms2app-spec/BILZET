@@ -447,15 +447,15 @@ export default function RegisterShop() {
           <div className="w-14 h-14 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 mx-auto flex items-center justify-center mb-4">
             <ShieldAlert size={28} />
           </div>
-          <h2 className="text-xl font-bold text-slate-900">Store Registration Restricted</h2>
-          <p className="text-sm text-slate-600 mt-2 leading-relaxed">
-            Your account is assigned the <strong className="text-slate-900 font-semibold">{user?.role}</strong> role.
+          <h2 className="text-xl font-bold text-[#111318] font-heading">Store Registration Restricted</h2>
+          <p className="text-sm text-[#7C7F8A] mt-2 leading-relaxed">
+            Your account is assigned the <strong className="text-[#111318] font-semibold">{user?.role}</strong> role.
             Staff members and Chartered Accountants are not authorized to create independent stores.
           </p>
           <div className="mt-6">
             <button
               onClick={() => navigate(getWorkspaceRedirectPath(user), { replace: true })}
-              className="w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs transition shadow-sm cursor-pointer"
+              className="w-full py-2.5 px-4 rounded-full bg-[#12151C] hover:bg-[#202530] text-white font-semibold text-xs transition shadow-fintech cursor-pointer"
             >
               Return to Your Assigned Workspace
             </button>
@@ -468,19 +468,19 @@ export default function RegisterShop() {
   // Success Confirmation Screen
   if (registrationSuccess) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="max-w-lg w-full bg-white border border-slate-200 rounded-3xl p-8 sm:p-10 shadow-xl text-center space-y-4 animate-in fade-in zoom-in-95 duration-200">
-          <div className="w-16 h-16 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-600 mx-auto flex items-center justify-center shadow-xs">
-            <CheckCircle2 size={36} />
+      <div className="min-h-screen bg-[#E3E3E5] flex items-center justify-center p-4 selection:bg-[#5BF07B] selection:text-[#0E2A16]">
+        <div className="max-w-lg w-full bg-[#F6F6F8] border border-[#E7E8EC] rounded-[28px] p-8 sm:p-10 shadow-fintech text-center space-y-4 animate-in fade-in zoom-in-95 duration-200">
+          <div className="w-16 h-16 rounded-full bg-[#DFFFE6] border border-[#5BF07B]/40 text-[#0E2A16] mx-auto flex items-center justify-center shadow-xs">
+            <CheckCircle2 size={36} className="text-[#0E2A16]" />
           </div>
-          <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+          <h2 className="text-2xl font-bold text-[#111318] tracking-tight font-heading">
             Store Registration Completed!
           </h2>
-          <p className="text-sm text-slate-600 leading-relaxed max-w-sm mx-auto">
-            Your store <strong className="text-slate-900">{registeredStoreData?.name || formData.shopName}</strong> has been configured with billing, inventory, and GST management.
+          <p className="text-sm text-[#7C7F8A] leading-relaxed max-w-sm mx-auto">
+            Your store <strong className="text-[#111318]">{registeredStoreData?.name || formData.shopName}</strong> has been configured with billing, inventory, and GST management.
           </p>
-          <div className="pt-4 flex items-center justify-center gap-2 text-xs font-semibold text-blue-600">
-            <Loader2 size={16} className="animate-spin" />
+          <div className="pt-4 flex items-center justify-center gap-2 text-xs font-semibold text-[#111318]">
+            <Loader2 size={16} className="animate-spin text-[#5BF07B]" />
             <span>Redirecting to your Admin Console…</span>
           </div>
         </div>
@@ -494,20 +494,20 @@ export default function RegisterShop() {
     INDIAN_STATES.find((s) => s.name === formData.state)?.label || `${formData.stateCode} - ${formData.state}`;
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col justify-between selection:bg-blue-100 selection:text-blue-900">
+    <div className="min-h-screen bg-[#E3E3E5] text-[#111318] flex flex-col justify-between selection:bg-[#5BF07B] selection:text-[#0E2A16] font-sans">
       {/* ── 1. CLEAN HEADER ───────────────────────────────── */}
-      <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/80 sticky top-0 z-30">
+      <header className="bg-[#EDEDEF] border-b border-[#D8D9DE] sticky top-0 z-30">
         <div className="max-w-6xl w-full mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Logo theme="light" size="sm" />
-            <span className="hidden sm:inline-block text-xs font-medium text-slate-400 pl-3 border-l border-slate-200">
+            <span className="hidden sm:inline-block text-xs font-medium text-[#7C7F8A] pl-3 border-l border-[#D8D9DE]">
               Store Owner Onboarding
             </span>
           </div>
 
           <Link
             to="/onboarding"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 hover:bg-slate-50 transition shadow-2xs cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold text-[#111318] bg-[#F6F6F8] border border-[#E7E8EC] hover:bg-[#EDEDEF] transition shadow-xs cursor-pointer"
           >
             <ChevronLeft size={14} />
             <span>Back to Onboarding</span>
@@ -517,22 +517,22 @@ export default function RegisterShop() {
 
       {/* ── 2. MAIN TWO-COLUMN CONTAINER ──────────────────── */}
       <main className="max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-10 flex-1 flex flex-col justify-center">
-        <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xl overflow-hidden flex flex-col lg:flex-row">
-          {/* ── LEFT PROMOTIONAL PANEL (Desktop) ─────────────── */}
-          <div className="hidden lg:flex lg:w-5/12 flex-col justify-between p-8 xl:p-10 bg-gradient-to-br from-blue-50/70 via-indigo-50/40 to-slate-50 border-r border-slate-200/80">
+        <div className="bg-[#F6F6F8] rounded-[28px] border border-[#E7E8EC] shadow-fintech overflow-hidden flex flex-col lg:flex-row">
+          {/* ── LEFT PROMOTIONAL PANEL (Keel Dark Contrast Bento Panel) ─────────────── */}
+          <div className="hidden lg:flex lg:w-5/12 flex-col justify-between p-8 xl:p-10 bg-[#12151C] text-white border-r border-[#202530]">
             <div className="space-y-7">
               {/* Badge */}
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100/80 border border-blue-200 text-blue-700 text-xs font-semibold">
-                <Sparkles size={13} className="text-blue-600" />
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 border border-white/15 text-[#5BF07B] text-xs font-semibold">
+                <Sparkles size={13} className="text-[#5BF07B]" />
                 <span>Store Owner Onboarding</span>
               </div>
 
               {/* Headline & Supporting Text */}
               <div>
-                <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight leading-tight">
+                <h1 className="text-3xl font-extrabold text-white tracking-tight leading-tight font-heading">
                   Your Business, Simplified.
                 </h1>
-                <p className="mt-2.5 text-sm text-slate-600 leading-relaxed">
+                <p className="mt-2.5 text-sm text-[#A9ABB5] leading-relaxed">
                   Set up your store to manage billing, inventory, GST and business operations with BILZET.
                 </p>
               </div>
@@ -540,31 +540,31 @@ export default function RegisterShop() {
               {/* Three Compact Benefits */}
               <div className="space-y-4 pt-1">
                 <div className="flex items-start gap-3.5">
-                  <div className="w-9 h-9 rounded-xl bg-blue-600/10 text-blue-700 flex items-center justify-center shrink-0 border border-blue-200/60 shadow-2xs">
+                  <div className="w-10 h-10 rounded-2xl bg-white/10 text-[#5BF07B] flex items-center justify-center shrink-0 border border-white/15 shadow-2xs">
                     <Receipt size={18} />
                   </div>
                   <div>
-                    <h2 className="text-xs font-bold text-slate-900">Smart Billing &amp; Invoicing</h2>
-                    <p className="text-[12px] text-slate-500 mt-0.5 leading-snug">
+                    <h2 className="text-xs font-bold text-white">Smart Billing &amp; Invoicing</h2>
+                    <p className="text-[12px] text-[#A9ABB5] mt-0.5 leading-snug">
                       Fast POS counter billing, GST tax invoices, thermal printing, and digital WhatsApp sharing.
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-start gap-3.5">
-                  <div className="w-9 h-9 rounded-xl bg-blue-600/10 text-blue-700 flex items-center justify-center shrink-0 border border-blue-200/60 shadow-2xs">
+                  <div className="w-10 h-10 rounded-2xl bg-white/10 text-[#5BF07B] flex items-center justify-center shrink-0 border border-white/15 shadow-2xs">
                     <Package size={18} />
                   </div>
                   <div>
-                    <h2 className="text-xs font-bold text-slate-900">Inventory Management</h2>
-                    <p className="text-[12px] text-slate-500 mt-0.5 leading-snug">
+                    <h2 className="text-xs font-bold text-white">Inventory Management</h2>
+                    <p className="text-[12px] text-[#A9ABB5] mt-0.5 leading-snug">
                       Real-time stock tracking, low stock notifications, barcode scanning, and multi-category control.
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-start gap-3.5">
-                  <div className="w-9 h-9 rounded-xl bg-blue-600/10 text-blue-700 flex items-center justify-center shrink-0 border border-blue-200/60 shadow-2xs">
+                  <div className="w-10 h-10 rounded-2xl bg-white/10 text-[#5BF07B] flex items-center justify-center shrink-0 border border-white/15 shadow-2xs">
                     <BarChart3 size={18} />
                   </div>
                   <div>
@@ -627,34 +627,34 @@ export default function RegisterShop() {
                     <div
                       className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-200 ${
                         completedSteps.has(1) && currentStep !== 1
-                          ? "bg-blue-600 text-white shadow-xs"
+                          ? "bg-[#12151C] text-[#5BF07B] shadow-xs"
                           : currentStep === 1
-                          ? "bg-blue-600 text-white ring-4 ring-blue-100 shadow-xs"
-                          : "bg-slate-100 border border-slate-200 text-slate-400"
+                          ? "bg-[#12151C] text-[#5BF07B] ring-4 ring-[#12151C]/15 shadow-xs"
+                          : "bg-[#FAFAFB] border border-[#E7E8EC] text-[#7C7F8A]"
                       }`}
                     >
-                      {completedSteps.has(1) && currentStep !== 1 ? <Check size={13} strokeWidth={3} /> : "1"}
+                      {completedSteps.has(1) && currentStep !== 1 ? <Check size={13} strokeWidth={3} className="text-[#5BF07B]" /> : "1"}
                     </div>
                     <div className="hidden sm:block">
                       <p
                         className={`text-xs font-bold leading-none ${
                           currentStep === 1
-                            ? "text-blue-600"
+                            ? "text-[#111318]"
                             : completedSteps.has(1)
-                            ? "text-slate-900"
-                            : "text-slate-400"
+                            ? "text-[#111318]"
+                            : "text-[#7C7F8A]"
                         }`}
                       >
                         Shop Details
                       </p>
-                      <span className="text-[10px] text-slate-400">Step 1</span>
+                      <span className="text-[10px] text-[#7C7F8A]">Step 1</span>
                     </div>
                   </div>
 
                   {/* Connecting Line 1 */}
                   <div
                     className={`flex-1 h-0.5 mx-3 sm:mx-4 transition-colors duration-300 ${
-                      completedSteps.has(1) ? "bg-blue-600" : "bg-slate-200"
+                      completedSteps.has(1) ? "bg-[#12151C]" : "bg-[#E7E8EC]"
                     }`}
                   />
 
@@ -670,34 +670,34 @@ export default function RegisterShop() {
                     <div
                       className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-200 ${
                         completedSteps.has(2) && currentStep !== 2
-                          ? "bg-blue-600 text-white shadow-xs"
+                          ? "bg-[#12151C] text-[#5BF07B] shadow-xs"
                           : currentStep === 2
-                          ? "bg-blue-600 text-white ring-4 ring-blue-100 shadow-xs"
-                          : "bg-slate-100 border border-slate-200 text-slate-400"
+                          ? "bg-[#12151C] text-[#5BF07B] ring-4 ring-[#12151C]/15 shadow-xs"
+                          : "bg-[#FAFAFB] border border-[#E7E8EC] text-[#7C7F8A]"
                       }`}
                     >
-                      {completedSteps.has(2) && currentStep !== 2 ? <Check size={13} strokeWidth={3} /> : "2"}
+                      {completedSteps.has(2) && currentStep !== 2 ? <Check size={13} strokeWidth={3} className="text-[#5BF07B]" /> : "2"}
                     </div>
                     <div className="hidden sm:block">
                       <p
                         className={`text-xs font-bold leading-none ${
                           currentStep === 2
-                            ? "text-blue-600"
+                            ? "text-[#111318]"
                             : completedSteps.has(2)
-                            ? "text-slate-900"
-                            : "text-slate-400"
+                            ? "text-[#111318]"
+                            : "text-[#7C7F8A]"
                         }`}
                       >
                         Business Info
                       </p>
-                      <span className="text-[10px] text-slate-400">Step 2</span>
+                      <span className="text-[10px] text-[#7C7F8A]">Step 2</span>
                     </div>
                   </div>
 
                   {/* Connecting Line 2 */}
                   <div
                     className={`flex-1 h-0.5 mx-3 sm:mx-4 transition-colors duration-300 ${
-                      completedSteps.has(2) ? "bg-blue-600" : "bg-slate-200"
+                      completedSteps.has(2) ? "bg-[#12151C]" : "bg-[#E7E8EC]"
                     }`}
                   />
 
@@ -706,23 +706,23 @@ export default function RegisterShop() {
                     <div
                       className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-200 ${
                         completedSteps.has(3)
-                          ? "bg-blue-600 text-white shadow-xs"
+                          ? "bg-[#12151C] text-[#5BF07B] shadow-xs"
                           : currentStep === 3
-                          ? "bg-blue-600 text-white ring-4 ring-blue-100 shadow-xs"
-                          : "bg-slate-100 border border-slate-200 text-slate-400"
+                          ? "bg-[#12151C] text-[#5BF07B] ring-4 ring-[#12151C]/15 shadow-xs"
+                          : "bg-[#FAFAFB] border border-[#E7E8EC] text-[#7C7F8A]"
                       }`}
                     >
-                      {completedSteps.has(3) ? <Check size={13} strokeWidth={3} /> : "3"}
+                      {completedSteps.has(3) ? <Check size={13} strokeWidth={3} className="text-[#5BF07B]" /> : "3"}
                     </div>
                     <div className="hidden sm:block">
                       <p
                         className={`text-xs font-bold leading-none ${
-                          currentStep === 3 ? "text-blue-600" : "text-slate-400"
+                          currentStep === 3 ? "text-[#111318]" : "text-[#7C7F8A]"
                         }`}
                       >
                         Review
                       </p>
-                      <span className="text-[10px] text-slate-400">Step 3</span>
+                      <span className="text-[10px] text-[#7C7F8A]">Step 3</span>
                     </div>
                   </div>
                 </div>
@@ -902,10 +902,10 @@ export default function RegisterShop() {
                   <div className="pt-4 flex items-center justify-end">
                     <button
                       type="submit"
-                      className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs transition flex items-center justify-center gap-2 shadow-xs cursor-pointer active:scale-95"
+                      className="w-full sm:w-auto px-6 py-2.5 rounded-full bg-[#12151C] hover:bg-[#202530] text-white font-semibold text-xs transition flex items-center justify-center gap-2 shadow-fintech cursor-pointer active:scale-95"
                     >
                       <span>Continue to Business Information</span>
-                      <ArrowRight size={14} />
+                      <ArrowRight size={14} className="text-[#5BF07B]" />
                     </button>
                   </div>
                 </form>
@@ -1100,21 +1100,21 @@ export default function RegisterShop() {
                   </div>
 
                   {/* Actions: Back & Continue */}
-                  <div className="pt-4 flex items-center justify-between gap-3 border-t border-slate-100">
+                  <div className="pt-4 flex items-center justify-between gap-3 border-t border-[#E7E8EC]">
                     <button
                       type="button"
                       onClick={() => handleGoBack(1)}
-                      className="px-4 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold text-xs transition flex items-center gap-1.5 cursor-pointer"
+                      className="px-4 py-2.5 rounded-full border border-[#E7E8EC] bg-[#FAFAFB] hover:bg-[#EDEDEF] text-[#111318] font-semibold text-xs transition flex items-center gap-1.5 cursor-pointer"
                     >
                       <ChevronLeft size={14} />
                       <span>Back to Shop Details</span>
                     </button>
                     <button
                       type="submit"
-                      className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs transition flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
+                      className="px-6 py-2.5 rounded-full bg-[#12151C] hover:bg-[#202530] text-white font-semibold text-xs transition flex items-center gap-1.5 shadow-fintech cursor-pointer active:scale-95"
                     >
                       <span>Continue to Review</span>
-                      <ArrowRight size={14} />
+                      <ArrowRight size={14} className="text-[#5BF07B]" />
                     </button>
                   </div>
                 </form>
@@ -1289,7 +1289,7 @@ export default function RegisterShop() {
                       type="button"
                       disabled={loading}
                       onClick={() => handleGoBack(2)}
-                      className="px-4 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold text-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      className="px-4 py-2.5 rounded-full border border-[#E7E8EC] bg-[#FAFAFB] hover:bg-[#EDEDEF] text-[#111318] font-semibold text-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                     >
                       <ChevronLeft size={14} />
                       <span>Back to Business Info</span>
@@ -1297,11 +1297,11 @@ export default function RegisterShop() {
                     <button
                       type="submit"
                       disabled={loading}
-                      className="px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition flex items-center justify-center gap-2 shadow-sm cursor-pointer disabled:opacity-60 active:scale-95"
+                      className="px-7 py-3 rounded-full bg-[#5BF07B] hover:bg-[#4de66e] text-[#0E2A16] font-bold text-xs transition flex items-center justify-center gap-2 shadow-fintech cursor-pointer disabled:opacity-60 active:scale-95"
                     >
                       {loading ? (
                         <>
-                          <Loader2 size={16} className="animate-spin" />
+                          <Loader2 size={16} className="animate-spin text-[#0E2A16]" />
                           <span>Creating Your Store…</span>
                         </>
                       ) : (

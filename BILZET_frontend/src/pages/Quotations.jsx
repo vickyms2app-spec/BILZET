@@ -565,20 +565,20 @@ export default function Quotations() {
       )}
 
       {/* Top Banner / Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#F6F6F8] p-5 sm:p-6 rounded-[28px] border border-[#E7E8EC] shadow-fintech">
         <div>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
-              <FileCheck className="w-5 h-5 text-blue-600" />
+            <div className="w-11 h-11 rounded-2xl bg-[#12151C] text-[#5BF07B] border border-[#202530] flex items-center justify-center font-bold shadow-2xs">
+              <FileCheck className="w-5 h-5 text-[#5BF07B]" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold text-slate-900">Quotations & Estimates</h1>
-                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-600 border border-blue-200">
+                <h1 className="text-xl font-bold text-[#111318] font-heading">Quotations & Estimates</h1>
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#FAFAFB] text-[#111318] border border-[#E7E8EC]">
                   {quotations.length} Active
                 </span>
               </div>
-              <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+              <p className="text-xs sm:text-sm text-[#7C7F8A] mt-0.5">
                 Generate professional proposals, manage client approvals, and seamlessly convert accepted quotes into tax invoices.
               </p>
             </div>
@@ -589,17 +589,17 @@ export default function Quotations() {
           <button
             onClick={() => loadData(false)}
             disabled={refreshing}
-            className="p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition-colors shadow-sm"
+            className="p-2.5 rounded-full border border-[#E7E8EC] bg-white hover:bg-[#EDEDEF] text-[#111318] transition-colors shadow-xs"
             title="Refresh Quotations"
           >
-            <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin text-blue-600" : ""}`} />
+            <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin text-[#111318]" : ""}`} />
           </button>
 
           <button
             onClick={handleOpenNew}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm shadow-sm transition-all hover:shadow"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#12151C] hover:bg-[#202530] text-white font-semibold text-xs sm:text-sm shadow-fintech transition-all"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-4 h-4 text-[#5BF07B]" />
             <span>New Quotation</span>
           </button>
         </div>
@@ -657,21 +657,21 @@ export default function Quotations() {
           </div>
         ) : filteredQuotations.length === 0 ? (
           <div className="p-16 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 rounded-2xl bg-[#EDEDEF] text-[#111318] border border-[#D8D9DE] flex items-center justify-center mx-auto mb-4">
               <FileCheck className="w-8 h-8" />
             </div>
-            <h3 className="text-base font-semibold text-slate-800">No Quotations Found</h3>
-            <p className="text-sm text-slate-500 max-w-md mx-auto mt-1 mb-5">
+            <h3 className="text-base font-semibold text-[#111318]">No Quotations Found</h3>
+            <p className="text-sm text-[#7C7F8A] max-w-md mx-auto mt-1 mb-5">
               {search || statusFilter !== "ALL"
                 ? "No quotations match your current search or status filter."
                 : "Create your first professional quotation to send to prospective clients and convert to sales."}
             </p>
             <button
               onClick={handleOpenNew}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium shadow transition-all"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#12151C] hover:bg-[#202530] text-white text-sm font-semibold shadow-fintech transition-all"
             >
-              <Plus className="w-4 h-4" />
-              Create Quotation
+              <Plus className="w-4 h-4 text-[#5BF07B]" />
+              <span>Create Quotation</span>
             </button>
           </div>
         ) : (
@@ -707,11 +707,11 @@ export default function Quotations() {
                       {/* Quotation # */}
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs shrink-0">
+                          <div className="w-8 h-8 rounded-lg bg-[#EDEDEF] text-[#111318] border border-[#D8D9DE] flex items-center justify-center font-bold text-xs shrink-0">
                             QT
                           </div>
                           <div>
-                            <span className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
+                            <span className="font-bold text-[#111318] hover:underline transition-colors">
                               {quote.quotationNumber || quote.number}
                             </span>
                             <div className="text-[10px] text-slate-400">
@@ -1383,14 +1383,14 @@ export default function Quotations() {
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-medium text-xs sm:text-sm"
+                  className="px-4 py-2.5 rounded-full border border-[#E7E8EC] text-[#111318] hover:bg-[#EDEDEF] font-semibold text-xs sm:text-sm"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs sm:text-sm shadow-sm transition-all"
+                  className="px-6 py-2.5 rounded-full bg-[#12151C] hover:bg-[#202530] text-white font-semibold text-xs sm:text-sm shadow-fintech transition-all cursor-pointer"
                 >
                   {submitting ? "Saving..." : editingId ? "Update Quotation" : "Save Quotation"}
                 </button>

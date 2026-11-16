@@ -2456,14 +2456,14 @@ export default function Settings({ defaultTab: initialTab }) {
             </div>
 
             {/* Subsection 5.3: Refer & Earn Partner Program */}
-            <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/80 p-4 sm:p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="bg-[#F6F6F8] border border-[#E7E8EC] p-5 sm:p-6 rounded-[28px] flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-fintech">
               <div className="flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 shadow-2xs">
-                  <Star size={20} />
+                <div className="w-10 h-10 rounded-full bg-[#12151C] text-[#5BF07B] flex items-center justify-center shrink-0 shadow-xs">
+                  <Star size={18} />
                 </div>
                 <div>
-                  <h3 className="text-xs font-bold text-slate-900">Refer &amp; Earn Merchant Rewards</h3>
-                  <p className="text-[11px] text-slate-600 mt-0.5">
+                  <h3 className="text-xs font-bold text-[#111318] font-heading">Refer &amp; Earn Merchant Rewards</h3>
+                  <p className="text-[11px] text-[#7C7F8A] mt-0.5 font-medium">
                     Invite fellow retail merchants to BILZET. They get 10% off their subscription, and you get 1 bonus month of Pro ERP.
                   </p>
                 </div>
@@ -2471,10 +2471,10 @@ export default function Settings({ defaultTab: initialTab }) {
               <button
                 type="button"
                 onClick={() => navigate("/referral")}
-                className="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shrink-0 transition-colors shadow-2xs cursor-pointer flex items-center justify-center gap-1.5 self-start sm:self-center"
+                className="px-5 py-2.5 rounded-full bg-[#12151C] hover:bg-[#202530] text-white text-xs font-bold shrink-0 transition-colors shadow-xs cursor-pointer flex items-center justify-center gap-2 self-start sm:self-center"
               >
                 <span>View Refer &amp; Earn</span>
-                <ArrowRight size={13} />
+                <ArrowRight size={13} className="text-[#5BF07B]" />
               </button>
             </div>
 

@@ -125,7 +125,7 @@ export default function Login({ initialMode = "login" }) {
     return () => {
       try {
         document.body.removeChild(script);
-      } catch (_) {}
+      } catch (_) { }
     };
   }, [googleLogin, nav]);
 

@@ -198,15 +198,15 @@ export default function DateNavigator({
       className={`bg-white rounded-2xl border border-slate-200/90 p-3 sm:p-4 shadow-2xs space-y-3 ${className}`}
     >
       {/* ── Top View Mode Pills & Preset Triggers ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2.5 border-b border-slate-100">
-        <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl text-xs font-semibold text-slate-600">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2.5 border-b border-[#E7E8EC]">
+        <div className="flex items-center gap-1 p-1 bg-white border border-[#E7E8EC] rounded-full text-xs font-semibold text-[#7C7F8A]">
           <button
             type="button"
             onClick={() => setViewMode("day")}
-            className={`px-3 py-1.5 rounded-lg transition ${
+            className={`px-3 py-1.5 rounded-full transition ${
               viewMode === "day"
-                ? "bg-white text-blue-600 shadow-2xs"
-                : "text-slate-500 hover:text-slate-800"
+                ? "bg-[#12151C] text-white shadow-xs"
+                : "text-[#7C7F8A] hover:text-[#111318]"
             }`}
           >
             Day View
@@ -214,10 +214,10 @@ export default function DateNavigator({
           <button
             type="button"
             onClick={() => setViewMode("month")}
-            className={`px-3 py-1.5 rounded-lg transition ${
+            className={`px-3 py-1.5 rounded-full transition ${
               viewMode === "month"
-                ? "bg-white text-blue-600 shadow-2xs"
-                : "text-slate-500 hover:text-slate-800"
+                ? "bg-[#12151C] text-white shadow-xs"
+                : "text-[#7C7F8A] hover:text-[#111318]"
             }`}
           >
             Month View
@@ -225,10 +225,10 @@ export default function DateNavigator({
           <button
             type="button"
             onClick={() => setViewMode("year")}
-            className={`px-3 py-1.5 rounded-lg transition ${
+            className={`px-3 py-1.5 rounded-full transition ${
               viewMode === "year"
-                ? "bg-white text-blue-600 shadow-2xs"
-                : "text-slate-500 hover:text-slate-800"
+                ? "bg-[#12151C] text-white shadow-xs"
+                : "text-[#7C7F8A] hover:text-[#111318]"
             }`}
           >
             Year View
@@ -236,10 +236,10 @@ export default function DateNavigator({
           <button
             type="button"
             onClick={() => setViewMode("range")}
-            className={`px-3 py-1.5 rounded-lg transition ${
+            className={`px-3 py-1.5 rounded-full transition ${
               viewMode === "range"
-                ? "bg-white text-blue-600 shadow-2xs"
-                : "text-slate-500 hover:text-slate-800"
+                ? "bg-[#12151C] text-white shadow-xs"
+                : "text-[#7C7F8A] hover:text-[#111318]"
             }`}
           >
             Custom Range
@@ -247,40 +247,40 @@ export default function DateNavigator({
         </div>
 
         {showPresets && (
-          <div className="flex items-center gap-1.5 overflow-x-auto text-[11px] font-semibold text-slate-500">
-            <span className="text-slate-400 mr-1 hidden sm:inline">Presets:</span>
+          <div className="flex items-center gap-1.5 overflow-x-auto text-[11px] font-semibold text-[#7C7F8A]">
+            <span className="text-[#A9ABB5] mr-1 hidden sm:inline">Presets:</span>
             <button
               type="button"
               onClick={() => applyPreset("today")}
-              className="px-2 py-1 rounded-md bg-slate-50 hover:bg-blue-50 hover:text-blue-600 border border-slate-200 transition"
+              className="px-2.5 py-1 rounded-full bg-white hover:bg-[#F6F6F8] text-[#111318] border border-[#E7E8EC] transition"
             >
               Today
             </button>
             <button
               type="button"
               onClick={() => applyPreset("yesterday")}
-              className="px-2 py-1 rounded-md bg-slate-50 hover:bg-blue-50 hover:text-blue-600 border border-slate-200 transition"
+              className="px-2.5 py-1 rounded-full bg-white hover:bg-[#F6F6F8] text-[#111318] border border-[#E7E8EC] transition"
             >
               Yesterday
             </button>
             <button
               type="button"
               onClick={() => applyPreset("thisWeek")}
-              className="px-2 py-1 rounded-md bg-slate-50 hover:bg-blue-50 hover:text-blue-600 border border-slate-200 transition"
+              className="px-2.5 py-1 rounded-full bg-white hover:bg-[#F6F6F8] text-[#111318] border border-[#E7E8EC] transition"
             >
               This Week
             </button>
             <button
               type="button"
               onClick={() => applyPreset("thisMonth")}
-              className="px-2 py-1 rounded-md bg-slate-50 hover:bg-blue-50 hover:text-blue-600 border border-slate-200 transition"
+              className="px-2.5 py-1 rounded-full bg-white hover:bg-[#F6F6F8] text-[#111318] border border-[#E7E8EC] transition"
             >
               This Month
             </button>
             <button
               type="button"
               onClick={() => applyPreset("thisYear")}
-              className="px-2 py-1 rounded-md bg-slate-50 hover:bg-blue-50 hover:text-blue-600 border border-slate-200 transition"
+              className="px-2.5 py-1 rounded-full bg-white hover:bg-[#F6F6F8] text-[#111318] border border-[#E7E8EC] transition"
             >
               This Year
             </button>
@@ -295,15 +295,15 @@ export default function DateNavigator({
             <button
               type="button"
               onClick={handlePrevDay}
-              className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 hover:text-slate-900 transition"
+              className="w-8 h-8 rounded-full border border-[#E7E8EC] bg-white hover:bg-[#F6F6F8] text-[#111318] flex items-center justify-center transition"
               title="Previous Day"
             >
               <ChevronLeft size={16} />
             </button>
 
-            <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl border border-blue-100 bg-blue-50/50">
-              <CalendarIcon size={16} className="text-blue-600 shrink-0" />
-              <span className="font-bold text-slate-800 text-xs sm:text-sm tracking-tight">
+            <div className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-full border border-[#E7E8EC] bg-white shadow-xs">
+              <CalendarIcon size={15} className="text-[#111318] shrink-0" />
+              <span className="font-bold text-[#111318] text-xs sm:text-sm tracking-tight">
                 {formatDayLabel(currentDate)}
               </span>
             </div>
@@ -311,7 +311,7 @@ export default function DateNavigator({
             <button
               type="button"
               onClick={handleNextDay}
-              className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 hover:text-slate-900 transition"
+              className="w-8 h-8 rounded-full border border-[#E7E8EC] bg-white hover:bg-[#F6F6F8] text-[#111318] flex items-center justify-center transition"
               title="Next Day"
             >
               <ChevronRight size={16} />
@@ -320,7 +320,7 @@ export default function DateNavigator({
             <button
               type="button"
               onClick={handleGoToday}
-              className="ml-1 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1"
+              className="ml-1 text-xs font-semibold text-[#111318] hover:underline flex items-center gap-1"
             >
               <RotateCcw size={12} />
               <span>Today</span>
@@ -328,14 +328,14 @@ export default function DateNavigator({
           </div>
 
           <div className="flex items-center gap-2 w-full sm:w-auto">
-            <label className="text-xs text-slate-400 whitespace-nowrap">Pick date:</label>
+            <label className="text-xs text-[#7C7F8A] whitespace-nowrap">Pick date:</label>
             <input
               type="date"
               value={currentDate.toISOString().split("T")[0]}
               onChange={(e) => {
                 if (e.target.value) setCurrentDate(new Date(e.target.value));
               }}
-              className="w-full sm:w-auto px-2.5 py-1.5 text-xs rounded-xl border border-slate-200 bg-white outline-none focus:border-blue-500 font-mono"
+              className="w-full sm:w-auto px-3 py-1.5 text-xs rounded-full border border-[#E7E8EC] bg-white outline-none focus:border-[#111318] text-[#111318] font-mono shadow-xs"
             />
           </div>
         </div>
@@ -347,7 +347,7 @@ export default function DateNavigator({
             <button
               type="button"
               onClick={handlePrevMonth}
-              className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 hover:text-slate-900 transition"
+              className="w-8 h-8 rounded-full border border-[#E7E8EC] bg-white hover:bg-[#F6F6F8] text-[#111318] flex items-center justify-center transition"
               title="Previous Month"
             >
               <ChevronLeft size={16} />
@@ -357,7 +357,7 @@ export default function DateNavigator({
               <select
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                className="px-3 py-1.5 text-xs sm:text-sm font-bold border border-slate-200 rounded-xl bg-white outline-none focus:border-blue-500 cursor-pointer"
+                className="px-3 py-1.5 text-xs sm:text-sm font-bold border border-[#E7E8EC] rounded-full bg-white outline-none focus:border-[#111318] cursor-pointer text-[#111318] shadow-xs"
               >
                 {MONTH_NAMES.map((m, idx) => (
                   <option key={m} value={idx}>
@@ -369,7 +369,7 @@ export default function DateNavigator({
               <select
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(Number(e.target.value))}
-                className="px-3 py-1.5 text-xs sm:text-sm font-bold border border-slate-200 rounded-xl bg-white outline-none focus:border-blue-500 cursor-pointer"
+                className="px-3 py-1.5 text-xs sm:text-sm font-bold border border-[#E7E8EC] rounded-full bg-white outline-none focus:border-[#111318] cursor-pointer text-[#111318] shadow-xs"
               >
                 {yearsList.map((y) => (
                   <option key={y} value={y}>
@@ -382,16 +382,16 @@ export default function DateNavigator({
             <button
               type="button"
               onClick={handleNextMonth}
-              className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 hover:text-slate-900 transition"
+              className="w-8 h-8 rounded-full border border-[#E7E8EC] bg-white hover:bg-[#F6F6F8] text-[#111318] flex items-center justify-center transition"
               title="Next Month"
             >
               <ChevronRight size={16} />
             </button>
           </div>
 
-          <span className="text-xs text-slate-500 bg-slate-50 px-3 py-1 rounded-xl border border-slate-200/60">
+          <span className="text-xs text-[#7C7F8A] bg-white px-3 py-1 rounded-full border border-[#E7E8EC] shadow-xs">
             Total Days:{" "}
-            <strong className="text-slate-800">
+            <strong className="text-[#111318]">
               {getDaysInMonth(selectedYear, selectedMonth)} days
             </strong>
           </span>
@@ -404,7 +404,7 @@ export default function DateNavigator({
             <button
               type="button"
               onClick={handlePrevYear}
-              className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 hover:text-slate-900 transition"
+              className="w-8 h-8 rounded-full border border-[#E7E8EC] bg-white hover:bg-[#F6F6F8] text-[#111318] flex items-center justify-center transition"
               title="Previous Year"
             >
               <ChevronLeft size={16} />
@@ -413,7 +413,7 @@ export default function DateNavigator({
             <select
               value={selectedYear}
               onChange={(e) => setSelectedYear(Number(e.target.value))}
-              className="px-4 py-1.5 text-sm font-bold border border-blue-200 bg-blue-50/50 text-blue-900 rounded-xl outline-none focus:border-blue-500 cursor-pointer"
+              className="px-4 py-1.5 text-sm font-bold border border-[#E7E8EC] bg-white text-[#111318] rounded-full outline-none focus:border-[#111318] cursor-pointer shadow-xs"
             >
               {yearsList.map((y) => (
                 <option key={y} value={y}>
@@ -425,40 +425,40 @@ export default function DateNavigator({
             <button
               type="button"
               onClick={handleNextYear}
-              className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 hover:text-slate-900 transition"
+              className="w-8 h-8 rounded-full border border-[#E7E8EC] bg-white hover:bg-[#F6F6F8] text-[#111318] flex items-center justify-center transition"
               title="Next Year"
             >
               <ChevronRight size={16} />
             </button>
           </div>
 
-          <span className="text-xs text-slate-400">12 Months · 4 Quarters</span>
+          <span className="text-xs text-[#7C7F8A]">12 Months · 4 Quarters</span>
         </div>
       )}
 
       {viewMode === "range" && (
         <div className="flex flex-col sm:flex-row items-center gap-3 pt-1">
           <div className="flex items-center gap-2 w-full sm:w-auto">
-            <span className="text-xs font-semibold text-slate-600">From:</span>
+            <span className="text-xs font-semibold text-[#7C7F8A]">From:</span>
             <input
               type="date"
               value={customRange.start}
               onChange={(e) =>
                 setCustomRange((prev) => ({ ...prev, start: e.target.value }))
               }
-              className="px-3 py-1.5 text-xs rounded-xl border border-slate-200 bg-white outline-none focus:border-blue-500 font-mono w-full sm:w-auto"
+              className="px-3 py-1.5 text-xs rounded-full border border-[#E7E8EC] bg-white outline-none focus:border-[#111318] text-[#111318] font-mono w-full sm:w-auto shadow-xs"
             />
           </div>
 
           <div className="flex items-center gap-2 w-full sm:w-auto">
-            <span className="text-xs font-semibold text-slate-600">To:</span>
+            <span className="text-xs font-semibold text-[#7C7F8A]">To:</span>
             <input
               type="date"
               value={customRange.end}
               onChange={(e) =>
                 setCustomRange((prev) => ({ ...prev, end: e.target.value }))
               }
-              className="px-3 py-1.5 text-xs rounded-xl border border-slate-200 bg-white outline-none focus:border-blue-500 font-mono w-full sm:w-auto"
+              className="px-3 py-1.5 text-xs rounded-full border border-[#E7E8EC] bg-white outline-none focus:border-[#111318] text-[#111318] font-mono w-full sm:w-auto shadow-xs"
             />
           </div>
         </div>

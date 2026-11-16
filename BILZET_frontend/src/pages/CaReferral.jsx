@@ -262,17 +262,17 @@ export default function CaReferral() {
   return (
     <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 py-6 font-['Plus_Jakarta_Sans',sans-serif]">
       {/* Header Banner */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-6 sm:p-8 text-white shadow-lg border border-slate-800">
+      <div className="relative overflow-hidden bg-[#12151C] rounded-[28px] p-6 sm:p-8 text-white shadow-fintech border border-white/10">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-300 text-xs font-bold tracking-wide uppercase">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/15 text-[#5BF07B] text-xs font-bold tracking-wide uppercase">
               <ShieldCheck size={14} /> CA Partner Exclusivity
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-heading">
               Refer &amp; Earn for Chartered Accountants
             </h1>
-            <p className="text-sm text-slate-300 leading-relaxed">
-              Earn <span className="font-bold text-amber-300">100 coins (₹100)</span> for every merchant business that signs up with your referral code and activates their first paid subscription.
+            <p className="text-sm text-white/70 leading-relaxed">
+              Earn <span className="font-bold text-[#5BF07B]">100 coins (₹100)</span> for every merchant business that signs up with your referral code and activates their first paid subscription.
             </p>
           </div>
 
@@ -280,9 +280,9 @@ export default function CaReferral() {
             <button
               onClick={() => setIsRedeemModalOpen(true)}
               disabled={!canRedeem}
-              className={`px-5 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition shadow-md ${
+              className={`px-5 py-3 rounded-full font-bold text-sm flex items-center justify-center gap-2 transition shadow-fintech ${
                 canRedeem
-                  ? "bg-amber-400 hover:bg-amber-300 text-slate-950 cursor-pointer shadow-amber-400/20"
+                  ? "bg-[#5BF07B] hover:bg-[#4de66e] text-[#0E2A16] cursor-pointer"
                   : "bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed"
               }`}
             >
