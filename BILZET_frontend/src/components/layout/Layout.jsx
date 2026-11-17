@@ -188,38 +188,21 @@ const navSections = [
 ];
 
 export default function Layout({ children }) {
-  // Desktop and Laptop screens: OPEN by default, persisted in localStorage across refreshes and page navigations
-  const [sidebarOpen, setSidebarOpen] = useState(() => {
-    try {
-      const saved = localStorage.getItem("bilzet_sidebar_state");
-      if (saved !== null) {
-        return saved === "open";
-      }
-    } catch (_) {}
-    if (typeof window !== "undefined") {
-      return window.innerWidth >= 768; // Desktop and laptop open by default
-    }
-    return true;
-  });
+  // Sidebar is closed/collapsed by default across all screens, initial loads, and refreshes
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const [mobileDrawer, setMobileDrawer] = useState(false);
 
   const toggleSidebar = useCallback(() => {
-    setSidebarOpen((prev) => {
-      const next = !prev;
-      try {
-        localStorage.setItem("bilzet_sidebar_state", next ? "open" : "collapsed");
-      } catch (_) {}
-      return next;
-    });
+    setSidebarOpen((prev) => !prev);
   }, []);
 
-  // Synchronize sidebar state to localStorage whenever it changes
+  // Ensure no stale expanded state from older sessions overrides the closed-by-default requirement
   useEffect(() => {
     try {
-      localStorage.setItem("bilzet_sidebar_state", sidebarOpen ? "open" : "collapsed");
+      localStorage.removeItem("bilzet_sidebar_state");
     } catch (_) {}
-  }, [sidebarOpen]);
+  }, []);
   const [collapsedSections, setCollapsedSections] = useState({});
   const [userDropdown, setUserDropdown] = useState(false);
   const [quickCreateOpen, setQuickCreateOpen] = useState(false);
@@ -410,7 +393,13 @@ export default function Layout({ children }) {
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+      if (e.key === "Escape") {
+        setMobileDrawer(false);
+        setSidebarOpen(false);
+        setQuickCreateOpen(false);
+        setHelpOpen(false);
+        setUserDropdown(false);
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
         searchInputRef.current?.focus();
       } else if ((e.ctrlKey || e.metaKey) && e.key === "/") {
