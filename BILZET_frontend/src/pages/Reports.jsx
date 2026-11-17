@@ -1285,28 +1285,30 @@ export default function Reports() {
           <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
             2. Payment Collections Distribution
           </h2>
-          <table className="w-full text-left text-xs border border-slate-300">
-            <thead>
-              <tr className="bg-slate-100 border-b border-slate-300 font-bold text-slate-700">
-                <th className="py-2 px-3">Payment Mode</th>
-                <th className="py-2 px-3 text-center">Transactions Count</th>
-                <th className="py-2 px-3 text-right">Amount (₹)</th>
-                <th className="py-2 px-3 text-right">Share of Revenue</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200">
-              {paymentMethodData.map((pm) => (
-                <tr key={pm.name}>
-                  <td className="py-1.5 px-3 font-semibold">{pm.name}</td>
-                  <td className="py-1.5 px-3 text-center">{pm.count} bills</td>
-                  <td className="py-1.5 px-3 text-right font-mono font-bold">
-                    ₹{pm.value.toLocaleString("en-IN")}
-                  </td>
-                  <td className="py-1.5 px-3 text-right font-semibold">{pm.percentage}%</td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border border-slate-300">
+              <thead>
+                <tr className="bg-slate-100 border-b border-slate-300 font-bold text-slate-700">
+                  <th className="py-2 px-3">Payment Mode</th>
+                  <th className="py-2 px-3 text-center">Transactions Count</th>
+                  <th className="py-2 px-3 text-right">Amount (₹)</th>
+                  <th className="py-2 px-3 text-right">Share of Revenue</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {paymentMethodData.map((pm) => (
+                  <tr key={pm.name}>
+                    <td className="py-1.5 px-3 font-semibold">{pm.name}</td>
+                    <td className="py-1.5 px-3 text-center">{pm.count} bills</td>
+                    <td className="py-1.5 px-3 text-right font-mono font-bold">
+                      ₹{pm.value.toLocaleString("en-IN")}
+                    </td>
+                    <td className="py-1.5 px-3 text-right font-semibold">{pm.percentage}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
 
         {/* Section 3: Top Selling Products */}
@@ -1315,28 +1317,30 @@ export default function Reports() {
             <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
               3. Top Performing Products
             </h2>
-            <table className="w-full text-left text-xs border border-slate-300">
-              <thead>
-                <tr className="bg-slate-100 border-b border-slate-300 font-bold text-slate-700">
-                  <th className="py-2 px-3 text-center w-12">Rank</th>
-                  <th className="py-2 px-3">Product Name</th>
-                  <th className="py-2 px-3 text-center">Units Sold</th>
-                  <th className="py-2 px-3 text-right">Total Turnover (₹)</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200">
-                {topProducts.map((p, idx) => (
-                  <tr key={p.name}>
-                    <td className="py-1.5 px-3 text-center font-bold">{idx + 1}</td>
-                    <td className="py-1.5 px-3 font-medium">{p.name}</td>
-                    <td className="py-1.5 px-3 text-center">{p.quantity}</td>
-                    <td className="py-1.5 px-3 text-right font-mono font-bold">
-                      ₹{p.revenue.toLocaleString("en-IN")}
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border border-slate-300">
+                <thead>
+                  <tr className="bg-slate-100 border-b border-slate-300 font-bold text-slate-700">
+                    <th className="py-2 px-3 text-center w-12">Rank</th>
+                    <th className="py-2 px-3">Product Name</th>
+                    <th className="py-2 px-3 text-center">Units Sold</th>
+                    <th className="py-2 px-3 text-right">Total Turnover (₹)</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {topProducts.map((p, idx) => (
+                    <tr key={p.name}>
+                      <td className="py-1.5 px-3 text-center font-bold">{idx + 1}</td>
+                      <td className="py-1.5 px-3 font-medium">{p.name}</td>
+                      <td className="py-1.5 px-3 text-center">{p.quantity}</td>
+                      <td className="py-1.5 px-3 text-right font-mono font-bold">
+                        ₹{p.revenue.toLocaleString("en-IN")}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 
@@ -1346,32 +1350,34 @@ export default function Reports() {
             <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
               4. Period Transaction Audit Log (Latest {Math.min(rawSales.length, 25)})
             </h2>
-            <table className="w-full text-left text-xs border border-slate-300">
-              <thead>
-                <tr className="bg-slate-100 border-b border-slate-300 font-bold text-slate-700">
-                  <th className="py-2 px-3">Invoice No.</th>
-                  <th className="py-2 px-3">Date</th>
-                  <th className="py-2 px-3">Customer</th>
-                  <th className="py-2 px-3">Method</th>
-                  <th className="py-2 px-3 text-right">Amount (₹)</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200">
-                {rawSales.slice(0, 25).map((sale) => (
-                  <tr key={sale.id || sale.invoiceNumber}>
-                    <td className="py-1.5 px-3 font-semibold">{sale.invoiceNumber}</td>
-                    <td className="py-1.5 px-3 text-slate-600">
-                      {new Date(sale.createdAt).toLocaleDateString("en-IN")}
-                    </td>
-                    <td className="py-1.5 px-3">{sale.customer?.name || "Walk-in"}</td>
-                    <td className="py-1.5 px-3">{sale.paymentMethod || "CASH"}</td>
-                    <td className="py-1.5 px-3 text-right font-mono font-bold">
-                      ₹{Number(sale.grandTotal || 0).toLocaleString("en-IN")}
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border border-slate-300">
+                <thead>
+                  <tr className="bg-slate-100 border-b border-slate-300 font-bold text-slate-700">
+                    <th className="py-2 px-3">Invoice No.</th>
+                    <th className="py-2 px-3">Date</th>
+                    <th className="py-2 px-3">Customer</th>
+                    <th className="py-2 px-3">Method</th>
+                    <th className="py-2 px-3 text-right">Amount (₹)</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {rawSales.slice(0, 25).map((sale) => (
+                    <tr key={sale.id || sale.invoiceNumber}>
+                      <td className="py-1.5 px-3 font-semibold">{sale.invoiceNumber}</td>
+                      <td className="py-1.5 px-3 text-slate-600">
+                        {new Date(sale.createdAt).toLocaleDateString("en-IN")}
+                      </td>
+                      <td className="py-1.5 px-3">{sale.customer?.name || "Walk-in"}</td>
+                      <td className="py-1.5 px-3">{sale.paymentMethod || "CASH"}</td>
+                      <td className="py-1.5 px-3 text-right font-mono font-bold">
+                        ₹{Number(sale.grandTotal || 0).toLocaleString("en-IN")}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 

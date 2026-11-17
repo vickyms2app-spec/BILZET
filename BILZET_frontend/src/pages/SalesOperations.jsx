@@ -222,50 +222,50 @@ export default function SalesOperations({ defaultTab = "challans" }) {
   return (
     <div className="space-y-6 max-w-7xl mx-auto fade-up">
       {/* ── Page Header (Single Responsibility) ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#F6F6F8] p-5 sm:p-6 rounded-[24px] border border-[#E7E8EC] shadow-fintech">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shrink-0">
-            <PageIcon size={24} />
+          <div className="w-11 h-11 rounded-2xl bg-[#12151C] text-[#5BF07B] flex items-center justify-center shrink-0 shadow-xs">
+            <PageIcon size={22} />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-800 tracking-tight">
+            <h1 className="text-xl sm:text-2xl font-bold text-[#111318] tracking-tight">
               {pageMeta.title}
             </h1>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs sm:text-sm text-[#7C7F8A] mt-0.5 font-normal">
               {pageMeta.subtitle}
             </p>
           </div>
         </div>
 
-        <Button
-          variant="primary"
-          size="sm"
-          icon={Plus}
+        <button
           onClick={pageMeta.onAction}
-          className="self-start sm:self-center"
+          className="h-10 px-4 rounded-xl bg-[#12151C] hover:bg-black text-white text-xs font-semibold shrink-0 inline-flex items-center justify-center gap-1.5 shadow-fintech transition cursor-pointer self-start sm:self-center"
         >
-          {pageMeta.actionLabel}
-        </Button>
+          <Plus size={15} className="text-[#5BF07B]" />
+          <span>{pageMeta.actionLabel}</span>
+        </button>
       </div>
 
       {/* Notifications */}
       {message.text && (
         <div
-          className={`alert-box ${
-            message.type === "success" ? "alert-success" : "alert-danger"
+          className={`p-3.5 rounded-xl text-xs font-medium flex items-center gap-2 ${
+            message.type === "success"
+              ? "bg-[#DFFFE6] border border-[#5BF07B]/40 text-[#0E2A16]"
+              : "bg-rose-50 border border-rose-200 text-rose-800"
           }`}
         >
           {message.type === "success" ? (
-            <CheckCircle2 size={16} className="text-emerald-600 shrink-0 mt-0.5" />
+            <CheckCircle2 size={16} className="text-[#0E2A16] shrink-0" />
           ) : (
-            <AlertTriangle size={16} className="text-rose-600 shrink-0 mt-0.5" />
+            <AlertTriangle size={16} className="text-rose-600 shrink-0" />
           )}
           <span>{message.text}</span>
         </div>
       )}
 
       {/* ── Search Bar ── */}
-      <div className="card p-3.5 flex flex-col sm:flex-row items-center justify-between gap-3 bg-white">
+      <div className="p-3.5 rounded-2xl border border-[#E7E8EC] flex flex-col sm:flex-row items-center justify-between gap-3 bg-[#F6F6F8] shadow-xs">
         <div className="w-full sm:w-80">
           <SearchBar
             value={search}
@@ -275,8 +275,8 @@ export default function SalesOperations({ defaultTab = "challans" }) {
         </div>
 
         <div className="flex items-center gap-2 self-end sm:self-center">
-          <span className="text-xs text-slate-500 font-medium">
-            Total Records: <strong className="text-slate-800">{pageMeta.count}</strong>
+          <span className="text-xs text-[#7C7F8A] font-medium">
+            Total Records: <strong className="text-[#111318]">{pageMeta.count}</strong>
           </span>
           <CompactIconButton
             icon={RefreshCw}
@@ -291,16 +291,16 @@ export default function SalesOperations({ defaultTab = "challans" }) {
       {/* ── Content View ── */}
       {loading ? (
         <div className="py-16 flex flex-col items-center justify-center gap-3">
-          <RefreshCw size={24} className="animate-spin text-blue-600" />
-          <p className="text-xs text-slate-500">Loading sales operations records…</p>
+          <RefreshCw size={24} className="animate-spin text-[#12151C]" />
+          <p className="text-xs text-[#7C7F8A]">Loading sales operations records…</p>
         </div>
       ) : activeTab === "challans" ? (
         /* Challans Table */
-        <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-xs">
+        <div className="bg-[#F6F6F8] rounded-[24px] border border-[#E7E8EC] overflow-hidden shadow-fintech">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="bg-slate-50/75 border-b border-slate-200/80 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                <tr className="bg-[#EDEDEF] border-b border-[#E7E8EC] text-[11px] font-bold text-[#111318] uppercase tracking-wider">
                   <th className="py-3 px-4">Challan #</th>
                   <th className="py-3 px-4">Customer</th>
                   <th className="py-3 px-4">Delivery Location</th>
@@ -309,34 +309,34 @@ export default function SalesOperations({ defaultTab = "challans" }) {
                   <th className="py-3 px-4">Issue Date</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-[#E7E8EC] bg-white">
                 {challans.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-12 text-center text-slate-400">
+                    <td colSpan={6} className="py-12 text-center text-[#7C7F8A]">
                       No delivery challans issued yet. Click "New Delivery Challan" to dispatch goods.
                     </td>
                   </tr>
                 ) : (
                   challans.map((ch) => (
-                    <tr key={ch.id} className="hover:bg-slate-50/60 transition">
-                      <td className="py-3 px-4 font-mono font-semibold text-blue-600">
+                    <tr key={ch.id} className="hover:bg-[#F6F6F8]/60 transition">
+                      <td className="py-3 px-4 font-mono font-bold text-[#111318]">
                         {ch.challanNumber || `DC-${ch.id.slice(0, 6)}`}
                       </td>
-                      <td className="py-3 px-4 font-semibold text-slate-800">
+                      <td className="py-3 px-4 font-semibold text-[#111318]">
                         {ch.customer?.name || "Customer"}
                       </td>
-                      <td className="py-3 px-4 text-slate-600 max-w-xs truncate">
+                      <td className="py-3 px-4 text-[#7C7F8A] max-w-xs truncate">
                         {ch.deliveryAddress || "Standard Address"}
                       </td>
-                      <td className="py-3 px-4 font-mono text-slate-700">
+                      <td className="py-3 px-4 font-mono text-[#111318]">
                         {ch.vehicleNumber || "Local Dispatch"}
                       </td>
                       <td className="py-3 px-4">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#12151C] text-white">
                           {ch.status || "DISPATCHED"}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-slate-400">
+                      <td className="py-3 px-4 text-[#7C7F8A]">
                         {new Date(ch.createdAt).toLocaleDateString()}
                       </td>
                     </tr>
@@ -348,10 +348,10 @@ export default function SalesOperations({ defaultTab = "challans" }) {
         </div>
       ) : activeTab === "returns" ? (
         /* Sales Returns View */
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+        <div className="bg-[#F6F6F8] rounded-[24px] border border-[#E7E8EC] shadow-fintech overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50/70 text-slate-500 font-semibold border-b border-slate-200/80 uppercase tracking-wider text-[10px]">
+              <thead className="bg-[#EDEDEF] text-[#111318] font-bold border-b border-[#E7E8EC] uppercase tracking-wider text-[11px]">
                 <tr>
                   <th className="py-3 px-4">Return #</th>
                   <th className="py-3 px-4">Sale Invoice</th>
@@ -362,37 +362,37 @@ export default function SalesOperations({ defaultTab = "challans" }) {
                   <th className="py-3 px-4">Date</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-[#E7E8EC] bg-white">
                 {returns.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-8 text-center text-slate-400">
+                    <td colSpan={7} className="py-8 text-center text-[#7C7F8A]">
                       No sales returns recorded yet.
                     </td>
                   </tr>
                 ) : (
                   returns.map((ret) => (
-                    <tr key={ret.id} className="hover:bg-slate-50/60 transition">
-                      <td className="py-3 px-4 font-mono font-bold text-slate-800">
+                    <tr key={ret.id} className="hover:bg-[#F6F6F8]/60 transition">
+                      <td className="py-3 px-4 font-mono font-bold text-[#111318]">
                         {ret.returnNumber}
                       </td>
-                      <td className="py-3 px-4 font-mono text-blue-600">
+                      <td className="py-3 px-4 font-mono text-[#111318]">
                         {ret.sale?.invoiceNumber || "—"}
                       </td>
-                      <td className="py-3 px-4 font-medium text-slate-700">
+                      <td className="py-3 px-4 font-medium text-[#111318]">
                         {ret.sale?.customer?.name || "Direct Customer"}
                       </td>
-                      <td className="py-3 px-4 font-bold text-slate-900">
+                      <td className="py-3 px-4 font-bold text-[#111318]">
                         ₹{Number(ret.totalAmount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                       </td>
-                      <td className="py-3 px-4 text-slate-600">
+                      <td className="py-3 px-4 text-[#7C7F8A]">
                         {ret.reason || "Customer Return"}
                       </td>
                       <td className="py-3 px-4">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#E2F6F3] text-[#0E2A16] border border-[#A9DAD3]">
                           {ret.refundStatus || "COMPLETED"}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-slate-400">
+                      <td className="py-3 px-4 text-[#7C7F8A]">
                         {new Date(ret.createdAt).toLocaleDateString()}
                       </td>
                     </tr>
@@ -407,45 +407,45 @@ export default function SalesOperations({ defaultTab = "challans" }) {
         <div className="space-y-5">
           {/* Summary KPIs */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
-            <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
-              <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Total Received</p>
-              <p className="text-lg sm:text-xl font-bold text-emerald-600 mt-1">
+            <div className="bg-[#F6F6F8] p-4 rounded-2xl border border-[#E7E8EC] shadow-2xs">
+              <p className="text-[11px] font-semibold text-[#7C7F8A] uppercase tracking-wider">Total Received</p>
+              <p className="text-lg sm:text-xl font-bold text-[#111318] mt-1">
                 ₹{payments.reduce((acc, p) => acc + Number(p.amount || 0), 0).toLocaleString("en-IN")}
               </p>
-              <p className="text-[10px] text-slate-400 mt-0.5">{payments.length} transactions</p>
+              <p className="text-[10px] text-[#7C7F8A] mt-0.5">{payments.length} transactions</p>
             </div>
 
-            <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
-              <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Cash Collections</p>
-              <p className="text-lg sm:text-xl font-bold text-slate-800 mt-1">
+            <div className="bg-[#F6F6F8] p-4 rounded-2xl border border-[#E7E8EC] shadow-2xs">
+              <p className="text-[11px] font-semibold text-[#7C7F8A] uppercase tracking-wider">Cash Collections</p>
+              <p className="text-lg sm:text-xl font-bold text-[#111318] mt-1">
                 ₹{payments.filter(p => (p.method || "").toUpperCase() === "CASH").reduce((acc, p) => acc + Number(p.amount || 0), 0).toLocaleString("en-IN")}
               </p>
-              <p className="text-[10px] text-slate-400 mt-0.5">Physical counter cash</p>
+              <p className="text-[10px] text-[#7C7F8A] mt-0.5">Physical counter cash</p>
             </div>
 
-            <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
-              <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">UPI &amp; Digital</p>
-              <p className="text-lg sm:text-xl font-bold text-blue-600 mt-1">
+            <div className="bg-[#F6F6F8] p-4 rounded-2xl border border-[#E7E8EC] shadow-2xs">
+              <p className="text-[11px] font-semibold text-[#7C7F8A] uppercase tracking-wider">UPI &amp; Digital</p>
+              <p className="text-lg sm:text-xl font-bold text-[#111318] mt-1">
                 ₹{payments.filter(p => (p.method || "").toUpperCase() !== "CASH").reduce((acc, p) => acc + Number(p.amount || 0), 0).toLocaleString("en-IN")}
               </p>
-              <p className="text-[10px] text-slate-400 mt-0.5">UPI, NEFT &amp; Cards</p>
+              <p className="text-[10px] text-[#7C7F8A] mt-0.5">UPI, NEFT &amp; Cards</p>
             </div>
 
-            <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
-              <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Outstanding Dues</p>
-              <p className="text-lg sm:text-xl font-bold text-rose-600 mt-1">
+            <div className="bg-[#F6F6F8] p-4 rounded-2xl border border-[#E7E8EC] shadow-2xs">
+              <p className="text-[11px] font-semibold text-[#7C7F8A] uppercase tracking-wider">Outstanding Dues</p>
+              <p className="text-lg sm:text-xl font-bold text-[#E5484D] mt-1">
                 ₹{customers.reduce((acc, c) => acc + Number(c.balance || 0), 0).toLocaleString("en-IN")}
               </p>
-              <p className="text-[10px] text-slate-400 mt-0.5">Across {customers.filter(c => c.balance > 0).length} customers</p>
+              <p className="text-[10px] text-[#7C7F8A] mt-0.5">Across {customers.filter(c => c.balance > 0).length} customers</p>
             </div>
           </div>
 
           {/* Payments In Records Table */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-xs">
+          <div className="bg-[#F6F6F8] rounded-[24px] border border-[#E7E8EC] overflow-hidden shadow-fintech">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
-                  <tr className="bg-slate-50/75 border-b border-slate-200/80 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                  <tr className="bg-[#EDEDEF] border-b border-[#E7E8EC] text-[11px] font-bold text-[#111318] uppercase tracking-wider">
                     <th className="py-3 px-4">Receipt / Ref #</th>
                     <th className="py-3 px-4">Date &amp; Time</th>
                     <th className="py-3 px-4">Customer</th>
@@ -455,7 +455,7 @@ export default function SalesOperations({ defaultTab = "challans" }) {
                     <th className="py-3 px-4">Notes / Remarks</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-[#E7E8EC] bg-white">
                   {payments
                     .filter((p) => {
                       if (!search.trim()) return true;
@@ -469,7 +469,7 @@ export default function SalesOperations({ defaultTab = "challans" }) {
                     })
                     .length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-12 text-center text-slate-400">
+                      <td colSpan={7} className="py-12 text-center text-[#7C7F8A]">
                         No inward payment records found. Click "Record Payment-In" to receive customer payments.
                       </td>
                     </tr>
@@ -486,11 +486,11 @@ export default function SalesOperations({ defaultTab = "challans" }) {
                         return cName.includes(q) || cPhone.includes(q) || ref.includes(q) || inv.includes(q) || m.includes(q);
                       })
                       .map((p) => (
-                        <tr key={p.id} className="hover:bg-slate-50/60 transition">
-                          <td className="py-3 px-4 font-mono font-bold text-slate-800">
+                        <tr key={p.id} className="hover:bg-[#F6F6F8]/60 transition">
+                          <td className="py-3 px-4 font-mono font-bold text-[#111318]">
                             {p.transactionId || p.id.slice(-8).toUpperCase()}
                           </td>
-                          <td className="py-3 px-4 text-slate-500 whitespace-nowrap">
+                          <td className="py-3 px-4 text-[#7C7F8A] whitespace-nowrap">
                             {new Date(p.createdAt).toLocaleDateString("en-IN", {
                               day: "2-digit",
                               month: "short",
@@ -499,30 +499,30 @@ export default function SalesOperations({ defaultTab = "challans" }) {
                               minute: "2-digit",
                             })}
                           </td>
-                          <td className="py-3 px-4 font-semibold text-slate-800">
+                          <td className="py-3 px-4 font-semibold text-[#111318]">
                             <p>{p.customer?.name || "Direct Customer"}</p>
                             {p.customer?.phone && (
-                              <p className="text-[10px] text-slate-400 font-normal">{p.customer.phone}</p>
+                              <p className="text-[10px] text-[#7C7F8A] font-normal">{p.customer.phone}</p>
                             )}
                           </td>
                           <td className="py-3 px-4">
                             {p.sale?.invoiceNumber ? (
-                              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#EDEDEF] text-[#111318] border border-[#E7E8EC]">
                                 {p.sale.invoiceNumber}
                               </span>
                             ) : (
-                              <span className="text-slate-400 italic text-[11px]">On Account</span>
+                              <span className="text-[#7C7F8A] italic text-[11px]">On Account</span>
                             )}
                           </td>
                           <td className="py-3 px-4">
-                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#EDEDEF] text-[#111318] border border-[#E7E8EC]">
                               {p.method || "CASH"}
                             </span>
                           </td>
-                          <td className="py-3 px-4 text-right font-mono font-bold text-emerald-600 text-sm">
+                          <td className="py-3 px-4 text-right font-mono font-bold text-[#111318] text-sm">
                             ₹{Number(p.amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                           </td>
-                          <td className="py-3 px-4 text-slate-500 truncate max-w-[180px]">
+                          <td className="py-3 px-4 text-[#7C7F8A] truncate max-w-[180px]">
                             {p.note || "—"}
                           </td>
                         </tr>
@@ -542,14 +542,14 @@ export default function SalesOperations({ defaultTab = "challans" }) {
         title="Create Delivery Challan"
         subtitle="Dispatch stock for delivery, job work or demo"
         icon={Truck}
-        iconColor="text-blue-600 bg-blue-50 border-blue-100"
+        iconColor="text-[#5BF07B] bg-[#12151C] border-[#12151C]"
         maxWidth="max-w-lg"
         footer={
           <>
             <button
               type="button"
               onClick={() => setShowChallanModal(false)}
-              className="px-4 py-2.5 rounded-xl border border-slate-200 font-medium text-slate-600 hover:bg-slate-100 transition text-xs"
+              className="px-4 py-2.5 rounded-xl border border-[#E7E8EC] font-semibold text-[#7C7F8A] hover:bg-[#EDEDEF] hover:text-[#111318] transition text-xs cursor-pointer"
             >
               Cancel
             </button>
@@ -557,9 +557,9 @@ export default function SalesOperations({ defaultTab = "challans" }) {
               type="submit"
               form="challan-form"
               disabled={submitting}
-              className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold flex items-center gap-2 shadow-sm shadow-blue-500/20 transition text-xs disabled:opacity-50"
+              className="px-5 py-2.5 rounded-xl bg-[#12151C] hover:bg-black text-white font-semibold flex items-center gap-2 shadow-fintech transition text-xs disabled:opacity-50 cursor-pointer"
             >
-              {submitting && <RefreshCw size={13} className="animate-spin" />}
+              {submitting && <RefreshCw size={13} className="animate-spin text-[#5BF07B]" />}
               <span>Generate Challan</span>
             </button>
           </>
@@ -567,14 +567,14 @@ export default function SalesOperations({ defaultTab = "challans" }) {
       >
         <form id="challan-form" onSubmit={handleCreateChallan} className="space-y-4">
           <div>
-            <label className="block font-semibold text-slate-700 mb-1.5">Recipient Customer *</label>
+            <label className="block font-semibold text-[#111318] mb-1.5">Recipient Customer *</label>
             <select
               required
               value={challanForm.customerId}
               onChange={(e) =>
                 setChallanForm({ ...challanForm, customerId: e.target.value })
               }
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-[#E7E8EC] bg-white text-[#111318] font-semibold focus:outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 transition"
             >
               <option value="">Select Recipient Customer</option>
               {customers.map((c) => (
@@ -586,7 +586,7 @@ export default function SalesOperations({ defaultTab = "challans" }) {
           </div>
 
           <div>
-            <label className="block font-semibold text-slate-700 mb-1.5">Delivery Destination</label>
+            <label className="block font-semibold text-[#111318] mb-1.5">Delivery Destination</label>
             <input
               type="text"
               placeholder="Delivery address / Site location"
@@ -594,12 +594,12 @@ export default function SalesOperations({ defaultTab = "challans" }) {
               onChange={(e) =>
                 setChallanForm({ ...challanForm, deliveryAddress: e.target.value })
               }
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-[#E7E8EC] bg-white text-[#111318] focus:outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 transition"
             />
           </div>
 
           <div>
-            <label className="block font-semibold text-slate-700 mb-1.5">Vehicle / Transporter #</label>
+            <label className="block font-semibold text-[#111318] mb-1.5">Vehicle / Transporter #</label>
             <input
               type="text"
               placeholder="e.g. TN-09-AB-1234 / BlueDart"
@@ -607,12 +607,12 @@ export default function SalesOperations({ defaultTab = "challans" }) {
               onChange={(e) =>
                 setChallanForm({ ...challanForm, vehicleNumber: e.target.value })
               }
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 uppercase font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-[#E7E8EC] bg-white uppercase font-mono text-[#111318] focus:outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 transition"
             />
           </div>
 
           <div>
-            <label className="block font-semibold text-slate-700 mb-1.5">Product Dispatched *</label>
+            <label className="block font-semibold text-[#111318] mb-1.5">Product Dispatched *</label>
             <select
               required
               value={challanForm.items[0].productId}
@@ -622,7 +622,7 @@ export default function SalesOperations({ defaultTab = "challans" }) {
                   items: [{ ...challanForm.items[0], productId: e.target.value }],
                 })
               }
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-[#E7E8EC] bg-white text-[#111318] font-semibold focus:outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 transition"
             >
               <option value="">Choose item to dispatch</option>
               {products.map((p) => (
@@ -635,7 +635,7 @@ export default function SalesOperations({ defaultTab = "challans" }) {
 
           <div className="grid grid-cols-2 gap-3.5">
             <div>
-              <label className="block font-semibold text-slate-700 mb-1.5">Dispatch Quantity *</label>
+              <label className="block font-semibold text-[#111318] mb-1.5">Dispatch Quantity *</label>
               <input
                 type="number"
                 min="1"
@@ -647,12 +647,12 @@ export default function SalesOperations({ defaultTab = "challans" }) {
                     items: [{ ...challanForm.items[0], quantity: Number(e.target.value) }],
                   })
                 }
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-[#E7E8EC] bg-white text-[#111318] focus:outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 transition"
               />
             </div>
             <div>
-              <label className="block font-semibold text-slate-700 mb-1.5">Challan Type</label>
-              <select className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition">
+              <label className="block font-semibold text-[#111318] mb-1.5">Challan Type</label>
+              <select className="w-full px-3.5 py-2.5 rounded-xl border border-[#E7E8EC] bg-white text-[#111318] font-semibold focus:outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 transition">
                 <option>Outward Delivery</option>
                 <option>Job Work</option>
                 <option>Exhibition / Demo</option>
@@ -676,7 +676,7 @@ export default function SalesOperations({ defaultTab = "challans" }) {
             <button
               type="button"
               onClick={() => setShowReturnModal(false)}
-              className="px-4 py-2.5 rounded-xl border border-slate-200 font-medium text-slate-600 hover:bg-slate-100 transition text-xs"
+              className="px-4 py-2.5 rounded-xl border border-[#E7E8EC] font-semibold text-[#7C7F8A] hover:bg-[#EDEDEF] hover:text-[#111318] transition text-xs cursor-pointer"
             >
               Cancel
             </button>
@@ -684,7 +684,7 @@ export default function SalesOperations({ defaultTab = "challans" }) {
               type="submit"
               form="return-form"
               disabled={submitting}
-              className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-semibold flex items-center gap-2 shadow-sm shadow-rose-500/20 transition text-xs disabled:opacity-50"
+              className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-semibold flex items-center gap-2 shadow-fintech transition text-xs disabled:opacity-50 cursor-pointer"
             >
               {submitting && <RefreshCw size={13} className="animate-spin" />}
               <span>Confirm Return</span>
@@ -694,14 +694,14 @@ export default function SalesOperations({ defaultTab = "challans" }) {
       >
         <form id="return-form" onSubmit={handleCreateReturn} className="space-y-4">
           <div>
-            <label className="block font-semibold text-slate-700 mb-1.5">
+            <label className="block font-semibold text-[#111318] mb-1.5">
               Select Sale Invoice *
             </label>
             <select
               required
               value={returnForm.saleId}
               onChange={(e) => setReturnForm({ ...returnForm, saleId: e.target.value })}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-[#E7E8EC] bg-white text-[#111318] font-semibold focus:outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 transition"
             >
               <option value="">Choose invoice to refund/return</option>
               {sales
@@ -715,7 +715,7 @@ export default function SalesOperations({ defaultTab = "challans" }) {
           </div>
 
           <div>
-            <label className="block font-semibold text-slate-700 mb-1.5">
+            <label className="block font-semibold text-[#111318] mb-1.5">
               Reason for Return *
             </label>
             <textarea
@@ -724,18 +724,18 @@ export default function SalesOperations({ defaultTab = "challans" }) {
               placeholder="e.g. Defective item, customer changed mind"
               value={returnForm.reason}
               onChange={(e) => setReturnForm({ ...returnForm, reason: e.target.value })}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-[#E7E8EC] bg-white text-[#111318] focus:outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 transition"
             />
           </div>
 
           <div>
-            <label className="block font-semibold text-slate-700 mb-1.5">Additional Notes</label>
+            <label className="block font-semibold text-[#111318] mb-1.5">Additional Notes</label>
             <input
               type="text"
               placeholder="Optional remarks or courier tracking"
               value={returnForm.notes}
               onChange={(e) => setReturnForm({ ...returnForm, notes: e.target.value })}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-[#E7E8EC] bg-white text-[#111318] focus:outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 transition"
             />
           </div>
         </form>
@@ -748,14 +748,14 @@ export default function SalesOperations({ defaultTab = "challans" }) {
         title="Record Customer Payment-In"
         subtitle="Record payments to reduce outstanding customer balance"
         icon={CreditCard}
-        iconColor="text-emerald-600 bg-emerald-50 border-emerald-100"
+        iconColor="text-[#5BF07B] bg-[#12151C] border-[#12151C]"
         maxWidth="max-w-lg"
         footer={
           <>
             <button
               type="button"
               onClick={() => setShowPaymentModal(false)}
-              className="px-4 py-2.5 rounded-xl border border-slate-200 font-medium text-slate-600 hover:bg-slate-100 transition text-xs"
+              className="px-4 py-2.5 rounded-xl border border-[#E7E8EC] font-semibold text-[#7C7F8A] hover:bg-[#EDEDEF] hover:text-[#111318] transition text-xs cursor-pointer"
             >
               Cancel
             </button>
@@ -763,9 +763,9 @@ export default function SalesOperations({ defaultTab = "challans" }) {
               type="submit"
               form="payment-form"
               disabled={submitting}
-              className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold flex items-center gap-2 shadow-sm shadow-emerald-500/20 transition text-xs disabled:opacity-50"
+              className="px-5 py-2.5 rounded-xl bg-[#12151C] hover:bg-black text-white font-semibold flex items-center gap-2 shadow-fintech transition text-xs disabled:opacity-50 cursor-pointer"
             >
-              {submitting && <RefreshCw size={13} className="animate-spin" />}
+              {submitting && <RefreshCw size={13} className="animate-spin text-[#5BF07B]" />}
               <span>Save Payment</span>
             </button>
           </>
@@ -773,14 +773,14 @@ export default function SalesOperations({ defaultTab = "challans" }) {
       >
         <form id="payment-form" onSubmit={handleCreatePayment} className="space-y-4">
           <div>
-            <label className="block font-semibold text-slate-700 mb-1.5">Paying Customer *</label>
+            <label className="block font-semibold text-[#111318] mb-1.5">Paying Customer *</label>
             <select
               required
               value={paymentForm.customerId}
               onChange={(e) =>
                 setPaymentForm({ ...paymentForm, customerId: e.target.value })
               }
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-[#E7E8EC] bg-white text-[#111318] font-semibold focus:outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 transition"
             >
               <option value="">Select Paying Customer</option>
               {customers.map((c) => (
@@ -792,9 +792,9 @@ export default function SalesOperations({ defaultTab = "challans" }) {
           </div>
 
           <div>
-            <label className="block font-semibold text-slate-700 mb-1.5">Amount Received (₹) *</label>
+            <label className="block font-semibold text-[#111318] mb-1.5">Amount Received (₹) *</label>
             <div className="relative">
-              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₹</span>
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#7C7F8A] font-bold">₹</span>
               <input
                 type="number"
                 min="0"
@@ -805,20 +805,20 @@ export default function SalesOperations({ defaultTab = "challans" }) {
                 onChange={(e) =>
                   setPaymentForm({ ...paymentForm, amount: e.target.value })
                 }
-                className="w-full pl-8 pr-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition"
+                className="w-full pl-8 pr-3.5 py-2.5 rounded-xl border border-[#E7E8EC] bg-white text-[#111318] font-semibold focus:outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 transition"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3.5">
             <div>
-              <label className="block font-semibold text-slate-700 mb-1.5">Payment Mode</label>
+              <label className="block font-semibold text-[#111318] mb-1.5">Payment Mode</label>
               <select
                 value={paymentForm.paymentMode}
                 onChange={(e) =>
                   setPaymentForm({ ...paymentForm, paymentMode: e.target.value })
                 }
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-[#E7E8EC] bg-white text-[#111318] font-semibold focus:outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 transition"
               >
                 <option value="UPI">UPI / GPay / PhonePe</option>
                 <option value="CASH">Cash</option>
@@ -827,7 +827,7 @@ export default function SalesOperations({ defaultTab = "challans" }) {
               </select>
             </div>
             <div>
-              <label className="block font-semibold text-slate-700 mb-1.5">Reference / UTR #</label>
+              <label className="block font-semibold text-[#111318] mb-1.5">Reference / UTR #</label>
               <input
                 type="text"
                 placeholder="e.g. UPI Ref / Cheque #"
@@ -835,7 +835,7 @@ export default function SalesOperations({ defaultTab = "challans" }) {
                 onChange={(e) =>
                   setPaymentForm({ ...paymentForm, referenceNumber: e.target.value })
                 }
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-[#E7E8EC] bg-white font-mono text-[#111318] focus:outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 transition"
               />
             </div>
           </div>

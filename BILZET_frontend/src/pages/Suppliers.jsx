@@ -254,10 +254,10 @@ export default function Suppliers() {
           <button
             type="button"
             onClick={loadSuppliers}
-            className="btn-secondary self-start sm:self-auto"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#E7E8EC] bg-white text-[#111318] hover:bg-[#EDEDEF] text-xs font-semibold transition cursor-pointer self-start sm:self-auto shadow-xs"
             title="Refresh Suppliers"
           >
-            <RefreshCw size={14} className={loading ? "animate-spin text-blue-600" : ""} />
+            <RefreshCw size={14} className={loading ? "animate-spin text-[#111318]" : "text-[#7C7F8A]"} />
             <span>Refresh</span>
           </button>
         </div>
@@ -278,17 +278,17 @@ export default function Suppliers() {
             <tbody className="divide-y divide-slate-100 bg-white">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-slate-400">
-                    <RefreshCw size={18} className="animate-spin text-indigo-600 mx-auto mb-2" />
+                  <td colSpan={7} className="py-12 text-center text-[#7C7F8A]">
+                    <RefreshCw size={18} className="animate-spin text-[#111318] mx-auto mb-2" />
                     <span>Loading suppliers catalog…</span>
                   </td>
                 </tr>
               ) : filteredSuppliers.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-slate-400">
-                    <Truck size={28} className="text-slate-300 mx-auto mb-2" />
-                    <p className="font-semibold text-slate-600">No suppliers found</p>
-                    <p className="text-[11px] text-slate-400 mt-0.5">
+                  <td colSpan={7} className="py-12 text-center text-[#7C7F8A]">
+                    <Truck size={28} className="text-[#C3C5CE] mx-auto mb-2" />
+                    <p className="font-semibold text-[#111318]">No suppliers found</p>
+                    <p className="text-[11px] text-[#7C7F8A] mt-0.5">
                       Click &quot;Add Supplier&quot; to catalog your first distributor or vendor.
                     </p>
                   </td>
@@ -298,8 +298,8 @@ export default function Suppliers() {
                   const initial = s.name ? s.name.trim().charAt(0).toUpperCase() : "S";
                   const palette = getSupplierAvatarPalette(s.id || s._id || s.name || `supplier-${idx}`);
                   return (
-                    <tr key={s.id || s._id} className="hover:bg-slate-50/60 transition">
-                      <td className="py-3 px-4 font-semibold text-slate-800">
+                    <tr key={s.id || s._id} className="hover:bg-[#EDEDEF]/60 transition">
+                      <td className="py-3 px-4 font-semibold text-[#111318]">
                         <div className="flex items-center gap-2.5">
                           <div
                             style={{
@@ -312,35 +312,35 @@ export default function Suppliers() {
                             {initial}
                           </div>
                         <div>
-                          <p className="font-semibold text-slate-900 leading-tight">{s.name}</p>
+                          <p className="font-semibold text-[#111318] leading-tight">{s.name}</p>
                           {s.companyName ? (
-                            <p className="text-[11px] text-indigo-600 font-medium flex items-center gap-1 mt-0.5">
-                              <Building2 size={11} className="shrink-0 text-indigo-500" />
+                            <p className="text-[11px] text-[#7C7F8A] font-medium flex items-center gap-1 mt-0.5">
+                              <Building2 size={11} className="shrink-0 text-[#7C7F8A]" />
                               <span>{s.companyName}</span>
                             </p>
                           ) : (
-                            <span className="text-[10px] text-slate-400">Individual Supplier</span>
+                            <span className="text-[10px] text-[#7C7F8A]">Individual Supplier</span>
                           )}
                         </div>
                       </div>
                     </td>
-                    <td className="py-3 px-4 font-mono text-slate-600">
+                    <td className="py-3 px-4 font-mono text-[#7C7F8A]">
                       {s.phone || "—"}
                     </td>
-                    <td className="py-3 px-4 text-slate-500">
+                    <td className="py-3 px-4 text-[#7C7F8A]">
                       {s.email || "—"}
                     </td>
-                    <td className="py-3 px-4 font-mono text-slate-600">
+                    <td className="py-3 px-4 font-mono text-[#7C7F8A]">
                       {s.gstin || "—"}
                     </td>
-                    <td className="py-3 px-4 text-slate-500 max-w-xs truncate">
+                    <td className="py-3 px-4 text-[#7C7F8A] max-w-xs truncate">
                       {s.address || "—"}
                     </td>
-                    <td className="py-3 px-4 text-right font-mono font-bold text-slate-800">
+                    <td className="py-3 px-4 text-right font-mono font-bold text-[#111318]">
                       ₹{Number(s.balance ?? s.currentBalance ?? 0).toLocaleString("en-IN")}
                     </td>
                     <td className="py-3 px-4">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#DFFFE6] text-[#0E2A16] border border-[#5BF07B]/40">
                         Active
                       </span>
                     </td>
@@ -362,7 +362,7 @@ export default function Suppliers() {
         title="Add New Supplier"
         subtitle="Record vendor details, company name, GSTIN, and opening balances"
         icon={Truck}
-        iconColor="text-indigo-600 bg-indigo-50 border-indigo-100"
+        iconColor="text-[#5BF07B] bg-[#12151C] border-[#12151C]"
         maxWidth="max-w-lg"
         footer={
           <>
@@ -394,8 +394,8 @@ export default function Suppliers() {
         >
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">
-                Supplier Name (Contact Person) <span className="text-rose-500">*</span>
+              <label className="block font-semibold text-[#111318] mb-1">
+                Supplier Name (Contact Person) <span className="text-[#E5484D]">*</span>
               </label>
               <input
                 type="text"
@@ -403,12 +403,12 @@ export default function Suppliers() {
                 placeholder="e.g. Raj Kumar"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 font-medium text-slate-800"
+                className="w-full px-3 py-2 border border-[#E7E8EC] bg-white rounded-xl outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 font-medium text-[#111318]"
               />
             </div>
 
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">
+              <label className="block font-semibold text-[#111318] mb-1">
                 Company Name (Business Entity)
               </label>
               <input
@@ -416,15 +416,15 @@ export default function Suppliers() {
                 placeholder="e.g. ABC Furniture Pvt Ltd"
                 value={form.companyName}
                 onChange={(e) => setForm({ ...form, companyName: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 font-medium text-slate-800"
+                className="w-full px-3 py-2 border border-[#E7E8EC] bg-white rounded-xl outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 font-medium text-[#111318]"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">
-                Phone Number <span className="text-rose-500">*</span>
+              <label className="block font-semibold text-[#111318] mb-1">
+                Phone Number <span className="text-[#E5484D]">*</span>
               </label>
               <input
                 type="tel"
@@ -432,12 +432,12 @@ export default function Suppliers() {
                 placeholder="10-digit mobile"
                 value={form.phone}
                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 font-mono text-slate-800"
+                className="w-full px-3 py-2 border border-[#E7E8EC] bg-white rounded-xl outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 font-mono text-[#111318]"
               />
             </div>
 
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">
+              <label className="block font-semibold text-[#111318] mb-1">
                 Email Address
               </label>
               <input
@@ -445,14 +445,14 @@ export default function Suppliers() {
                 placeholder="orders@vendor.com"
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 font-medium text-slate-800"
+                className="w-full px-3 py-2 border border-[#E7E8EC] bg-white rounded-xl outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 font-medium text-[#111318]"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">
+              <label className="block font-semibold text-[#111318] mb-1">
                 GSTIN (15-digit)
               </label>
               <input
@@ -460,12 +460,12 @@ export default function Suppliers() {
                 placeholder="33AAAAA0000A1Z5"
                 value={form.gstin}
                 onChange={(e) => setForm({ ...form, gstin: e.target.value.toUpperCase() })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 font-mono uppercase text-slate-800"
+                className="w-full px-3 py-2 border border-[#E7E8EC] bg-white rounded-xl outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 font-mono uppercase text-[#111318]"
               />
             </div>
 
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">
+              <label className="block font-semibold text-[#111318] mb-1">
                 Opening Balance (₹)
               </label>
               <input
@@ -474,13 +474,13 @@ export default function Suppliers() {
                 placeholder="0.00"
                 value={form.openingBalance}
                 onChange={(e) => setForm({ ...form, openingBalance: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 font-mono text-slate-800"
+                className="w-full px-3 py-2 border border-[#E7E8EC] bg-white rounded-xl outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 font-mono text-[#111318]"
               />
             </div>
           </div>
 
           <div>
-            <label className="block font-semibold text-slate-700 mb-1">
+            <label className="block font-semibold text-[#111318] mb-1">
               Business Address
             </label>
             <textarea
@@ -488,7 +488,7 @@ export default function Suppliers() {
               placeholder="Shop / Unit address, City, State"
               value={form.address}
               onChange={(e) => setForm({ ...form, address: e.target.value })}
-              className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 font-medium text-slate-800"
+              className="w-full px-3 py-2 border border-[#E7E8EC] bg-white rounded-xl outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 font-medium text-[#111318]"
             />
           </div>
         </form>

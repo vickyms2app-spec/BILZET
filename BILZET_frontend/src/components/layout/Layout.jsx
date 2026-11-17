@@ -120,16 +120,16 @@ const navSections = [
       { label: "Quotations", path: "/quotations", icon: ClipboardList },
       { label: "Invoices", path: "/invoices", icon: FileText, highlight: true },
       { label: "Payment Collection", path: "/sales/payments-in", icon: DollarSign },
-      { label: "Credit Notes / Return Invoices", path: "/sales/returns", icon: RotateCcw },
+      { label: "Credit Notes & Returns", path: "/sales/returns", icon: RotateCcw },
     ],
   },
   {
     title: "PURCHASE",
     key: "purchases",
     items: [
-      { label: "Purchase Overview", path: "/purchases", icon: ShoppingBag },
+      { label: "Purchase Invoices", path: "/purchases", icon: ShoppingBag },
+      { label: "Purchase Orders", path: "/purchases/orders", icon: ClipboardList },
       { label: "Suppliers", path: "/suppliers", icon: Truck },
-      { label: "Purchase Bills", path: "/purchases", icon: Receipt },
       { label: "Debit Notes", path: "/purchases/debit-notes", icon: Receipt },
     ],
   },
@@ -141,7 +141,6 @@ const navSections = [
       { label: "Stock Management", path: "/inventory", icon: Boxes },
       { label: "Warehouse / Godown", path: "/warehouses", icon: Warehouse },
       { label: "Stock Movements", path: "/stock-transfers", icon: ArrowRightLeft },
-      { label: "Low Stock Alerts", path: "/inventory", icon: AlertTriangle },
     ],
   },
   {
@@ -149,32 +148,21 @@ const navSections = [
     key: "finance",
     items: [
       { label: "Expenses", path: "/expenses", icon: Wallet },
-      { label: "Cash & Bank", path: "/expenses", icon: CreditCard },
-      { label: "Receivables", path: "/reports", icon: DollarSign },
-      { label: "Payables", path: "/purchases", icon: Receipt },
-      { label: "Business Analytics", path: "/reports", icon: BarChart3 },
+      { label: "Receivables & Analytics", path: "/reports", icon: BarChart3 },
     ],
   },
   {
     title: "GST & TAX",
     key: "gst_tax",
     items: [
-      { label: "GST Dashboard", path: "/gst", icon: Percent },
-      { label: "GSTR Reports", path: "/gst", icon: FileSpreadsheet },
-      { label: "Input Tax Credit", path: "/gst", icon: ArrowUpRight },
-      { label: "Output Tax", path: "/gst", icon: Receipt },
-      { label: "Tax Liability", path: "/gst", icon: Scale },
-      { label: "GST Reconciliation", path: "/gst", icon: CheckSquare },
+      { label: "GST Control Room", path: "/gst", icon: Percent },
     ],
   },
   {
     title: "CA CONNECT",
     key: "ca_connect",
     items: [
-      { label: "CA Dashboard", path: "/ca-connect", icon: Briefcase },
-      { label: "Shared Documents", path: "/ca-connect", icon: Paperclip },
-      { label: "Return Status", path: "/ca-connect", icon: FileCheck },
-      { label: "CA Communication", path: "/ca-connect", icon: MessageSquare },
+      { label: "CA Collaboration", path: "/ca-connect", icon: Briefcase },
     ],
   },
   {
@@ -184,18 +172,18 @@ const navSections = [
       { label: "Staff Management", path: "/staff", icon: UserCheck },
       { label: "Attendance", path: "/staff/attendance", icon: CalendarCheck2 },
       { label: "Payroll", path: "/staff/payroll", icon: DollarSign },
-      { label: "Broker Management", path: "/team", icon: Users },
+      { label: "Online Orders", path: "/online-orders", icon: OnlineIcon },
+      { label: "SMS Marketing", path: "/sms-marketing", icon: MessageSquare },
     ],
   },
   {
     title: "SETTINGS",
     key: "settings",
     items: [
-      { label: "Business Profile", path: "/settings", icon: Settings },
-      { label: "GST Configuration", path: "/settings", icon: Percent },
-      { label: "User Roles & Permissions", path: "/team", icon: Shield },
+      { label: "Business Settings", path: "/settings", icon: Settings },
+      { label: "Team & Permissions", path: "/team", icon: Shield },
       { label: "Subscription & Plans", path: "/subscription", icon: CreditCard },
-      { label: "Integrations", path: "/settings", icon: Store },
+      { label: "Audit & Security Logs", path: "/audit-logs", icon: History },
     ],
   },
 ];
@@ -976,20 +964,17 @@ export default function Layout({ children }) {
       {mobileDrawer && (
         <div className="fixed inset-0 z-50 md:hidden flex">
           <div
-            className="fixed inset-0 bg-[#526B87]/40 backdrop-blur-xs animate-in fade-in duration-200"
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
             onClick={() => setMobileDrawer(false)}
           />
           <div
-            className="relative w-72 max-w-[85vw] h-full flex flex-col z-10 p-4 overflow-y-auto animate-in slide-in-from-left duration-250 shadow-2xl border-r border-[#DCEBFA]"
-            style={{
-              background: "linear-gradient(180deg, #F5FAFF 0%, #E8F4FF 50%, #D9ECFF 100%)",
-            }}
+            className="relative w-72 max-w-[85vw] h-full flex flex-col z-10 p-4 overflow-y-auto animate-in slide-in-from-left duration-250 shadow-2xl bg-[#F6F6F8] border-r border-[#E7E8EC]"
           >
-            <div className="flex items-center justify-between pb-3.5 border-b border-[#DCEBFA]">
+            <div className="flex items-center justify-between pb-3.5 border-b border-[#E7E8EC]">
               <Logo variant="full" theme="light" size="md" />
               <button
                 onClick={() => setMobileDrawer(false)}
-                className="p-1.5 text-[#648CB8] hover:text-[#111827] rounded-lg hover:bg-[#E3F1FF] transition cursor-pointer"
+                className="p-1.5 text-[#7C7F8A] hover:text-[#111318] rounded-xl hover:bg-[#EDEDEF] transition cursor-pointer"
                 aria-label="Close Navigation"
               >
                 <X size={18} />
@@ -999,21 +984,21 @@ export default function Layout({ children }) {
             <div className="pt-3 pb-2 shrink-0">
               {isCA ? (
                 <div className="space-y-1.5">
-                  <div className="w-full flex items-center justify-between px-3 py-2.5 rounded-[8px] font-semibold text-[13px] text-[#111827] bg-[#D4E9FF] border border-[#DCEBFA] shadow-2xs">
+                  <div className="w-full flex items-center justify-between px-3 py-2.5 rounded-2xl font-bold text-xs text-[#111318] bg-[#FAFAFB] border border-[#E7E8EC] shadow-xs">
                     <div className="flex items-center gap-2">
-                      <ShieldCheck size={16} className="text-[#3978B8] shrink-0" />
+                      <ShieldCheck size={16} className="text-[#5BF07B] shrink-0" />
                       <span>CA Audit Suite</span>
                     </div>
-                    <span className="px-1.5 py-0.5 rounded bg-white/70 text-[10px] font-mono tracking-tight text-[#111827]">
+                    <span className="px-1.5 py-0.5 rounded-full bg-[#12151C] text-[10px] font-mono tracking-tight text-[#5BF07B]">
                       AUDIT
                     </span>
                   </div>
                   <NavLink
                     to="/dashboard"
                     onClick={() => setMobileDrawer(false)}
-                    className="w-full flex items-center justify-center gap-1.5 py-1.5 px-2 text-[11px] font-medium text-[#374151] hover:text-[#111827] bg-white/50 hover:bg-[#E3F1FF] rounded-[8px] transition border border-[#DCEBFA]"
+                    className="w-full flex items-center justify-center gap-1.5 py-1.5 px-2 text-xs font-semibold text-[#7C7F8A] hover:text-[#111318] bg-white hover:bg-[#EDEDEF] rounded-xl transition border border-[#E7E8EC]"
                   >
-                    <ArrowRightLeft size={12} className="text-[#648CB8]" />
+                    <ArrowRightLeft size={12} className="text-[#7C7F8A]" />
                     <span>Exit to Shop Dashboard</span>
                   </NavLink>
                 </div>
@@ -1040,15 +1025,15 @@ export default function Layout({ children }) {
                         key={item.path}
                         to={item.path}
                         onClick={() => setMobileDrawer(false)}
-                        className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-[7px] text-[13px] font-medium transition-[background-color,color] duration-180 ${
+                        className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-150 ${
                           isActive
-                            ? "bg-[#D4E9FF] text-[#111827] font-medium"
-                            : "text-[#111827] hover:bg-[#E3F1FF]"
+                            ? "bg-[#12151C] text-white shadow-xs font-bold"
+                            : "text-[#7C7F8A] hover:text-[#111318] hover:bg-white"
                         }`}
                       >
                         <Icon
                           size={15}
-                          className={isActive ? "text-[#3978B8]" : "text-[#648CB8]"}
+                          className={isActive ? "text-[#5BF07B]" : "text-[#7C7F8A]"}
                           strokeWidth={isActive ? 2.2 : 1.8}
                         />
                         <span>{item.label}</span>
@@ -1057,7 +1042,7 @@ export default function Layout({ children }) {
                   })}
                 </nav>
 
-                <div className="pt-2.5 border-t border-[#DCEBFA] mt-auto space-y-0.5">
+                <div className="pt-2.5 border-t border-[#E7E8EC] mt-auto space-y-0.5">
                   {caBottomNavItems.map((item) => {
                     const Icon = item.icon;
                     const isActive = isCaItemActive(item.path);
@@ -1067,15 +1052,15 @@ export default function Layout({ children }) {
                         key={item.path}
                         to={item.path}
                         onClick={() => setMobileDrawer(false)}
-                        className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-[7px] text-[13px] font-medium transition-[background-color,color] duration-180 ${
+                        className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-150 ${
                           isActive
-                            ? "bg-[#D4E9FF] text-[#111827] font-medium"
-                            : "text-[#111827] hover:bg-[#E3F1FF]"
+                            ? "bg-[#12151C] text-white shadow-xs font-bold"
+                            : "text-[#7C7F8A] hover:text-[#111318] hover:bg-white"
                         }`}
                       >
                         <Icon
                           size={15}
-                          className={isActive ? "text-[#3978B8]" : "text-[#648CB8]"}
+                          className={isActive ? "text-[#5BF07B]" : "text-[#7C7F8A]"}
                           strokeWidth={isActive ? 2.2 : 1.8}
                         />
                         <span>{item.label}</span>
@@ -1085,10 +1070,10 @@ export default function Layout({ children }) {
                 </div>
               </div>
             ) : (
-              <nav className="flex-1 overflow-y-auto py-2 space-y-1.5">
+              <nav className="flex-1 overflow-y-auto py-2 space-y-1.5 scrollbar-thin">
                 {displayedNavSections.map((section) => (
                   <div key={section.title} className="space-y-0.5">
-                    <div className="px-2.5 pt-1.5 pb-0.5 text-[11px] font-medium uppercase tracking-[0.25px] text-[#374151]">
+                    <div className="px-2.5 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-[#7C7F8A]">
                       {section.title}
                     </div>
                     {section.items.map((item) => {
@@ -1102,15 +1087,15 @@ export default function Layout({ children }) {
                           key={item.path}
                           to={item.path}
                           onClick={() => setMobileDrawer(false)}
-                          className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-[7px] text-[13px] font-normal sm:font-medium transition-[background-color,color] duration-180 ${
+                          className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-150 ${
                             isActive
-                              ? "bg-[#D4E9FF] text-[#111827] font-medium"
-                              : "text-[#111827] hover:bg-[#E3F1FF]"
+                              ? "bg-[#12151C] text-white shadow-xs font-bold"
+                              : "text-[#7C7F8A] hover:text-[#111318] hover:bg-white"
                           }`}
                         >
                           <Icon
                             size={15}
-                            className={isActive ? "text-[#3978B8]" : "text-[#648CB8]"}
+                            className={isActive ? "text-[#5BF07B]" : "text-[#7C7F8A]"}
                             strokeWidth={isActive ? 2.2 : 1.8}
                           />
                           <span>{item.label}</span>
@@ -1123,14 +1108,14 @@ export default function Layout({ children }) {
             )}
 
             {/* User Profile Summary & Actions at bottom of Mobile Drawer */}
-            <div className="pt-2.5 border-t border-[#DCEBFA] shrink-0 space-y-1.5">
-              <div className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-[7px] bg-white/60 border border-[#DCEBFA]">
-                <div className="w-8 h-8 rounded-full bg-[#D4E9FF] text-[#111827] font-semibold text-xs flex items-center justify-center shrink-0 border border-[#DCEBFA]">
+            <div className="pt-2.5 border-t border-[#E7E8EC] shrink-0 space-y-2">
+              <div className="flex items-center gap-2.5 px-2.5 py-2 rounded-2xl bg-white border border-[#E7E8EC]">
+                <div className="w-8 h-8 rounded-full bg-[#12151C] text-[#5BF07B] font-bold text-xs flex items-center justify-center shrink-0">
                   {userInitials}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-semibold text-[#111827] truncate">{displayName}</p>
-                  <p className="text-[10px] text-[#4B5563] truncate">{displayRole}</p>
+                  <p className="text-xs font-bold text-[#111318] truncate">{displayName}</p>
+                  <p className="text-[10px] text-[#7C7F8A] truncate">{displayRole}</p>
                 </div>
               </div>
 
@@ -1139,14 +1124,14 @@ export default function Layout({ children }) {
                   to="/admin"
                   onClick={() => setMobileDrawer(false)}
                   className={({ isActive }) =>
-                    `flex items-center gap-2.5 px-2.5 py-1.5 rounded-[7px] text-[13px] font-normal sm:font-medium transition-[background-color,color] duration-180 ${
+                    `flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-150 ${
                       isActive || location.pathname === "/app-admin"
-                        ? "bg-[#D4E9FF] text-[#111827] font-medium"
-                        : "text-[#111827] hover:bg-[#E3F1FF]"
+                        ? "bg-[#12151C] text-white shadow-xs font-bold"
+                        : "text-[#7C7F8A] hover:text-[#111318] hover:bg-white"
                     }`
                   }
                 >
-                  <Shield size={15} className={location.pathname === "/admin" || location.pathname === "/app-admin" ? "text-[#3978B8]" : "text-[#648CB8]"} />
+                  <Shield size={15} className={location.pathname === "/admin" || location.pathname === "/app-admin" ? "text-[#5BF07B]" : "text-[#7C7F8A]"} />
                   <span>Admin Console &amp; Vault</span>
                 </NavLink>
               )}
@@ -1157,9 +1142,9 @@ export default function Layout({ children }) {
                   setMobileDrawer(false);
                   handleLogout();
                 }}
-                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-semibold text-rose-500 hover:text-rose-600 hover:bg-[#FFF0F2] transition cursor-pointer min-h-[44px]"
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#E5484D] hover:bg-[#FBD3D3]/40 transition cursor-pointer min-h-[40px]"
               >
-                <LogOut size={16} />
+                <LogOut size={15} />
                 <span>Log Out</span>
               </button>
             </div>
@@ -1535,11 +1520,11 @@ export default function Layout({ children }) {
               )}
             </div>
 
-            {/* Keyboard Shortcuts Guide Trigger */}
+            {/* Keyboard Shortcuts Guide Trigger (Desktop only) */}
             <button
               type="button"
               onClick={() => setShowShortcutsModal(true)}
-              className="w-9 h-9 rounded-full bg-white hover:bg-[#F6F6F8] border border-[#E7E8EC] text-[#111318] flex items-center justify-center transition cursor-pointer shadow-xs active:scale-95"
+              className="hidden md:inline-flex w-9 h-9 rounded-full bg-white hover:bg-[#F6F6F8] border border-[#E7E8EC] text-[#111318] items-center justify-center transition cursor-pointer shadow-xs active:scale-95"
               title="Keyboard Shortcuts (Ctrl + / or ?)"
               aria-label="Keyboard Shortcuts"
             >
@@ -1762,9 +1747,9 @@ export default function Layout({ children }) {
         {/* ── Fixed Clean Footer ── */}
         <footer className="h-10 shrink-0 bg-[#EDEDEF] border-t border-[#D8D9DE] px-4 sm:px-6 flex items-center z-10">
           <div className="flex items-center gap-2.5 sm:gap-3 text-xs">
-            <span className="font-bold text-[#111318] tracking-tight">Garden Greens</span>
+            <span className="font-bold text-[#111318] tracking-tight">{shopInfo?.shopName || "BILZET"}</span>
             <span className="h-3.5 w-px bg-[#D8D9DE]" aria-hidden="true" />
-            <span className="text-[#7C7F8A] font-normal">© 2026 BILZET. All rights reserved.</span>
+            <span className="text-[#7C7F8A] font-normal">© 2026 BILZET ERP. All rights reserved.</span>
           </div>
         </footer>
       </div>
