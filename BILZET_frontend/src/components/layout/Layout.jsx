@@ -148,7 +148,6 @@ const navSections = [
     key: "finance",
     items: [
       { label: "Expenses", path: "/expenses", icon: Wallet },
-      { label: "Receivables & Analytics", path: "/reports", icon: BarChart3 },
     ],
   },
   {

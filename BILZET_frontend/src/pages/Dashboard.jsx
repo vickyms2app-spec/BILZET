@@ -752,7 +752,7 @@ export default function Dashboard() {
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#12151C] hover:bg-black active:scale-95 text-white font-bold text-xs sm:text-sm transition-all shadow-xs cursor-pointer"
             >
               <Plus size={16} className="text-[#5BF07B]" strokeWidth={2.5} />
-              <span>+ Create Invoice</span>
+              <span>Create Invoice</span>
               <kbd className="hidden sm:inline-block ml-1 px-1.5 py-0.5 rounded-full bg-white/20 text-[10px] font-mono font-bold text-[#5BF07B]">
                 F2
               </kbd>
@@ -764,7 +764,7 @@ export default function Dashboard() {
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white hover:bg-[#FAFAFB] text-[#111318] border border-[#E7E8EC] font-semibold text-xs transition-all shadow-xs cursor-pointer active:scale-95"
             >
               <Wallet size={15} className="text-[#111318]" />
-              <span>+ Add Expense</span>
+              <span>Add Expense</span>
             </button>
 
             <button
@@ -773,7 +773,7 @@ export default function Dashboard() {
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white hover:bg-[#FAFAFB] text-[#111318] border border-[#E7E8EC] font-semibold text-xs transition-all shadow-xs cursor-pointer active:scale-95"
             >
               <UserPlus size={15} className="text-[#111318]" />
-              <span>+ Add Customer</span>
+              <span>Add Customer</span>
             </button>
 
             <button
@@ -782,7 +782,7 @@ export default function Dashboard() {
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white hover:bg-[#FAFAFB] text-[#111318] border border-[#E7E8EC] font-semibold text-xs transition-all shadow-xs cursor-pointer active:scale-95"
             >
               <PackagePlus size={15} className="text-[#111318]" />
-              <span>+ Add Product</span>
+              <span>Add Product</span>
             </button>
 
             <button
@@ -791,7 +791,7 @@ export default function Dashboard() {
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white hover:bg-[#FAFAFB] text-[#111318] border border-[#E7E8EC] font-semibold text-xs transition-all shadow-xs cursor-pointer active:scale-95 ml-auto"
             >
               <BriefcaseIcon />
-              <span>CA Audit Portal</span>
+              <span>CA Collaboration</span>
               <ArrowRight size={13} className="text-[#7C7F8A]" />
             </button>
           </div>

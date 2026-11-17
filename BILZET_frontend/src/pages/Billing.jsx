@@ -1221,16 +1221,6 @@ export default function Billing() {
               <FilePlus size={14} className="text-[#7C7F8A]" />
               <span>{documentType === "quotation" ? "New Quotation" : "New Bill"}</span>
             </button>
-
-            {/* Add Item button (Primary Action in Header) */}
-            <button
-              type="button"
-              onClick={handleOpenAddItem}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-white bg-[#12151C] hover:bg-black transition cursor-pointer shadow-fintech"
-            >
-              <Plus size={15} strokeWidth={2.5} className="text-[#5BF07B]" />
-              <span>Add Item</span>
-            </button>
           </div>
         </header>
 

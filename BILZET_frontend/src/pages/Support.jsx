@@ -350,14 +350,6 @@ export default function Support() {
               <MessageCircle size={14} />
               <span>WhatsApp Care</span>
             </a>
-
-            <Button
-              variant="primary"
-              icon={Plus}
-              onClick={() => setActiveTab("new_ticket")}
-            >
-              New Ticket
-            </Button>
           </div>
         </div>
       </div>
