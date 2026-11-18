@@ -105,7 +105,7 @@ export const quotationsApi = {
 };
 
 export const dashboardApi = {
-  get: () => withFallback(http.get("/dashboard").then(unwrap), mockDashboardData),
+  get: (params) => withFallback(http.get("/dashboard", { params }).then(unwrap), mockDashboardData),
 };
 
 export const inventoryApi = {

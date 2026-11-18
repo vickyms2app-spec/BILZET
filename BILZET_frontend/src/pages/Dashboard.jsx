@@ -74,6 +74,7 @@ import { useAuth } from "../store/auth";
 import Modal from "../components/common/Modal";
 import TaxInvoice from "../components/invoice/TaxInvoice";
 import UpiPaymentModal from "../components/payment/UpiPaymentModal";
+import DailyCountdownTimer from "../components/dashboard/DailyCountdownTimer";
 import useRealtimeSync from "../hooks/useRealtimeSync";
 import { useStore } from "../store/storeContext";
 import {
@@ -167,11 +168,12 @@ export default function Dashboard() {
   }, [productForm.sellingPrice, productForm.gstRate, productForm.pricingMethod]);
 
   // Load Real Data from APIs
-  const refreshAllData = async (manual = false) => {
+  const refreshAllData = async (manual = false, overrideRange = null) => {
     if (manual) setIsRefreshing(true);
+    const activeRange = overrideRange || dateRange;
     try {
       const [dashRes, prodsRes, custsRes, settRes, salesRes, discRes] = await Promise.allSettled([
-        dashboardApi.get(),
+        dashboardApi.get({ range: activeRange, timezone: "Asia/Kolkata" }),
         productsApi.list({ limit: 50 }),
         customersApi.list({ limit: 50 }),
         settingsApi.get(),
@@ -232,8 +234,8 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    refreshAllData();
-  }, []);
+    refreshAllData(false, dateRange);
+  }, [dateRange, currentStore?.id]);
 
   useRealtimeSync({
     onEvent: (type) => {
@@ -379,77 +381,12 @@ export default function Dashboard() {
     }
   };
 
-  // Formatted Recent Sales list with realistic fallbacks
+  // Formatted Recent Sales list strictly from real data
   const displayedSales = useMemo(() => {
-    if (recentSales.length > 0) return recentSales;
-    return [
-      {
-        id: "s1",
-        invoiceNumber: "INV-2026-088",
-        customer: { name: "Anand Textiles", phone: "9840112233" },
-        paymentStatus: "PAID",
-        paymentMode: "UPI",
-        grandTotal: 34500,
-        cgst: 1552.5,
-        sgst: 1552.5,
-        razorpayVerified: true,
-        archivedDays: 4,
-        createdAt: new Date().toISOString(),
-      },
-      {
-        id: "s2",
-        invoiceNumber: "INV-2026-087",
-        customer: { name: "Sri Murugan Stores", phone: "9876543210" },
-        paymentStatus: "PARTIALLY_PAID",
-        paymentMode: "Bank Transfer",
-        grandTotal: 68400,
-        cgst: 3078,
-        sgst: 3078,
-        razorpayVerified: false,
-        archivedDays: 12,
-        createdAt: new Date(Date.now() - 4 * 3600000).toISOString(),
-      },
-      {
-        id: "s3",
-        invoiceNumber: "INV-2026-086",
-        customer: { name: "Ramesh Hardware & Tools", phone: "9444123456" },
-        paymentStatus: "UNPAID",
-        paymentMode: "Credit (Khata)",
-        grandTotal: 18250,
-        cgst: 821.25,
-        sgst: 821.25,
-        razorpayVerified: false,
-        archivedDays: 18,
-        createdAt: new Date(Date.now() - 24 * 3600000).toISOString(),
-      },
-      {
-        id: "s4",
-        invoiceNumber: "INV-2026-085",
-        customer: { name: "Selvi Supermarket", phone: "9988776655" },
-        paymentStatus: "PAID",
-        paymentMode: "Razorpay POS",
-        grandTotal: 42300,
-        cgst: 1903.5,
-        sgst: 1903.5,
-        razorpayVerified: true,
-        archivedDays: 22,
-        createdAt: new Date(Date.now() - 48 * 3600000).toISOString(),
-      },
-      {
-        id: "s5",
-        invoiceNumber: "INV-2026-084",
-        customer: { name: "Kumar Agencies", phone: "9123456780" },
-        paymentStatus: "RETURNED",
-        paymentMode: "Credit Note Issued",
-        grandTotal: 12400,
-        cgst: 558,
-        sgst: 558,
-        razorpayVerified: true,
-        archivedDays: 31,
-        createdAt: new Date(Date.now() - 72 * 3600000).toISOString(),
-      },
-    ];
-  }, [recentSales]);
+    if (recentSales && recentSales.length > 0) return recentSales;
+    if (data?.recentSales && data.recentSales.length > 0) return data.recentSales;
+    return [];
+  }, [recentSales, data?.recentSales]);
 
   // Filtered Invoices for Table
   const filteredInvoices = useMemo(() => {
@@ -473,52 +410,50 @@ export default function Dashboard() {
 
   // Dynamic Sales Analytics Chart Data
   const chartData = useMemo(() => {
-    if (dateRange === "today") {
+    if (data?.chartData && Array.isArray(data.chartData) && data.chartData.length > 0) {
+      return data.chartData;
+    }
+    if (dateRange === "today" || dateRange === "yesterday") {
+      if (data?.trendData?.[dateRange] && Array.isArray(data.trendData[dateRange])) {
+        return data.trendData[dateRange];
+      }
       return [
-        { label: "9 AM", sales: 8400, collections: 7200, expenses: 1500 },
-        { label: "11 AM", sales: 24500, collections: 21000, expenses: 3200 },
-        { label: "1 PM", sales: 42000, collections: 38000, expenses: 6800 },
-        { label: "3 PM", sales: 31000, collections: 29500, expenses: 2400 },
-        { label: "5 PM", sales: 58000, collections: 51200, expenses: 4500 },
-        { label: "7 PM", sales: 74500, collections: 68000, expenses: 5100 },
-        { label: "9 PM", sales: 38200, collections: 35000, expenses: 2200 },
+        { label: "9 AM", sales: 0, collections: 0, expenses: 0 },
+        { label: "11 AM", sales: 0, collections: 0, expenses: 0 },
+        { label: "1 PM", sales: 0, collections: 0, expenses: 0 },
+        { label: "3 PM", sales: 0, collections: 0, expenses: 0 },
+        { label: "5 PM", sales: 0, collections: 0, expenses: 0 },
+        { label: "7 PM", sales: 0, collections: 0, expenses: 0 },
+        { label: "9 PM", sales: 0, collections: 0, expenses: 0 },
       ];
     }
-    if (dateRange === "week") {
-      return [
-        { label: "Mon", sales: 145000, collections: 128000, expenses: 42000 },
-        { label: "Tue", sales: 168000, collections: 152000, expenses: 38000 },
-        { label: "Wed", sales: 192000, collections: 174000, expenses: 51000 },
-        { label: "Thu", sales: 178000, collections: 160000, expenses: 46000 },
-        { label: "Fri", sales: 224000, collections: 201000, expenses: 59000 },
-        { label: "Sat", sales: 286000, collections: 262000, expenses: 68000 },
-        { label: "Sun", sales: 212000, collections: 198000, expenses: 44000 },
-      ];
+    if (data?.trendData?.["7days"] && Array.isArray(data.trendData["7days"])) {
+      return data.trendData["7days"];
     }
     if (dateRange === "year") {
       return [
-        { label: "Apr", sales: 940000, collections: 820000, expenses: 310000 },
-        { label: "May", sales: 1050000, collections: 940000, expenses: 340000 },
-        { label: "Jun", sales: 1120000, collections: 990000, expenses: 380000 },
-        { label: "Jul", sales: 1080000, collections: 960000, expenses: 360000 },
-        { label: "Aug", sales: 1190000, collections: 1050000, expenses: 390000 },
-        { label: "Sep", sales: 1245850, collections: 1120000, expenses: 420000 },
-        { label: "Oct", sales: 1310000, collections: 1190000, expenses: 440000 },
-        { label: "Nov", sales: 1280000, collections: 1150000, expenses: 430000 },
-        { label: "Dec", sales: 1420000, collections: 1290000, expenses: 480000 },
-        { label: "Jan", sales: 1380000, collections: 1240000, expenses: 460000 },
-        { label: "Feb", sales: 1440000, collections: 1310000, expenses: 470000 },
-        { label: "Mar", sales: 1560000, collections: 1420000, expenses: 510000 },
+        { label: "Apr", sales: 0, collections: 0, expenses: 0 },
+        { label: "May", sales: 0, collections: 0, expenses: 0 },
+        { label: "Jun", sales: 0, collections: 0, expenses: 0 },
+        { label: "Jul", sales: 0, collections: 0, expenses: 0 },
+        { label: "Aug", sales: 0, collections: 0, expenses: 0 },
+        { label: "Sep", sales: 0, collections: 0, expenses: 0 },
+        { label: "Oct", sales: 0, collections: 0, expenses: 0 },
+        { label: "Nov", sales: 0, collections: 0, expenses: 0 },
+        { label: "Dec", sales: 0, collections: 0, expenses: 0 },
+        { label: "Jan", sales: 0, collections: 0, expenses: 0 },
+        { label: "Feb", sales: 0, collections: 0, expenses: 0 },
+        { label: "Mar", sales: 0, collections: 0, expenses: 0 },
       ];
     }
     // Default: 'month' (4 Weeks)
     return [
-      { label: "Week 1", sales: 285000, collections: 248000, expenses: 84000 },
-      { label: "Week 2", sales: 315000, collections: 279000, expenses: 98000 },
-      { label: "Week 3", sales: 342000, collections: 305000, expenses: 112000 },
-      { label: "Week 4", sales: 303850, collections: 248000, expenses: 126000 },
+      { label: "Week 1", sales: 0, collections: 0, expenses: 0 },
+      { label: "Week 2", sales: 0, collections: 0, expenses: 0 },
+      { label: "Week 3", sales: 0, collections: 0, expenses: 0 },
+      { label: "Week 4", sales: 0, collections: 0, expenses: 0 },
     ];
-  }, [dateRange]);
+  }, [data, dateRange]);
 
   // Activity Feed Items
   const activityItems = [
@@ -623,6 +558,7 @@ export default function Dashboard() {
               <div className="inline-flex p-1 rounded-full bg-white border border-[#E7E8EC] shadow-xs">
                 {[
                   { key: "today", label: "Today" },
+                  { key: "yesterday", label: "Yesterday" },
                   { key: "week", label: "Week" },
                   { key: "month", label: "Month" },
                   { key: "year", label: "FY 26-27" },
@@ -642,6 +578,14 @@ export default function Dashboard() {
                 ))}
               </div>
 
+              {/* Live Countdown Timer */}
+              <DailyCountdownTimer
+                dateRange={dateRange}
+                timezone={data?.businessTimezone || "Asia/Kolkata"}
+                initialSeconds={data?.secondsUntilClosing}
+                onMidnightReset={() => refreshAllData(false)}
+              />
+
               {/* Refresh Sync Button */}
               <button
                 type="button"
@@ -660,19 +604,19 @@ export default function Dashboard() {
             {/* Left Col: Big Total Revenue Metric */}
             <div className="lg:col-span-5 bg-white rounded-[24px] p-6 border border-[#E7E8EC] shadow-xs space-y-2">
               <span className="text-[11px] font-bold uppercase tracking-wider text-[#7C7F8A] block">
-                Total Net Revenue ({dateRange === "today" ? "Today" : dateRange === "week" ? "This Week" : dateRange === "year" ? "Fiscal Year" : "This Month"})
+                Total Net Revenue ({dateRange === "today" ? "Today" : dateRange === "yesterday" ? "Yesterday" : dateRange === "week" ? "This Week" : dateRange === "year" ? "Fiscal Year" : "This Month"})
               </span>
               <div className="flex items-baseline gap-3">
                 <span className="text-3xl sm:text-4xl font-extrabold text-[#111318] font-['Manrope',sans-serif] tracking-tight">
-                  ₹12,45,850.00
+                  {formatCurrencyINR(data?.rangeSales ?? (dateRange === "today" ? data?.todaySales ?? 0 : 0))}
                 </span>
                 <span className="inline-flex items-center gap-1 px-3 py-0.5 rounded-full text-xs font-bold bg-[#DFFFE6] text-[#0E2A16] border border-[#5BF07B]/40">
                   <TrendingUp size={12} className="text-[#0E2A16]" />
-                  +12.8%
+                  {data?.realizedPercentage ? `${data.realizedPercentage}% Realized` : "Live Synced"}
                 </span>
               </div>
               <p className="text-xs text-[#7C7F8A] font-medium">
-                Collections: <span className="font-bold text-[#111318]">₹10,80,000.00</span> • Realized: <span className="font-bold text-[#0E2A16] bg-[#DFFFE6] px-1.5 py-0.5 rounded-full">86.7%</span>
+                Collections: <span className="font-bold text-[#111318]">{formatCurrencyINR(data?.rangeRevenue ?? (dateRange === "today" ? data?.todayRevenue ?? 0 : 0))}</span> • Realized: <span className="font-bold text-[#0E2A16] bg-[#DFFFE6] px-1.5 py-0.5 rounded-full">{data?.realizedPercentage ?? 0}%</span>
               </p>
             </div>
 
@@ -687,10 +631,10 @@ export default function Dashboard() {
                   </div>
                 </div>
                 <p className="text-base sm:text-lg font-bold text-[#111318] font-['Manrope',sans-serif]">
-                  ₹3,18,420
+                  {formatCurrencyINR(data?.rangeProfit ?? (dateRange === "today" ? data?.todayProfit ?? 0 : 0))}
                 </p>
                 <span className="text-[10px] font-bold text-[#0E2A16] block">
-                  25.5% Margin
+                  {data?.profitMarginPercentage ?? 0}% Margin
                 </span>
               </div>
 
@@ -703,10 +647,10 @@ export default function Dashboard() {
                   </div>
                 </div>
                 <p className="text-base sm:text-lg font-bold text-[#111318] font-['Manrope',sans-serif]">
-                  142 Bills
+                  {data?.rangeBills ?? (dateRange === "today" ? data?.todayBills ?? 0 : 0)} Bills
                 </p>
                 <span className="text-[10px] font-medium text-[#7C7F8A] block">
-                  AOV ₹8,773
+                  AOV {formatCurrencyINR(data?.averageOrderValue ?? 0)}
                 </span>
               </div>
 
@@ -719,10 +663,10 @@ export default function Dashboard() {
                   </div>
                 </div>
                 <p className="text-base sm:text-lg font-bold text-[#111318] font-['Manrope',sans-serif]">
-                  ₹3,86,210
+                  {formatCurrencyINR(data?.pendingPayments ?? 0)}
                 </p>
                 <span className="text-[10px] font-bold text-[#E5484D] block">
-                  ₹1.12L Overdue
+                  Outstanding
                 </span>
               </div>
 
@@ -735,10 +679,10 @@ export default function Dashboard() {
                   </div>
                 </div>
                 <p className="text-base sm:text-lg font-bold text-[#111318] font-['Manrope',sans-serif]">
-                  ₹6,25,000
+                  {formatCurrencyINR(data?.inventoryValuation ?? 0)}
                 </p>
                 <span className="text-[10px] font-medium text-[#7C7F8A] block">
-                  8 Low Items
+                  {data?.lowStockProducts ?? 0} Low Items
                 </span>
               </div>
             </div>
@@ -809,26 +753,26 @@ export default function Dashboard() {
               <TrendingUp size={20} />
             </div>
             <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold bg-[#DFFFE6] text-[#0E2A16]">
-              +12.8%
+              {data?.realizedPercentage ? `${data.realizedPercentage}% Realized` : "Live Synced"}
             </span>
           </div>
 
           <div className="space-y-1">
             <p className="text-xs font-bold text-[#7C7F8A] uppercase tracking-wider">
-              Total Sales
+              Total Sales ({dateRange === "today" ? "Today" : dateRange === "yesterday" ? "Yesterday" : dateRange === "week" ? "Week" : dateRange === "year" ? "FY" : "Month"})
             </p>
             <h3 className="text-2xl sm:text-3xl font-extrabold text-[#111318] font-['Manrope',sans-serif] tracking-tight">
-              ₹12.45 L
+              {formatCurrencyINR(data?.rangeSales ?? (dateRange === "today" ? data?.todaySales ?? 0 : 0))}
             </h3>
             <p className="text-[11px] text-[#7C7F8A]">
-              142 invoices generated in active cycle
+              {data?.rangeBills ?? (dateRange === "today" ? data?.todayBills ?? 0 : 0)} invoices generated in active cycle
             </p>
           </div>
 
           {/* Micro trend visual */}
           <div className="pt-2 border-t border-[#E7E8EC] flex items-center justify-between text-xs text-[#7C7F8A]">
-            <span>Realized: ₹10.80L</span>
-            <span className="font-semibold text-[#0E2A16] bg-[#DFFFE6] px-2 py-0.5 rounded-full">86.7% Paid</span>
+            <span>Realized: {formatCurrencyINR(data?.rangeRevenue ?? (dateRange === "today" ? data?.todayRevenue ?? 0 : 0))}</span>
+            <span className="font-semibold text-[#0E2A16] bg-[#DFFFE6] px-2 py-0.5 rounded-full">{data?.realizedPercentage ?? 0}% Paid</span>
           </div>
         </div>
 
@@ -839,7 +783,7 @@ export default function Dashboard() {
               <CreditCard size={20} />
             </div>
             <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold bg-[#FBD3D3] text-[#E5484D]">
-              ₹1.12L Overdue
+              Outstanding
             </span>
           </div>
 
@@ -848,15 +792,15 @@ export default function Dashboard() {
               Total Receivables (Khata)
             </p>
             <h3 className="text-2xl sm:text-3xl font-extrabold text-[#111318] font-['Manrope',sans-serif] tracking-tight">
-              ₹3.86 L
+              {formatCurrencyINR(data?.pendingPayments ?? 0)}
             </h3>
             <p className="text-[11px] text-[#7C7F8A]">
-              Across 22 customer ledger accounts
+              Across {data?.totalCustomers ?? 0} customer ledger accounts
             </p>
           </div>
 
           <div className="pt-2 border-t border-[#E7E8EC] flex items-center justify-between text-xs">
-            <span className="text-[#7C7F8A]">4 accounts &gt; 30 days</span>
+            <span className="text-[#7C7F8A]">Audited ledger</span>
             <button
               type="button"
               onClick={() => nav("/customers")}
@@ -883,16 +827,16 @@ export default function Dashboard() {
               Net GST Liability
             </p>
             <h3 className="text-2xl sm:text-3xl font-extrabold text-white font-['Manrope',sans-serif] tracking-tight">
-              ₹84,250
+              {formatCurrencyINR(Math.round(((data?.rangeSales ?? (dateRange === "today" ? data?.todaySales ?? 0 : 0)) * 0.18) / 1.18))}
             </h3>
             <p className="text-[11px] text-[#7C7F8A]">
-              CGST: ₹42,125 • SGST: ₹42,125
+              CGST: {formatCurrencyINR(Math.round(((data?.rangeSales ?? 0) * 0.09) / 1.18))} • SGST: {formatCurrencyINR(Math.round(((data?.rangeSales ?? 0) * 0.09) / 1.18))}
             </p>
           </div>
 
           <div className="pt-2 border-t border-white/10 flex items-center justify-between text-xs">
-            <span className="text-[#A9ABB5]">ITC: ₹38,600</span>
-            <span className="font-bold text-[#5BF07B]">Due 20th Nov</span>
+            <span className="text-[#A9ABB5]">Tax on Invoices</span>
+            <span className="font-bold text-[#5BF07B]">Live Reconciled</span>
           </div>
         </div>
 
@@ -903,7 +847,7 @@ export default function Dashboard() {
               <Boxes size={20} />
             </div>
             <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold bg-white text-[#7C7F8A] border border-[#E7E8EC]">
-              8 Low Stock
+              {data?.lowStockProducts ?? 0} Low Stock
             </span>
           </div>
 
@@ -912,15 +856,15 @@ export default function Dashboard() {
               Inventory Value
             </p>
             <h3 className="text-2xl sm:text-3xl font-extrabold text-[#111318] font-['Manrope',sans-serif] tracking-tight">
-              ₹6.25 L
+              {formatCurrencyINR(data?.inventoryValuation ?? 0)}
             </h3>
             <p className="text-[11px] text-[#7C7F8A]">
-              156 SKUs in 2 Warehouses
+              {data?.totalProducts ?? 0} SKUs in Active Catalog
             </p>
           </div>
 
           <div className="pt-2 border-t border-[#E7E8EC] flex items-center justify-between text-xs">
-            <span className="text-[#7C7F8A] font-medium">148 In Stock</span>
+            <span className="text-[#7C7F8A] font-medium">{Math.max(0, (data?.totalProducts ?? 0) - (data?.lowStockProducts ?? 0))} In Stock</span>
             <button
               type="button"
               onClick={() => nav("/inventory")}
@@ -1395,7 +1339,18 @@ export default function Dashboard() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E7E8EC]">
-              {filteredInvoices.map((inv) => {
+              {filteredInvoices.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-10 text-center text-xs text-[#7C7F8A]">
+                    <div className="flex flex-col items-center justify-center gap-1.5">
+                      <FileText size={20} className="text-[#A9ABB5]" />
+                      <p className="font-semibold text-[#111318]">No invoices recorded for this period yet</p>
+                      <p className="text-[11px] text-[#7C7F8A]">Create your first bill using the "Create Invoice" button above.</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                filteredInvoices.map((inv) => {
                 const status = (inv.paymentStatus || "PAID").toUpperCase();
                 return (
                   <tr key={inv.id || inv.invoiceNumber} className="hover:bg-white transition">
@@ -1478,7 +1433,7 @@ export default function Dashboard() {
                     </td>
                   </tr>
                 );
-              })}
+              }))}
             </tbody>
           </table>
         </div>
