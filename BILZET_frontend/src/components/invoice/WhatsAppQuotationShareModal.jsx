@@ -15,9 +15,10 @@ import {
   Loader2,
   Calendar,
 } from "lucide-react";
-import html2canvas from "html2canvas";
+import html2canvas from "html2canvas-pro";
 import { jsPDF } from "jspdf";
 import TaxInvoice from "./TaxInvoice";
+import { preloadPrintableImages, sanitizeClonedDocumentForPdf } from "../../utils/pdfRenderUtils";
 
 /**
  * WhatsApp Quotation Sharing Modal
@@ -135,23 +136,17 @@ export default function WhatsAppQuotationShareModal({
       throw new Error("Quotation printable element not found in DOM");
     }
 
-    // Preload images inside the invoice element
-    const images = Array.from(element.querySelectorAll("img"));
-    await Promise.all(
-      images.map((img) => {
-        if (img.complete) return Promise.resolve();
-        return new Promise((resolve) => {
-          img.onload = resolve;
-          img.onerror = resolve;
-        });
-      })
-    );
+    // Preload images inside the invoice element (logo, signature, QR)
+    await preloadPrintableImages(element);
 
     const canvas = await html2canvas(element, {
       scale: 2,
       useCORS: true,
       logging: false,
       backgroundColor: "#ffffff",
+      onclone: (clonedDoc, clonedElement) => {
+        sanitizeClonedDocumentForPdf(clonedDoc, clonedElement);
+      },
     });
 
     const imgData = canvas.toDataURL("image/png");

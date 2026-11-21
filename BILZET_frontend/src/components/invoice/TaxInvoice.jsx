@@ -17,8 +17,9 @@ import {
   Sparkles,
   Loader2,
 } from "lucide-react";
-import html2canvas from "html2canvas";
+import html2canvas from "html2canvas-pro";
 import { jsPDF } from "jspdf";
+import { preloadPrintableImages, sanitizeClonedDocumentForPdf } from "../../utils/pdfRenderUtils";
 
 // Convert number to Indian words
 export function numberToWordsINR(num) {
@@ -621,22 +622,16 @@ export default function TaxInvoice({
     try {
       const element = printRef.current;
       // Preload all images before capturing canvas to ensure logo & signature render flawlessly in PDF
-      const images = Array.from(element.querySelectorAll("img"));
-      await Promise.all(
-        images.map((img) => {
-          if (img.complete) return Promise.resolve();
-          return new Promise((resolve) => {
-            img.onload = resolve;
-            img.onerror = resolve;
-          });
-        })
-      );
+      await preloadPrintableImages(element);
 
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
         logging: false,
         backgroundColor: "#ffffff",
+        onclone: (clonedDoc, clonedElement) => {
+          sanitizeClonedDocumentForPdf(clonedDoc, clonedElement);
+        },
       });
 
       const imgData = canvas.toDataURL("image/png");
