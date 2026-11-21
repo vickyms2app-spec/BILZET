@@ -1150,7 +1150,7 @@ export default function Billing() {
           pricingMethod: i.isTaxInclusive ? "INCLUSIVE" : "EXCLUSIVE",
         })),
         subtotal,
-        discountTotal,
+        discountTotal: totalDiscount,
         taxTotal: taxAmount,
         grandTotal,
       };
