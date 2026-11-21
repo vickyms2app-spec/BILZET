@@ -8,12 +8,16 @@ import {
   RefreshCw,
   Search,
   Sparkles,
-  Volume2,
-  HelpCircle,
+  Zap,
+  ZapOff,
+  ZoomIn,
+  PackagePlus,
+  ArrowRight,
+  ShieldAlert,
 } from "lucide-react";
 import { productsApi } from "../../api";
 
-// Subtle pleasant feedback sounds via Web Audio API
+// Feedback sound chimes using Web Audio API
 const playFeedbackSound = (type = "success") => {
   try {
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -26,24 +30,24 @@ const playFeedbackSound = (type = "success") => {
       osc.type = "sine";
       osc.frequency.setValueAtTime(880, ctx.currentTime); // A5 note
       osc.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.1); // E6 note
-      gain.gain.setValueAtTime(0.12, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.14, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.16);
       osc.connect(gain);
       gain.connect(ctx.destination);
       osc.start();
-      osc.stop(ctx.currentTime + 0.15);
+      osc.stop(ctx.currentTime + 0.16);
     } else {
       osc.type = "sawtooth";
       osc.frequency.setValueAtTime(320, ctx.currentTime);
-      gain.gain.setValueAtTime(0.1, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+      gain.gain.setValueAtTime(0.12, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.28);
       osc.connect(gain);
       gain.connect(ctx.destination);
       osc.start();
-      osc.stop(ctx.currentTime + 0.25);
+      osc.stop(ctx.currentTime + 0.28);
     }
   } catch (e) {
-    // Silent fail if blocked
+    // Audio context may be muted or blocked by user gesture policy
   }
 };
 
@@ -51,6 +55,7 @@ export default function BarcodeScannerModal({
   isOpen,
   onClose,
   onProductScanned,
+  onRegisterNewProduct,
   availableProducts = [],
 }) {
   const videoRef = useRef(null);
@@ -64,15 +69,76 @@ export default function BarcodeScannerModal({
   const [cameraError, setCameraError] = useState("");
   const [manualCode, setManualCode] = useState("");
   const [searching, setSearching] = useState(false);
-  const [scanStatus, setScanStatus] = useState({ type: "", message: "" });
+  const [scanStatus, setScanStatus] = useState({ type: "", message: "", product: null, barcode: "" });
   const [recentScans, setRecentScans] = useState([]);
 
-  // Process code (from camera or manual input)
+  // Hardware controls: Torch (flashlight) & Zoom
+  const [torchSupported, setTorchSupported] = useState(false);
+  const [torchOn, setTorchOn] = useState(false);
+  const [zoomSupported, setZoomSupported] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const [zoomRange, setZoomRange] = useState({ min: 1, max: 3, step: 0.5 });
+
+  // Inspect stream track capabilities once video is active
+  const checkTrackCapabilities = (stream) => {
+    try {
+      const track = stream?.getVideoTracks()?.[0];
+      if (!track) return;
+
+      if (typeof track.getCapabilities === "function") {
+        const capabilities = track.getCapabilities();
+        if ("torch" in capabilities) {
+          setTorchSupported(true);
+        }
+        if ("zoom" in capabilities) {
+          setZoomSupported(true);
+          setZoomRange({
+            min: capabilities.zoom.min || 1,
+            max: capabilities.zoom.max || 3,
+            step: capabilities.zoom.step || 0.5,
+          });
+        }
+      }
+    } catch (e) {
+      console.warn("Capabilities detection note:", e);
+    }
+  };
+
+  // Toggle Flashlight / Torch
+  const toggleTorch = async () => {
+    try {
+      const track = streamRef.current?.getVideoTracks()?.[0];
+      if (!track) return;
+      const nextTorch = !torchOn;
+      await track.applyConstraints({
+        advanced: [{ torch: nextTorch }],
+      });
+      setTorchOn(nextTorch);
+    } catch (err) {
+      console.warn("Flashlight constraint error:", err);
+    }
+  };
+
+  // Adjust Camera Zoom
+  const applyZoom = async (newZoom) => {
+    try {
+      const track = streamRef.current?.getVideoTracks()?.[0];
+      if (!track) return;
+      await track.applyConstraints({
+        advanced: [{ zoom: newZoom }],
+      });
+      setZoomLevel(newZoom);
+    } catch (err) {
+      console.warn("Zoom constraint error:", err);
+    }
+  };
+
+  // Process Scanned or Manually Entered Barcode
   const processBarcode = async (codeRaw) => {
     const code = (codeRaw || "").trim();
     if (!code) return;
 
-    // Throttle identical barcode within 2.5 seconds to prevent runaway duplicate scans
+    // Throttle identical barcode within 2.5s to prevent runaway duplicate triggers
     const now = Date.now();
     if (
       lastScannedCodeRef.current === code &&
@@ -86,7 +152,7 @@ export default function BarcodeScannerModal({
     setSearching(true);
 
     try {
-      // 1. Fast match from currently loaded products (by barcode, SKU, code, or ID)
+      // 1. Fast match from local memory catalog (by barcode, SKU, code, or ID)
       const normalizedCode = code.toLowerCase();
       let matchedProduct = availableProducts.find((p) => {
         const pBarcode = (p.barcode || "").toLowerCase();
@@ -101,7 +167,7 @@ export default function BarcodeScannerModal({
         );
       });
 
-      // 2. Fallback: Query backend API by barcode if not in initial 100 cache
+      // 2. Fallback: Query backend API if not in initial local list
       if (!matchedProduct) {
         try {
           const apiRes = await productsApi.barcode(code);
@@ -114,36 +180,56 @@ export default function BarcodeScannerModal({
       }
 
       if (matchedProduct) {
-        playFeedbackSound("success");
-        setScanStatus({
-          type: "success",
-          message: `Added "${matchedProduct.name}" · ₹${matchedProduct.sellingPrice || matchedProduct.price || 0}`,
-        });
-        setRecentScans((prev) => [
-          {
-            code,
-            name: matchedProduct.name,
-            price: matchedProduct.sellingPrice || matchedProduct.price || 0,
-            time: new Date().toLocaleTimeString(),
-          },
-          ...prev.slice(0, 4),
-        ]);
-
+        // Delegate to invoice cart
+        let addResult = { success: true };
         if (onProductScanned) {
-          onProductScanned(matchedProduct);
+          addResult = onProductScanned(matchedProduct) || { success: true };
+        }
+
+        if (addResult.success === false) {
+          playFeedbackSound("error");
+          setScanStatus({
+            type: "warning",
+            message: addResult.reason || `Insufficient stock for "${matchedProduct.name}".`,
+            product: matchedProduct,
+            barcode: code,
+          });
+        } else {
+          playFeedbackSound("success");
+          const rate = matchedProduct.sellingPrice || matchedProduct.price || 0;
+          setScanStatus({
+            type: "success",
+            message: `Added "${matchedProduct.name}" · ₹${rate}${addResult.qty ? ` (Qty: ${addResult.qty})` : ""}`,
+            product: matchedProduct,
+            barcode: code,
+          });
+
+          setRecentScans((prev) => [
+            {
+              code,
+              name: matchedProduct.name,
+              price: rate,
+              time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+            },
+            ...prev.slice(0, 4),
+          ]);
         }
       } else {
         playFeedbackSound("error");
         setScanStatus({
-          type: "error",
-          message: `Product not found for barcode / SKU "${code}".`,
+          type: "not_found",
+          message: `Product Not Found for barcode "${code}".`,
+          product: null,
+          barcode: code,
         });
       }
     } catch (err) {
       console.error("Barcode lookup failed:", err);
       setScanStatus({
         type: "error",
-        message: "Product lookup failed. Please retry.",
+        message: "Product lookup failed. Please retry or enter manually.",
+        product: null,
+        barcode: code,
       });
     } finally {
       setSearching(false);
@@ -154,15 +240,15 @@ export default function BarcodeScannerModal({
   const startCamera = async () => {
     setCameraLoading(true);
     setCameraError("");
+    setTorchOn(false);
 
-    // Stop any existing tracks
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
     }
 
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       setCameraError(
-        "Camera access is not supported by your browser or environment. You can enter or scan the barcode manually below."
+        "Camera access is not supported by this browser environment. You can enter barcodes manually or use a USB scanner below."
       );
       setCameraLoading(false);
       return;
@@ -187,10 +273,10 @@ export default function BarcodeScannerModal({
         await videoRef.current.play();
       }
 
+      checkTrackCapabilities(stream);
       setCameraActive(true);
       setCameraLoading(false);
 
-      // Start Barcode detection loop
       initBarcodeDetection();
     } catch (err) {
       console.warn("Camera init error:", err);
@@ -199,7 +285,7 @@ export default function BarcodeScannerModal({
 
       if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
         setCameraError(
-          "Camera permission was denied. Please allow camera access in your browser address bar/settings to scan barcodes."
+          "Camera permission was denied. Please allow camera permissions in your browser or device settings to scan barcodes."
         );
       } else if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
         setCameraError(
@@ -207,7 +293,7 @@ export default function BarcodeScannerModal({
         );
       } else if (err.name === "NotReadableError" || err.name === "TrackStartError") {
         setCameraError(
-          "The camera is currently locked or in use by another program. Please close other camera apps and retry."
+          "The camera is currently locked by another application. Please close other camera apps and retry."
         );
       } else {
         setCameraError(
@@ -217,7 +303,7 @@ export default function BarcodeScannerModal({
     }
   };
 
-  // Detection loop using native BarcodeDetector if available
+  // Continuous Barcode Detection Loop (EAN-13, EAN-8, UPC-A, UPC-E, Code 128, Code 39, QR)
   const initBarcodeDetection = () => {
     if (scanIntervalRef.current) {
       clearInterval(scanIntervalRef.current);
@@ -252,7 +338,7 @@ export default function BarcodeScannerModal({
                 }
               }
             } catch (detectionErr) {
-              // Frame dropped or unreadable, continue loop
+              // Frame dropped or unreadable, continue continuous loop
             }
           }
         }, 280);
@@ -262,7 +348,7 @@ export default function BarcodeScannerModal({
     }
   };
 
-  // Stop camera stream
+  // Stop Camera
   const stopCamera = () => {
     if (scanIntervalRef.current) {
       clearInterval(scanIntervalRef.current);
@@ -280,7 +366,7 @@ export default function BarcodeScannerModal({
       startCamera();
     } else {
       stopCamera();
-      setScanStatus({ type: "", message: "" });
+      setScanStatus({ type: "", message: "", product: null, barcode: "" });
       setManualCode("");
     }
     return () => {
@@ -300,9 +386,9 @@ export default function BarcodeScannerModal({
               <Scan size={18} />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-white">Live Camera Barcode Scanner</h3>
+              <h3 className="text-sm font-bold text-white">Mobile Camera Barcode Scanner</h3>
               <p className="text-[11px] text-[#A9ABB5]">
-                Point camera at product barcode or enter SKU
+                Align barcode within frame · Continuous auto-scan
               </p>
             </div>
           </div>
@@ -317,12 +403,12 @@ export default function BarcodeScannerModal({
           </button>
         </div>
 
-        {/* Camera Viewport & Overlay */}
-        <div className="relative bg-[#12151C] aspect-4/3 max-h-72 w-full flex items-center justify-center overflow-hidden">
+        {/* Live Camera Viewport with Frame & Controls */}
+        <div className="relative bg-[#12151C] aspect-4/3 max-h-76 w-full flex items-center justify-center overflow-hidden">
           {cameraLoading ? (
             <div className="text-center text-[#A9ABB5] space-y-2">
-              <RefreshCw size={24} className="animate-spin text-[#5BF07B] mx-auto" />
-              <p className="text-xs font-medium">Requesting camera access...</p>
+              <RefreshCw size={26} className="animate-spin text-[#5BF07B] mx-auto" />
+              <p className="text-xs font-medium">Starting mobile camera preview...</p>
             </div>
           ) : cameraError ? (
             <div className="p-6 text-center max-w-sm space-y-3">
@@ -341,7 +427,7 @@ export default function BarcodeScannerModal({
             </div>
           ) : (
             <>
-              {/* Active Video Stream */}
+              {/* Active Live Video */}
               <video
                 ref={videoRef}
                 autoPlay
@@ -350,54 +436,124 @@ export default function BarcodeScannerModal({
                 className="w-full h-full object-cover"
               />
 
-              {/* Scanning Target Reticle & Red Laser Guide */}
+              {/* Viewfinder Overlay with Darkened Vignette */}
               <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                <div className="w-64 h-36 border-2 border-dashed border-blue-400/80 rounded-2xl relative shadow-[0_0_20px_rgba(59,130,246,0.3)]">
-                  {/* Laser Scanning Line */}
-                  <div className="absolute left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-rose-500 to-transparent shadow-[0_0_8px_rgba(244,63,94,0.9)] animate-bounce" />
+                {/* Centered Barcode Scanning Frame */}
+                <div className="w-64 h-40 sm:w-72 sm:h-44 border-2 border-[#5BF07B]/80 rounded-2xl relative shadow-[0_0_24px_rgba(91,240,123,0.35)] overflow-hidden">
+                  {/* Animated Laser Scanning Line */}
+                  <div className="absolute left-2 right-2 h-0.5 bg-gradient-to-r from-transparent via-[#5BF07B] to-transparent shadow-[0_0_12px_#5BF07B] animate-scan-laser pointer-events-none" />
 
-                  {/* Corner Targets */}
-                  <span className="absolute -top-1 -left-1 w-4 h-4 border-t-2 border-l-2 border-blue-400" />
-                  <span className="absolute -top-1 -right-1 w-4 h-4 border-t-2 border-r-2 border-blue-400" />
-                  <span className="absolute -bottom-1 -left-1 w-4 h-4 border-b-2 border-l-2 border-blue-400" />
-                  <span className="absolute -bottom-1 -right-1 w-4 h-4 border-b-2 border-r-2 border-blue-400" />
+                  {/* Corner Target Accents */}
+                  <span className="absolute -top-1 -left-1 w-4 h-4 border-t-3 border-l-3 border-[#5BF07B] rounded-tl-sm" />
+                  <span className="absolute -top-1 -right-1 w-4 h-4 border-t-3 border-r-3 border-[#5BF07B] rounded-tr-sm" />
+                  <span className="absolute -bottom-1 -left-1 w-4 h-4 border-b-3 border-l-3 border-[#5BF07B] rounded-bl-sm" />
+                  <span className="absolute -bottom-1 -right-1 w-4 h-4 border-b-3 border-r-3 border-[#5BF07B] rounded-br-sm" />
                 </div>
               </div>
 
-              {/* Continuous Scanner Badge */}
-              <div className="absolute bottom-2.5 left-3 right-3 flex items-center justify-between text-[11px] text-white/90 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10">
+              {/* Top Controls Overlay: Flashlight (Torch) & Zoom */}
+              <div className="absolute top-3 left-3 right-3 flex items-center justify-between pointer-events-auto">
+                {/* Flashlight Toggle */}
+                {torchSupported ? (
+                  <button
+                    type="button"
+                    onClick={toggleTorch}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition shadow-md backdrop-blur-md cursor-pointer ${
+                      torchOn
+                        ? "bg-[#5BF07B] text-[#0E2A16] border border-[#5BF07B]"
+                        : "bg-black/60 text-white border border-white/20 hover:bg-black/80"
+                    }`}
+                    title={torchOn ? "Turn Flashlight OFF" : "Turn Flashlight ON"}
+                  >
+                    {torchOn ? <Zap size={14} className="fill-current" /> : <ZapOff size={14} />}
+                    <span>{torchOn ? "Torch ON" : "Torch"}</span>
+                  </button>
+                ) : (
+                  <div />
+                )}
+
+                {/* Zoom Controls */}
+                {zoomSupported && (
+                  <div className="flex items-center gap-1 bg-black/60 backdrop-blur-md p-1 rounded-full border border-white/20">
+                    {[1, 2].map((lvl) => (
+                      <button
+                        key={lvl}
+                        type="button"
+                        onClick={() => applyZoom(lvl)}
+                        className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold transition cursor-pointer ${
+                          zoomLevel === lvl
+                            ? "bg-[#5BF07B] text-[#0E2A16]"
+                            : "text-white/80 hover:text-white"
+                        }`}
+                      >
+                        {lvl}x
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Bottom Status Pill */}
+              <div className="absolute bottom-2.5 left-3 right-3 flex items-center justify-between text-[11px] text-white/90 bg-black/65 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10">
                 <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>Scanner Ready · Continuous Mode</span>
+                  <span className="w-2 h-2 rounded-full bg-[#5BF07B] animate-pulse" />
+                  <span className="font-medium">Camera Active · EAN / UPC / QR / Code128</span>
                 </span>
-                <span className="text-white/60">Hold steady</span>
+                <span className="text-white/60 text-[10px]">Continuous Scan</span>
               </div>
             </>
           )}
         </div>
 
-        {/* Live Feedback Banner */}
+        {/* Live Feedback Banner & Unknown Product Actions */}
         {scanStatus.message && (
           <div
-            className={`px-4 py-2.5 text-xs font-semibold flex items-center gap-2 border-b ${
+            className={`px-4 py-3 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 border-b transition-all ${
               scanStatus.type === "success"
-                ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-                : "bg-rose-50 text-rose-800 border-rose-200"
+                ? "bg-[#DFFFE6] text-[#0E2A16] border-[#5BF07B]/40"
+                : scanStatus.type === "warning"
+                ? "bg-amber-50 text-amber-900 border-amber-200"
+                : "bg-[#FBD3D3] text-[#E5484D] border-[#E5484D]/30"
             }`}
           >
-            {scanStatus.type === "success" ? (
-              <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
-            ) : (
-              <AlertCircle size={16} className="text-rose-600 shrink-0" />
+            <div className="flex items-center gap-2 min-w-0">
+              {scanStatus.type === "success" && (
+                <CheckCircle2 size={16} className="text-[#0E2A16] shrink-0" />
+              )}
+              {scanStatus.type === "warning" && (
+                <ShieldAlert size={16} className="text-amber-700 shrink-0" />
+              )}
+              {scanStatus.type !== "success" && scanStatus.type !== "warning" && (
+                <AlertCircle size={16} className="text-[#E5484D] shrink-0" />
+              )}
+              <div className="min-w-0">
+                <span className="font-bold block truncate">{scanStatus.message}</span>
+                {scanStatus.product && (
+                  <span className="text-[11px] opacity-80 block">
+                    SKU: {scanStatus.product.sku || "N/A"} · Stock: {scanStatus.product.stock ?? "N/A"} · GST: {scanStatus.product.gstRate || 18}%
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Unknown Product Action */}
+            {scanStatus.type === "not_found" && onRegisterNewProduct && (
+              <button
+                type="button"
+                onClick={() => onRegisterNewProduct(scanStatus.barcode)}
+                className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#12151C] hover:bg-black text-white text-xs font-bold transition shadow-xs cursor-pointer active:scale-95"
+              >
+                <PackagePlus size={13} className="text-[#5BF07B]" />
+                <span>+ Register New Product</span>
+              </button>
             )}
-            <span className="truncate">{scanStatus.message}</span>
           </div>
         )}
 
-        {/* Manual Barcode / USB Gun Input Section */}
-        <div className="p-5 space-y-4">
+        {/* Manual Barcode / USB Scanner Input Section */}
+        <div className="p-4 sm:p-5 space-y-3.5">
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5">
+            <label className="block text-xs font-bold text-[#111318] mb-1.5">
               Manual Barcode / SKU / USB Scanner Input
             </label>
             <form
@@ -408,10 +564,10 @@ export default function BarcodeScannerModal({
               className="flex items-center gap-2"
             >
               <div className="relative flex-1">
-                <Search size={14} className="absolute left-3 top-2.5 text-slate-400" />
+                <Search size={14} className="absolute left-3 top-2.5 text-[#7C7F8A]" />
                 <input
                   type="text"
-                  placeholder="Type barcode or scan with USB gun..."
+                  placeholder="Type barcode (e.g. 8901030383742) or scan with USB gun..."
                   value={manualCode}
                   onChange={(e) => setManualCode(e.target.value)}
                   className="w-full pl-8 pr-3 py-2 text-xs bg-white border border-[#E7E8EC] rounded-xl outline-none focus:border-[#5BF07B] focus:ring-2 focus:ring-[#5BF07B]/15 font-mono font-medium text-[#111318] transition"
@@ -427,13 +583,13 @@ export default function BarcodeScannerModal({
             </form>
           </div>
 
-          {/* Quick Click Chips for Products with Barcodes (For testing/convenience) */}
+          {/* Quick-test Catalog Chips */}
           {availableProducts.length > 0 && (
             <div>
               <p className="text-[10px] font-bold text-[#7C7F8A] uppercase tracking-wider mb-1.5">
-                Quick Test From Catalog:
+                Quick Test from Catalog:
               </p>
-              <div className="flex flex-wrap gap-1.5 max-h-20 overflow-y-auto">
+              <div className="flex flex-wrap gap-1.5 max-h-20 overflow-y-auto scrollbar-none">
                 {availableProducts.slice(0, 6).map((p) => {
                   const code = p.barcode || p.sku || p.code || p.id;
                   return (
@@ -441,7 +597,7 @@ export default function BarcodeScannerModal({
                       key={p.id || p._id}
                       type="button"
                       onClick={() => processBarcode(code)}
-                      className="px-2.5 py-1 rounded-lg bg-[#EDEDEF] hover:bg-[#DFFFE6] hover:text-[#0E2A16] border border-[#E7E8EC] text-[11px] font-medium text-[#111318] transition cursor-pointer"
+                      className="px-2.5 py-1 rounded-lg bg-white hover:bg-[#DFFFE6] hover:text-[#0E2A16] border border-[#E7E8EC] text-[11px] font-medium text-[#111318] transition cursor-pointer shadow-2xs"
                       title={`Add ${p.name}`}
                     >
                       {p.name} ({code})
@@ -452,24 +608,27 @@ export default function BarcodeScannerModal({
             </div>
           )}
 
-          {/* Recent Scans in this session */}
+          {/* Recent Scans in Current Session */}
           {recentScans.length > 0 && (
-            <div className="pt-2 border-t border-slate-100">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+            <div className="pt-2 border-t border-[#E7E8EC]">
+              <p className="text-[10px] font-bold text-[#7C7F8A] uppercase tracking-wider mb-1.5">
                 Scanned in This Session ({recentScans.length}):
               </p>
               <div className="space-y-1">
                 {recentScans.map((item, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center justify-between text-xs py-1 px-2 rounded-lg bg-slate-50 border border-slate-100"
+                    className="flex items-center justify-between text-xs py-1 px-2.5 rounded-lg bg-white border border-[#E7E8EC]"
                   >
-                    <span className="font-semibold text-slate-800 truncate max-w-[200px]">
+                    <span className="font-semibold text-[#111318] truncate max-w-[220px]">
                       {item.name}
                     </span>
-                    <span className="font-mono font-bold text-emerald-700">
-                      ₹{item.price}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-[#7C7F8A]">{item.time}</span>
+                      <span className="font-mono font-bold text-[#0E2A16] bg-[#DFFFE6] px-1.5 py-0.5 rounded">
+                        ₹{item.price}
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -477,14 +636,14 @@ export default function BarcodeScannerModal({
           )}
 
           {/* Modal Footer */}
-          <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-            <span className="text-[11px] text-slate-400">
-              Products are automatically added to active cart.
+          <div className="pt-3 border-t border-[#E7E8EC] flex items-center justify-between text-xs">
+            <span className="text-[11px] text-[#7C7F8A]">
+              Items are added to active bill automatically.
             </span>
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition"
+              className="px-4 py-2 rounded-xl bg-white hover:bg-[#EDEDEF] border border-[#E7E8EC] text-[#111318] font-bold transition cursor-pointer shadow-xs"
             >
               Done Scanning
             </button>

@@ -630,8 +630,11 @@ export default function Billing() {
 
   // Barcode Scanner & Quick Catalog Add Integration
   const handleProductScanned = (product) => {
-    if (!product) return;
+    if (!product) return { success: false, reason: "Invalid product scanned" };
     const prodId = product.id || product._id;
+    const isStockManaged = product.stock !== undefined && product.stock !== null;
+
+    let scanResult = { success: true };
 
     setItems((prevItems) => {
       const existingIndex = prevItems.findIndex(
@@ -644,8 +647,10 @@ export default function Billing() {
       if (existingIndex >= 0) {
         const updated = [...prevItems];
         const nextQty = updated[existingIndex].qty + 1;
-        if (product.stock && nextQty > product.stock) {
-          notify("warning", `Sale quantity (${nextQty}) exceeds available inventory (${product.stock})`);
+        if (isStockManaged && nextQty > product.stock) {
+          notify("warning", `Insufficient stock for "${product.name}". Only ${product.stock} available in inventory.`);
+          scanResult = { success: false, reason: `Insufficient stock! Only ${product.stock} available.` };
+          return prevItems; // Do not increment if stock exceeded
         }
         updated[existingIndex] = {
           ...updated[existingIndex],
@@ -655,8 +660,14 @@ export default function Billing() {
           "success",
           `Increased "${product.name}" quantity to ${updated[existingIndex].qty}!`
         );
+        scanResult = { success: true, qty: updated[existingIndex].qty, product };
         return updated;
       } else {
+        if (isStockManaged && product.stock <= 0) {
+          notify("warning", `Cannot add "${product.name}". Product is currently out of stock.`);
+          scanResult = { success: false, reason: `Cannot add "${product.name}". Out of stock.` };
+          return prevItems; // Do not add if out of stock
+        }
         const newItem = {
           id: prodId || `scan-${Date.now()}`,
           productId: prodId,
@@ -673,9 +684,33 @@ export default function Billing() {
           stock: product.stock,
         };
         notify("success", `Added "${product.name}" (₹${newItem.rate}) to bill!`);
+        scanResult = { success: true, qty: 1, product };
         return [...prevItems, newItem];
       }
     });
+
+    return scanResult;
+  };
+
+  // Register Unknown Barcode as New Product Workflow
+  const handleRegisterNewProduct = (scannedBarcode) => {
+    setShowBarcodeScanner(false);
+    setItemForm({
+      productId: "",
+      name: "",
+      sku: scannedBarcode || "",
+      barcode: scannedBarcode || "",
+      hsn: "1904",
+      unit: "piece",
+      quantity: 1,
+      rate: 100,
+      discount: 0,
+      taxRate: 18,
+      isTaxInclusive: false,
+      stock: 50,
+    });
+    setShowAddItemModal(true);
+    notify("info", `Registering new product with barcode: ${scannedBarcode}`);
   };
 
   // Filter products for the inline toolbar search
@@ -2796,6 +2831,7 @@ export default function Billing() {
           isOpen={showBarcodeScanner}
           onClose={() => setShowBarcodeScanner(false)}
           onProductScanned={handleProductScanned}
+          onRegisterNewProduct={handleRegisterNewProduct}
           availableProducts={availableProducts}
         />
 
