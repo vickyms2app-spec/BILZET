@@ -30,13 +30,13 @@ export default function NewBillButton({
   };
 
   const sizeClasses = {
-    sm: "px-3.5 py-1.5 text-xs gap-1.5 rounded-full",
-    md: "px-4 py-2 text-xs font-bold gap-2 rounded-full",
-    lg: "px-6 py-2.5 text-sm font-bold gap-2.5 rounded-full",
+    sm: "p-2 sm:px-3.5 sm:py-1.5 text-xs gap-1.5 rounded-full min-h-[36px] min-w-[36px]",
+    md: "px-3.5 py-2 sm:px-4 sm:py-2 text-xs font-bold gap-2 rounded-full min-h-[38px]",
+    lg: "px-4 py-2 sm:px-6 sm:py-2.5 text-sm font-bold gap-2.5 rounded-full min-h-[42px]",
   };
 
   const iconSizes = {
-    sm: 14,
+    sm: 15,
     md: 16,
     lg: 18,
   };
@@ -58,10 +58,10 @@ export default function NewBillButton({
         className="shrink-0 text-[#5BF07B] transition-transform duration-200 ease-out group-hover:scale-110 group-hover:rotate-3"
       />
 
-      <span className="truncate">{label}</span>
+      <span className={fullWidth ? "truncate" : "hidden sm:inline truncate"}>{label}</span>
 
       {showShortcut && (
-        <span className="ml-1 px-1.5 py-0.5 rounded-full bg-white/15 text-[10px] font-mono font-bold tracking-wider text-[#5BF07B] shadow-2xs group-hover:bg-white/20 transition-colors">
+        <span className="hidden md:inline ml-1 px-1.5 py-0.5 rounded-full bg-white/15 text-[10px] font-mono font-bold tracking-wider text-[#5BF07B] shadow-2xs group-hover:bg-white/20 transition-colors">
           {shortcutText}
         </span>
       )}

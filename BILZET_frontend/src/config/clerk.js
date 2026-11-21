@@ -19,6 +19,10 @@ export const isProductionKey =
 export const isDevelopmentKey =
   sanitizedKey.startsWith("pk_test_");
 
+const isLocalhost =
+  typeof window !== "undefined" &&
+  Boolean(window.location?.hostname === "localhost" || window.location?.hostname === "127.0.0.1" || window.location?.hostname === "");
+
 // Validate Clerk publishable key structure: non-empty, matching expected prefix and containing payload
 export const isKeyValid =
   Boolean(sanitizedKey) &&
@@ -27,13 +31,13 @@ export const isKeyValid =
 
 export const hasClerk =
   isKeyValid &&
-  (!isProd || isProductionKey);
+  (!isProd || isProductionKey || isLocalhost);
 
 export const CLERK_PUBLISHABLE_KEY =
   hasClerk ? sanitizedKey : "";
 
 export const clerkDiagnostics = {
-  environment: isProd ? "production" : "development",
+  environment: isProd ? (isLocalhost ? "development" : "production") : "development",
   keyExists: Boolean(sanitizedKey),
   keyPrefix: isProductionKey
     ? "pk_live_"

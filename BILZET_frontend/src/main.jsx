@@ -21,7 +21,10 @@ const container = document.getElementById("root");
  * Displayed when Clerk Publishable Key is missing, invalid, or mismatched with environment.
  */
 function ClerkConfigurationError({ diagnostics }) {
-  const isProd = diagnostics?.environment === "production";
+  const isLocalhost =
+    typeof window !== "undefined" &&
+    Boolean(window.location?.hostname === "localhost" || window.location?.hostname === "127.0.0.1" || window.location?.hostname === "");
+  const isProd = diagnostics?.environment === "production" && !isLocalhost;
   const hasKey = Boolean(diagnostics?.keyExists);
 
   // Compute validation status description

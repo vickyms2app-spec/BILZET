@@ -1145,14 +1145,14 @@ export default function Layout({ children }) {
       ══════════════════════════════════════════════════ */}
       <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
         {/* ── Top Header Bar ── */}
-        <header className="h-16 shrink-0 bg-[#E3E3E5] border-b border-[#D8D9DE] px-4 sm:px-6 flex items-center justify-between gap-4 z-20">
+        <header className="h-16 shrink-0 bg-[#E3E3E5] border-b border-[#D8D9DE] px-3 sm:px-6 flex items-center justify-between gap-2 sm:gap-4 z-20 max-w-full">
           {/* Left: Mobile trigger & Global Search with Ctrl+K */}
-          <div className="flex items-center gap-2.5 min-w-0 flex-1 max-w-md">
+          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 shrink-0 md:flex-1 md:max-w-md">
             {/* Mobile Navigation Drawer Toggle */}
             <button
               type="button"
               onClick={() => setMobileDrawer(true)}
-              className="md:hidden inline-flex items-center justify-center w-9 h-9 rounded-full text-[#111318] bg-white hover:bg-[#F6F6F8] border border-[#E7E8EC] transition-all duration-200 cursor-pointer shadow-xs active:scale-95 group shrink-0"
+              className="md:hidden inline-flex items-center justify-center w-9 h-9 rounded-full text-[#111318] bg-white hover:bg-[#F6F6F8] border border-[#E7E8EC] transition-all duration-200 cursor-pointer shadow-xs active:scale-95 group shrink-0 min-w-[36px] min-h-[36px]"
               title="Open Navigation"
               aria-label="Open Navigation"
             >
@@ -1160,7 +1160,7 @@ export default function Layout({ children }) {
             </button>
 
             {/* Mobile BILZET Logo Brand Mark */}
-            <div className="md:hidden flex items-center shrink-0 mr-1">
+            <div className="md:hidden flex items-center shrink-0">
               <Logo variant="compact" theme="light" size="sm" />
             </div>
 
@@ -1178,8 +1178,8 @@ export default function Layout({ children }) {
               />
             </button>
 
-            {/* Compact Customer Search Bar with Ctrl+K */}
-            <div className="relative w-full">
+            {/* Compact Customer Search Bar with Ctrl+K (Desktop) */}
+            <div className="hidden md:block relative w-full">
               <div className="flex items-center gap-2 px-3.5 py-1.5 bg-white border border-[#E7E8EC] rounded-full text-xs text-[#7C7F8A] w-full focus-within:border-[#111318] focus-within:ring-1 focus-within:ring-[#111318] shadow-xs transition">
                 <Search size={14} className="text-[#7C7F8A] shrink-0" />
                 <input
@@ -1342,8 +1342,8 @@ export default function Layout({ children }) {
               )}
             </div>
 
-            {/* Quick Action Button (+ Create New) */}
-            <div className="relative shrink-0" ref={quickCreateRef}>
+            {/* Desktop Quick Action Button (+ Create New) */}
+            <div className="relative shrink-0 hidden md:block" ref={quickCreateRef}>
               <button
                 type="button"
                 onClick={() => setQuickCreateOpen(!quickCreateOpen)}
@@ -1418,17 +1418,19 @@ export default function Layout({ children }) {
             </div>
           </div>
 
-          {/* Right: Store, Online Status, Notifications, Help & Support, Primary New Bill, User Profile */}
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            {/* Store Switcher: Current store name with small store icon & dropdown */}
-            <StoreSwitcher variant="header" />
+          {/* Right: Notifications, New Bill, Profile (Mobile) + Store, Help, Shortcuts, Upgrade (Desktop) */}
+          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+            {/* Store Switcher (Desktop only in header; accessible on mobile inside Mobile Drawer) */}
+            <div className="hidden md:block">
+              <StoreSwitcher variant="header" />
+            </div>
 
             {/* Subtle Divider */}
-            <div className="h-5 w-px bg-[#D8D9DE] hidden sm:block" />
+            <div className="h-5 w-px bg-[#D8D9DE] hidden md:block" />
 
-            {/* Online Status: Small neon mint dot with subtle text */}
+            {/* Online Status: Small neon mint dot with subtle text (Desktop only) */}
             {connStatus === "online" ? (
-              <div className="hidden sm:flex items-center gap-1.5 text-xs text-[#7C7F8A] select-none px-1">
+              <div className="hidden lg:flex items-center gap-1.5 text-xs text-[#7C7F8A] select-none px-1">
                 <span className="w-2 h-2 rounded-full bg-[#5BF07B] shrink-0" />
                 <span className="text-[11px] font-medium text-[#111318]">Online</span>
               </div>
@@ -1436,7 +1438,7 @@ export default function Layout({ children }) {
               <button
                 type="button"
                 onClick={checkConnection}
-                className="hidden sm:flex items-center gap-1.5 text-xs text-[#E5484D] hover:underline px-1 cursor-pointer"
+                className="hidden lg:flex items-center gap-1.5 text-xs text-[#E5484D] hover:underline px-1 cursor-pointer"
                 title="Click to retry server connection"
               >
                 <span className="w-2 h-2 rounded-full bg-[#E5484D] animate-ping shrink-0" />
@@ -1447,8 +1449,8 @@ export default function Layout({ children }) {
             {/* Notifications & Persistent Invitations Center */}
             <NotificationBell />
 
-            {/* Help & Support Popover */}
-            <div className="relative" ref={helpDropdownRef}>
+            {/* Help & Support Popover (Desktop only; on mobile inside profile menu & drawer) */}
+            <div className="relative hidden md:block" ref={helpDropdownRef}>
               <button
                 type="button"
                 onClick={() => setHelpOpen(!helpOpen)}
@@ -1519,59 +1521,61 @@ export default function Layout({ children }) {
               <Keyboard size={16} />
             </button>
 
-            {/* Subscription Plan Badge */}
-            {isPremium ? (
-              <span className="hidden sm:inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold bg-[#12151C] text-[#5BF07B] border border-[#12151C] shrink-0">
-                <Crown size={12} className="text-[#5BF07B]" />
-                <span>Premium</span>
-              </span>
-            ) : isProOrHigher ? (
-              <div className="flex items-center gap-1.5 shrink-0">
-                <span className="hidden sm:inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold bg-[#12151C] text-[#5BF07B] border border-[#12151C]">
-                  <Sparkles size={11} className="text-[#5BF07B]" />
-                  <span>Pro</span>
+            {/* Subscription Plan Badge (Desktop only; on mobile inside profile menu) */}
+            <div className="hidden md:flex items-center">
+              {isPremium ? (
+                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold bg-[#12151C] text-[#5BF07B] border border-[#12151C] shrink-0">
+                  <Crown size={12} className="text-[#5BF07B]" />
+                  <span>Premium</span>
                 </span>
-                <NavLink
-                  to="/plans?tier=PREMIUM&redirect=/dashboard"
-                  className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[#5BF07B] hover:brightness-105 text-[#0E2A16] text-[11px] font-bold transition shadow-xs shrink-0"
-                  title="Upgrade to Premium"
-                >
-                  <Crown size={12} className="text-[#0E2A16]" />
-                  <span className="hidden sm:inline">Upgrade</span>
-                </NavLink>
-              </div>
-            ) : (
-              <div className="flex items-center gap-1.5 shrink-0">
-                <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium bg-white text-[#7C7F8A] border border-[#E7E8EC]">
-                  <span>Free</span>
-                </span>
-                <NavLink
-                  to="/plans?tier=PRO&redirect=/dashboard"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#12151C] hover:bg-black text-white text-xs font-semibold transition shadow-xs shrink-0"
-                  title="Upgrade to Pro"
-                >
-                  <Sparkles size={13} className="text-[#5BF07B]" />
-                  <span className="hidden sm:inline">Upgrade to Pro</span>
-                  <span className="sm:hidden">Upgrade</span>
-                </NavLink>
-              </div>
-            )}
+              ) : isProOrHigher ? (
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold bg-[#12151C] text-[#5BF07B] border border-[#12151C]">
+                    <Sparkles size={11} className="text-[#5BF07B]" />
+                    <span>Pro</span>
+                  </span>
+                  <NavLink
+                    to="/plans?tier=PREMIUM&redirect=/dashboard"
+                    className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[#5BF07B] hover:brightness-105 text-[#0E2A16] text-[11px] font-bold transition shadow-xs shrink-0"
+                    title="Upgrade to Premium"
+                  >
+                    <Crown size={12} className="text-[#0E2A16]" />
+                    <span>Upgrade</span>
+                  </NavLink>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium bg-white text-[#7C7F8A] border border-[#E7E8EC]">
+                    <span>Free</span>
+                  </span>
+                  <NavLink
+                    to="/plans?tier=PRO&redirect=/dashboard"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#12151C] hover:bg-black text-white text-xs font-semibold transition shadow-xs shrink-0"
+                    title="Upgrade to Pro"
+                  >
+                    <Sparkles size={13} className="text-[#5BF07B]" />
+                    <span>Upgrade to Pro</span>
+                  </NavLink>
+                </div>
+              )}
+            </div>
 
             {/* Primary Action: Highlighted Signature New Bill Button */}
             <NewBillButton size="sm" showShortcut shortcutText="F2" className="shrink-0" />
 
-            {/* Subtle Divider */}
+            {/* Subtle Divider (Desktop) */}
             <div className="h-5 w-px bg-[#D8D9DE] hidden sm:block" />
 
-            {/* Profile Section: Avatar, name, and dropdown together in one compact profile section */}
+            {/* Profile Section: Avatar, name, and dropdown */}
             <div className="relative">
               <button
                 type="button"
                 onClick={() => setUserDropdown(!userDropdown)}
-                className="flex items-center gap-2 p-1 sm:px-2 py-1 rounded-full hover:bg-white transition cursor-pointer text-left group border border-transparent hover:border-[#E7E8EC]"
+                className="flex items-center gap-1.5 p-1 sm:px-2 py-1 rounded-full hover:bg-white transition cursor-pointer text-left group border border-transparent hover:border-[#E7E8EC] min-h-[36px] min-w-[36px]"
                 title="Account & Profile"
+                aria-label="Account & Profile"
               >
-                <div className="w-8 h-8 rounded-full bg-[#12151C] text-[#5BF07B] flex items-center justify-center font-bold text-xs shrink-0">
+                <div className="w-8 h-8 rounded-full bg-[#12151C] text-[#5BF07B] flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
                   {userInitials}
                 </div>
                 <div className="hidden lg:flex flex-col text-left leading-tight">
@@ -1582,7 +1586,7 @@ export default function Layout({ children }) {
                     {displayRole}
                   </span>
                 </div>
-                <ChevronDown size={14} className="text-[#7C7F8A] group-hover:text-[#111318] transition shrink-0" />
+                <ChevronDown size={14} className="text-[#7C7F8A] group-hover:text-[#111318] transition shrink-0 hidden sm:block" />
               </button>
 
               {userDropdown && (
@@ -1591,7 +1595,7 @@ export default function Layout({ children }) {
                     className="fixed inset-0 z-40"
                     onClick={() => setUserDropdown(false)}
                   />
-                  <div className="absolute right-0 mt-2 w-60 bg-[#F6F6F8] rounded-[24px] p-2 shadow-[0_8px_30px_rgba(0,0,0,0.08)] border border-[#E7E8EC] z-50 animate-in fade-in zoom-in-95">
+                  <div className="absolute right-0 mt-2 w-64 max-w-[calc(100vw-2rem)] bg-[#F6F6F8] rounded-[24px] p-2.5 shadow-[0_8px_30px_rgba(0,0,0,0.08)] border border-[#E7E8EC] z-50 animate-in fade-in zoom-in-95">
                     <div className="px-3 py-2 border-b border-[#E7E8EC] mb-1">
                       <p className="text-xs font-bold text-[#111318] truncate">{displayName}</p>
                       <p className="text-[11px] text-[#7C7F8A] truncate">{user?.email || "owner@bilzet.com"}</p>
@@ -1599,6 +1603,33 @@ export default function Layout({ children }) {
                         {displayRole}
                       </span>
                     </div>
+
+                    {/* Secondary Action: Mobile Upgrade Banner if not on Premium */}
+                    {!isPremium && (
+                      <div className="p-2.5 my-1.5 rounded-2xl bg-[#12151C] text-white flex items-center justify-between gap-2 shadow-xs md:hidden">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Crown size={15} className="text-[#5BF07B] shrink-0" />
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-white truncate">Upgrade to Pro</p>
+                            <p className="text-[10px] text-[#A9ABB5]">Unlimited bills & GST</p>
+                          </div>
+                        </div>
+                        <NavLink
+                          to="/plans?tier=PRO&redirect=/dashboard"
+                          onClick={() => setUserDropdown(false)}
+                          className="px-2.5 py-1 rounded-full bg-[#5BF07B] hover:brightness-105 text-[#0E2A16] font-bold text-[10px] shrink-0"
+                        >
+                          Upgrade
+                        </NavLink>
+                      </div>
+                    )}
+
+                    {/* Mobile Quick Store Switcher Trigger */}
+                    <div className="px-1 py-1 md:hidden">
+                      <StoreSwitcher variant="sidebar" />
+                    </div>
+
+                    <div className="my-1 border-t border-[#E7E8EC] md:hidden" />
 
                     {isCA && !user?.isOwner ? (
                       <NavLink
@@ -1726,8 +1757,8 @@ export default function Layout({ children }) {
         </header>
 
         {/* ── Main Content Canvas with Independent Vertical Scroll ── */}
-        <main key={storeRevision} className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8 bg-[#E3E3E5]">
-          <div className="max-w-[1600px] w-full mx-auto pb-8">
+        <main key={storeRevision} className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-5 lg:p-8 bg-[#E3E3E5] min-w-0">
+          <div className="max-w-[1600px] w-full mx-auto pb-8 min-w-0">
             {children}
           </div>
         </main>

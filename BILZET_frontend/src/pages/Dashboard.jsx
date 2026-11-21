@@ -500,11 +500,11 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#E3E3E5] text-[#111318] p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 font-sans antialiased selection:bg-[#5BF07B] selection:text-[#0E2A16]">
+    <div className="w-full max-w-full text-[#111318] space-y-5 sm:space-y-8 font-sans antialiased selection:bg-[#5BF07B] selection:text-[#0E2A16] min-w-0 overflow-hidden">
       {/* ═════════════════════════════════════════════════════════════════
           1. HERO COMMAND CENTER: "Your Business at a Glance"
       ═════════════════════════════════════════════════════════════════ */}
-      <section className="relative overflow-hidden rounded-[28px] border border-[#E7E8EC] bg-[#F6F6F8] p-6 sm:p-8 shadow-[0_8px_30px_rgba(0,0,0,0.06)]">
+      <section className="relative overflow-hidden rounded-[22px] sm:rounded-[28px] border border-[#E7E8EC] bg-[#F6F6F8] p-4 sm:p-6 lg:p-8 shadow-[0_8px_30px_rgba(0,0,0,0.06)] min-w-0">
         <div className="relative z-10 space-y-6">
           {/* Top Bar inside Hero: Brand, Status, Business Switcher, Filter & Refresh */}
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -555,7 +555,7 @@ export default function Dashboard() {
               </div>
 
               {/* Date Filter Pills */}
-              <div className="inline-flex p-1 rounded-full bg-white border border-[#E7E8EC] shadow-xs">
+              <div className="inline-flex p-1 rounded-full bg-white border border-[#E7E8EC] shadow-xs max-w-full overflow-x-auto scrollbar-none">
                 {[
                   { key: "today", label: "Today" },
                   { key: "yesterday", label: "Yesterday" },
@@ -745,7 +745,7 @@ export default function Dashboard() {
       {/* ═════════════════════════════════════════════════════════════════
           2. FOUR BENTO METRIC CARDS (KEEL FINTECH BENTO STYLE)
       ═════════════════════════════════════════════════════════════════ */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 min-w-0">
         {/* Card 1: Total Sales */}
         <div className="bg-[#F6F6F8] rounded-[28px] p-6 border border-[#E7E8EC] shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:shadow-[0_14px_38px_rgba(0,0,0,0.09)] transition-all space-y-4 relative overflow-hidden group">
           <div className="flex items-center justify-between">
@@ -879,7 +879,7 @@ export default function Dashboard() {
       {/* ═════════════════════════════════════════════════════════════════
           3. SALES PERFORMANCE & CASH TRENDS (COMPOSED CHART)
       ═════════════════════════════════════════════════════════════════ */}
-      <section className="bg-[#F6F6F8] rounded-[28px] border border-[#E7E8EC] p-6 sm:p-7 shadow-[0_8px_30px_rgba(0,0,0,0.06)] space-y-6">
+      <section className="bg-[#F6F6F8] rounded-[22px] sm:rounded-[28px] border border-[#E7E8EC] p-4 sm:p-6 lg:p-7 shadow-[0_8px_30px_rgba(0,0,0,0.06)] space-y-6 min-w-0">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
@@ -946,7 +946,7 @@ export default function Dashboard() {
         </div>
 
         {/* Recharts Composed Chart */}
-        <div className="h-72 sm:h-80 w-full">
+        <div className="h-72 sm:h-80 w-full min-w-0">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E7E8EC" />
@@ -1052,7 +1052,7 @@ export default function Dashboard() {
       {/* ═════════════════════════════════════════════════════════════════
           4. GST CONTROL ROOM & COMPLIANCE CENTER
       ═════════════════════════════════════════════════════════════════ */}
-      <section className="bg-[#F6F6F8] rounded-[28px] border border-[#E7E8EC] p-6 sm:p-7 shadow-[0_8px_30px_rgba(0,0,0,0.06)] space-y-6">
+      <section className="bg-[#F6F6F8] rounded-[22px] sm:rounded-[28px] border border-[#E7E8EC] p-4 sm:p-6 lg:p-7 shadow-[0_8px_30px_rgba(0,0,0,0.06)] space-y-6 min-w-0">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
@@ -1220,7 +1220,7 @@ export default function Dashboard() {
       {/* ═════════════════════════════════════════════════════════════════
           5. INVOICE & PAYMENT OVERVIEW TABLE
       ═════════════════════════════════════════════════════════════════ */}
-      <section className="bg-[#F6F6F8] rounded-[28px] border border-[#E7E8EC] p-6 sm:p-7 shadow-[0_8px_30px_rgba(0,0,0,0.06)] space-y-6">
+      <section className="bg-[#F6F6F8] rounded-[22px] sm:rounded-[28px] border border-[#E7E8EC] p-4 sm:p-6 lg:p-7 shadow-[0_8px_30px_rgba(0,0,0,0.06)] space-y-6 min-w-0">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
             <h2 className="text-lg sm:text-xl font-bold text-[#111318] font-['Manrope',sans-serif]">
@@ -1442,7 +1442,7 @@ export default function Dashboard() {
       {/* ═════════════════════════════════════════════════════════════════
           6. CA CONNECT: YOUR BUSINESS AND YOUR CA (KEEL DARK HERO CARD)
       ═════════════════════════════════════════════════════════════════ */}
-      <section className="bg-[#12151C] text-white rounded-[28px] border border-[#232733] p-6 sm:p-8 shadow-[0_8px_30px_rgba(0,0,0,0.14)] relative overflow-hidden">
+      <section className="bg-[#12151C] text-white rounded-[22px] sm:rounded-[28px] border border-[#232733] p-4 sm:p-6 lg:p-8 shadow-[0_8px_30px_rgba(0,0,0,0.14)] relative overflow-hidden min-w-0">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div className="space-y-3 max-w-xl">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-white/10 text-[#5BF07B] border border-white/10">
@@ -1504,9 +1504,9 @@ export default function Dashboard() {
       {/* ═════════════════════════════════════════════════════════════════
           7. CASH FLOW, INVENTORY VALUATION & ACTIVITY TIMELINE
       ═════════════════════════════════════════════════════════════════ */}
-      <section className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <section className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 min-w-0">
         {/* Cash Flow & Expense Categories (Col 4) */}
-        <div className="lg:col-span-4 bg-[#F6F6F8] rounded-[28px] border border-[#E7E8EC] p-6 shadow-[0_8px_30px_rgba(0,0,0,0.06)] space-y-5">
+        <div className="lg:col-span-4 bg-[#F6F6F8] rounded-[22px] sm:rounded-[28px] border border-[#E7E8EC] p-4 sm:p-6 shadow-[0_8px_30px_rgba(0,0,0,0.06)] space-y-5 min-w-0">
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-[#111318] font-['Manrope',sans-serif] text-base">
               Cash Flow Breakdown
@@ -1562,7 +1562,7 @@ export default function Dashboard() {
         </div>
 
         {/* Inventory & Warehouse Distribution (Col 4) */}
-        <div className="lg:col-span-4 bg-[#F6F6F8] rounded-[28px] border border-[#E7E8EC] p-6 shadow-[0_8px_30px_rgba(0,0,0,0.06)] space-y-5">
+        <div className="lg:col-span-4 bg-[#F6F6F8] rounded-[22px] sm:rounded-[28px] border border-[#E7E8EC] p-4 sm:p-6 shadow-[0_8px_30px_rgba(0,0,0,0.06)] space-y-5 min-w-0">
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-[#111318] font-['Manrope',sans-serif] text-base">
               Inventory &amp; Warehouses
@@ -1615,7 +1615,7 @@ export default function Dashboard() {
         </div>
 
         {/* Recent Business Activity Feed (Col 4) */}
-        <div className="lg:col-span-4 bg-[#F6F6F8] rounded-[28px] border border-[#E7E8EC] p-6 shadow-[0_8px_30px_rgba(0,0,0,0.06)] space-y-4">
+        <div className="lg:col-span-4 bg-[#F6F6F8] rounded-[22px] sm:rounded-[28px] border border-[#E7E8EC] p-4 sm:p-6 shadow-[0_8px_30px_rgba(0,0,0,0.06)] space-y-4 min-w-0">
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-[#111318] font-['Manrope',sans-serif] text-base">
               Recent Business Activity
