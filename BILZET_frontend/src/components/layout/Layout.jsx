@@ -1146,8 +1146,8 @@ export default function Layout({ children }) {
       <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
         {/* ── Top Header Bar ── */}
         <header className="h-16 shrink-0 bg-[#E3E3E5] border-b border-[#D8D9DE] px-3 sm:px-6 flex items-center justify-between gap-2 sm:gap-4 z-20 max-w-full">
-          {/* Left: Mobile trigger & Global Search with Ctrl+K */}
-          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 shrink-0 md:flex-1 md:max-w-md">
+          {/* Left: Mobile trigger & Global Search with Ctrl+K + Desktop Create New */}
+          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 shrink-0 md:flex-1 md:max-w-xl">
             {/* Mobile Navigation Drawer Toggle */}
             <button
               type="button"
@@ -1339,6 +1339,81 @@ export default function Layout({ children }) {
                     )}
                   </div>
                 </>
+              )}
+            </div>
+
+            {/* Desktop Quick Action Button (+ Create New on left side of header) */}
+            <div className="relative shrink-0 hidden md:block" ref={quickCreateRef}>
+              <button
+                type="button"
+                onClick={() => setQuickCreateOpen(!quickCreateOpen)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full font-semibold text-xs text-[#111318] bg-white hover:bg-[#F6F6F8] border border-[#E7E8EC] transition cursor-pointer shadow-xs active:scale-95"
+                title="Quick Create"
+              >
+                <Plus size={14} className="text-[#111318]" strokeWidth={2.5} />
+                <span className="hidden sm:inline">Create New</span>
+                <ChevronDown size={12} className={`text-[#7C7F8A] transition-transform ${quickCreateOpen ? "rotate-180" : ""}`} />
+              </button>
+
+              {quickCreateOpen && (
+                <div className="absolute left-0 mt-2 w-52 bg-[#F6F6F8] rounded-[24px] p-2 shadow-[0_8px_30px_rgba(0,0,0,0.08)] border border-[#E7E8EC] z-50 animate-in fade-in zoom-in-95">
+                  <div className="px-2.5 py-1.5 text-[10px] font-bold text-[#7C7F8A] uppercase tracking-wider">
+                    Quick Actions
+                  </div>
+                  <NavLink
+                    to="/billing"
+                    onClick={() => setQuickCreateOpen(false)}
+                    className="flex items-center gap-2.5 px-2.5 py-2 rounded-full text-xs font-semibold text-[#111318] hover:bg-white transition"
+                  >
+                    <div className="w-6 h-6 rounded-full bg-[#12151C] text-[#5BF07B] flex items-center justify-center">
+                      <FileText size={13} />
+                    </div>
+                    <div className="flex-1 flex items-center justify-between">
+                      <span>New Tax Invoice</span>
+                      <kbd className="text-[9px] font-mono px-1 py-0.5 rounded-full bg-[#E7E8EC] text-[#111318]">F2</kbd>
+                    </div>
+                  </NavLink>
+                  <NavLink
+                    to="/customers"
+                    onClick={() => setQuickCreateOpen(false)}
+                    className="flex items-center gap-2.5 px-2.5 py-2 rounded-full text-xs font-semibold text-[#111318] hover:bg-white transition"
+                  >
+                    <div className="w-6 h-6 rounded-full bg-[#E7E8EC] text-[#111318] flex items-center justify-center">
+                      <Users size={13} />
+                    </div>
+                    <span>Add Customer</span>
+                  </NavLink>
+                  <NavLink
+                    to="/products"
+                    onClick={() => setQuickCreateOpen(false)}
+                    className="flex items-center gap-2.5 px-2.5 py-2 rounded-full text-xs font-semibold text-[#111318] hover:bg-white transition"
+                  >
+                    <div className="w-6 h-6 rounded-full bg-[#DFFFE6] text-[#0E2A16] flex items-center justify-center">
+                      <Package size={13} />
+                    </div>
+                    <span>Add Product</span>
+                  </NavLink>
+                  <NavLink
+                    to="/expenses"
+                    onClick={() => setQuickCreateOpen(false)}
+                    className="flex items-center gap-2.5 px-2.5 py-2 rounded-full text-xs font-semibold text-[#111318] hover:bg-white transition"
+                  >
+                    <div className="w-6 h-6 rounded-full bg-[#FBD3D3] text-[#E5484D] flex items-center justify-center">
+                      <Wallet size={13} />
+                    </div>
+                    <span>Record Expense</span>
+                  </NavLink>
+                  <NavLink
+                    to="/purchases"
+                    onClick={() => setQuickCreateOpen(false)}
+                    className="flex items-center gap-2.5 px-2.5 py-2 rounded-full text-xs font-semibold text-[#111318] hover:bg-white transition"
+                  >
+                    <div className="w-6 h-6 rounded-full bg-[#E7E8EC] text-[#111318] flex items-center justify-center">
+                      <ShoppingBag size={13} />
+                    </div>
+                    <span>Add Purchase Bill</span>
+                  </NavLink>
+                </div>
               )}
             </div>
           </div>
