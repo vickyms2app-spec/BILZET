@@ -71,6 +71,7 @@ import Support from "../pages/Support";
 import Onboarding from "../pages/Onboarding";
 import RegisterShop from "../pages/RegisterShop";
 import JoinTeam from "../pages/JoinTeam";
+import MobileScanner from "../pages/MobileScanner";
 import { ClerkSsoCallback } from "../components/auth/ClerkAuth";
 import { isAdminEmail, isAdminUser, isSuperAdminUser } from "../utils/security";
 import { usePermissions } from "../hooks/usePermissions";
@@ -371,6 +372,7 @@ export default function AppRoutes() {
       <Route path="/register" element={<Navigate to="/sign-up" replace />} />
       <Route path="/sso-callback" element={<ClerkSsoCallback />} />
       <Route path="/sso-callback/*" element={<ClerkSsoCallback />} />
+      <Route path="/mobile-scanner" element={<MobileScanner />} />
       <Route path="/" element={<RootRedirect />} />
       <Route
         path="/onboarding"

@@ -16,11 +16,25 @@ import { useAuth } from "../store/auth";
  * - Periodic state reconciliation
  */
 
-export function useRealtimeSync({
-  businessId = null,
-  onEvent = null,
-  enabled = true,
-} = {}) {
+export function useRealtimeSync(optionsOrEvents = {}, maybeCallback = null) {
+  let businessId = null;
+  let onEvent = null;
+  let enabled = true;
+
+  if (Array.isArray(optionsOrEvents) || typeof maybeCallback === "function") {
+    onEvent = (type, data) => {
+      if (Array.isArray(optionsOrEvents) && optionsOrEvents.length > 0 && !optionsOrEvents.includes(type)) {
+        return;
+      }
+      if (typeof maybeCallback === "function") {
+        maybeCallback(type, data);
+      }
+    };
+  } else if (typeof optionsOrEvents === "object" && optionsOrEvents !== null) {
+    businessId = optionsOrEvents.businessId || null;
+    onEvent = optionsOrEvents.onEvent || null;
+    enabled = optionsOrEvents.enabled ?? true;
+  }
   const { user } = useAuth();
   const [status, setStatus] = useState("disconnected"); // 'connecting' | 'connected' | 'disconnected' | 'reconnecting'
   const [eventCount, setEventCount] = useState(0);
@@ -165,6 +179,11 @@ export function useRealtimeSync({
           "PERIOD_SIGNED_OFF",
           "STOCK_ADJUSTED",
           "CONNECTED",
+          "BARCODE_SCANNED",
+          "SCANNER_DEVICE_CONNECTED",
+          "SCANNER_DEVICE_DISCONNECTED",
+          "SCANNER_DEVICE_PAIRED",
+          "SCANNER_DEVICE_REVOKED",
         ];
 
         eventNames.forEach((evtName) => {

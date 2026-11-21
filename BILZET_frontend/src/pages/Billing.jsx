@@ -27,12 +27,14 @@ import {
   Share2,
   ArrowRight,
   Send,
+  Smartphone,
 } from "lucide-react";
-import { settingsApi, productsApi, customersApi, salesApi, subscriptionApi, quotationsApi } from "../api";
+import { settingsApi, productsApi, customersApi, salesApi, subscriptionApi, quotationsApi, scannerApi } from "../api";
 import TaxInvoice from "../components/invoice/TaxInvoice";
 import UpiPaymentModal from "../components/payment/UpiPaymentModal";
 import BarcodeScannerModal from "../components/pos/BarcodeScannerModal";
 import HeldBillsModal from "../components/pos/HeldBillsModal";
+import MobileScannerPairingModal from "../components/pos/MobileScannerPairingModal";
 import { useRealtimeSync } from "../hooks/useRealtimeSync";
 import { handleSmartFormKeyDown, handleTableKeyDown } from "../utils/keyboardNavigation";
 import { isDecimalUnit, calculateLineItemTax } from "../utils/taxCalculation";
@@ -139,6 +141,11 @@ export default function Billing() {
   const [showUpiModal, setShowUpiModal] = useState(false);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
+  const [showMobileScannerModal, setShowMobileScannerModal] = useState(false);
+  const [pairedScannerDevices, setPairedScannerDevices] = useState([]);
+  const [activeMobileScanner, setActiveMobileScanner] = useState(null);
+  const [mobileScannerStatus, setMobileScannerStatus] = useState("disconnected"); // 'connected' | 'reconnecting' | 'disconnected'
+  const [recentMobileScans, setRecentMobileScans] = useState([]);
   const [showHeldBillsModal, setShowHeldBillsModal] = useState(false);
   const [showLivePreview, setShowLivePreview] = useState(true);
   const [completedInvoice, setCompletedInvoice] = useState(null);
@@ -201,7 +208,25 @@ export default function Billing() {
       .catch(() => setAvailableCustomers([]));
   }, []);
 
-  // Real-time synchronization for products, stock adjustments, and customers
+  // Fetch paired mobile scanner devices
+  const fetchPairedDevices = useCallback(async () => {
+    try {
+      const res = await scannerApi.getDevices();
+      const devs = res?.devices || [];
+      setPairedScannerDevices(devs);
+      const activeDev = devs.find((d) => d.status === "ACTIVE");
+      if (activeDev) {
+        setActiveMobileScanner(activeDev);
+        setMobileScannerStatus("connected");
+      }
+    } catch (_) {}
+  }, []);
+
+  useEffect(() => {
+    fetchPairedDevices();
+  }, [fetchPairedDevices]);
+
+  // Real-time synchronization for products, customers, and Mobile Barcode Scanner
   useRealtimeSync(
     [
       "PRODUCT_CREATED",
@@ -210,11 +235,102 @@ export default function Billing() {
       "CUSTOMER_CREATED",
       "CUSTOMER_UPDATED",
       "PURCHASE_CREATED",
+      "BARCODE_SCANNED",
+      "SCANNER_DEVICE_CONNECTED",
+      "SCANNER_DEVICE_DISCONNECTED",
+      "SCANNER_DEVICE_PAIRED",
+      "SCANNER_DEVICE_REVOKED",
     ],
-    () => {
-      refreshCatalogAndCustomers();
+    (eventType, data) => {
+      if (eventType === "BARCODE_SCANNED") {
+        const rawCode = data?.barcode || (typeof data === "string" ? data : "");
+        if (rawCode) {
+          const normalized = rawCode.trim().toLowerCase();
+          const matched = availableProducts.find((p) => {
+            const pBarcode = (p.barcode || "").toLowerCase();
+            const pSku = (p.sku || "").toLowerCase();
+            const pCode = (p.code || "").toLowerCase();
+            const pId = String(p.id || p._id || "").toLowerCase();
+            return (
+              pBarcode === normalized ||
+              pSku === normalized ||
+              pCode === normalized ||
+              pId === normalized
+            );
+          });
+
+          if (matched) {
+            handleProductScanned(matched);
+            notify("success", `[Mobile Scanner] Scanned "${matched.name}" (₹${matched.sellingPrice || matched.price || 0})`);
+            setRecentMobileScans((prev) => [
+              {
+                barcode: rawCode,
+                productName: matched.name,
+                time: new Date().toISOString(),
+              },
+              ...prev.slice(0, 9),
+            ]);
+          } else {
+            notify("info", `[Mobile Scanner] Barcode "${rawCode}" detected from mobile phone`);
+            setRecentMobileScans((prev) => [
+              {
+                barcode: rawCode,
+                productName: "Unregistered Barcode",
+                time: new Date().toISOString(),
+              },
+              ...prev.slice(0, 9),
+            ]);
+          }
+          setMobileScannerStatus("connected");
+        }
+      } else if (eventType === "SCANNER_DEVICE_CONNECTED") {
+        setMobileScannerStatus("connected");
+        if (data?.deviceName) {
+          setActiveMobileScanner(data);
+          notify("info", `Mobile Scanner "${data.deviceName}" connected!`);
+        }
+        fetchPairedDevices();
+      } else if (eventType === "SCANNER_DEVICE_DISCONNECTED") {
+        setMobileScannerStatus("disconnected");
+      } else if (eventType === "SCANNER_DEVICE_PAIRED") {
+        setMobileScannerStatus("connected");
+        setActiveMobileScanner(data);
+        notify("success", `Mobile device "${data?.deviceName || "Mobile"}" paired successfully!`);
+        fetchPairedDevices();
+      } else if (eventType === "SCANNER_DEVICE_REVOKED") {
+        fetchPairedDevices();
+        if (activeMobileScanner?.deviceId === data?.deviceId) {
+          setActiveMobileScanner(null);
+          setMobileScannerStatus("disconnected");
+        }
+      } else {
+        refreshCatalogAndCustomers();
+      }
     }
   );
+
+  const handleRevokeScannerDevice = async (deviceId) => {
+    try {
+      await scannerApi.revokeDevice(deviceId);
+      notify("success", "Mobile device authorization revoked permanently");
+      fetchPairedDevices();
+      if (activeMobileScanner?.deviceId === deviceId) {
+        setActiveMobileScanner(null);
+        setMobileScannerStatus("disconnected");
+      }
+    } catch (err) {
+      notify("error", "Failed to revoke mobile device");
+    }
+  };
+
+  const handleDisconnectScannerDevice = async (deviceId) => {
+    try {
+      const activeStoreId = localStorage.getItem("bilzet_active_store_id") || "default";
+      await scannerApi.disconnect({ businessId: activeStoreId, deviceId });
+      setMobileScannerStatus("disconnected");
+      notify("info", "Mobile scanner disconnected for this session");
+    } catch (_) {}
+  };
 
   useEffect(() => {
     // Load shop settings
@@ -1244,6 +1360,31 @@ export default function Billing() {
             >
               <Scan size={14} className="text-[#12151C]" />
               <span>Scan Barcode</span>
+            </button>
+
+            {/* Mobile Scanner Button */}
+            <button
+              type="button"
+              onClick={() => setShowMobileScannerModal(true)}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer shadow-xs ${
+                mobileScannerStatus === "connected"
+                  ? "bg-[#DFFFE6] text-[#0E2A16] border border-[#5BF07B]/40 hover:bg-[#D4F7DC]"
+                  : "bg-white text-[#111318] border border-[#E7E8EC] hover:bg-[#EDEDEF]"
+              }`}
+              title="Connect mobile phone as wireless barcode scanner via QR"
+            >
+              {mobileScannerStatus === "connected" ? (
+                <>
+                  <span className="w-2 h-2 rounded-full bg-[#5BF07B] animate-pulse" />
+                  <Smartphone size={14} className="text-[#0E2A16]" />
+                  <span>Mobile: {activeMobileScanner?.deviceName || "Connected"}</span>
+                </>
+              ) : (
+                <>
+                  <Smartphone size={14} className="text-[#111318]" />
+                  <span>Connect Mobile</span>
+                </>
+              )}
             </button>
 
             {/* New Bill / Fresh Document button */}
@@ -2833,6 +2974,18 @@ export default function Billing() {
           onProductScanned={handleProductScanned}
           onRegisterNewProduct={handleRegisterNewProduct}
           availableProducts={availableProducts}
+        />
+
+        {/* ── Persistent Mobile Scanner Pairing Modal ── */}
+        <MobileScannerPairingModal
+          isOpen={showMobileScannerModal}
+          onClose={() => setShowMobileScannerModal(false)}
+          pairedDevices={pairedScannerDevices}
+          activeDevice={activeMobileScanner}
+          connectionStatus={mobileScannerStatus}
+          onDeviceRevoked={handleRevokeScannerDevice}
+          onDeviceDisconnected={handleDisconnectScannerDevice}
+          recentScans={recentMobileScans}
         />
 
         {/* ── Held Bills Modal ── */}

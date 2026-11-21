@@ -37,6 +37,7 @@ import roleInvitationRoutes from './routes/roleInvitation.routes.mjs';
 import notificationRoutes from './routes/notification.routes.mjs';
 import memberRoutes from './routes/member.routes.mjs';
 import realtimeRoutes from './routes/realtime.routes.mjs';
+import scannerRoutes from './routes/scanner.routes.mjs';
 import caReferralRoutes from './routes/caReferral.routes.mjs';
 import quotationRoutes from './routes/quotation.routes.mjs';
 
@@ -326,6 +327,7 @@ app.use(['/api/v1/referral', '/api/v1/referrals'], referralRoutes);
 app.use('/api/v1/ca-referral', caReferralRoutes);
 app.use('/api/v1/super-admin', superAdminRoutes);
 app.use(['/api/v1/realtime', '/api/v1/events'], realtimeRoutes);
+app.use(['/api/v1/scanner', '/api/scanner'], scannerRoutes);
 
 
 // Fallback 404 Handler

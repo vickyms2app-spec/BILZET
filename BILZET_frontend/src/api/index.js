@@ -619,6 +619,16 @@ export const caReferralApi = {
   updateConfig: (payload) => http.put('/ca-referral/admin/config', payload).then(unwrap),
 };
 
+export const scannerApi = {
+  createPairRequest: () => http.post('/scanner/pair-request').then(unwrap),
+  getDevices: () => http.get('/scanner/devices').then(unwrap),
+  revokeDevice: (deviceId) => http.delete(`/scanner/devices/${deviceId}`).then(unwrap),
+  verifyPair: (payload) => http.post('/scanner/pair-verify', payload).then(unwrap),
+  reconnect: (payload) => http.post('/scanner/reconnect', payload).then(unwrap),
+  sendScan: (payload) => http.post('/scanner/scan', payload).then(unwrap),
+  disconnect: (payload) => http.post('/scanner/disconnect', payload).then(unwrap),
+};
+
 
 
 
