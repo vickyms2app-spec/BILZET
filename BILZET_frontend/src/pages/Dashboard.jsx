@@ -586,16 +586,6 @@ export default function Dashboard() {
         <div className="relative z-10 space-y-4">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div className="space-y-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-white text-[#111318] border border-[#E7E8EC] shadow-xs">
-                  <Sparkles size={12} className="text-[#111318]" />
-                  <span>BILZET Smart Finance v2.4</span>
-                </span>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium bg-[#DFFFE6] text-[#0E2A16] border border-[#5BF07B]/40 shadow-xs">
-                  <span className="w-2 h-2 rounded-full bg-[#5BF07B] animate-pulse" />
-                  <span>GSTN &amp; CA Live Sync Active</span>
-                </span>
-              </div>
               <h1 className="text-2xl sm:text-3xl font-extrabold text-[#111318] tracking-tight font-['Manrope',sans-serif]">
                 Business Overview
               </h1>
@@ -604,33 +594,8 @@ export default function Dashboard() {
               </p>
             </div>
 
-            {/* Right Controls: Business Selector Badge, Date Filter & Refresh */}
+            {/* Right Controls: Date Filter & Refresh */}
             <div className="flex flex-wrap items-center gap-2.5">
-              {/* Business Selector Badge with GSTIN Copy */}
-              <div className="flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-white border border-[#E7E8EC] shadow-xs">
-                <div className="w-7 h-7 rounded-full bg-[#12151C] text-[#5BF07B] flex items-center justify-center font-bold text-xs shrink-0">
-                  <Building2 size={14} />
-                </div>
-                <div className="flex flex-col text-left leading-tight">
-                  <span className="text-xs font-bold text-[#111318] truncate max-w-[140px]">
-                    {storeDisplayName}
-                  </span>
-                  <div className="flex items-center gap-1">
-                    <span className="text-[10px] font-mono text-[#7C7F8A]">
-                      {storeDisplayGstin}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={handleCopyGstin}
-                      className="text-[#7C7F8A] hover:text-[#111318] cursor-pointer"
-                      title="Copy GSTIN"
-                    >
-                      {gstCopied ? <Check size={11} className="text-[#5BF07B]" /> : <Copy size={11} />}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
               {/* Date Filter Pills */}
               <div className="inline-flex p-1 rounded-full bg-white border border-[#E7E8EC] shadow-xs max-w-full overflow-x-auto scrollbar-none">
                 {[
