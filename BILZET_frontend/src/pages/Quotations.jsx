@@ -32,9 +32,11 @@ import {
   ChevronDown,
   Layers,
   Check,
+  MessageCircle,
 } from "lucide-react";
 import { quotationsApi, productsApi, customersApi, settingsApi } from "../api";
 import TaxInvoice from "../components/invoice/TaxInvoice";
+import WhatsAppQuotationShareModal from "../components/invoice/WhatsAppQuotationShareModal";
 import SearchBar from "../components/common/SearchBar";
 import DateNavigator from "../components/common/DateNavigator";
 import Button, { CompactIconButton } from "../components/common/Button";
@@ -101,6 +103,7 @@ export default function Quotations() {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [dateFilter, setDateFilter] = useState(null);
   const [previewQuotation, setPreviewQuotation] = useState(null);
+  const [shareQuotationTarget, setShareQuotationTarget] = useState(null);
   const [shopSettings, setShopSettings] = useState(null);
 
   // New / Edit modal state
@@ -505,20 +508,10 @@ export default function Quotations() {
     }
   };
 
-  // Share Quotation
+  // Share Quotation via WhatsApp (Generates & Attaches Official Billing Theme PDF)
   const handleShare = (quote, e) => {
     if (e) e.stopPropagation();
-    const shareText = `Quotation ${quote.quotationNumber} from ${shopSettings?.shopName || "BILZET"}\nTotal Amount: ₹${(quote.grandTotal || quote.totalAmount || 0).toLocaleString("en-IN")}\nStatus: ${quote.status}`;
-    if (navigator.share) {
-      navigator.share({
-        title: `Quotation ${quote.quotationNumber}`,
-        text: shareText,
-        url: window.location.href,
-      }).catch(() => {});
-    } else {
-      navigator.clipboard.writeText(shareText);
-      setSuccessToast("Quotation summary copied to clipboard!");
-    }
+    setShareQuotationTarget(quote);
   };
 
   // Filtered Quotations
@@ -1418,6 +1411,16 @@ export default function Quotations() {
               </div>
 
               <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShareQuotationTarget(previewQuotation)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#25D366] hover:bg-[#20BD5A] text-white text-xs font-bold shadow-xs transition-all cursor-pointer"
+                  title="Send Quotation PDF Document via WhatsApp"
+                >
+                  <MessageCircle className="w-3.5 h-3.5 fill-current" />
+                  <span>Send via WhatsApp</span>
+                </button>
+
                 {!previewQuotation.convertedToInvoice && !previewQuotation.invoiceNumber && (
                   <button
                     onClick={(e) => {
@@ -1463,6 +1466,14 @@ export default function Quotations() {
           </div>
         </div>
       )}
+
+      {/* ── WhatsApp Quotation PDF Sharing Modal ── */}
+      <WhatsAppQuotationShareModal
+        isOpen={Boolean(shareQuotationTarget)}
+        onClose={() => setShareQuotationTarget(null)}
+        quotation={shareQuotationTarget}
+        shopSettings={shopSettings}
+      />
     </div>
   );
 }

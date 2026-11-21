@@ -28,6 +28,7 @@ import {
   ArrowRight,
   Send,
   Smartphone,
+  MessageCircle,
 } from "lucide-react";
 import { settingsApi, productsApi, customersApi, salesApi, subscriptionApi, quotationsApi, scannerApi } from "../api";
 import TaxInvoice from "../components/invoice/TaxInvoice";
@@ -35,6 +36,7 @@ import UpiPaymentModal from "../components/payment/UpiPaymentModal";
 import BarcodeScannerModal from "../components/pos/BarcodeScannerModal";
 import HeldBillsModal from "../components/pos/HeldBillsModal";
 import MobileScannerPairingModal from "../components/pos/MobileScannerPairingModal";
+import WhatsAppQuotationShareModal from "../components/invoice/WhatsAppQuotationShareModal";
 import { useRealtimeSync } from "../hooks/useRealtimeSync";
 import { handleSmartFormKeyDown, handleTableKeyDown } from "../utils/keyboardNavigation";
 import { isDecimalUnit, calculateLineItemTax } from "../utils/taxCalculation";
@@ -146,6 +148,7 @@ export default function Billing() {
   const [activeMobileScanner, setActiveMobileScanner] = useState(null);
   const [mobileScannerStatus, setMobileScannerStatus] = useState("disconnected"); // 'connected' | 'reconnecting' | 'disconnected'
   const [recentMobileScans, setRecentMobileScans] = useState([]);
+  const [shareQuotationTarget, setShareQuotationTarget] = useState(null);
   const [showHeldBillsModal, setShowHeldBillsModal] = useState(false);
   const [showLivePreview, setShowLivePreview] = useState(true);
   const [completedInvoice, setCompletedInvoice] = useState(null);
@@ -1201,23 +1204,32 @@ export default function Billing() {
     );
   };
 
-  // Share Quotation via WhatsApp, Native Share, or Clipboard
+  // Share Quotation via WhatsApp (Generates & Attaches Official Billing Theme PDF)
   const handleShareQuotation = (quote) => {
     const q = quote || savedQuotationRecord;
-    const qNum = q?.quotationNumber || quotationNumber;
-    const shareText = `Quotation #${qNum} from ${shopSettings?.shopName || "BILZET"}\nCustomer: ${customerName || "Valued Customer"}\nTotal Quoted Amount: ₹${grandTotal.toFixed(2)}\nValidity: Valid until ${quotationValidityDate}\nStatus: ${quotationStatus}`;
-
-    if (navigator.share) {
-      navigator
-        .share({
-          title: `Quotation #${qNum}`,
-          text: shareText,
-          url: window.location.href,
-        })
-        .catch(() => {});
+    if (q) {
+      setShareQuotationTarget({
+        ...q,
+        isQuotation: true,
+      });
     } else {
-      navigator.clipboard.writeText(shareText);
-      notify("success", "Quotation summary copied to clipboard! You can share via WhatsApp or Email.");
+      setShareQuotationTarget({
+        quotationNumber: quotationNumber || `QUO-${new Date().getFullYear()}-0001`,
+        quotationDate: quotationDate || billDate || new Date().toISOString(),
+        validUntil: quotationValidityDate,
+        status: quotationStatus || "DRAFT",
+        customerName: customerName || "Valued Customer",
+        customerPhone: mobileNumber,
+        customerGstin: customerGstin,
+        customerAddress: customerAddress,
+        items: calculatedItems.length > 0 ? calculatedItems : items,
+        subtotal,
+        taxAmount,
+        grandTotal,
+        roundOff,
+        terms: quotationTerms,
+        isQuotation: true,
+      });
     }
   };
 
@@ -2988,6 +3000,14 @@ export default function Billing() {
           recentScans={recentMobileScans}
         />
 
+        {/* ── WhatsApp Quotation PDF Sharing Modal ── */}
+        <WhatsAppQuotationShareModal
+          isOpen={Boolean(shareQuotationTarget)}
+          onClose={() => setShareQuotationTarget(null)}
+          quotation={shareQuotationTarget}
+          shopSettings={shopSettings}
+        />
+
         {/* ── Held Bills Modal ── */}
         <HeldBillsModal
           isOpen={showHeldBillsModal}
@@ -3088,18 +3108,18 @@ export default function Billing() {
                   </div>
                 </button>
 
-                {/* 3. Share Quotation */}
+                {/* 3. Send Quotation via WhatsApp (PDF Document) */}
                 <button
                   type="button"
                   onClick={() => handleShareQuotation(savedQuotationRecord)}
-                  className="p-3 rounded-xl border border-[#E5E5EA] hover:border-emerald-600 bg-white hover:bg-[#F5F5F7] transition cursor-pointer text-left flex items-center gap-3 group"
+                  className="p-3 rounded-xl border border-emerald-300 hover:border-[#25D366] bg-emerald-50/60 hover:bg-emerald-50 transition cursor-pointer text-left flex items-center gap-3 group shadow-2xs"
                 >
-                  <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 group-hover:bg-emerald-600 group-hover:text-white transition flex items-center justify-center shrink-0">
-                    <Share2 size={16} />
+                  <div className="w-8 h-8 rounded-lg bg-[#25D366] text-white transition flex items-center justify-center shrink-0 shadow-xs">
+                    <MessageCircle size={16} className="fill-current" />
                   </div>
                   <div>
-                    <strong className="text-xs font-semibold text-[#1D1D1F] block">Share Proposal</strong>
-                    <span className="text-[10px] text-[#6E6E73]">WhatsApp, email, or copy link</span>
+                    <strong className="text-xs font-bold text-[#0E2A16] block">Send via WhatsApp (PDF)</strong>
+                    <span className="text-[10px] text-emerald-800">Attach professional PDF quotation</span>
                   </div>
                 </button>
 
