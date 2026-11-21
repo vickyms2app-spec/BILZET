@@ -115,7 +115,7 @@ const navSections = [
     title: "SALES",
     key: "sales",
     items: [
-      { label: "Sales Overview", path: "/reports", icon: BarChart3 },
+      { label: "Reports & Analytics", path: "/reports", icon: BarChart3 },
       { label: "Customers", path: "/customers", icon: Users },
       { label: "Quotations", path: "/quotations", icon: ClipboardList },
       { label: "Invoices", path: "/invoices", icon: FileText, highlight: true },

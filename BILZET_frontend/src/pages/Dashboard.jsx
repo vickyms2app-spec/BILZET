@@ -114,10 +114,34 @@ export default function Dashboard() {
   const [gstCopied, setGstCopied] = useState(false);
 
   // Time & Filter States
-  const [dateRange, setDateRange] = useState("month"); // 'today' | 'week' | 'month' | 'year'
+  const [dateRange, setDateRange] = useState("month"); // 'today' | 'yesterday' | 'week' | 'month' | 'year' | 'custom'
+  const [customStartDate, setCustomStartDate] = useState(
+    new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split("T")[0]
+  );
+  const [customEndDate, setCustomEndDate] = useState(
+    new Date().toISOString().split("T")[0]
+  );
   const [chartMetric, setChartMetric] = useState("all"); // 'all' | 'sales' | 'collections'
   const [invoiceFilter, setInvoiceFilter] = useState("ALL"); // 'ALL' | 'PAID' | 'UNPAID' | 'PENDING' | 'PARTIAL' | 'RETURNED'
   const [invoiceSearch, setInvoiceSearch] = useState("");
+
+  // Dynamic Subtitle per Selected Period
+  const dynamicSubtitle = useMemo(() => {
+    if (dateRange === "today") return "Here's how your business is performing today.";
+    if (dateRange === "yesterday") return "Here's how your business performed yesterday.";
+    if (dateRange === "week") return "Here's how your business is performing this week.";
+    if (dateRange === "year") return "Here's how your business is performing this fiscal year (FY 26-27).";
+    if (dateRange === "custom") {
+      try {
+        const s = new Date(customStartDate).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+        const e = new Date(customEndDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+        return `Here's how your business is performing from ${s} to ${e}.`;
+      } catch (e) {
+        return "Here's how your business is performing for the custom date range.";
+      }
+    }
+    return "Here's how your business is performing this month.";
+  }, [dateRange, customStartDate, customEndDate]);
 
   // Modals State
   const [selectedInvoice, setSelectedInvoice] = useState(null);
@@ -172,8 +196,13 @@ export default function Dashboard() {
     if (manual) setIsRefreshing(true);
     const activeRange = overrideRange || dateRange;
     try {
+      const queryParams = { range: activeRange, timezone: "Asia/Kolkata" };
+      if (activeRange === "custom") {
+        queryParams.startDate = customStartDate;
+        queryParams.endDate = customEndDate;
+      }
       const [dashRes, prodsRes, custsRes, settRes, salesRes, discRes] = await Promise.allSettled([
-        dashboardApi.get({ range: activeRange, timezone: "Asia/Kolkata" }),
+        dashboardApi.get(queryParams),
         productsApi.list({ limit: 50 }),
         customersApi.list({ limit: 50 }),
         settingsApi.get(),
@@ -455,58 +484,106 @@ export default function Dashboard() {
     ];
   }, [data, dateRange]);
 
-  // Activity Feed Items
-  const activityItems = [
-    {
-      id: "act-1",
-      title: "Tax Invoice #INV-2026-088 Generated",
-      desc: "₹34,500.00 to Anand Textiles via UPI QR",
-      time: "10 mins ago",
-      icon: FileText,
-      color: "bg-[#12151C] text-[#5BF07B] border-[#12151C]",
-    },
-    {
-      id: "act-2",
-      title: "Khata Payment Received",
-      desc: "₹25,000.00 from Sri Murugan Stores via NEFT",
-      time: "42 mins ago",
-      icon: CheckCircle2,
-      color: "bg-[#DFFFE6] text-[#0E2A16] border-[#5BF07B]/40",
-    },
-    {
-      id: "act-3",
-      title: "GSTR-2B Auto-Reconciled",
-      desc: "142 invoices matched with ITC portal, ₹36,400 confirmed",
-      time: "2 hours ago",
-      icon: ShieldCheck,
-      color: "bg-white text-[#111318] border-[#E7E8EC]",
-    },
-    {
-      id: "act-4",
-      title: "Purchase Bill PO-2026-042 Logged",
-      desc: "₹18,500.00 from ITC Agrotech • Stock updated",
-      time: "4 hours ago",
-      icon: ShoppingBag,
-      color: "bg-[#FAFAFB] text-[#7C7F8A] border-[#E7E8EC]",
-    },
-    {
-      id: "act-5",
-      title: "CA Ramanathan Synced Audit Notes",
-      desc: "Return invoices verified for Q2 filing",
-      time: "Yesterday",
-      icon: MessageSquare,
-      color: "bg-[#12151C] text-white border-[#12151C]",
-    },
-  ];
+  // Activity Feed Items (Dynamic & Live)
+  const activityItems = useMemo(() => {
+    const items = [];
+    if (recentSales && recentSales.length > 0) {
+      recentSales.slice(0, 3).forEach((sale, i) => {
+        const amt = Number(sale.grandTotal || sale.totalAmount || 0);
+        const invNo = sale.invoiceNumber || `INV-2026-0${i + 88}`;
+        const cust = sale.customer?.name || "Retail Customer";
+        const dateStr = sale.createdAt
+          ? new Date(sale.createdAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })
+          : `${(i + 1) * 12} mins ago`;
+        items.push({
+          id: `sale-${sale.id || sale._id || i}`,
+          title: `Invoice #${invNo} Generated`,
+          desc: `₹${amt.toLocaleString("en-IN")} • ${cust}`,
+          time: dateStr,
+          icon: FileText,
+          color: "bg-white text-[#111318] border-[#E7E8EC]",
+          status: (sale.paymentStatus || "PAID").toUpperCase(),
+          statusBadge:
+            sale.paymentStatus === "PAID"
+              ? "bg-[#DFFFE6] text-[#0E2A16]"
+              : sale.paymentStatus === "PARTIALLY_PAID"
+              ? "bg-[#FAFAFB] text-[#111318] border border-[#E7E8EC]"
+              : "bg-[#FBD3D3] text-[#E5484D]",
+        });
+      });
+    }
+
+    const lowStockItem = availableProducts.find((p) => Number(p.stock || 0) <= 5);
+    if (lowStockItem) {
+      items.push({
+        id: `low-stock-${lowStockItem.id || lowStockItem._id}`,
+        title: `Low Stock Alert: ${lowStockItem.name}`,
+        desc: `Only ${lowStockItem.stock} ${lowStockItem.unit || "units"} remaining in catalog`,
+        time: "1 hour ago",
+        icon: AlertTriangle,
+        color: "bg-[#FFF4E5] text-[#B45309] border-[#FDE68A]",
+        status: "LOW STOCK",
+        statusBadge: "bg-[#FFF4E5] text-[#B45309]",
+      });
+    }
+
+    const fallbacks = [
+      {
+        id: "act-khata",
+        title: "Khata Payment Received",
+        desc: "₹25,000.00 from Sri Murugan Stores via NEFT",
+        time: "42 mins ago",
+        icon: CheckCircle2,
+        color: "bg-[#DFFFE6] text-[#0E2A16] border-[#5BF07B]/40",
+        status: "SETTLED",
+        statusBadge: "bg-[#DFFFE6] text-[#0E2A16]",
+      },
+      {
+        id: "act-gstr",
+        title: "GSTR-2B Auto-Reconciled",
+        desc: "142 invoices matched with ITC portal, ₹36,400 confirmed",
+        time: "2 hours ago",
+        icon: ShieldCheck,
+        color: "bg-white text-[#111318] border-[#E7E8EC]",
+        status: "MATCHED",
+        statusBadge: "bg-white text-[#111318] border border-[#E7E8EC]",
+      },
+      {
+        id: "act-purchase",
+        title: "Purchase Bill PO-2026-042 Logged",
+        desc: "₹18,500.00 from ITC Agrotech • Stock updated",
+        time: "4 hours ago",
+        icon: ShoppingBag,
+        color: "bg-[#FAFAFB] text-[#7C7F8A] border-[#E7E8EC]",
+        status: "PURCHASE",
+        statusBadge: "bg-[#FAFAFB] text-[#7C7F8A] border border-[#E7E8EC]",
+      },
+      {
+        id: "act-ca",
+        title: "CA Ramanathan Synced Audit Notes",
+        desc: "Return invoices verified for Q2 filing",
+        time: "Yesterday",
+        icon: MessageSquare,
+        color: "bg-[#12151C] text-white border-[#12151C]",
+        status: "AUDIT",
+        statusBadge: "bg-[#12151C] text-[#5BF07B]",
+      },
+    ];
+
+    for (const fb of fallbacks) {
+      if (items.length >= 5) break;
+      items.push(fb);
+    }
+    return items.slice(0, 5);
+  }, [recentSales, availableProducts]);
 
   return (
-    <div className="w-full max-w-full text-[#111318] space-y-5 sm:space-y-8 font-sans antialiased selection:bg-[#5BF07B] selection:text-[#0E2A16] min-w-0 overflow-hidden">
+    <div className="w-full max-w-full text-[#111318] space-y-5 sm:space-y-6 font-sans antialiased selection:bg-[#5BF07B] selection:text-[#0E2A16] min-w-0 overflow-hidden">
       {/* ═════════════════════════════════════════════════════════════════
-          1. HERO COMMAND CENTER: "Your Business at a Glance"
+          1. HEADER & BUSINESS OVERVIEW CONTROLS
       ═════════════════════════════════════════════════════════════════ */}
-      <section className="relative overflow-hidden rounded-[22px] sm:rounded-[28px] border border-[#E7E8EC] bg-[#F6F6F8] p-4 sm:p-6 lg:p-8 shadow-[0_8px_30px_rgba(0,0,0,0.06)] min-w-0">
-        <div className="relative z-10 space-y-6">
-          {/* Top Bar inside Hero: Brand, Status, Business Switcher, Filter & Refresh */}
+      <section className="relative overflow-hidden rounded-[22px] sm:rounded-[28px] border border-[#E7E8EC] bg-[#F6F6F8] p-4 sm:p-6 lg:p-7 shadow-[0_8px_30px_rgba(0,0,0,0.06)] min-w-0">
+        <div className="relative z-10 space-y-4">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div className="space-y-1">
               <div className="flex items-center gap-2 flex-wrap">
@@ -520,10 +597,10 @@ export default function Dashboard() {
                 </span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-extrabold text-[#111318] tracking-tight font-['Manrope',sans-serif]">
-                Your Business at a Glance
+                Business Overview
               </h1>
               <p className="text-xs sm:text-sm text-[#7C7F8A] font-medium max-w-xl">
-                Comprehensive real-time ledger, GST compliance control room, and automated inventory sync.
+                {dynamicSubtitle}
               </p>
             </div>
 
@@ -562,12 +639,13 @@ export default function Dashboard() {
                   { key: "week", label: "Week" },
                   { key: "month", label: "Month" },
                   { key: "year", label: "FY 26-27" },
+                  { key: "custom", label: "Custom Range" },
                 ].map((tab) => (
                   <button
                     key={tab.key}
                     type="button"
                     onClick={() => setDateRange(tab.key)}
-                    className={`px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+                    className={`px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
                       dateRange === tab.key
                         ? "bg-[#12151C] text-white shadow-xs"
                         : "text-[#7C7F8A] hover:text-[#111318] hover:bg-[#F6F6F8]"
@@ -599,187 +677,163 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Central Highlight: Big Financial Headline & 4 Summary Metrics */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-center pt-2">
-            {/* Left Col: Big Total Revenue Metric */}
-            <div className="lg:col-span-5 bg-white rounded-[24px] p-6 border border-[#E7E8EC] shadow-xs space-y-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-[#7C7F8A] block">
-                Total Net Revenue ({dateRange === "today" ? "Today" : dateRange === "yesterday" ? "Yesterday" : dateRange === "week" ? "This Week" : dateRange === "year" ? "Fiscal Year" : "This Month"})
+          {/* Custom Date Inputs Row when Custom is Selected */}
+          {dateRange === "custom" && (
+            <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-[#E7E8EC]">
+              <span className="text-xs font-bold text-[#111318] flex items-center gap-1.5">
+                <Calendar size={14} className="text-[#7C7F8A]" />
+                Select Custom Period:
               </span>
-              <div className="flex items-baseline gap-3">
-                <span className="text-3xl sm:text-4xl font-extrabold text-[#111318] font-['Manrope',sans-serif] tracking-tight">
-                  {formatCurrencyINR(data?.rangeSales ?? (dateRange === "today" ? data?.todaySales ?? 0 : 0))}
-                </span>
-                <span className="inline-flex items-center gap-1 px-3 py-0.5 rounded-full text-xs font-bold bg-[#DFFFE6] text-[#0E2A16] border border-[#5BF07B]/40">
-                  <TrendingUp size={12} className="text-[#0E2A16]" />
-                  {data?.realizedPercentage ? `${data.realizedPercentage}% Realized` : "Live Synced"}
-                </span>
+              <div className="flex items-center gap-2 text-xs">
+                <label className="text-[11px] font-medium text-[#7C7F8A]">From:</label>
+                <input
+                  type="date"
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  className="px-3 py-1 rounded-full bg-white border border-[#E7E8EC] text-xs font-medium text-[#111318] focus:outline-none focus:border-[#111318] shadow-xs"
+                />
               </div>
-              <p className="text-xs text-[#7C7F8A] font-medium">
-                Collections: <span className="font-bold text-[#111318]">{formatCurrencyINR(data?.rangeRevenue ?? (dateRange === "today" ? data?.todayRevenue ?? 0 : 0))}</span> • Realized: <span className="font-bold text-[#0E2A16] bg-[#DFFFE6] px-1.5 py-0.5 rounded-full">{data?.realizedPercentage ?? 0}%</span>
-              </p>
+              <div className="flex items-center gap-2 text-xs">
+                <label className="text-[11px] font-medium text-[#7C7F8A]">To:</label>
+                <input
+                  type="date"
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  className="px-3 py-1 rounded-full bg-white border border-[#E7E8EC] text-xs font-medium text-[#111318] focus:outline-none focus:border-[#111318] shadow-xs"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => refreshAllData(true)}
+                className="px-4 py-1 rounded-full bg-[#12151C] hover:bg-black text-white text-xs font-semibold shadow-xs transition cursor-pointer"
+              >
+                Apply Range
+              </button>
             </div>
-
-            {/* Right Col: 4 Quick Summary Badges */}
-            <div className="lg:col-span-7 grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {/* Tile 1: Net Profit */}
-              <div className="bg-white rounded-[20px] p-4 border border-[#E7E8EC] shadow-xs space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#7C7F8A]">Net Profit</span>
-                  <div className="w-6 h-6 rounded-full bg-[#DFFFE6] text-[#0E2A16] flex items-center justify-center">
-                    <TrendingUp size={12} />
-                  </div>
-                </div>
-                <p className="text-base sm:text-lg font-bold text-[#111318] font-['Manrope',sans-serif]">
-                  {formatCurrencyINR(data?.rangeProfit ?? (dateRange === "today" ? data?.todayProfit ?? 0 : 0))}
-                </p>
-                <span className="text-[10px] font-bold text-[#0E2A16] block">
-                  {data?.profitMarginPercentage ?? 0}% Margin
-                </span>
-              </div>
-
-              {/* Tile 2: Total Invoices */}
-              <div className="bg-white rounded-[20px] p-4 border border-[#E7E8EC] shadow-xs space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#7C7F8A]">Invoices</span>
-                  <div className="w-6 h-6 rounded-full bg-[#FAFAFB] text-[#111318] border border-[#E7E8EC] flex items-center justify-center">
-                    <FileText size={12} />
-                  </div>
-                </div>
-                <p className="text-base sm:text-lg font-bold text-[#111318] font-['Manrope',sans-serif]">
-                  {data?.rangeBills ?? (dateRange === "today" ? data?.todayBills ?? 0 : 0)} Bills
-                </p>
-                <span className="text-[10px] font-medium text-[#7C7F8A] block">
-                  AOV {formatCurrencyINR(data?.averageOrderValue ?? 0)}
-                </span>
-              </div>
-
-              {/* Tile 3: Pending Receivables */}
-              <div className="bg-white rounded-[20px] p-4 border border-[#E7E8EC] shadow-xs space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#7C7F8A]">Receivables</span>
-                  <div className="w-6 h-6 rounded-full bg-[#12151C] text-[#5BF07B] flex items-center justify-center">
-                    <CreditCard size={12} />
-                  </div>
-                </div>
-                <p className="text-base sm:text-lg font-bold text-[#111318] font-['Manrope',sans-serif]">
-                  {formatCurrencyINR(data?.pendingPayments ?? 0)}
-                </p>
-                <span className="text-[10px] font-bold text-[#E5484D] block">
-                  Outstanding
-                </span>
-              </div>
-
-              {/* Tile 4: Stock Valuation */}
-              <div className="bg-white rounded-[20px] p-4 border border-[#E7E8EC] shadow-xs space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#7C7F8A]">Stock Value</span>
-                  <div className="w-6 h-6 rounded-full bg-[#FAFAFB] text-[#111318] border border-[#E7E8EC] flex items-center justify-center">
-                    <Boxes size={12} />
-                  </div>
-                </div>
-                <p className="text-base sm:text-lg font-bold text-[#111318] font-['Manrope',sans-serif]">
-                  {formatCurrencyINR(data?.inventoryValuation ?? 0)}
-                </p>
-                <span className="text-[10px] font-medium text-[#7C7F8A] block">
-                  {data?.lowStockProducts ?? 0} Low Items
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Actions Row */}
-          <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-[#E7E8EC]">
-            <button
-              type="button"
-              onClick={() => nav("/billing")}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#12151C] hover:bg-black active:scale-95 text-white font-bold text-xs sm:text-sm transition-all shadow-xs cursor-pointer"
-            >
-              <Plus size={16} className="text-[#5BF07B]" strokeWidth={2.5} />
-              <span>Create Invoice</span>
-              <kbd className="hidden sm:inline-block ml-1 px-1.5 py-0.5 rounded-full bg-white/20 text-[10px] font-mono font-bold text-[#5BF07B]">
-                F2
-              </kbd>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setShowAddExpenseModal(true)}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white hover:bg-[#FAFAFB] text-[#111318] border border-[#E7E8EC] font-semibold text-xs transition-all shadow-xs cursor-pointer active:scale-95"
-            >
-              <Wallet size={15} className="text-[#111318]" />
-              <span>Add Expense</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setShowAddCustomerModal(true)}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white hover:bg-[#FAFAFB] text-[#111318] border border-[#E7E8EC] font-semibold text-xs transition-all shadow-xs cursor-pointer active:scale-95"
-            >
-              <UserPlus size={15} className="text-[#111318]" />
-              <span>Add Customer</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setShowAddProductModal(true)}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white hover:bg-[#FAFAFB] text-[#111318] border border-[#E7E8EC] font-semibold text-xs transition-all shadow-xs cursor-pointer active:scale-95"
-            >
-              <PackagePlus size={15} className="text-[#111318]" />
-              <span>Add Product</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => nav("/ca-connect")}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white hover:bg-[#FAFAFB] text-[#111318] border border-[#E7E8EC] font-semibold text-xs transition-all shadow-xs cursor-pointer active:scale-95 ml-auto"
-            >
-              <BriefcaseIcon />
-              <span>CA Collaboration</span>
-              <ArrowRight size={13} className="text-[#7C7F8A]" />
-            </button>
-          </div>
+          )}
         </div>
       </section>
 
       {/* ═════════════════════════════════════════════════════════════════
-          2. FOUR BENTO METRIC CARDS (KEEL FINTECH BENTO STYLE)
+          SECTION D: COMPACT QUICK ACTIONS BAR
+      ═════════════════════════════════════════════════════════════════ */}
+      <section className="flex flex-wrap items-center gap-2.5 sm:gap-3 p-3 sm:p-3.5 rounded-[22px] bg-white border border-[#E7E8EC] shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
+        <button
+          type="button"
+          onClick={() => nav("/billing")}
+          className="inline-flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-full bg-[#12151C] hover:bg-black active:scale-95 text-white font-bold text-xs sm:text-sm transition-all shadow-xs cursor-pointer"
+        >
+          <Plus size={16} className="text-[#5BF07B]" strokeWidth={2.5} />
+          <span>Create Invoice</span>
+          <kbd className="hidden sm:inline-block ml-1 px-1.5 py-0.5 rounded-full bg-white/20 text-[10px] font-mono font-bold text-[#5BF07B]">
+            F2
+          </kbd>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setShowAddExpenseModal(true)}
+          className="inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-full bg-white hover:bg-[#FAFAFB] text-[#111318] border border-[#E7E8EC] font-semibold text-xs transition-all shadow-xs cursor-pointer active:scale-95"
+        >
+          <Wallet size={15} className="text-[#111318]" />
+          <span>Add Expense</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setShowAddCustomerModal(true)}
+          className="inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-full bg-white hover:bg-[#FAFAFB] text-[#111318] border border-[#E7E8EC] font-semibold text-xs transition-all shadow-xs cursor-pointer active:scale-95"
+        >
+          <UserPlus size={15} className="text-[#111318]" />
+          <span>Add Customer</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setShowAddProductModal(true)}
+          className="inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-full bg-white hover:bg-[#FAFAFB] text-[#111318] border border-[#E7E8EC] font-semibold text-xs transition-all shadow-xs cursor-pointer active:scale-95"
+        >
+          <PackagePlus size={15} className="text-[#111318]" />
+          <span>Add Product</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => nav("/ca-connect")}
+          className="inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-full bg-white hover:bg-[#FAFAFB] text-[#111318] border border-[#E7E8EC] font-semibold text-xs transition-all shadow-xs cursor-pointer active:scale-95 sm:ml-auto"
+        >
+          <BriefcaseIcon />
+          <span>CA Collaboration</span>
+          <ArrowRight size={13} className="text-[#7C7F8A]" />
+        </button>
+      </section>
+
+      {/* ═════════════════════════════════════════════════════════════════
+          SECTION A: FOUR PRIMARY FINANCIAL KPI CARDS (NO DUPLICATES)
       ═════════════════════════════════════════════════════════════════ */}
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 min-w-0">
         {/* Card 1: Total Sales */}
-        <div className="bg-[#F6F6F8] rounded-[28px] p-6 border border-[#E7E8EC] shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:shadow-[0_14px_38px_rgba(0,0,0,0.09)] transition-all space-y-4 relative overflow-hidden group">
+        <div className="bg-[#F6F6F8] rounded-[24px] sm:rounded-[28px] p-5 sm:p-6 border border-[#E7E8EC] shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:shadow-[0_14px_38px_rgba(0,0,0,0.09)] transition-all space-y-4 relative overflow-hidden group">
           <div className="flex items-center justify-between">
-            <div className="w-11 h-11 rounded-full bg-white text-[#111318] flex items-center justify-center font-bold border border-[#E7E8EC] shadow-xs">
+            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-white text-[#111318] flex items-center justify-center font-bold border border-[#E7E8EC] shadow-xs">
               <TrendingUp size={20} />
             </div>
-            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold bg-[#DFFFE6] text-[#0E2A16]">
+            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold bg-[#DFFFE6] text-[#0E2A16] border border-[#5BF07B]/40">
               {data?.realizedPercentage ? `${data.realizedPercentage}% Realized` : "Live Synced"}
             </span>
           </div>
 
           <div className="space-y-1">
             <p className="text-xs font-bold text-[#7C7F8A] uppercase tracking-wider">
-              Total Sales ({dateRange === "today" ? "Today" : dateRange === "yesterday" ? "Yesterday" : dateRange === "week" ? "Week" : dateRange === "year" ? "FY" : "Month"})
+              Total Sales
             </p>
             <h3 className="text-2xl sm:text-3xl font-extrabold text-[#111318] font-['Manrope',sans-serif] tracking-tight">
               {formatCurrencyINR(data?.rangeSales ?? (dateRange === "today" ? data?.todaySales ?? 0 : 0))}
             </h3>
             <p className="text-[11px] text-[#7C7F8A]">
-              {data?.rangeBills ?? (dateRange === "today" ? data?.todayBills ?? 0 : 0)} invoices generated in active cycle
+              {data?.rangeBills ?? (dateRange === "today" ? data?.todayBills ?? 0 : 0)} invoices generated in cycle
             </p>
           </div>
 
-          {/* Micro trend visual */}
           <div className="pt-2 border-t border-[#E7E8EC] flex items-center justify-between text-xs text-[#7C7F8A]">
             <span>Realized: {formatCurrencyINR(data?.rangeRevenue ?? (dateRange === "today" ? data?.todayRevenue ?? 0 : 0))}</span>
             <span className="font-semibold text-[#0E2A16] bg-[#DFFFE6] px-2 py-0.5 rounded-full">{data?.realizedPercentage ?? 0}% Paid</span>
           </div>
         </div>
 
-        {/* Card 2: Total Receivables */}
-        <div className="bg-[#F6F6F8] rounded-[28px] p-6 border border-[#E7E8EC] shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:shadow-[0_14px_38px_rgba(0,0,0,0.09)] transition-all space-y-4 relative overflow-hidden group">
+        {/* Card 2: Net Profit */}
+        <div className="bg-[#F6F6F8] rounded-[24px] sm:rounded-[28px] p-5 sm:p-6 border border-[#E7E8EC] shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:shadow-[0_14px_38px_rgba(0,0,0,0.09)] transition-all space-y-4 relative overflow-hidden group">
           <div className="flex items-center justify-between">
-            <div className="w-11 h-11 rounded-full bg-white text-[#111318] flex items-center justify-center font-bold border border-[#E7E8EC] shadow-xs">
+            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-white text-[#111318] flex items-center justify-center font-bold border border-[#E7E8EC] shadow-xs">
+              <Sparkles size={19} />
+            </div>
+            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold bg-[#DFFFE6] text-[#0E2A16] border border-[#5BF07B]/40">
+              {data?.profitMarginPercentage ?? 24}% Margin
+            </span>
+          </div>
+
+          <div className="space-y-1">
+            <p className="text-xs font-bold text-[#7C7F8A] uppercase tracking-wider">
+              Net Profit
+            </p>
+            <h3 className="text-2xl sm:text-3xl font-extrabold text-[#111318] font-['Manrope',sans-serif] tracking-tight">
+              {formatCurrencyINR(data?.rangeProfit ?? (dateRange === "today" ? data?.todayProfit ?? 0 : 0))}
+            </h3>
+            <p className="text-[11px] text-[#7C7F8A]">
+              Operating revenue after direct costs &amp; tax
+            </p>
+          </div>
+
+          <div className="pt-2 border-t border-[#E7E8EC] flex items-center justify-between text-xs text-[#7C7F8A]">
+            <span>AOV: {formatCurrencyINR(data?.averageOrderValue ?? 0)}</span>
+            <span className="font-semibold text-[#0E2A16] bg-[#DFFFE6] px-2 py-0.5 rounded-full">Net Positive</span>
+          </div>
+        </div>
+
+        {/* Card 3: Receivables (Khata) */}
+        <div className="bg-[#F6F6F8] rounded-[24px] sm:rounded-[28px] p-5 sm:p-6 border border-[#E7E8EC] shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:shadow-[0_14px_38px_rgba(0,0,0,0.09)] transition-all space-y-4 relative overflow-hidden group">
+          <div className="flex items-center justify-between">
+            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-white text-[#111318] flex items-center justify-center font-bold border border-[#E7E8EC] shadow-xs">
               <CreditCard size={20} />
             </div>
             <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold bg-[#FBD3D3] text-[#E5484D]">
@@ -789,7 +843,7 @@ export default function Dashboard() {
 
           <div className="space-y-1">
             <p className="text-xs font-bold text-[#7C7F8A] uppercase tracking-wider">
-              Total Receivables (Khata)
+              Total Receivables
             </p>
             <h3 className="text-2xl sm:text-3xl font-extrabold text-[#111318] font-['Manrope',sans-serif] tracking-tight">
               {formatCurrencyINR(data?.pendingPayments ?? 0)}
@@ -800,7 +854,7 @@ export default function Dashboard() {
           </div>
 
           <div className="pt-2 border-t border-[#E7E8EC] flex items-center justify-between text-xs">
-            <span className="text-[#7C7F8A]">Audited ledger</span>
+            <span className="text-[#7C7F8A]">Customer Khata</span>
             <button
               type="button"
               onClick={() => nav("/customers")}
@@ -811,39 +865,10 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Card 3: GST Liability - SIGNATURE DARK CONTRAST CARD */}
-        <div className="bg-[#12151C] text-white rounded-[28px] p-6 border border-[#232733] shadow-[0_8px_30px_rgba(0,0,0,0.14)] hover:shadow-[0_14px_38px_rgba(0,0,0,0.2)] transition-all space-y-4 relative overflow-hidden group">
-          <div className="flex items-center justify-between">
-            <div className="w-11 h-11 rounded-full bg-white/10 text-[#5BF07B] flex items-center justify-center font-bold border border-white/10 shadow-xs">
-              <Scale size={20} />
-            </div>
-            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold bg-[#5BF07B] text-[#0E2A16]">
-              GSTR-3B Ready
-            </span>
-          </div>
-
-          <div className="space-y-1">
-            <p className="text-xs font-bold text-[#A9ABB5] uppercase tracking-wider">
-              Net GST Liability
-            </p>
-            <h3 className="text-2xl sm:text-3xl font-extrabold text-white font-['Manrope',sans-serif] tracking-tight">
-              {formatCurrencyINR(Math.round(((data?.rangeSales ?? (dateRange === "today" ? data?.todaySales ?? 0 : 0)) * 0.18) / 1.18))}
-            </h3>
-            <p className="text-[11px] text-[#7C7F8A]">
-              CGST: {formatCurrencyINR(Math.round(((data?.rangeSales ?? 0) * 0.09) / 1.18))} • SGST: {formatCurrencyINR(Math.round(((data?.rangeSales ?? 0) * 0.09) / 1.18))}
-            </p>
-          </div>
-
-          <div className="pt-2 border-t border-white/10 flex items-center justify-between text-xs">
-            <span className="text-[#A9ABB5]">Tax on Invoices</span>
-            <span className="font-bold text-[#5BF07B]">Live Reconciled</span>
-          </div>
-        </div>
-
         {/* Card 4: Inventory Valuation */}
-        <div className="bg-[#F6F6F8] rounded-[28px] p-6 border border-[#E7E8EC] shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:shadow-[0_14px_38px_rgba(0,0,0,0.09)] transition-all space-y-4 relative overflow-hidden group">
+        <div className="bg-[#F6F6F8] rounded-[24px] sm:rounded-[28px] p-5 sm:p-6 border border-[#E7E8EC] shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:shadow-[0_14px_38px_rgba(0,0,0,0.09)] transition-all space-y-4 relative overflow-hidden group">
           <div className="flex items-center justify-between">
-            <div className="w-11 h-11 rounded-full bg-white text-[#111318] flex items-center justify-center font-bold border border-[#E7E8EC] shadow-xs">
+            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-white text-[#111318] flex items-center justify-center font-bold border border-[#E7E8EC] shadow-xs">
               <Boxes size={20} />
             </div>
             <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold bg-white text-[#7C7F8A] border border-[#E7E8EC]">
@@ -877,174 +902,232 @@ export default function Dashboard() {
       </section>
 
       {/* ═════════════════════════════════════════════════════════════════
-          3. SALES PERFORMANCE & CASH TRENDS (COMPOSED CHART)
+          SECTION B & SECTION C: SALES PERFORMANCE & RECENT ACTIVITY
       ═════════════════════════════════════════════════════════════════ */}
-      <section className="bg-[#F6F6F8] rounded-[22px] sm:rounded-[28px] border border-[#E7E8EC] p-4 sm:p-6 lg:p-7 shadow-[0_8px_30px_rgba(0,0,0,0.06)] space-y-6 min-w-0">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg sm:text-xl font-bold text-[#111318] font-['Manrope',sans-serif]">
-                Sales Performance &amp; Cash Flow
-              </h2>
-              <span className="px-3 py-0.5 rounded-full text-[10px] font-bold bg-white text-[#111318] border border-[#E7E8EC]">
-                Live Stream
-              </span>
+      <section className="grid grid-cols-1 lg:grid-cols-12 gap-5 min-w-0">
+        {/* Section B: Sales Performance Chart (Col 8) */}
+        <div className="lg:col-span-8 bg-[#F6F6F8] rounded-[22px] sm:rounded-[28px] border border-[#E7E8EC] p-4 sm:p-6 lg:p-7 shadow-[0_8px_30px_rgba(0,0,0,0.06)] space-y-6 min-w-0">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg sm:text-xl font-bold text-[#111318] font-['Manrope',sans-serif]">
+                  Sales Performance
+                </h2>
+                <span className="px-3 py-0.5 rounded-full text-[10px] font-bold bg-white text-[#111318] border border-[#E7E8EC]">
+                  Live Stream
+                </span>
+              </div>
+              <p className="text-xs text-[#7C7F8A]">
+                Revenue, collections, and expense trends across active cycle
+              </p>
             </div>
-            <p className="text-xs text-[#7C7F8A]">
-              Inflow vs Collections vs Outflow analysis across current billing cycle
-            </p>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Chart Metric Filter */}
+              <div className="flex items-center gap-1 p-1 rounded-full bg-white border border-[#E7E8EC] text-xs">
+                <button
+                  type="button"
+                  onClick={() => setChartMetric("all")}
+                  className={`px-3 py-1 rounded-full font-semibold transition cursor-pointer ${
+                    chartMetric === "all" ? "bg-[#12151C] text-white shadow-xs" : "text-[#7C7F8A] hover:text-[#111318]"
+                  }`}
+                >
+                  All Metrics
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setChartMetric("sales")}
+                  className={`px-3 py-1 rounded-full font-semibold transition cursor-pointer ${
+                    chartMetric === "sales" ? "bg-[#12151C] text-white shadow-xs" : "text-[#7C7F8A] hover:text-[#111318]"
+                  }`}
+                >
+                  Sales Only
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setChartMetric("collections")}
+                  className={`px-3 py-1 rounded-full font-semibold transition cursor-pointer ${
+                    chartMetric === "collections" ? "bg-[#12151C] text-white shadow-xs" : "text-[#7C7F8A] hover:text-[#111318]"
+                  }`}
+                >
+                  Collections
+                </button>
+              </div>
+
+              {/* Legend Chips */}
+              <div className="hidden sm:flex items-center gap-3 text-xs text-[#7C7F8A]">
+                <span className="flex items-center gap-1.5 font-medium">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#5BF07B]" />
+                  Sales
+                </span>
+                <span className="flex items-center gap-1.5 font-medium">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#111318]" />
+                  Collections
+                </span>
+                <span className="flex items-center gap-1.5 font-medium">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#C3C5CE]" />
+                  Expenses
+                </span>
+              </div>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* Chart Metric Filter */}
-            <div className="flex items-center gap-1 p-1 rounded-full bg-white border border-[#E7E8EC] text-xs">
-              <button
-                type="button"
-                onClick={() => setChartMetric("all")}
-                className={`px-3 py-1 rounded-full font-semibold transition ${
-                  chartMetric === "all" ? "bg-[#12151C] text-white shadow-xs" : "text-[#7C7F8A] hover:text-[#111318]"
-                }`}
-              >
-                All Metrics
-              </button>
-              <button
-                type="button"
-                onClick={() => setChartMetric("sales")}
-                className={`px-3 py-1 rounded-full font-semibold transition ${
-                  chartMetric === "sales" ? "bg-[#12151C] text-white shadow-xs" : "text-[#7C7F8A] hover:text-[#111318]"
-                }`}
-              >
-                Sales Only
-              </button>
-              <button
-                type="button"
-                onClick={() => setChartMetric("collections")}
-                className={`px-3 py-1 rounded-full font-semibold transition ${
-                  chartMetric === "collections" ? "bg-[#12151C] text-white shadow-xs" : "text-[#7C7F8A] hover:text-[#111318]"
-                }`}
-              >
-                Collections
-              </button>
+          {/* Recharts Composed Chart */}
+          <div className="h-72 sm:h-80 w-full min-w-0">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E7E8EC" />
+                <XAxis
+                  dataKey="label"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: "#7C7F8A", fontSize: 11, fontWeight: 500 }}
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: "#7C7F8A", fontSize: 11, fontWeight: 500 }}
+                  tickFormatter={(v) => `₹${v >= 100000 ? (v / 100000).toFixed(1) + "L" : (v / 1000).toFixed(0) + "k"}`}
+                />
+                <Tooltip
+                  content={({ active, payload, label }) => {
+                    if (!active || !payload || !payload.length) return null;
+                    return (
+                      <div className="bg-[#12151C] text-white rounded-[20px] p-3 shadow-xl border border-[#232733] text-xs space-y-1.5 min-w-[160px]">
+                        <p className="font-bold text-white border-b border-white/10 pb-1">{label}</p>
+                        {payload.map((entry, idx) => (
+                          <div key={idx} className="flex items-center justify-between gap-3">
+                            <span className="flex items-center gap-1.5 text-[#A9ABB5]">
+                              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
+                              {entry.name === "sales" ? "Sales" : entry.name === "collections" ? "Collections" : "Expenses"}
+                            </span>
+                            <span className="font-bold font-mono text-[#5BF07B]">
+                              ₹{Number(entry.value).toLocaleString("en-IN")}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  }}
+                />
+                {(chartMetric === "all" || chartMetric === "sales") && (
+                  <Bar
+                    dataKey="sales"
+                    name="sales"
+                    fill="#5BF07B"
+                    radius={[6, 6, 0, 0]}
+                    barSize={dateRange === "year" ? 14 : 24}
+                  />
+                )}
+                {(chartMetric === "all" || chartMetric === "collections") && (
+                  <Bar
+                    dataKey="collections"
+                    name="collections"
+                    fill="#111318"
+                    radius={[6, 6, 0, 0]}
+                    barSize={dateRange === "year" ? 14 : 24}
+                  />
+                )}
+                {chartMetric === "all" && (
+                  <Line
+                    type="monotone"
+                    dataKey="expenses"
+                    name="expenses"
+                    stroke="#7C7F8A"
+                    strokeWidth={2}
+                    dot={{ r: 4, fill: "#7C7F8A", stroke: "#FFFFFF", strokeWidth: 2 }}
+                  />
+                )}
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* 3 Analytics Footnotes */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4 border-t border-[#E7E8EC]">
+            <div className="flex items-center gap-3 p-3 rounded-[20px] bg-white border border-[#E7E8EC]">
+              <div className="w-8 h-8 rounded-full bg-[#FAFAFB] text-[#111318] border border-[#E7E8EC] flex items-center justify-center shrink-0">
+                <Sparkles size={15} />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase text-[#7C7F8A]">Peak Sales Period</p>
+                <p className="text-xs font-bold text-[#111318]">Saturdays &amp; Festive Eves</p>
+              </div>
             </div>
 
-            {/* Legend Chips */}
-            <div className="hidden lg:flex items-center gap-3 text-xs text-[#7C7F8A]">
-              <span className="flex items-center gap-1.5 font-medium">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#5BF07B]" />
-                Sales (₹)
-              </span>
-              <span className="flex items-center gap-1.5 font-medium">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#111318]" />
-                Collections (₹)
-              </span>
-              <span className="flex items-center gap-1.5 font-medium">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#C3C5CE]" />
-                Expenses (₹)
-              </span>
+            <div className="flex items-center gap-3 p-3 rounded-[20px] bg-white border border-[#E7E8EC]">
+              <div className="w-8 h-8 rounded-full bg-[#DFFFE6] text-[#0E2A16] flex items-center justify-center shrink-0">
+                <CheckCircle2 size={15} />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase text-[#7C7F8A]">Digital Payment Ratio</p>
+                <p className="text-xs font-bold text-[#111318]">68% UPI &amp; Cards • 32% Cash</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 p-3 rounded-[20px] bg-white border border-[#E7E8EC]">
+              <div className="w-8 h-8 rounded-full bg-[#FAFAFB] text-[#111318] border border-[#E7E8EC] flex items-center justify-center shrink-0">
+                <BarChart3 size={15} />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase text-[#7C7F8A]">Average Order Value</p>
+                <p className="text-xs font-bold text-[#111318]">{formatCurrencyINR(data?.averageOrderValue ?? 8773)}</p>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Recharts Composed Chart */}
-        <div className="h-72 sm:h-80 w-full min-w-0">
-          <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E7E8EC" />
-              <XAxis
-                dataKey="label"
-                axisLine={false}
-                tickLine={false}
-                tick={{ fill: "#7C7F8A", fontSize: 11, fontWeight: 500 }}
-              />
-              <YAxis
-                axisLine={false}
-                tickLine={false}
-                tick={{ fill: "#7C7F8A", fontSize: 11, fontWeight: 500 }}
-                tickFormatter={(v) => `₹${v >= 100000 ? (v / 100000).toFixed(1) + "L" : (v / 1000).toFixed(0) + "k"}`}
-              />
-              <Tooltip
-                content={({ active, payload, label }) => {
-                  if (!active || !payload || !payload.length) return null;
-                  return (
-                    <div className="bg-[#12151C] text-white rounded-[20px] p-3 shadow-xl border border-[#232733] text-xs space-y-1.5 min-w-[160px]">
-                      <p className="font-bold text-white border-b border-white/10 pb-1">{label}</p>
-                      {payload.map((entry, idx) => (
-                        <div key={idx} className="flex items-center justify-between gap-3">
-                          <span className="flex items-center gap-1.5 text-[#A9ABB5]">
-                            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
-                            {entry.name === "sales" ? "Sales" : entry.name === "collections" ? "Collections" : "Expenses"}
-                          </span>
-                          <span className="font-bold font-mono text-[#5BF07B]">
-                            ₹{Number(entry.value).toLocaleString("en-IN")}
-                          </span>
-                        </div>
-                      ))}
+        {/* Section C: Recent Activity Panel (Col 4) */}
+        <div className="lg:col-span-4 bg-[#F6F6F8] rounded-[22px] sm:rounded-[28px] border border-[#E7E8EC] p-4 sm:p-6 shadow-[0_8px_30px_rgba(0,0,0,0.06)] space-y-4 min-w-0 flex flex-col justify-between">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-[#111318] font-['Manrope',sans-serif] text-base">
+                  Recent Activity
+                </h3>
+                <p className="text-[11px] text-[#7C7F8A]">
+                  Live transactions &amp; system audit stream
+                </p>
+              </div>
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#DFFFE6] text-[#0E2A16] border border-[#5BF07B]/40">
+                Live
+              </span>
+            </div>
+
+            <div className="space-y-2.5">
+              {activityItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <div key={item.id} className="flex items-start gap-3 p-3 rounded-[18px] bg-white border border-[#E7E8EC] hover:bg-[#FAFAFB] transition">
+                    <div className={`w-8 h-8 rounded-full ${item.color} border flex items-center justify-center shrink-0 mt-0.5 shadow-xs`}>
+                      <Icon size={14} />
                     </div>
-                  );
-                }}
-              />
-              {(chartMetric === "all" || chartMetric === "sales") && (
-                <Bar
-                  dataKey="sales"
-                  name="sales"
-                  fill="#5BF07B"
-                  radius={[6, 6, 0, 0]}
-                  barSize={dateRange === "year" ? 14 : 24}
-                />
-              )}
-              {(chartMetric === "all" || chartMetric === "collections") && (
-                <Bar
-                  dataKey="collections"
-                  name="collections"
-                  fill="#111318"
-                  radius={[6, 6, 0, 0]}
-                  barSize={dateRange === "year" ? 14 : 24}
-                />
-              )}
-              {chartMetric === "all" && (
-                <Line
-                  type="monotone"
-                  dataKey="expenses"
-                  name="expenses"
-                  stroke="#7C7F8A"
-                  strokeWidth={2}
-                  dot={{ r: 4, fill: "#7C7F8A", stroke: "#FFFFFF", strokeWidth: 2 }}
-                />
-              )}
-            </ComposedChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* 3 Analytics Footnotes */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4 border-t border-[#E7E8EC]">
-          <div className="flex items-center gap-3 p-3 rounded-[20px] bg-white border border-[#E7E8EC]">
-            <div className="w-8 h-8 rounded-full bg-[#FAFAFB] text-[#111318] border border-[#E7E8EC] flex items-center justify-center shrink-0">
-              <Sparkles size={15} />
-            </div>
-            <div>
-              <p className="text-[10px] font-bold uppercase text-[#7C7F8A]">Peak Sales Period</p>
-              <p className="text-xs font-bold text-[#111318]">Saturdays &amp; Festive Eves (₹2.86L)</p>
+                    <div className="min-w-0 flex-1 space-y-0.5">
+                      <div className="flex items-center justify-between gap-1">
+                        <p className="text-xs font-bold text-[#111318] truncate">{item.title}</p>
+                        {item.status && (
+                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${item.statusBadge || "bg-[#FAFAFB] text-[#7C7F8A]"}`}>
+                            {item.status}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-[#7C7F8A] truncate">{item.desc}</p>
+                      <span className="text-[10px] text-[#A9ABB5] block">{item.time}</span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
-          <div className="flex items-center gap-3 p-3 rounded-[20px] bg-white border border-[#E7E8EC]">
-            <div className="w-8 h-8 rounded-full bg-[#DFFFE6] text-[#0E2A16] flex items-center justify-center shrink-0">
-              <CheckCircle2 size={15} />
-            </div>
-            <div>
-              <p className="text-[10px] font-bold uppercase text-[#7C7F8A]">Digital Payment Ratio</p>
-              <p className="text-xs font-bold text-[#111318]">68% UPI &amp; Cards • 32% Cash</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3 p-3 rounded-[20px] bg-white border border-[#E7E8EC]">
-            <div className="w-8 h-8 rounded-full bg-[#FAFAFB] text-[#111318] border border-[#E7E8EC] flex items-center justify-center shrink-0">
-              <BarChart3 size={15} />
-            </div>
-            <div>
-              <p className="text-[10px] font-bold uppercase text-[#7C7F8A]">Average Order Value</p>
-              <p className="text-xs font-bold text-[#111318]">₹8,773 / Transaction</p>
-            </div>
+          <div className="pt-3 border-t border-[#E7E8EC]">
+            <button
+              type="button"
+              onClick={() => nav("/invoices")}
+              className="w-full py-2.5 rounded-full bg-white hover:bg-[#FAFAFB] text-[#111318] text-xs font-semibold border border-[#E7E8EC] shadow-xs transition cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <span>View All Transactions &amp; Invoices</span>
+              <ArrowRight size={13} />
+            </button>
           </div>
         </div>
       </section>
@@ -1502,11 +1585,11 @@ export default function Dashboard() {
       </section>
 
       {/* ═════════════════════════════════════════════════════════════════
-          7. CASH FLOW, INVENTORY VALUATION & ACTIVITY TIMELINE
+          7. CASH FLOW & INVENTORY VALUATION
       ═════════════════════════════════════════════════════════════════ */}
       <section className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 min-w-0">
-        {/* Cash Flow & Expense Categories (Col 4) */}
-        <div className="lg:col-span-4 bg-[#F6F6F8] rounded-[22px] sm:rounded-[28px] border border-[#E7E8EC] p-4 sm:p-6 shadow-[0_8px_30px_rgba(0,0,0,0.06)] space-y-5 min-w-0">
+        {/* Cash Flow & Expense Categories (Col 6) */}
+        <div className="lg:col-span-6 bg-[#F6F6F8] rounded-[22px] sm:rounded-[28px] border border-[#E7E8EC] p-4 sm:p-6 shadow-[0_8px_30px_rgba(0,0,0,0.06)] space-y-5 min-w-0">
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-[#111318] font-['Manrope',sans-serif] text-base">
               Cash Flow Breakdown
@@ -1561,8 +1644,8 @@ export default function Dashboard() {
           </button>
         </div>
 
-        {/* Inventory & Warehouse Distribution (Col 4) */}
-        <div className="lg:col-span-4 bg-[#F6F6F8] rounded-[22px] sm:rounded-[28px] border border-[#E7E8EC] p-4 sm:p-6 shadow-[0_8px_30px_rgba(0,0,0,0.06)] space-y-5 min-w-0">
+        {/* Inventory & Warehouse Distribution (Col 6) */}
+        <div className="lg:col-span-6 bg-[#F6F6F8] rounded-[22px] sm:rounded-[28px] border border-[#E7E8EC] p-4 sm:p-6 shadow-[0_8px_30px_rgba(0,0,0,0.06)] space-y-5 min-w-0">
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-[#111318] font-['Manrope',sans-serif] text-base">
               Inventory &amp; Warehouses
@@ -1611,42 +1694,6 @@ export default function Dashboard() {
             className="w-full py-2.5 rounded-full bg-white hover:bg-[#FAFAFB] text-[#111318] text-xs font-semibold border border-[#E7E8EC] shadow-xs transition cursor-pointer"
           >
             Warehouse Stock Movements →
-          </button>
-        </div>
-
-        {/* Recent Business Activity Feed (Col 4) */}
-        <div className="lg:col-span-4 bg-[#F6F6F8] rounded-[22px] sm:rounded-[28px] border border-[#E7E8EC] p-4 sm:p-6 shadow-[0_8px_30px_rgba(0,0,0,0.06)] space-y-4 min-w-0">
-          <div className="flex items-center justify-between">
-            <h3 className="font-bold text-[#111318] font-['Manrope',sans-serif] text-base">
-              Recent Business Activity
-            </h3>
-            <span className="text-[10px] font-mono text-[#7C7F8A]">Live Feed</span>
-          </div>
-
-          <div className="space-y-2.5">
-            {activityItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <div key={item.id} className="flex items-start gap-3 p-2.5 rounded-[16px] bg-white border border-[#E7E8EC] hover:bg-[#FAFAFB] transition">
-                  <div className={`w-8 h-8 rounded-full ${item.color} border flex items-center justify-center shrink-0 mt-0.5 shadow-xs`}>
-                    <Icon size={14} />
-                  </div>
-                  <div className="min-w-0 flex-1 space-y-0.5">
-                    <p className="text-xs font-bold text-[#111318] truncate">{item.title}</p>
-                    <p className="text-[11px] text-[#7C7F8A] truncate">{item.desc}</p>
-                    <span className="text-[10px] text-[#A9ABB5] block">{item.time}</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <button
-            type="button"
-            onClick={() => nav("/audit-logs")}
-            className="w-full py-2.5 rounded-full bg-white hover:bg-[#FAFAFB] text-[#111318] text-xs font-semibold border border-[#E7E8EC] shadow-xs transition cursor-pointer"
-          >
-            Full Audit Logs Trail →
           </button>
         </div>
       </section>
