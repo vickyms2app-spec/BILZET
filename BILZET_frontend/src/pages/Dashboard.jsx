@@ -720,14 +720,12 @@ export default function Dashboard() {
       <section className="flex flex-wrap items-center gap-2.5 sm:gap-3 p-3 sm:p-3.5 rounded-[22px] bg-white border border-[#E7E8EC] shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
         <button
           type="button"
-          onClick={() => nav("/billing")}
-          className="inline-flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-full bg-[#12151C] hover:bg-black active:scale-95 text-white font-bold text-xs sm:text-sm transition-all shadow-xs cursor-pointer"
+          onClick={() => nav("/ca-connect")}
+          className="inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-full bg-white hover:bg-[#FAFAFB] text-[#111318] border border-[#E7E8EC] font-semibold text-xs transition-all shadow-xs cursor-pointer active:scale-95"
         >
-          <Plus size={16} className="text-[#5BF07B]" strokeWidth={2.5} />
-          <span>Create Invoice</span>
-          <kbd className="hidden sm:inline-block ml-1 px-1.5 py-0.5 rounded-full bg-white/20 text-[10px] font-mono font-bold text-[#5BF07B]">
-            F2
-          </kbd>
+          <BriefcaseIcon />
+          <span>CA Collaboration</span>
+          <ArrowRight size={13} className="text-[#7C7F8A]" />
         </button>
 
         <button
@@ -759,12 +757,14 @@ export default function Dashboard() {
 
         <button
           type="button"
-          onClick={() => nav("/ca-connect")}
-          className="inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-full bg-white hover:bg-[#FAFAFB] text-[#111318] border border-[#E7E8EC] font-semibold text-xs transition-all shadow-xs cursor-pointer active:scale-95 sm:ml-auto"
+          onClick={() => nav("/billing")}
+          className="inline-flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-full bg-[#12151C] hover:bg-black active:scale-95 text-white font-bold text-xs sm:text-sm transition-all shadow-xs cursor-pointer sm:ml-auto"
         >
-          <BriefcaseIcon />
-          <span>CA Collaboration</span>
-          <ArrowRight size={13} className="text-[#7C7F8A]" />
+          <Plus size={16} className="text-[#5BF07B]" strokeWidth={2.5} />
+          <span>Create Invoice</span>
+          <kbd className="hidden sm:inline-block ml-1 px-1.5 py-0.5 rounded-full bg-white/20 text-[10px] font-mono font-bold text-[#5BF07B]">
+            F2
+          </kbd>
         </button>
       </section>
 
