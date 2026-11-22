@@ -1,8 +1,9 @@
 import crypto from 'crypto';
 import { env } from '../config/env.mjs';
-import { PLAN_DETAILS, getPlanSeatLimit } from '../config/plans.config.mjs';
+import { PLAN_DETAILS, EXTRA_BILL_PACK_PRICE } from '../config/plans.config.mjs';
 import { ApiError } from '../utils/ApiError.mjs';
 import { upgradeSubscription, cancelSubscription, getActiveSubscription } from './subscription.service.mjs';
+import { purchaseBillPack } from './billCredit.service.mjs';
 
 /**
  * Razorpay Subscription and Checkout Integration Service
@@ -11,30 +12,42 @@ import { upgradeSubscription, cancelSubscription, getActiveSubscription } from '
  */
 
 export const getRazorpayConfig = () => {
+  const keyId = (env.RAZORPAY_KEY_ID || '').trim();
   return {
-    keyId: env.RAZORPAY_KEY_ID || 'rzp_test_bilzet2026',
+    keyId: keyId || 'rzp_test_bilzet2026',
     proPlanId: env.RAZORPAY_PRO_PLAN_ID || 'plan_bilzet_pro_annual',
     premiumPlanId: env.RAZORPAY_PREMIUM_PLAN_ID || 'plan_bilzet_premium_annual',
-    isTestMode: Boolean(!env.RAZORPAY_KEY_ID || env.RAZORPAY_KEY_ID.startsWith('rzp_test_')),
+    isTestMode: Boolean(!keyId || keyId.startsWith('rzp_test_')),
   };
 };
 
 /**
- * Creates a Razorpay checkout order for the explicitly requested plan tier.
- * Both PRO and PREMIUM can be purchased directly without any sequential upgrade requirements.
+ * Creates an authoritative Razorpay checkout order via Razorpay Orders API.
+ * Supports direct purchase of PRO, PREMIUM, and EXTRA_BILLS without sequential barriers.
  */
 export const createSubscriptionCheckoutOrder = async ({
   planTier,
   billingCycle = 'ANNUAL',
   user,
   businessId,
+  amount: overrideAmount,
 }) => {
   const normalizedTier = String(planTier || '').toUpperCase();
-  if (!['PRO', 'PREMIUM'].includes(normalizedTier)) {
-    throw ApiError.badRequest(`Invalid paid plan tier: '${planTier}'. Direct purchase supports PRO or PREMIUM.`);
+  if (!['PRO', 'PREMIUM', 'EXTRA_BILLS'].includes(normalizedTier)) {
+    throw ApiError.badRequest(`Invalid paid plan tier: '${planTier}'. Direct purchase supports PRO, PREMIUM, or EXTRA_BILLS.`);
   }
 
-  const planInfo = PLAN_DETAILS[normalizedTier];
+  let planInfo;
+  if (normalizedTier === 'EXTRA_BILLS') {
+    planInfo = {
+      name: '500 Extra Bill Credits',
+      amount: EXTRA_BILL_PACK_PRICE || 299,
+      tier: 'EXTRA_BILLS',
+    };
+  } else {
+    planInfo = PLAN_DETAILS[normalizedTier];
+  }
+
   if (!planInfo) {
     throw ApiError.badRequest(`Plan details not configured for tier: '${normalizedTier}'`);
   }
@@ -42,68 +55,77 @@ export const createSubscriptionCheckoutOrder = async ({
   const razorpayPlanId =
     normalizedTier === 'PREMIUM'
       ? env.RAZORPAY_PREMIUM_PLAN_ID || 'plan_bilzet_premium_annual'
-      : env.RAZORPAY_PRO_PLAN_ID || 'plan_bilzet_pro_annual';
+      : (normalizedTier === 'EXTRA_BILLS' ? 'plan_extra_bills_500' : (env.RAZORPAY_PRO_PLAN_ID || 'plan_bilzet_pro_annual'));
 
-  const amountInPaise = Math.round(planInfo.amount * 100);
-  const receipt = `rcpt_${normalizedTier.toLowerCase()}_${Date.now()}`;
-  const keyId = env.RAZORPAY_KEY_ID || 'rzp_test_bilzet2026';
-  const keySecret = env.RAZORPAY_KEY_SECRET;
+  const effectiveAmountInRupees = overrideAmount !== undefined && Number(overrideAmount) > 0
+    ? Number(overrideAmount)
+    : Number(planInfo.amount);
 
-  let orderId = null;
-
-  // If live Razorpay credentials are provided and not in simulated test mode, create live order via API
-  if (keySecret && !keyId.startsWith('rzp_test_')) {
-    try {
-      const authHeader = 'Basic ' + Buffer.from(`${keyId}:${keySecret}`).toString('base64');
-      const response = await fetch('https://api.razorpay.com/v1/orders', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: authHeader,
-        },
-        body: JSON.stringify({
-          amount: amountInPaise,
-          currency: 'INR',
-          receipt,
-          notes: {
-            planTier: normalizedTier,
-            planName: planInfo.name,
-            razorpayPlanId,
-            businessId: businessId || user?.businessId || '',
-            userId: user?.id || user?._id || '',
-            userEmail: user?.email || '',
-          },
-        }),
-      });
-
-      if (response.ok) {
-        const orderData = await response.json();
-        orderId = orderData.id;
-      } else {
-        const errText = await response.text();
-        console.warn('[Razorpay API Warning] Order creation API failed, falling back to secure reference:', errText);
-      }
-    } catch (apiErr) {
-      console.warn('[Razorpay Network Notice] Order API unreachable, generating secure order reference:', apiErr.message);
-    }
+  const amountInPaise = Math.round(effectiveAmountInRupees * 100);
+  if (isNaN(amountInPaise) || amountInPaise <= 0) {
+    throw ApiError.badRequest(`Invalid order amount: ₹${effectiveAmountInRupees}`);
   }
 
-  // Generate authoritative order ID if not resolved via live API
-  if (!orderId) {
-    orderId = `order_${normalizedTier.toLowerCase()}_${crypto.randomBytes(8).toString('hex')}`;
+  const receipt = `rcpt_${normalizedTier.toLowerCase()}_${Date.now()}`;
+  const keyId = (env.RAZORPAY_KEY_ID || '').trim();
+  const keySecret = (env.RAZORPAY_KEY_SECRET || '').trim();
+
+  if (!keyId || !keySecret || keyId === 'rzp_test_bilzet2026') {
+    throw ApiError.badRequest(
+      'Razorpay is not configured on the server. Please verify RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in backend environment.'
+    );
+  }
+
+  // Create real order in Razorpay (handles both rzp_test_ and rzp_live_ keys)
+  const authHeader = 'Basic ' + Buffer.from(`${keyId}:${keySecret}`).toString('base64');
+  let orderData;
+  try {
+    const response = await fetch('https://api.razorpay.com/v1/orders', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: authHeader,
+      },
+      body: JSON.stringify({
+        amount: amountInPaise,
+        currency: 'INR',
+        receipt,
+        notes: {
+          planTier: normalizedTier,
+          planName: planInfo.name,
+          razorpayPlanId,
+          businessId: businessId || user?.businessId || '',
+          userId: user?.id || user?._id || '',
+          userEmail: user?.email || '',
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const errBody = await response.json().catch(() => null);
+      const errMsg = errBody?.error?.description || `Razorpay API responded with status ${response.status}`;
+      console.error('[Razorpay Order API Error]', errMsg, errBody);
+      throw ApiError.badRequest(`Razorpay order initialization failed: ${errMsg}`);
+    }
+
+    orderData = await response.json();
+  } catch (apiErr) {
+    if (apiErr instanceof ApiError) throw apiErr;
+    console.error('[Razorpay Network Notice] Order API unreachable:', apiErr.message);
+    throw ApiError.badRequest(`Could not reach Razorpay API: ${apiErr.message}`);
   }
 
   return {
-    orderId,
-    amount: amountInPaise,
-    amountInRupees: planInfo.amount,
-    currency: 'INR',
+    orderId: orderData.id,
+    amount: orderData.amount,
+    amountInRupees: effectiveAmountInRupees,
+    currency: orderData.currency || 'INR',
     keyId,
     planTier: normalizedTier,
     planName: planInfo.name,
     razorpayPlanId,
     billingCycle,
-    receipt,
+    receipt: orderData.receipt || receipt,
     notes: {
       planTier: normalizedTier,
       businessId: businessId || user?.businessId || '',
@@ -116,17 +138,18 @@ export const createSubscriptionCheckoutOrder = async ({
  * Validates Razorpay HMAC SHA256 payment signature.
  */
 export const verifyRazorpayPaymentSignature = ({ orderId, paymentId, signature }) => {
-  if (!orderId || !paymentId) return false;
+  if (!orderId || !paymentId || !signature) return false;
 
-  const secret = env.RAZORPAY_KEY_SECRET || 'bilzet_rzp_secret_key_2026';
-  const isTestKey = Boolean(!env.RAZORPAY_KEY_ID || env.RAZORPAY_KEY_ID.startsWith('rzp_test_'));
+  const secret = (env.RAZORPAY_KEY_SECRET || '').trim();
+  const keyId = (env.RAZORPAY_KEY_ID || '').trim();
+  const isTestKey = Boolean(!keyId || keyId.startsWith('rzp_test_'));
 
-  // In test/development mode, accept simulated valid signatures or mock tokens
-  if (isTestKey && (signature === 'sig_mock_verified' || signature?.startsWith('sig_test_') || paymentId.startsWith('pay_test_') || paymentId.startsWith('PAY-'))) {
+  // Allow explicit mock token during automated tests if in test mode
+  if (isTestKey && signature === 'sig_mock_verified') {
     return true;
   }
 
-  if (!signature) return false;
+  if (!secret) return false;
 
   try {
     const text = `${orderId}|${paymentId}`;
@@ -135,7 +158,11 @@ export const verifyRazorpayPaymentSignature = ({ orderId, paymentId, signature }
       .update(text)
       .digest('hex');
 
-    return expectedSignature === signature;
+    if (expectedSignature.length !== signature.length) {
+      return false;
+    }
+
+    return crypto.timingSafeEqual(Buffer.from(expectedSignature), Buffer.from(signature));
   } catch (err) {
     console.warn('[Razorpay] Signature verification error:', err.message);
     return false;
@@ -143,8 +170,7 @@ export const verifyRazorpayPaymentSignature = ({ orderId, paymentId, signature }
 };
 
 /**
- * Authoritatively activates the exact selected plan tier upon payment verification.
- * Supports direct Free -> Pro, Free -> Premium, Pro -> Premium upgrade, and Premium -> Pro downgrade.
+ * Authoritatively activates the exact selected plan tier or bill pack upon payment verification.
  */
 export const verifyAndActivateRazorpayPayment = async ({
   businessId,
@@ -156,8 +182,8 @@ export const verifyAndActivateRazorpayPayment = async ({
   billingCycle = 'ANNUAL',
 }) => {
   const normalizedTier = String(planTier || '').toUpperCase();
-  if (!['PRO', 'PREMIUM'].includes(normalizedTier)) {
-    throw ApiError.badRequest(`Invalid paid plan tier: '${planTier}'. Must be PRO or PREMIUM.`);
+  if (!['PRO', 'PREMIUM', 'EXTRA_BILLS'].includes(normalizedTier)) {
+    throw ApiError.badRequest(`Invalid plan tier: '${planTier}'. Must be PRO, PREMIUM, or EXTRA_BILLS.`);
   }
 
   // Verify HMAC signature
@@ -166,8 +192,18 @@ export const verifyAndActivateRazorpayPayment = async ({
     throw ApiError.badRequest('Invalid Razorpay payment signature. Payment could not be verified.');
   }
 
-  const planInfo = PLAN_DETAILS[normalizedTier];
   const paymentReference = paymentId || orderId || `RZP-${Date.now()}`;
+
+  if (normalizedTier === 'EXTRA_BILLS') {
+    const billCredits = await purchaseBillPack(businessId, userId, 1, paymentReference);
+    return {
+      success: true,
+      message: 'Payment confirmed. 500 Extra Bill Credits added successfully.',
+      billCredits,
+    };
+  }
+
+  const planInfo = PLAN_DETAILS[normalizedTier];
 
   // Execute authoritative single-subscription activation
   const activatedSub = await upgradeSubscription({

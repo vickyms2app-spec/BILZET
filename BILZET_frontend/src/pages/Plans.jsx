@@ -699,10 +699,14 @@ export default function Plans() {
       });
 
       if (!orderData || !orderData.orderId) {
-        throw new Error(orderData?.message || "Failed to initialize Razorpay checkout order.");
+        throw new Error(orderData?.message || "Failed to initialize Razorpay checkout order from server.");
       }
 
-      // 2. Launch Razorpay modal
+      if (!orderData.keyId) {
+        throw new Error("Razorpay Key ID is not configured on the server. Please check backend settings.");
+      }
+
+      // 2. Launch Razorpay modal with verified order reference
       const options = {
         key: orderData.keyId,
         amount: orderData.amount,
@@ -711,12 +715,22 @@ export default function Plans() {
         description: `${targetPlanName} - ${effectiveCycle === "MONTHLY" ? "Monthly" : "Annual"} Subscription`,
         order_id: orderData.orderId,
         prefill: {
-          name: authUser?.name || "Business Owner",
+          name: authUser?.name || authUser?.fullName || "Business Owner",
           email: authUser?.email || "billing@bilzet.com",
-          contact: authUser?.phone || "9999999999",
+          contact: authUser?.phone || authUser?.mobile || "9999999999",
         },
         theme: {
           color: targetPlanTier === "PREMIUM" ? "#D97706" : "#2563EB",
+        },
+        retry: {
+          enabled: true,
+          max_count: 3,
+        },
+        modal: {
+          ondismiss: function () {
+            setPaymentProcessing(false);
+            console.info("[Razorpay Checkout] User dismissed payment window.");
+          },
         },
         handler: async function (response) {
           try {
@@ -786,25 +800,26 @@ export default function Plans() {
             }
           } catch (vErr) {
             setPaymentProcessing(false);
-            setPaymentError(vErr?.message || "Payment signature verification failed.");
+            setPaymentError(vErr?.response?.data?.message || vErr?.message || "Payment signature verification failed.");
           }
-        },
-        modal: {
-          ondismiss: function () {
-            setPaymentProcessing(false);
-          },
         },
       };
 
       const rzp = new window.Razorpay(options);
       rzp.on("payment.failed", function (resp) {
         setPaymentProcessing(false);
-        setPaymentError(resp?.error?.description || "Payment failed or was cancelled.");
+        const failMsg = resp?.error?.description || resp?.error?.reason || "Payment was cancelled or failed.";
+        setPaymentError(`Payment failed: ${failMsg}`);
       });
       rzp.open();
     } catch (err) {
       setPaymentProcessing(false);
-      setPaymentError(err?.message || "Could not launch Razorpay. You can also pay via Direct UPI QR below.");
+      const errMsg =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        err?.message ||
+        "Could not launch Razorpay. You can also pay via Direct UPI QR below.";
+      setPaymentError(errMsg);
     }
   };
 
