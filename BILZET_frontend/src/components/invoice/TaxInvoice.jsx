@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Printer,
   Download,
@@ -133,9 +133,16 @@ export const DEFAULT_INVOICE_SETTINGS = {
   logoUrl: "",
   showLogo: true,
   showLogoOnInvoices: true,
+  logoWidth: 120,
+  logoHeight: 52,
+  logoAlign: "left",
+  logoLayout: "side",
   signatureUrl: "",
   showSignatory: true,
   showSignatureOnInvoices: true,
+  signatureWidth: 140,
+  signatureHeight: 48,
+  signatureAlign: "right",
 
   // Table & Columns
   showItemNumber: true,
@@ -213,6 +220,10 @@ export default function TaxInvoice({
   showActions = true,
   lastChangedField = "",
   lastChangeTitle = "",
+  editableBranding = false,
+  activeBrandingSection = null,
+  onEditLogo,
+  onEditSignature,
 }) {
   const printRef = useRef(null);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
@@ -221,9 +232,17 @@ export default function TaxInvoice({
   const [logoLoadFailed, setLogoLoadFailed] = useState(false);
   const [signatureLoadFailed, setSignatureLoadFailed] = useState(false);
 
-  // Merge shopSettings with customizationSettings and fallback defaults
-  const cleanShopSettings = shopSettings?.settings ? { ...shopSettings, ...shopSettings.settings } : (shopSettings || {});
-  const cleanCustomizationSettings = customizationSettings?.settings ? { ...customizationSettings, ...customizationSettings.settings } : (customizationSettings || {});
+  // Merge shopSettings with customizationSettings and fallback defaults (strip nested .settings wrapper)
+  const cleanShopSettings = (() => {
+    if (!shopSettings) return {};
+    const { settings: nested, ...rest } = shopSettings;
+    return nested ? { ...rest, ...nested } : rest;
+  })();
+  const cleanCustomizationSettings = (() => {
+    if (!customizationSettings) return {};
+    const { settings: nested, ...rest } = customizationSettings;
+    return nested ? { ...rest, ...nested } : rest;
+  })();
 
   const settings = {
     ...DEFAULT_INVOICE_SETTINGS,
@@ -231,31 +250,40 @@ export default function TaxInvoice({
     ...cleanCustomizationSettings,
   };
 
-  // Resolve branding URLs from settings, shopSettings, or invoice business relation
+  // Resolve branding URLs: respect explicit "" (removed) in settings instead of falling through with ||
+  // Respect explicit empty string ("") when logo/signature is removed in draft or settings
   const rawLogoUrl =
-    settings.logoUrl ||
-    cleanShopSettings?.logoUrl ||
-    shopSettings?.settings?.logoUrl ||
-    invoice?.business?.logoUrl ||
-    "";
+    cleanCustomizationSettings.logoUrl !== undefined
+      ? cleanCustomizationSettings.logoUrl
+      : cleanShopSettings.logoUrl !== undefined
+        ? cleanShopSettings.logoUrl
+        : (invoice?.business?.logoUrl || "");
 
   const rawSignatureUrl =
-    settings.signatureUrl ||
-    cleanShopSettings?.signatureUrl ||
-    shopSettings?.settings?.signatureUrl ||
-    invoice?.business?.signatureUrl ||
-    "";
+    cleanCustomizationSettings.signatureUrl !== undefined
+      ? cleanCustomizationSettings.signatureUrl
+      : cleanShopSettings.signatureUrl !== undefined
+        ? cleanShopSettings.signatureUrl
+        : (invoice?.business?.signatureUrl || "");
 
   const resolvedLogoUrl = resolveAssetUrl(rawLogoUrl);
   const resolvedSignatureUrl = resolveAssetUrl(rawSignatureUrl);
+
+  useEffect(() => {
+    setLogoLoadFailed(false);
+  }, [resolvedLogoUrl]);
+
+  useEffect(() => {
+    setSignatureLoadFailed(false);
+  }, [resolvedSignatureUrl]);
 
   // Independent visibility toggles
   const isLogoEnabled =
     settings.showLogoOnInvoices !== undefined
       ? Boolean(settings.showLogoOnInvoices)
       : (cleanShopSettings?.showLogoOnInvoices !== undefined
-          ? Boolean(cleanShopSettings.showLogoOnInvoices)
-          : (settings.showLogo !== undefined ? Boolean(settings.showLogo) : Boolean(resolvedLogoUrl)));
+        ? Boolean(cleanShopSettings.showLogoOnInvoices)
+        : (settings.showLogo !== undefined ? Boolean(settings.showLogo) : Boolean(resolvedLogoUrl)));
 
   // Detect if rendering a Quotation vs an Invoice
   const isQuotationDoc = Boolean(
@@ -267,15 +295,15 @@ export default function TaxInvoice({
 
   const isSignatureEnabled = isQuotationDoc
     ? (settings.showSignatureOnQuotations !== undefined
-        ? Boolean(settings.showSignatureOnQuotations)
-        : (cleanShopSettings?.showSignatureOnQuotations !== undefined
-            ? Boolean(cleanShopSettings.showSignatureOnQuotations)
-            : Boolean(resolvedSignatureUrl)))
+      ? Boolean(settings.showSignatureOnQuotations)
+      : (cleanShopSettings?.showSignatureOnQuotations !== undefined
+        ? Boolean(cleanShopSettings.showSignatureOnQuotations)
+        : Boolean(resolvedSignatureUrl)))
     : (settings.showSignatureOnInvoices !== undefined
-        ? Boolean(settings.showSignatureOnInvoices)
-        : (cleanShopSettings?.showSignatureOnInvoices !== undefined
-            ? Boolean(cleanShopSettings.showSignatureOnInvoices)
-            : (settings.showSignatory !== undefined ? Boolean(settings.showSignatory) : Boolean(resolvedSignatureUrl))));
+      ? Boolean(settings.showSignatureOnInvoices)
+      : (cleanShopSettings?.showSignatureOnInvoices !== undefined
+        ? Boolean(cleanShopSettings.showSignatureOnInvoices)
+        : (settings.showSignatory !== undefined ? Boolean(settings.showSignatory) : Boolean(resolvedSignatureUrl))));
 
   const shouldDisplayLogo = isLogoEnabled && Boolean(resolvedLogoUrl) && !logoLoadFailed;
   const shouldDisplaySignature = isSignatureEnabled && Boolean(resolvedSignatureUrl) && !signatureLoadFailed;
@@ -354,94 +382,94 @@ export default function TaxInvoice({
 
   const items = rawItems
     ? rawItems.map((item, idx) => {
-        const qty = Number(item.quantity !== undefined ? item.quantity : (item.qty || 1));
-        const rate = Number(item.rate !== undefined ? item.rate : (item.price || item.sellingPrice || item.unitPrice || 0));
-        const gst = Number(
-          item.gstRate !== undefined
-            ? item.gstRate
-            : item.taxPercent !== undefined
+      const qty = Number(item.quantity !== undefined ? item.quantity : (item.qty || 1));
+      const rate = Number(item.rate !== undefined ? item.rate : (item.price || item.sellingPrice || item.unitPrice || 0));
+      const gst = Number(
+        item.gstRate !== undefined
+          ? item.gstRate
+          : item.taxPercent !== undefined
             ? item.taxPercent
             : item.taxRate !== undefined
-            ? item.taxRate
-            : item.gst || 0
-        );
-        const discount = Number(item.discount || 0);
-        const taxable = (rate * qty) - discount;
-        const taxAmt = Number(
-          item.taxAmount !== undefined
-            ? item.taxAmount
-            : (taxable * gst) / 100
-        );
-        const total = Number(
-          item.total !== undefined
-            ? item.total
-            : item.totalPrice !== undefined
+              ? item.taxRate
+              : item.gst || 0
+      );
+      const discount = Number(item.discount || 0);
+      const taxable = (rate * qty) - discount;
+      const taxAmt = Number(
+        item.taxAmount !== undefined
+          ? item.taxAmount
+          : (taxable * gst) / 100
+      );
+      const total = Number(
+        item.total !== undefined
+          ? item.total
+          : item.totalPrice !== undefined
             ? item.totalPrice
             : taxable + taxAmt
-        );
+      );
 
-        return {
-          id: item.id || item._id || idx + 1,
-          name: item.name || item.productName || item.product?.name || "Sample Product",
-          code: item.code || item.sku || item.product?.code || `SKU-${idx + 1}`,
-          hsn: item.hsn || item.hsnCode || item.sku || "1904",
-          unit: item.unit || "pcs",
-          qty,
-          originalQuantity: Number(item.originalQuantity || qty),
-          returnedQuantity: Number(item.returnedQuantity || 0),
-          rate,
-          discount,
-          gst,
-          taxable,
-          taxAmt,
-          total,
-          image: item.image || item.imageUrl || item.product?.image || null,
-        };
-      })
+      return {
+        id: item.id || item._id || idx + 1,
+        name: item.name || item.productName || item.product?.name || "Sample Product",
+        code: item.code || item.sku || item.product?.code || `SKU-${idx + 1}`,
+        hsn: item.hsn || item.hsnCode || item.sku || "1904",
+        unit: item.unit || "pcs",
+        qty,
+        originalQuantity: Number(item.originalQuantity || qty),
+        returnedQuantity: Number(item.returnedQuantity || 0),
+        rate,
+        discount,
+        gst,
+        taxable,
+        taxAmt,
+        total,
+        image: item.image || item.imageUrl || item.product?.image || null,
+      };
+    })
     : [
-        {
-          id: 1,
-          name: "Premium Basmati Rice (5kg)",
-          code: "RIC-001",
-          hsn: "1006",
-          unit: "bag",
-          qty: 2,
-          rate: 550.0,
-          discount: 50.0,
-          gst: 5,
-          taxable: 1050.0,
-          taxAmt: 52.5,
-          total: 1102.5,
-        },
-        {
-          id: 2,
-          name: "Organic Whole Wheat Flour (10kg)",
-          code: "WHT-002",
-          hsn: "1101",
-          unit: "bag",
-          qty: 1,
-          rate: 420.0,
-          discount: 20.0,
-          gst: 5,
-          taxable: 400.0,
-          taxAmt: 20.0,
-          total: 420.0,
-        },
-        {
-          id: 3,
-          name: "Cold-Pressed Groundnut Oil (1L)",
-          code: "OIL-003",
-          hsn: "1508",
-          unit: "btl",
-          qty: 2,
-          rate: 240.0,
-          discount: 0.0,
-          gst: 12,
-          taxable: 480.0,
-          taxAmt: 57.6,
-          total: 537.6,
-        },
-      ];
+      {
+        id: 1,
+        name: "Premium Basmati Rice (5kg)",
+        code: "RIC-001",
+        hsn: "1006",
+        unit: "bag",
+        qty: 2,
+        rate: 550.0,
+        discount: 50.0,
+        gst: 5,
+        taxable: 1050.0,
+        taxAmt: 52.5,
+        total: 1102.5,
+      },
+      {
+        id: 2,
+        name: "Organic Whole Wheat Flour (10kg)",
+        code: "WHT-002",
+        hsn: "1101",
+        unit: "bag",
+        qty: 1,
+        rate: 420.0,
+        discount: 20.0,
+        gst: 5,
+        taxable: 400.0,
+        taxAmt: 20.0,
+        total: 420.0,
+      },
+      {
+        id: 3,
+        name: "Cold-Pressed Groundnut Oil (1L)",
+        code: "OIL-003",
+        hsn: "1508",
+        unit: "btl",
+        qty: 2,
+        rate: 240.0,
+        discount: 0.0,
+        gst: 12,
+        taxable: 480.0,
+        taxAmt: 57.6,
+        total: 537.6,
+      },
+    ];
 
   const calculatedSubtotal = items.reduce((acc, i) => acc + (i.rate * i.qty), 0);
   const calculatedDiscount = items.reduce((acc, i) => acc + i.discount, 0);
@@ -483,25 +511,25 @@ export default function TaxInvoice({
     invoice?.total !== undefined
       ? invoice.total
       : invoice?.netPayable !== undefined
-      ? invoice.netPayable
-      : Math.max(0, grandTotalVal - returnedAmountVal + roundOffVal)
+        ? invoice.netPayable
+        : Math.max(0, grandTotalVal - returnedAmountVal + roundOffVal)
   );
 
   const receivedVal =
     invoice?.paidAmount !== undefined
       ? Number(invoice.paidAmount)
       : invoice?.received !== undefined
-      ? Number(invoice.received)
-      : paymentStatus === "PAID"
-      ? netPayableVal
-      : 0;
+        ? Number(invoice.received)
+        : paymentStatus === "PAID"
+          ? netPayableVal
+          : 0;
 
   const balanceDueVal =
     invoice?.balanceDue !== undefined
       ? Number(invoice.balanceDue)
       : invoice?.outstandingBalance !== undefined
-      ? Number(invoice.outstandingBalance)
-      : Math.max(0, netPayableVal - receivedVal);
+        ? Number(invoice.outstandingBalance)
+        : Math.max(0, netPayableVal - receivedVal);
 
   const invNumber = isQuotationDoc
     ? (invoice?.quotationNumber || invoice?.number || invoice?.billNumber || `${settings.quotationPrefix || "QUO-2026-"}0001`)
@@ -748,18 +776,16 @@ export default function TaxInvoice({
 
   return (
     <div
-      className={`${
-        isModal
-          ? "fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-xs flex items-center justify-center p-2 sm:p-5 print:p-0 print:bg-white print:static"
-          : "w-full"
-      }`}
+      className={`${isModal
+        ? "fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-xs flex items-center justify-center p-2 sm:p-5 print:p-0 print:bg-white print:static"
+        : "w-full"
+        }`}
     >
       <div
-        className={`bg-white max-w-[850px] w-full overflow-hidden relative flex flex-col my-auto border transition-all ${
-          isModal
-            ? "rounded-2xl shadow-2xl border-slate-300 print:border-none print:shadow-none print:rounded-none max-h-[94vh]"
-            : "rounded-xl shadow-md border-slate-200"
-        }`}
+        className={`bg-white max-w-[850px] w-full overflow-hidden relative flex flex-col my-auto border transition-all ${isModal
+          ? "rounded-2xl shadow-2xl border-slate-300 print:border-none print:shadow-none print:rounded-none max-h-[94vh]"
+          : "rounded-xl shadow-md border-slate-200"
+          }`}
       >
         {/* ══════════════════════════════════════════════════
             TOP ACTION BAR (Hidden in print)
@@ -863,66 +889,112 @@ export default function TaxInvoice({
           <div
             ref={printRef}
             id="printable-tax-invoice"
-          className={`@container relative bg-white text-slate-800 text-xs p-5 sm:p-8 space-y-4 print:p-6 print:m-0 print:border-none ${
-            settings.paperSize === "Thermal 80mm"
+            className={`@container relative bg-white text-slate-800 text-xs p-5 sm:p-8 space-y-4 print:p-6 print:m-0 print:border-none ${settings.paperSize === "Thermal 80mm"
               ? "max-w-[340px] mx-auto text-[11px]"
               : settings.paperSize === "Thermal 58mm"
-              ? "max-w-[260px] mx-auto text-[10px]"
-              : ""
-          }`}
-          style={{
-            fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-            color: "#0F172A",
-          }}
-        >
-          {/* ── 1. Store Information Header (Left) & Logo (Right) ── */}
-          <div className="flex flex-row items-start sm:items-center justify-between gap-4 pb-3 border-b border-slate-200">
-            {/* Left: Store Information */}
-            <div className="min-w-0 flex-1 space-y-0.5">
-              <h2 className="text-sm sm:text-base font-extrabold text-[#0F2747] tracking-tight uppercase leading-snug">
-                {storeName}
-              </h2>
-              <p className="text-[11px] text-slate-600 leading-tight">
-                {storeAddress}
-              </p>
-              {cityStatePin && (
-                <p className="text-[11px] text-slate-600 leading-tight">
-                  {cityStatePin}
-                </p>
-              )}
-            </div>
+                ? "max-w-[260px] mx-auto text-[10px]"
+                : ""
+              }`}
+            style={{
+              fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+              color: "#0F172A",
+            }}
+          >
+            {/* ── 1. Store Information & Business Logo (Left) + Fixed BILZET Logo (Top Right) ── */}
+            {(() => {
+              const isThermal = Boolean(settings.paperSize?.includes("Thermal"));
+              const safeLogoWidth = Math.min(isThermal ? 110 : 240, Math.max(36, Number(settings.logoWidth || 120)));
+              const safeLogoHeight = Math.min(isThermal ? 56 : 120, Math.max(24, Number(settings.logoHeight || 52)));
+              const logoAlignJustify =
+                settings.logoAlign === "center"
+                  ? "justify-center"
+                  : settings.logoAlign === "right"
+                    ? "justify-end"
+                    : "justify-start";
+              const isTopLogoLayout = settings.logoLayout === "top" || isThermal;
 
-            {/* Right: Business / BILZET Logo */}
-            <div className="shrink-0 ml-auto flex items-center justify-end pt-0.5">
-              {shouldDisplayLogo ? (
-                <img
-                  src={resolvedLogoUrl}
-                  alt={storeName}
-                  crossOrigin="anonymous"
-                  className={`${
-                    settings.paperSize?.includes("Thermal")
-                      ? "max-h-10 max-w-[100px]"
-                      : "h-12 sm:h-14 max-w-[140px] sm:max-w-[180px]"
-                  } w-auto object-contain rounded`}
-                  onError={() => setLogoLoadFailed(true)}
-                />
-              ) : (
+              return (
+                <div className="flex flex-row items-start justify-between gap-3 pb-3 border-b border-slate-200">
+                  {/* Left Side: Customizable Business Logo + Store Information */}
+                  <div
+                    className={`min-w-0 flex-1 flex ${isTopLogoLayout ? "flex-col gap-2" : "flex-col sm:flex-row sm:items-center gap-3"
+                      }`}
+                  >
+                    {(shouldDisplayLogo || editableBranding) && (
+                      <div
+                        onClick={editableBranding ? () => onEditLogo?.() : undefined}
+                        title={editableBranding ? "Click to customize Business Logo (Left Side)" : undefined}
+                        className={`shrink-0 flex items-center ${logoAlignJustify} ${editableBranding
+                          ? `cursor-pointer group relative rounded-lg p-1 transition ${activeBrandingSection === "logo"
+                            ? "ring-2 ring-indigo-500 bg-indigo-50/40"
+                            : "hover:ring-2 hover:ring-indigo-400/70 hover:bg-indigo-50/20"
+                          }`
+                          : ""
+                          }`}
+                        style={isTopLogoLayout ? { width: "100%" } : undefined}
+                      >
+                        {shouldDisplayLogo ? (
+                          <img
+                            key={resolvedLogoUrl}
+                            src={resolvedLogoUrl}
+                            alt={storeName}
+                            crossOrigin="anonymous"
+                            style={{
+                              width: `${safeLogoWidth}px`,
+                              height: `${safeLogoHeight}px`,
+                              maxWidth: "100%",
+                              objectFit: "contain",
+                            }}
+                            className="rounded"
+                            onError={() => setLogoLoadFailed(true)}
+                          />
+                        ) : (
+                          <div className="px-2.5 py-2 border border-dashed border-indigo-300 rounded-lg text-[10px] font-semibold text-indigo-600 bg-indigo-50/50 whitespace-nowrap">
+                            + Add Business Logo
+                          </div>
+                        )}
+                        {editableBranding && (
+                          <span className="pointer-events-none absolute -top-2 left-1 px-1.5 py-0.5 rounded bg-indigo-600 text-white text-[9px] font-semibold opacity-0 group-hover:opacity-100 transition shadow-xs whitespace-nowrap">
+                            Edit Logo
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    <div
+                      className={`min-w-0 flex-1 space-y-0.5 ${shouldDisplayLogo && !isTopLogoLayout ? "sm:border-l sm:border-slate-200 sm:pl-3" : ""
+                        }`}
+                    >
+                      <h2 className="text-sm sm:text-base font-extrabold text-[#0F2747] tracking-tight uppercase leading-snug">
+                        {storeName}
+                      </h2>
+                      <p className="text-[11px] text-slate-600 leading-tight">
+                        {storeAddress}
+                      </p>
+                      {cityStatePin && (
+                        <p className="text-[11px] text-slate-600 leading-tight">
+                          {cityStatePin}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Top Right: Permanently Fixed, Non-Editable BILZET Logo */}
+                  <div className="shrink-0 ml-auto flex items-start justify-end pt-0.5 select-none pointer-events-none">
                 <img
                   src="/assets/bilzet-logo-dark.png"
                   alt="BILZET"
-                  className={`${
-                    settings.paperSize?.includes("Thermal")
-                      ? "h-8 max-w-[90px]"
-                      : "h-10 sm:h-12 max-w-[140px]"
-                  } w-auto object-contain`}
+                  className={`${isThermal ? "h-6 max-w-[78px]" : "h-9 sm:h-11 max-w-[130px]"
+                    } w-auto object-contain`}
                   onError={(e) => {
                     e.target.onerror = null;
                     e.target.src = "/assets/bilzet-logo-main.png";
                   }}
                 />
-              )}
-            </div>
-          </div>
+              </div>
+                </div>
+          );
+            })()}
 
           {/* ── 2. Horizontal Information Strip (GSTIN, FSSAI, State) ── */}
           <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg px-4 py-2 flex flex-wrap items-center justify-between gap-2.5 text-[11px]">
@@ -967,17 +1039,16 @@ export default function TaxInvoice({
             {/* Right: Status Badge (Quotation Status vs Invoice Payment Status) */}
             {isQuotationDoc ? (
               <div
-                className={`px-3 py-1.5 rounded-xl border text-center shrink-0 shadow-2xs whitespace-nowrap ${
-                  quotationStatus === "ACCEPTED"
-                    ? "bg-[#ECFDF5] border-[#A7F3D0] text-[#047857]"
-                    : quotationStatus === "SENT"
+                className={`px-3 py-1.5 rounded-xl border text-center shrink-0 shadow-2xs whitespace-nowrap ${quotationStatus === "ACCEPTED"
+                  ? "bg-[#ECFDF5] border-[#A7F3D0] text-[#047857]"
+                  : quotationStatus === "SENT"
                     ? "bg-[#EFF6FF] border-[#BFDBFE] text-[#1D4ED8]"
                     : quotationStatus === "REJECTED"
-                    ? "bg-[#FEF2F2] border-[#FECACA] text-[#B91C1C]"
-                    : quotationStatus === "EXPIRED"
-                    ? "bg-[#FFFBEB] border-[#FDE68A] text-[#B45309]"
-                    : "bg-slate-50 border-slate-200 text-slate-700"
-                }`}
+                      ? "bg-[#FEF2F2] border-[#FECACA] text-[#B91C1C]"
+                      : quotationStatus === "EXPIRED"
+                        ? "bg-[#FFFBEB] border-[#FDE68A] text-[#B45309]"
+                        : "bg-slate-50 border-slate-200 text-slate-700"
+                  }`}
               >
                 <div className="flex items-center justify-center gap-1.5 font-black text-xs uppercase tracking-wider">
                   <FileText size={13} />
@@ -989,13 +1060,12 @@ export default function TaxInvoice({
               </div>
             ) : (
               <div
-                className={`px-3 py-1.5 rounded-xl border text-center shrink-0 shadow-2xs whitespace-nowrap ${
-                  paymentStatus === "PAID"
-                    ? "bg-[#ECFDF5] border-[#A7F3D0] text-[#047857]"
-                    : paymentStatus === "PARTIALLY PAID"
+                className={`px-3 py-1.5 rounded-xl border text-center shrink-0 shadow-2xs whitespace-nowrap ${paymentStatus === "PAID"
+                  ? "bg-[#ECFDF5] border-[#A7F3D0] text-[#047857]"
+                  : paymentStatus === "PARTIALLY PAID"
                     ? "bg-[#FFFBEB] border-[#FDE68A] text-[#B45309]"
                     : "bg-[#FEF2F2] border-[#FECACA] text-[#B91C1C]"
-                }`}
+                  }`}
               >
                 <div className="flex items-center justify-center gap-1.5 font-black text-xs uppercase tracking-wider">
                   {paymentStatus === "PAID" && <CheckCircle2 size={13} />}
@@ -1394,42 +1464,83 @@ export default function TaxInvoice({
               This is a computer-generated document.
             </div>
 
-            {/* Right: Store Tagline & Authorized Signature */}
-            <div className="flex items-end gap-4 text-right ml-auto">
-              <div className="flex flex-col items-end min-w-[150px]">
-                {/* Dedicated Space for Owner Signature */}
-                {shouldDisplaySignature ? (
-                  <div className="h-14 sm:h-16 flex items-end justify-center w-full pb-1">
-                    <img
-                      src={resolvedSignatureUrl}
-                      alt="Authorized Owner Signature"
-                      crossOrigin="anonymous"
-                      className="max-h-12 max-w-[140px] object-contain"
-                      onError={() => setSignatureLoadFailed(true)}
-                    />
+            {/* Right: Authorized Signature Area (Bottom Right) */}
+            {(() => {
+              const safeSigWidth = Math.min(240, Math.max(48, Number(settings.signatureWidth || 140)));
+              const safeSigHeight = Math.min(120, Math.max(24, Number(settings.signatureHeight || 48)));
+              const sigAlignJustify =
+                settings.signatureAlign === "left"
+                  ? "justify-start"
+                  : settings.signatureAlign === "center"
+                    ? "justify-center"
+                    : "justify-end";
+              const sigTextAlign =
+                settings.signatureAlign === "left"
+                  ? "text-left"
+                  : settings.signatureAlign === "center"
+                    ? "text-center"
+                    : "text-right";
+
+              return (
+                <div className="flex items-end gap-4 ml-auto">
+                  <div
+                    onClick={editableBranding ? () => onEditSignature?.() : undefined}
+                    title={editableBranding ? "Click to customize Authorized Signature (Bottom Right)" : undefined}
+                    className={`flex flex-col min-w-[160px] ${editableBranding
+                      ? `cursor-pointer group relative rounded-lg p-1.5 -m-1.5 transition ${activeBrandingSection === "signature"
+                        ? "ring-2 ring-indigo-500 bg-indigo-50/40"
+                        : "hover:ring-2 hover:ring-indigo-400/70 hover:bg-indigo-50/20"
+                      }`
+                      : ""
+                      }`}
+                    style={{ minWidth: `${Math.max(150, safeSigWidth + 16)}px` }}
+                  >
+                    {editableBranding && (
+                      <span className="pointer-events-none absolute -top-2 right-1 px-1.5 py-0.5 rounded bg-indigo-600 text-white text-[9px] font-semibold opacity-0 group-hover:opacity-100 transition shadow-xs whitespace-nowrap">
+                        Edit Signature
+                      </span>
+                    )}
+                    {/* Dedicated Space for Owner Signature */}
+                    {shouldDisplaySignature ? (
+                      <div className={`flex items-end ${sigAlignJustify} w-full pb-1`} style={{ minHeight: `${safeSigHeight + 6}px` }}>
+                        <img
+                          key={resolvedSignatureUrl}
+                          src={resolvedSignatureUrl}
+                          alt="Authorized Owner Signature"
+                          crossOrigin="anonymous"
+                          style={{
+                            width: `${safeSigWidth}px`,
+                            height: `${safeSigHeight}px`,
+                            maxWidth: "100%",
+                            objectFit: "contain",
+                          }}
+                          onError={() => setSignatureLoadFailed(true)}
+                        />
+                      </div>
+                    ) : (
+                      <div className="h-10 sm:h-12 flex items-end justify-center w-full pb-1">
+                        <span className="text-[9px] font-medium text-slate-300 select-none tracking-wider italic">
+                          (Signature / Seal)
+                        </span>
+                      </div>
+                    )}
+                    <div className={`border-t border-slate-400 pt-1 w-full ${sigTextAlign}`}>
+                      <p className="text-[11px] font-bold text-[#0F2747] leading-tight">
+                        {settings.authorizedPerson || storeName}
+                      </p>
+                      <p className="text-[9px] font-semibold text-slate-500 uppercase tracking-wider">
+                        {settings.signatoryLabel || "Authorized Signatory"}
+                      </p>
+                    </div>
                   </div>
-                ) : (
-                  <div className="h-10 sm:h-12 flex items-end justify-center w-full pb-1">
-                    <span className="text-[9px] font-medium text-slate-300 select-none tracking-wider italic">
-                      (Signature / Seal)
-                    </span>
-                  </div>
-                )}
-                <div className="border-t border-slate-400 pt-1 w-full text-right">
-                  <p className="text-[11px] font-bold text-[#0F2747] leading-tight">
-                    {settings.authorizedPerson || storeName}
-                  </p>
-                  <p className="text-[9px] font-semibold text-slate-500 uppercase tracking-wider">
-                    {settings.signatoryLabel || "Authorized Signatory"}
-                  </p>
                 </div>
-              </div>
-            </div>
-          </div>
+              );
+            })()}
           </div>
         </div>
       </div>
     </div>
+    </div >
   );
 }
 

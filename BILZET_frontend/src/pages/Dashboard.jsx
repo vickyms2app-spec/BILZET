@@ -94,7 +94,7 @@ export default function Dashboard() {
     try {
       const savedLocal = localStorage.getItem("bilzet_invoice_settings");
       if (savedLocal) return JSON.parse(savedLocal);
-    } catch (e) {}
+    } catch (e) { }
     return {
       shopName: "Garden Greens",
       ownerName: "Store Owner",
@@ -509,8 +509,8 @@ export default function Dashboard() {
             sale.paymentStatus === "PAID"
               ? "bg-[#DFFFE6] text-[#0E2A16]"
               : sale.paymentStatus === "PARTIALLY_PAID"
-              ? "bg-[#FAFAFB] text-[#111318] border border-[#E7E8EC]"
-              : "bg-[#FBD3D3] text-[#E5484D]",
+                ? "bg-[#FAFAFB] text-[#111318] border border-[#E7E8EC]"
+                : "bg-[#FBD3D3] text-[#E5484D]",
         });
       });
     }
@@ -612,11 +612,10 @@ export default function Dashboard() {
                     key={tab.key}
                     type="button"
                     onClick={() => setDateRange(tab.key)}
-                    className={`px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
-                      dateRange === tab.key
-                        ? "bg-[#12151C] text-white shadow-xs"
-                        : "text-[#7C7F8A] hover:text-[#111318] hover:bg-[#F6F6F8]"
-                    }`}
+                    className={`px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${dateRange === tab.key
+                      ? "bg-[#12151C] text-white shadow-xs"
+                      : "text-[#7C7F8A] hover:text-[#111318] hover:bg-[#F6F6F8]"
+                      }`}
                   >
                     {tab.label}
                   </button>
@@ -745,9 +744,6 @@ export default function Dashboard() {
             <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-white text-[#111318] flex items-center justify-center font-bold border border-[#E7E8EC] shadow-xs">
               <TrendingUp size={20} />
             </div>
-            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold bg-[#DFFFE6] text-[#0E2A16] border border-[#5BF07B]/40">
-              {data?.realizedPercentage ? `${data.realizedPercentage}% Realized` : "Live Synced"}
-            </span>
           </div>
 
           <div className="space-y-1">
@@ -757,14 +753,10 @@ export default function Dashboard() {
             <h3 className="text-2xl sm:text-3xl font-extrabold text-[#111318] font-['Manrope',sans-serif] tracking-tight">
               {formatCurrencyINR(data?.rangeSales ?? (dateRange === "today" ? data?.todaySales ?? 0 : 0))}
             </h3>
-            <p className="text-[11px] text-[#7C7F8A]">
-              {data?.rangeBills ?? (dateRange === "today" ? data?.todayBills ?? 0 : 0)} invoices generated in cycle
-            </p>
           </div>
 
           <div className="pt-2 border-t border-[#E7E8EC] flex items-center justify-between text-xs text-[#7C7F8A]">
             <span>Realized: {formatCurrencyINR(data?.rangeRevenue ?? (dateRange === "today" ? data?.todayRevenue ?? 0 : 0))}</span>
-            <span className="font-semibold text-[#0E2A16] bg-[#DFFFE6] px-2 py-0.5 rounded-full">{data?.realizedPercentage ?? 0}% Paid</span>
           </div>
         </div>
 
@@ -774,9 +766,6 @@ export default function Dashboard() {
             <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-white text-[#111318] flex items-center justify-center font-bold border border-[#E7E8EC] shadow-xs">
               <Sparkles size={19} />
             </div>
-            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold bg-[#DFFFE6] text-[#0E2A16] border border-[#5BF07B]/40">
-              {data?.profitMarginPercentage ?? 24}% Margin
-            </span>
           </div>
 
           <div className="space-y-1">
@@ -786,14 +775,10 @@ export default function Dashboard() {
             <h3 className="text-2xl sm:text-3xl font-extrabold text-[#111318] font-['Manrope',sans-serif] tracking-tight">
               {formatCurrencyINR(data?.rangeProfit ?? (dateRange === "today" ? data?.todayProfit ?? 0 : 0))}
             </h3>
-            <p className="text-[11px] text-[#7C7F8A]">
-              Operating revenue after direct costs &amp; tax
-            </p>
           </div>
 
           <div className="pt-2 border-t border-[#E7E8EC] flex items-center justify-between text-xs text-[#7C7F8A]">
             <span>AOV: {formatCurrencyINR(data?.averageOrderValue ?? 0)}</span>
-            <span className="font-semibold text-[#0E2A16] bg-[#DFFFE6] px-2 py-0.5 rounded-full">Net Positive</span>
           </div>
         </div>
 
@@ -803,9 +788,6 @@ export default function Dashboard() {
             <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-white text-[#111318] flex items-center justify-center font-bold border border-[#E7E8EC] shadow-xs">
               <CreditCard size={20} />
             </div>
-            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold bg-[#FBD3D3] text-[#E5484D]">
-              Outstanding
-            </span>
           </div>
 
           <div className="space-y-1">
@@ -815,9 +797,6 @@ export default function Dashboard() {
             <h3 className="text-2xl sm:text-3xl font-extrabold text-[#111318] font-['Manrope',sans-serif] tracking-tight">
               {formatCurrencyINR(data?.pendingPayments ?? 0)}
             </h3>
-            <p className="text-[11px] text-[#7C7F8A]">
-              Across {data?.totalCustomers ?? 0} customer ledger accounts
-            </p>
           </div>
 
           <div className="pt-2 border-t border-[#E7E8EC] flex items-center justify-between text-xs">
@@ -838,9 +817,6 @@ export default function Dashboard() {
             <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-white text-[#111318] flex items-center justify-center font-bold border border-[#E7E8EC] shadow-xs">
               <Boxes size={20} />
             </div>
-            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold bg-white text-[#7C7F8A] border border-[#E7E8EC]">
-              {data?.lowStockProducts ?? 0} Low Stock
-            </span>
           </div>
 
           <div className="space-y-1">
@@ -850,9 +826,6 @@ export default function Dashboard() {
             <h3 className="text-2xl sm:text-3xl font-extrabold text-[#111318] font-['Manrope',sans-serif] tracking-tight">
               {formatCurrencyINR(data?.inventoryValuation ?? 0)}
             </h3>
-            <p className="text-[11px] text-[#7C7F8A]">
-              {data?.totalProducts ?? 0} SKUs in Active Catalog
-            </p>
           </div>
 
           <div className="pt-2 border-t border-[#E7E8EC] flex items-center justify-between text-xs">
@@ -895,27 +868,24 @@ export default function Dashboard() {
                 <button
                   type="button"
                   onClick={() => setChartMetric("all")}
-                  className={`px-3 py-1 rounded-full font-semibold transition cursor-pointer ${
-                    chartMetric === "all" ? "bg-[#12151C] text-white shadow-xs" : "text-[#7C7F8A] hover:text-[#111318]"
-                  }`}
+                  className={`px-3 py-1 rounded-full font-semibold transition cursor-pointer ${chartMetric === "all" ? "bg-[#12151C] text-white shadow-xs" : "text-[#7C7F8A] hover:text-[#111318]"
+                    }`}
                 >
                   All Metrics
                 </button>
                 <button
                   type="button"
                   onClick={() => setChartMetric("sales")}
-                  className={`px-3 py-1 rounded-full font-semibold transition cursor-pointer ${
-                    chartMetric === "sales" ? "bg-[#12151C] text-white shadow-xs" : "text-[#7C7F8A] hover:text-[#111318]"
-                  }`}
+                  className={`px-3 py-1 rounded-full font-semibold transition cursor-pointer ${chartMetric === "sales" ? "bg-[#12151C] text-white shadow-xs" : "text-[#7C7F8A] hover:text-[#111318]"
+                    }`}
                 >
                   Sales Only
                 </button>
                 <button
                   type="button"
                   onClick={() => setChartMetric("collections")}
-                  className={`px-3 py-1 rounded-full font-semibold transition cursor-pointer ${
-                    chartMetric === "collections" ? "bg-[#12151C] text-white shadow-xs" : "text-[#7C7F8A] hover:text-[#111318]"
-                  }`}
+                  className={`px-3 py-1 rounded-full font-semibold transition cursor-pointer ${chartMetric === "collections" ? "bg-[#12151C] text-white shadow-xs" : "text-[#7C7F8A] hover:text-[#111318]"
+                    }`}
                 >
                   Collections
                 </button>
@@ -1099,216 +1069,214 @@ export default function Dashboard() {
         </div>
       </section>
 
-        {/* 4. GST CONTROL ROOM & COMPLIANCE CENTER */}
-        {(() => {
-          const gstData = data?.gstSummary?.[gstPeriod] || data?.gstSummary?.daily || {
-            totalGstCollected: 0,
-            cgstAmount: 0,
-            sgstAmount: 0,
-            igstAmount: 0,
-            gstFromSales: 0,
-            gstReturnAdjustments: 0,
-            gstCancelledAdjustments: 0,
-            gstTotalAdjustments: 0,
-            taxableSales: 0,
-            activeInvoiceCount: 0,
-            cancelledInvoiceCount: 0,
-            returnCount: 0,
-          };
-          const fmtGst = (val) =>
-            `₹${Number(val || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      {/* 4. GST CONTROL ROOM & COMPLIANCE CENTER */}
+      {(() => {
+        const gstData = data?.gstSummary?.[gstPeriod] || data?.gstSummary?.daily || {
+          totalGstCollected: 0,
+          cgstAmount: 0,
+          sgstAmount: 0,
+          igstAmount: 0,
+          gstFromSales: 0,
+          gstReturnAdjustments: 0,
+          gstCancelledAdjustments: 0,
+          gstTotalAdjustments: 0,
+          taxableSales: 0,
+          activeInvoiceCount: 0,
+          cancelledInvoiceCount: 0,
+          returnCount: 0,
+        };
+        const fmtGst = (val) =>
+          `₹${Number(val || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-          return (
-            <section className="bg-[#F6F6F8] rounded-[22px] sm:rounded-[28px] border border-[#E7E8EC] p-4 sm:p-6 lg:p-7 shadow-[0_8px_30px_rgba(0,0,0,0.06)] space-y-6 min-w-0">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="space-y-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="text-lg sm:text-xl font-bold text-[#111318] font-['Manrope',sans-serif]">
-                      GST Summary &amp; Compliance Center
-                    </h2>
-                    <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-white text-[#111318] border border-[#E7E8EC]">
-                      GSTIN: {storeDisplayGstin}
-                    </span>
-                  </div>
-                  <p className="text-xs text-[#7C7F8A]">
-                    Live CGST, SGST, IGST breakdown and adjustments from returns &amp; cancellations ({gstPeriod === "daily" ? "Today" : "This Month"})
-                  </p>
-                </div>
-
+        return (
+          <section className="bg-[#F6F6F8] rounded-[22px] sm:rounded-[28px] border border-[#E7E8EC] p-4 sm:p-6 lg:p-7 shadow-[0_8px_30px_rgba(0,0,0,0.06)] space-y-6 min-w-0">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <div className="inline-flex rounded-full bg-white border border-[#E7E8EC] p-0.5 shadow-2xs">
-                    <button
-                      type="button"
-                      onClick={() => setGstPeriod("daily")}
-                      className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition cursor-pointer ${
-                        gstPeriod === "daily"
-                          ? "bg-[#12151C] text-white"
-                          : "text-[#7C7F8A] hover:text-[#111318]"
-                      }`}
-                    >
-                      Daily
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setGstPeriod("monthly")}
-                      className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition cursor-pointer ${
-                        gstPeriod === "monthly"
-                          ? "bg-[#12151C] text-white"
-                          : "text-[#7C7F8A] hover:text-[#111318]"
-                      }`}
-                    >
-                      Monthly
-                    </button>
-                  </div>
+                  <h2 className="text-lg sm:text-xl font-bold text-[#111318] font-['Manrope',sans-serif]">
+                    GST Summary &amp; Compliance Center
+                  </h2>
+                  <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-white text-[#111318] border border-[#E7E8EC]">
+                    GSTIN: {storeDisplayGstin}
+                  </span>
+                </div>
+                <p className="text-xs text-[#7C7F8A]">
+                  Live CGST, SGST, IGST breakdown and adjustments from returns &amp; cancellations ({gstPeriod === "daily" ? "Today" : "This Month"})
+                </p>
+              </div>
 
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="inline-flex rounded-full bg-white border border-[#E7E8EC] p-0.5 shadow-2xs">
                   <button
                     type="button"
-                    onClick={() => nav("/gst")}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-white hover:bg-[#FAFAFB] text-[#111318] font-bold text-xs transition cursor-pointer border border-[#E7E8EC] shadow-xs"
+                    onClick={() => setGstPeriod("daily")}
+                    className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition cursor-pointer ${gstPeriod === "daily"
+                      ? "bg-[#12151C] text-white"
+                      : "text-[#7C7F8A] hover:text-[#111318]"
+                      }`}
                   >
-                    <FileSpreadsheet size={14} />
-                    <span>GSTR Reports Suite</span>
+                    Daily
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setGstPeriod("monthly")}
+                    className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition cursor-pointer ${gstPeriod === "monthly"
+                      ? "bg-[#12151C] text-white"
+                      : "text-[#7C7F8A] hover:text-[#111318]"
+                      }`}
+                  >
+                    Monthly
                   </button>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() => nav("/gst")}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-white hover:bg-[#FAFAFB] text-[#111318] font-bold text-xs transition cursor-pointer border border-[#E7E8EC] shadow-xs"
+                >
+                  <FileSpreadsheet size={14} />
+                  <span>GSTR Reports Suite</span>
+                </button>
               </div>
-
-              {/* GST Key Metrics Strip */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* 1. Total GST Collected (Net) */}
-                <div className="p-4 rounded-[20px] bg-[#12151C] text-white border border-[#232733] space-y-1">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#A9ABB5]">
-                    Total GST Collected
-                  </span>
-                  <p className="text-xl sm:text-2xl font-bold text-[#5BF07B] font-['Manrope',sans-serif]">
-                    {fmtGst(gstData.totalGstCollected)}
-                  </p>
-                  <p className="text-[10px] text-[#A9ABB5]">
-                    On {fmtGst(gstData.taxableSales)} Taxable Sales ({gstData.activeInvoiceCount} bills)
-                  </p>
-                </div>
-
-                {/* 2. CGST + SGST (Intra-State) */}
-                <div className="p-4 rounded-[20px] bg-white border border-[#E7E8EC] space-y-1">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#7C7F8A]">
-                    CGST &amp; SGST (Intra-State)
-                  </span>
-                  <p className="text-lg sm:text-xl font-bold text-[#111318] font-['Manrope',sans-serif]">
-                    {fmtGst(gstData.cgstAmount + gstData.sgstAmount)}
-                  </p>
-                  <p className="text-[10px] text-[#7C7F8A]">
-                    CGST {fmtGst(gstData.cgstAmount)} • SGST {fmtGst(gstData.sgstAmount)}
-                  </p>
-                </div>
-
-                {/* 3. IGST (Inter-State) */}
-                <div className="p-4 rounded-[20px] bg-white border border-[#E7E8EC] space-y-1">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#7C7F8A]">
-                    IGST (Inter-State)
-                  </span>
-                  <p className="text-xl sm:text-2xl font-bold text-[#111318] font-['Manrope',sans-serif]">
-                    {fmtGst(gstData.igstAmount)}
-                  </p>
-                  <p className="text-[10px] text-[#7C7F8A]">
-                    GST from Sales: {fmtGst(gstData.gstFromSales)}
-                  </p>
-                </div>
-
-                {/* 4. Returns & Cancellations Adjustments */}
-                <div className="p-4 rounded-[20px] bg-[#DFFFE6] border border-[#5BF07B]/40 space-y-1">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#0E2A16]">
-                    Returns &amp; Cancel Adjustments
-                  </span>
-                  <p className="text-xl sm:text-2xl font-bold text-[#0E2A16] font-['Manrope',sans-serif]">
-                    {fmtGst(gstData.gstTotalAdjustments)}
-                  </p>
-                  <p className="text-[10px] text-[#0E2A16]/80">
-                    Returns {fmtGst(gstData.gstReturnAdjustments)} • Cancelled {fmtGst(gstData.gstCancelledAdjustments)}
-                  </p>
-                </div>
-              </div>
-
-        {/* GST Filing Status & Exceptions Inbox */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 pt-2">
-          {/* Left: Filing Status Cards */}
-          <div className="lg:col-span-5 space-y-3">
-            <div className="p-4 rounded-[20px] bg-white border border-[#E7E8EC] flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-[#DFFFE6] text-[#0E2A16] flex items-center justify-center font-bold">
-                  <CheckCircle2 size={18} />
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-[#111318]">GSTR-1 (Outward Sales)</p>
-                  <p className="text-[11px] text-[#7C7F8A]">{gstData.activeInvoiceCount} B2B/B2C invoices in {gstPeriod === "daily" ? "today's" : "this month's"} ledger</p>
-                </div>
-              </div>
-              <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-[#DFFFE6] text-[#0E2A16]">
-                Ready to File
-              </span>
             </div>
 
-            <div className="p-4 rounded-[20px] bg-white border border-[#E7E8EC] flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-[#FAFAFB] text-[#111318] border border-[#E7E8EC] flex items-center justify-center font-bold">
-                  <Clock size={18} />
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-[#111318]">GSTR-3B ({gstPeriod === "daily" ? "Daily" : "Monthly"} Summary)</p>
-                  <p className="text-[11px] text-[#7C7F8A]">Net GST collected: {fmtGst(gstData.totalGstCollected)}</p>
-                </div>
+            {/* GST Key Metrics Strip */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* 1. Total GST Collected (Net) */}
+              <div className="p-4 rounded-[20px] bg-[#12151C] text-white border border-[#232733] space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#A9ABB5]">
+                  Total GST Collected
+                </span>
+                <p className="text-xl sm:text-2xl font-bold text-[#5BF07B] font-['Manrope',sans-serif]">
+                  {fmtGst(gstData.totalGstCollected)}
+                </p>
+                <p className="text-[10px] text-[#A9ABB5]">
+                  On {fmtGst(gstData.taxableSales)} Taxable Sales ({gstData.activeInvoiceCount} bills)
+                </p>
               </div>
-              <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-[#12151C] text-white">
-                Draft Prepared
-              </span>
-            </div>
-          </div>
 
-          {/* Right: Exceptions Inbox (Flagged items) */}
-          <div className="lg:col-span-7 p-4 rounded-[20px] bg-white border border-[#E7E8EC] space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <AlertTriangle size={16} className="text-[#111318]" />
-                <h3 className="text-xs font-bold text-[#111318] uppercase tracking-wider">
-                  Exceptions Inbox (Audit Discrepancies)
-                </h3>
+              {/* 2. CGST + SGST (Intra-State) */}
+              <div className="p-4 rounded-[20px] bg-white border border-[#E7E8EC] space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#7C7F8A]">
+                  CGST &amp; SGST (Intra-State)
+                </span>
+                <p className="text-lg sm:text-xl font-bold text-[#111318] font-['Manrope',sans-serif]">
+                  {fmtGst(gstData.cgstAmount + gstData.sgstAmount)}
+                </p>
+                <p className="text-[10px] text-[#7C7F8A]">
+                  CGST {fmtGst(gstData.cgstAmount)} • SGST {fmtGst(gstData.sgstAmount)}
+                </p>
               </div>
-              <span className="text-[11px] font-semibold text-[#7C7F8A]">
-                {discrepancies.length > 0 ? `${discrepancies.length} items require verification` : "All clear"}
-              </span>
+
+              {/* 3. IGST (Inter-State) */}
+              <div className="p-4 rounded-[20px] bg-white border border-[#E7E8EC] space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#7C7F8A]">
+                  IGST (Inter-State)
+                </span>
+                <p className="text-xl sm:text-2xl font-bold text-[#111318] font-['Manrope',sans-serif]">
+                  {fmtGst(gstData.igstAmount)}
+                </p>
+                <p className="text-[10px] text-[#7C7F8A]">
+                  GST from Sales: {fmtGst(gstData.gstFromSales)}
+                </p>
+              </div>
+
+              {/* 4. Returns & Cancellations Adjustments */}
+              <div className="p-4 rounded-[20px] bg-[#DFFFE6] border border-[#5BF07B]/40 space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#0E2A16]">
+                  Returns &amp; Cancel Adjustments
+                </span>
+                <p className="text-xl sm:text-2xl font-bold text-[#0E2A16] font-['Manrope',sans-serif]">
+                  {fmtGst(gstData.gstTotalAdjustments)}
+                </p>
+                <p className="text-[10px] text-[#0E2A16]/80">
+                  Returns {fmtGst(gstData.gstReturnAdjustments)} • Cancelled {fmtGst(gstData.gstCancelledAdjustments)}
+                </p>
+              </div>
             </div>
 
-            <div className="space-y-2">
-              {discrepancies.length === 0 ? (
-                <div className="p-3 rounded-[16px] bg-[#FAFAFB] border border-[#E7E8EC] text-xs text-[#7C7F8A]">
-                  No audit discrepancies flagged for this store.
-                </div>
-              ) : (
-                discrepancies.slice(0, 3).map((disc) => (
-                  <div
-                    key={disc.id}
-                    className="p-3 rounded-[16px] bg-[#FAFAFB] border border-[#E7E8EC] flex items-center justify-between gap-3 text-xs"
-                  >
-                    <div className="space-y-0.5 min-w-0">
-                      <p className="font-bold text-[#111318] truncate">{disc.title || disc.exceptionType || "Audit Discrepancy"}</p>
-                      <p className="text-[11px] text-[#7C7F8A]">
-                        {disc.vendor || disc.customerName || "Invoice"} • <span className="text-[#111318] font-medium">{disc.amount || disc.severity || "Review"}</span>
-                      </p>
+            {/* GST Filing Status & Exceptions Inbox */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 pt-2">
+              {/* Left: Filing Status Cards */}
+              <div className="lg:col-span-5 space-y-3">
+                <div className="p-4 rounded-[20px] bg-white border border-[#E7E8EC] flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-[#DFFFE6] text-[#0E2A16] flex items-center justify-center font-bold">
+                      <CheckCircle2 size={18} />
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedDiscrepancy(disc)}
-                      className="shrink-0 px-3 py-1.5 rounded-full bg-[#12151C] hover:bg-black text-white font-semibold text-[11px] transition cursor-pointer"
-                    >
-                      Review
-                    </button>
+                    <div>
+                      <p className="text-xs font-bold text-[#111318]">GSTR-1 (Outward Sales)</p>
+                      <p className="text-[11px] text-[#7C7F8A]">{gstData.activeInvoiceCount} B2B/B2C invoices in {gstPeriod === "daily" ? "today's" : "this month's"} ledger</p>
+                    </div>
                   </div>
-                ))
-              )}
+                  <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-[#DFFFE6] text-[#0E2A16]">
+                    Ready to File
+                  </span>
+                </div>
+
+                <div className="p-4 rounded-[20px] bg-white border border-[#E7E8EC] flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-[#FAFAFB] text-[#111318] border border-[#E7E8EC] flex items-center justify-center font-bold">
+                      <Clock size={18} />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-[#111318]">GSTR-3B ({gstPeriod === "daily" ? "Daily" : "Monthly"} Summary)</p>
+                      <p className="text-[11px] text-[#7C7F8A]">Net GST collected: {fmtGst(gstData.totalGstCollected)}</p>
+                    </div>
+                  </div>
+                  <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-[#12151C] text-white">
+                    Draft Prepared
+                  </span>
+                </div>
+              </div>
+
+              {/* Right: Exceptions Inbox (Flagged items) */}
+              <div className="lg:col-span-7 p-4 rounded-[20px] bg-white border border-[#E7E8EC] space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle size={16} className="text-[#111318]" />
+                    <h3 className="text-xs font-bold text-[#111318] uppercase tracking-wider">
+                      Exceptions Inbox (Audit Discrepancies)
+                    </h3>
+                  </div>
+                  <span className="text-[11px] font-semibold text-[#7C7F8A]">
+                    {discrepancies.length > 0 ? `${discrepancies.length} items require verification` : "All clear"}
+                  </span>
+                </div>
+
+                <div className="space-y-2">
+                  {discrepancies.length === 0 ? (
+                    <div className="p-3 rounded-[16px] bg-[#FAFAFB] border border-[#E7E8EC] text-xs text-[#7C7F8A]">
+                      No audit discrepancies flagged for this store.
+                    </div>
+                  ) : (
+                    discrepancies.slice(0, 3).map((disc) => (
+                      <div
+                        key={disc.id}
+                        className="p-3 rounded-[16px] bg-[#FAFAFB] border border-[#E7E8EC] flex items-center justify-between gap-3 text-xs"
+                      >
+                        <div className="space-y-0.5 min-w-0">
+                          <p className="font-bold text-[#111318] truncate">{disc.title || disc.exceptionType || "Audit Discrepancy"}</p>
+                          <p className="text-[11px] text-[#7C7F8A]">
+                            {disc.vendor || disc.customerName || "Invoice"} • <span className="text-[#111318] font-medium">{disc.amount || disc.severity || "Review"}</span>
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedDiscrepancy(disc)}
+                          className="shrink-0 px-3 py-1.5 rounded-full bg-[#12151C] hover:bg-black text-white font-semibold text-[11px] transition cursor-pointer"
+                        >
+                          Review
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-      </section>
-          );
-        })()}
+          </section>
+        );
+      })()}
 
       {/* ═════════════════════════════════════════════════════════════════
           5. INVOICE & PAYMENT OVERVIEW TABLE
@@ -1395,9 +1363,8 @@ export default function Dashboard() {
                 key={st}
                 type="button"
                 onClick={() => setInvoiceFilter(st)}
-                className={`px-3 py-1 rounded-full font-semibold transition cursor-pointer shrink-0 ${
-                  invoiceFilter === st ? "bg-[#12151C] text-white shadow-xs" : "text-[#7C7F8A] hover:text-[#111318]"
-                }`}
+                className={`px-3 py-1 rounded-full font-semibold transition cursor-pointer shrink-0 ${invoiceFilter === st ? "bg-[#12151C] text-white shadow-xs" : "text-[#7C7F8A] hover:text-[#111318]"
+                  }`}
               >
                 {st === "ALL" ? "All Bills" : st === "PARTIAL" ? "Partially Paid" : st.charAt(0) + st.slice(1).toLowerCase()}
               </button>
@@ -1444,89 +1411,89 @@ export default function Dashboard() {
                 </tr>
               ) : (
                 filteredInvoices.map((inv) => {
-                const status = (inv.paymentStatus || "PAID").toUpperCase();
-                return (
-                  <tr key={inv.id || inv.invoiceNumber} className="hover:bg-white transition">
-                    <td className="py-3.5 px-4 font-mono font-bold text-[#111318]">
-                      {inv.invoiceNumber}
-                      <span className="block text-[10px] text-[#7C7F8A] font-sans font-normal">
-                        {new Date(inv.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <p className="font-bold text-[#111318]">{inv.customer?.name || "Walk-in Customer"}</p>
-                      <p className="text-[10px] text-[#7C7F8A]">{inv.customer?.phone || "No mobile"}</p>
-                    </td>
-                    <td className="py-3.5 px-4 font-mono text-[#7C7F8A]">
-                      ₹{(Number(inv.cgst || 0) + Number(inv.sgst || 0)).toLocaleString("en-IN")}
-                    </td>
-                    <td className="py-3.5 px-4 font-mono font-bold text-[#111318] text-sm">
-                      ₹{Number(inv.grandTotal || inv.totalAmount || 0).toLocaleString("en-IN")}
-                    </td>
-                    <td className="py-3.5 px-4">
-                      {status === "PAID" && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#DFFFE6] text-[#0E2A16]">
-                          <CheckCircle2 size={11} /> Paid
+                  const status = (inv.paymentStatus || "PAID").toUpperCase();
+                  return (
+                    <tr key={inv.id || inv.invoiceNumber} className="hover:bg-white transition">
+                      <td className="py-3.5 px-4 font-mono font-bold text-[#111318]">
+                        {inv.invoiceNumber}
+                        <span className="block text-[10px] text-[#7C7F8A] font-sans font-normal">
+                          {new Date(inv.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
                         </span>
-                      )}
-                      {status === "PARTIALLY_PAID" && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#FAFAFB] text-[#111318] border border-[#E7E8EC]">
-                          <Clock size={11} /> Partially Paid
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <p className="font-bold text-[#111318]">{inv.customer?.name || "Walk-in Customer"}</p>
+                        <p className="text-[10px] text-[#7C7F8A]">{inv.customer?.phone || "No mobile"}</p>
+                      </td>
+                      <td className="py-3.5 px-4 font-mono text-[#7C7F8A]">
+                        ₹{(Number(inv.cgst || 0) + Number(inv.sgst || 0)).toLocaleString("en-IN")}
+                      </td>
+                      <td className="py-3.5 px-4 font-mono font-bold text-[#111318] text-sm">
+                        ₹{Number(inv.grandTotal || inv.totalAmount || 0).toLocaleString("en-IN")}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        {status === "PAID" && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#DFFFE6] text-[#0E2A16]">
+                            <CheckCircle2 size={11} /> Paid
+                          </span>
+                        )}
+                        {status === "PARTIALLY_PAID" && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#FAFAFB] text-[#111318] border border-[#E7E8EC]">
+                            <Clock size={11} /> Partially Paid
+                          </span>
+                        )}
+                        {(status === "UNPAID" || status === "PENDING") && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#FBD3D3] text-[#E5484D]">
+                            <AlertTriangle size={11} /> Unpaid
+                          </span>
+                        )}
+                        {status === "RETURNED" && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#FAFAFB] text-[#7C7F8A] border border-[#E7E8EC]">
+                            Returned / Void
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#5BF07B]" />
+                          <span className="text-[11px] font-medium text-[#7C7F8A]">
+                            {inv.razorpayVerified ? "Razorpay Verified" : "Cashier Settled"}
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-[#A9ABB5] block">
+                          Active ({50 - (inv.archivedDays || 0)}d until archive)
                         </span>
-                      )}
-                      {(status === "UNPAID" || status === "PENDING") && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#FBD3D3] text-[#E5484D]">
-                          <AlertTriangle size={11} /> Unpaid
-                        </span>
-                      )}
-                      {status === "RETURNED" && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#FAFAFB] text-[#7C7F8A] border border-[#E7E8EC]">
-                          Returned / Void
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#5BF07B]" />
-                        <span className="text-[11px] font-medium text-[#7C7F8A]">
-                          {inv.razorpayVerified ? "Razorpay Verified" : "Cashier Settled"}
-                        </span>
-                      </div>
-                      <span className="text-[10px] text-[#A9ABB5] block">
-                        Active ({50 - (inv.archivedDays || 0)}d until archive)
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedInvoice(inv)}
-                          className="w-8 h-8 rounded-full bg-white hover:bg-[#FAFAFB] text-[#111318] border border-[#E7E8EC] flex items-center justify-center transition cursor-pointer shadow-xs"
-                          title="View Tax Invoice"
-                        >
-                          <Eye size={14} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setUpiModalInvoice(inv)}
-                          className="w-8 h-8 rounded-full bg-white hover:bg-[#FAFAFB] text-[#111318] border border-[#E7E8EC] flex items-center justify-center transition cursor-pointer shadow-xs"
-                          title="Generate UPI QR"
-                        >
-                          <QrCode size={14} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleWhatsAppShare(inv)}
-                          className="w-8 h-8 rounded-full bg-white hover:bg-[#FAFAFB] text-[#0E2A16] border border-[#E7E8EC] flex items-center justify-center transition cursor-pointer shadow-xs"
-                          title="Share on WhatsApp"
-                        >
-                          <Share2 size={14} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              }))}
+                      </td>
+                      <td className="py-3.5 px-4 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedInvoice(inv)}
+                            className="w-8 h-8 rounded-full bg-white hover:bg-[#FAFAFB] text-[#111318] border border-[#E7E8EC] flex items-center justify-center transition cursor-pointer shadow-xs"
+                            title="View Tax Invoice"
+                          >
+                            <Eye size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setUpiModalInvoice(inv)}
+                            className="w-8 h-8 rounded-full bg-white hover:bg-[#FAFAFB] text-[#111318] border border-[#E7E8EC] flex items-center justify-center transition cursor-pointer shadow-xs"
+                            title="Generate UPI QR"
+                          >
+                            <QrCode size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleWhatsAppShare(inv)}
+                            className="w-8 h-8 rounded-full bg-white hover:bg-[#FAFAFB] text-[#0E2A16] border border-[#E7E8EC] flex items-center justify-center transition cursor-pointer shadow-xs"
+                            title="Share on WhatsApp"
+                          >
+                            <Share2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                }))}
             </tbody>
           </table>
         </div>
@@ -1604,9 +1571,6 @@ export default function Dashboard() {
             <h3 className="font-bold text-[#111318] font-['Manrope',sans-serif] text-base">
               Cash Flow Breakdown
             </h3>
-            <span className="text-[10px] font-bold text-[#0E2A16] bg-[#DFFFE6] px-2.5 py-0.5 rounded-full border border-[#5BF07B]/40">
-              Net Positive
-            </span>
           </div>
 
           <div className="grid grid-cols-2 gap-3 p-3.5 rounded-[20px] bg-white border border-[#E7E8EC]">
@@ -1879,11 +1843,10 @@ export default function Dashboard() {
             <label className="font-semibold text-[#111318] block mb-1">Tax Pricing Method</label>
             <div className="grid grid-cols-2 gap-2">
               <label
-                className={`flex items-center gap-2 p-2 rounded-xl border cursor-pointer ${
-                  productForm.pricingMethod === "INCLUSIVE"
-                    ? "bg-[#DFFFE6] border-[#5BF07B] text-[#0E2A16] font-bold"
-                    : "bg-white border-[#E7E8EC] text-[#7C7F8A]"
-                }`}
+                className={`flex items-center gap-2 p-2 rounded-xl border cursor-pointer ${productForm.pricingMethod === "INCLUSIVE"
+                  ? "bg-[#DFFFE6] border-[#5BF07B] text-[#0E2A16] font-bold"
+                  : "bg-white border-[#E7E8EC] text-[#7C7F8A]"
+                  }`}
               >
                 <input
                   type="radio"
@@ -1895,11 +1858,10 @@ export default function Dashboard() {
               </label>
 
               <label
-                className={`flex items-center gap-2 p-2 rounded-xl border cursor-pointer ${
-                  productForm.pricingMethod === "EXCLUSIVE"
-                    ? "bg-[#DFFFE6] border-[#5BF07B] text-[#0E2A16] font-bold"
-                    : "bg-white border-[#E7E8EC] text-[#7C7F8A]"
-                }`}
+                className={`flex items-center gap-2 p-2 rounded-xl border cursor-pointer ${productForm.pricingMethod === "EXCLUSIVE"
+                  ? "bg-[#DFFFE6] border-[#5BF07B] text-[#0E2A16] font-bold"
+                  : "bg-white border-[#E7E8EC] text-[#7C7F8A]"
+                  }`}
               >
                 <input
                   type="radio"

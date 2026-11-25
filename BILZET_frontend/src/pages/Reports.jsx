@@ -1157,15 +1157,6 @@ export default function Reports() {
                     <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-white text-[#111318] flex items-center justify-center font-bold border border-[#E7E8EC] shadow-xs">
                       <Icon size={20} />
                     </div>
-                    <span
-                      className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold ${
-                        kpi.positive
-                          ? "bg-[#DFFFE6] text-[#0E2A16] border border-[#5BF07B]/40"
-                          : "bg-[#FBD3D3] text-[#E5484D] border border-[#E5484D]/30"
-                      }`}
-                    >
-                      {kpi.change}
-                    </span>
                   </div>
 
                   <div className="space-y-1">
@@ -1175,7 +1166,6 @@ export default function Reports() {
                     <h3 className="text-2xl sm:text-3xl font-extrabold text-[#111318] font-['Manrope',sans-serif] tracking-tight">
                       {kpi.value}
                     </h3>
-                    <p className="text-[11px] text-[#7C7F8A]">{kpi.sub}</p>
                   </div>
                 </div>
               );

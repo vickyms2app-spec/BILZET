@@ -100,11 +100,20 @@ export const getShopSettings = asyncHandler(async (req, res) => {
     terms: customizerStore.termsText || customizerStore.terms || (settings.terms?.startsWith('{') ? customizerStore.terms : settings.terms),
     _id: settings.id,
     businessId: activeStoreId,
-    // Company Logo & Owner Signature branding fields
+    // Company Logo & Owner Signature branding fields (per-store)
     logoUrl: storeBranding.logoUrl || null,
     signatureUrl: storeBranding.signatureUrl || null,
     showLogoOnInvoices: storeBranding.showLogoOnInvoices !== undefined ? storeBranding.showLogoOnInvoices : Boolean(storeBranding.logoUrl),
     showSignatureOnInvoices: storeBranding.showSignatureOnInvoices !== undefined ? storeBranding.showSignatureOnInvoices : Boolean(storeBranding.signatureUrl),
+    logoWidth: storeBranding.logoWidth ?? 120,
+    logoHeight: storeBranding.logoHeight ?? 52,
+    logoAlign: storeBranding.logoAlign || 'left',
+    logoLayout: storeBranding.logoLayout || 'side',
+    signatureWidth: storeBranding.signatureWidth ?? 140,
+    signatureHeight: storeBranding.signatureHeight ?? 48,
+    signatureAlign: storeBranding.signatureAlign || 'right',
+    authorizedPerson: storeBranding.authorizedPerson || customizerStore.authorizedPerson || '',
+    signatoryLabel: storeBranding.signatoryLabel || customizerStore.signatoryLabel || 'Authorized Signatory',
     // Backward-compatibility aliases for invoice renderers
     showLogo: storeBranding.showLogoOnInvoices !== undefined ? storeBranding.showLogoOnInvoices : Boolean(storeBranding.logoUrl),
     showSignatory: storeBranding.showSignatureOnInvoices !== undefined ? storeBranding.showSignatureOnInvoices : Boolean(storeBranding.signatureUrl),
@@ -166,6 +175,15 @@ export const updateShopSettings = asyncHandler(async (req, res) => {
   if (req.body.signatureUrl !== undefined) brandingUpdates.signatureUrl = req.body.signatureUrl;
   if (req.body.showLogoOnInvoices !== undefined) brandingUpdates.showLogoOnInvoices = Boolean(req.body.showLogoOnInvoices);
   if (req.body.showSignatureOnInvoices !== undefined) brandingUpdates.showSignatureOnInvoices = Boolean(req.body.showSignatureOnInvoices);
+  if (req.body.logoWidth !== undefined) brandingUpdates.logoWidth = Math.min(240, Math.max(36, Number(req.body.logoWidth) || 120));
+  if (req.body.logoHeight !== undefined) brandingUpdates.logoHeight = Math.min(120, Math.max(24, Number(req.body.logoHeight) || 52));
+  if (['left', 'center', 'right'].includes(req.body.logoAlign)) brandingUpdates.logoAlign = req.body.logoAlign;
+  if (['side', 'top'].includes(req.body.logoLayout)) brandingUpdates.logoLayout = req.body.logoLayout;
+  if (req.body.signatureWidth !== undefined) brandingUpdates.signatureWidth = Math.min(240, Math.max(48, Number(req.body.signatureWidth) || 140));
+  if (req.body.signatureHeight !== undefined) brandingUpdates.signatureHeight = Math.min(120, Math.max(24, Number(req.body.signatureHeight) || 48));
+  if (['left', 'center', 'right'].includes(req.body.signatureAlign)) brandingUpdates.signatureAlign = req.body.signatureAlign;
+  if (req.body.authorizedPerson !== undefined) brandingUpdates.authorizedPerson = String(req.body.authorizedPerson || '').trim();
+  if (req.body.signatoryLabel !== undefined) brandingUpdates.signatoryLabel = String(req.body.signatoryLabel || '').trim() || 'Authorized Signatory';
 
   let updatedBranding = null;
   if (Object.keys(brandingUpdates).length > 0) {
@@ -338,6 +356,15 @@ export const updateBrandingPreferences = asyncHandler(async (req, res) => {
   if (req.body.showSignatureOnInvoices !== undefined) {
     updates.showSignatureOnInvoices = Boolean(req.body.showSignatureOnInvoices);
   }
+  if (req.body.logoWidth !== undefined) updates.logoWidth = Math.min(240, Math.max(36, Number(req.body.logoWidth) || 120));
+  if (req.body.logoHeight !== undefined) updates.logoHeight = Math.min(120, Math.max(24, Number(req.body.logoHeight) || 52));
+  if (['left', 'center', 'right'].includes(req.body.logoAlign)) updates.logoAlign = req.body.logoAlign;
+  if (['side', 'top'].includes(req.body.logoLayout)) updates.logoLayout = req.body.logoLayout;
+  if (req.body.signatureWidth !== undefined) updates.signatureWidth = Math.min(240, Math.max(48, Number(req.body.signatureWidth) || 140));
+  if (req.body.signatureHeight !== undefined) updates.signatureHeight = Math.min(120, Math.max(24, Number(req.body.signatureHeight) || 48));
+  if (['left', 'center', 'right'].includes(req.body.signatureAlign)) updates.signatureAlign = req.body.signatureAlign;
+  if (req.body.authorizedPerson !== undefined) updates.authorizedPerson = String(req.body.authorizedPerson || '').trim();
+  if (req.body.signatoryLabel !== undefined) updates.signatoryLabel = String(req.body.signatoryLabel || '').trim() || 'Authorized Signatory';
 
   const updatedBranding = await brandingService.saveStoreBranding(activeStoreId, updates);
 

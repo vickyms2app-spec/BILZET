@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { settingsApi, productsApi, customersApi, salesApi, subscriptionApi, quotationsApi, scannerApi } from "../api";
 import TaxInvoice from "../components/invoice/TaxInvoice";
+import LiveBrandingEditor from "../components/billing/LiveBrandingEditor";
 import UpiPaymentModal from "../components/payment/UpiPaymentModal";
 import BarcodeScannerModal from "../components/pos/BarcodeScannerModal";
 import HeldBillsModal from "../components/pos/HeldBillsModal";
@@ -130,7 +131,7 @@ export default function Billing() {
   const [billCredits, setBillCredits] = useState(null);
 
   useEffect(() => {
-    subscriptionApi.getBillCredits().then(setBillCredits).catch(() => {});
+    subscriptionApi.getBillCredits().then(setBillCredits).catch(() => { });
   }, []);
 
   // Payment states
@@ -153,6 +154,12 @@ export default function Billing() {
   const [showLivePreview, setShowLivePreview] = useState(true);
   const [completedInvoice, setCompletedInvoice] = useState(null);
   const [shopSettings, setShopSettings] = useState(null);
+  const [draftBranding, setDraftBranding] = useState(null);
+  const [activeBrandingEditor, setActiveBrandingEditor] = useState(null); // 'logo' | 'signature' | null
+  const [savingBranding, setSavingBranding] = useState(false);
+  const [brandingError, setBrandingError] = useState("");
+  const pendingObjectUrlsRef = useRef({ logo: null, signature: null });
+  const pendingFilesRef = useRef({ logo: null, signature: null });
   const [savingBill, setSavingBill] = useState(false);
   const savingBillRef = useRef(false);
   const [notification, setNotification] = useState({ type: "", text: "" });
@@ -223,7 +230,7 @@ export default function Billing() {
         setActiveMobileScanner(activeDev);
         setMobileScannerStatus("connected");
       }
-    } catch (_) {}
+    } catch (_) { }
   }, []);
 
   useEffect(() => {
@@ -333,38 +340,81 @@ export default function Billing() {
       await scannerApi.disconnect({ businessId: activeStoreId, deviceId });
       setMobileScannerStatus("disconnected");
       notify("info", "Mobile scanner disconnected for this session");
-    } catch (_) {}
+    } catch (_) { }
   };
 
+  const normalizeShopSettings = useCallback((raw) => {
+    if (!raw) return null;
+    const { settings: nested, ...rest } = raw;
+    const merged = nested ? { ...rest, ...nested } : rest;
+    if (
+      merged.invoiceTitle &&
+      (merged.invoiceTitle.includes("TAX INVOICESUPER") ||
+        merged.invoiceTitle.includes("SUPER TAX INVOICE"))
+    ) {
+      merged.invoiceTitle = "TAX INVOICE";
+    }
+    return merged;
+  }, []);
+
+  const revokePendingObjectUrl = useCallback((type) => {
+    if (pendingObjectUrlsRef.current[type]) {
+      try {
+        URL.revokeObjectURL(pendingObjectUrlsRef.current[type]);
+      } catch (_) {}
+      pendingObjectUrlsRef.current[type] = null;
+    }
+  }, []);
+
+  const clearPendingBrandingMedia = useCallback(() => {
+    revokePendingObjectUrl("logo");
+    revokePendingObjectUrl("signature");
+    pendingFilesRef.current = { logo: null, signature: null };
+  }, [revokePendingObjectUrl]);
+
   useEffect(() => {
-    // Load shop settings
+    return () => {
+      clearPendingBrandingMedia();
+    };
+  }, [clearPendingBrandingMedia]);
+
+  const loadStoreShopSettings = useCallback(() => {
     const local = localStorage.getItem("bilzet_invoice_settings");
     if (local) {
       try {
-        const raw = JSON.parse(local);
-        const parsed = raw?.settings ? { ...raw, ...raw.settings } : raw;
-        if (
-          parsed &&
-          parsed.invoiceTitle &&
-          (parsed.invoiceTitle.includes("TAX INVOICESUPER") ||
-            parsed.invoiceTitle.includes("SUPER TAX INVOICE"))
-        ) {
-          parsed.invoiceTitle = "TAX INVOICE";
-          localStorage.setItem("bilzet_invoice_settings", JSON.stringify(parsed));
-        }
-        setShopSettings(parsed);
-      } catch (e) {}
-    } else {
-      settingsApi
-        .get()
-        .then((res) => {
-          if (res) setShopSettings(res?.settings || res);
-        })
-        .catch(() => {});
+        const parsed = normalizeShopSettings(JSON.parse(local));
+        if (parsed) setShopSettings(parsed);
+      } catch (_) {}
     }
 
+    settingsApi
+      .get()
+      .then((res) => {
+        const normalized = normalizeShopSettings(res);
+        if (normalized) {
+          setShopSettings(normalized);
+          try {
+            localStorage.setItem("bilzet_invoice_settings", JSON.stringify(normalized));
+          } catch (_) {}
+        }
+      })
+      .catch(() => {});
+  }, [normalizeShopSettings]);
+
+  useEffect(() => {
+    loadStoreShopSettings();
     refreshCatalogAndCustomers();
-  }, [refreshCatalogAndCustomers]);
+
+    const handleStoreChanged = () => {
+      clearPendingBrandingMedia();
+      setDraftBranding(null);
+      setActiveBrandingEditor(null);
+      setBrandingError("");
+      loadStoreShopSettings();
+    };
+    window.addEventListener("bilzet:store-changed", handleStoreChanged);
+    return () => window.removeEventListener("bilzet:store-changed", handleStoreChanged);
+  }, [loadStoreShopSettings, refreshCatalogAndCustomers, clearPendingBrandingMedia]);
 
   // Sync taxInclusive with shopSettings if configured
   useEffect(() => {
@@ -372,6 +422,159 @@ export default function Billing() {
       setTaxInclusive(Boolean(shopSettings.taxInclusive));
     }
   }, [shopSettings]);
+
+  const effectiveShopSettings = useMemo(
+    () => (draftBranding ? { ...(shopSettings || {}), ...draftBranding } : shopSettings),
+    [shopSettings, draftBranding]
+  );
+
+  const handleStartEditBranding = useCallback((section) => {
+    setShowLivePreview(true);
+    setBrandingError("");
+    setActiveBrandingEditor(section);
+  }, []);
+
+  const handleUpdateDraftBranding = useCallback((patch) => {
+    setBrandingError("");
+    setDraftBranding((prev) => ({ ...(prev || {}), ...patch }));
+  }, []);
+
+  const handleSelectBrandingFile = useCallback((type, file) => {
+    if (!file) return;
+    setBrandingError("");
+    if (file.size > 2 * 1024 * 1024) {
+      const msg = `${type === "logo" ? "Business logo" : "Signature"} exceeds 2MB limit.`;
+      setBrandingError(msg);
+      notify("error", msg);
+      return;
+    }
+    const validTypes = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
+    const validExt = /\.(png|jpe?g|webp)$/i.test(file.name || "");
+    if (!validTypes.includes(file.type) && !validExt) {
+      const msg = "Invalid image format. Please upload a PNG, JPG/JPEG, or WebP image.";
+      setBrandingError(msg);
+      notify("error", msg);
+      return;
+    }
+
+    revokePendingObjectUrl(type);
+    const objectUrl = URL.createObjectURL(file);
+    pendingObjectUrlsRef.current[type] = objectUrl;
+    pendingFilesRef.current[type] = file;
+
+    if (type === "logo") {
+      setDraftBranding((prev) => ({ ...(prev || {}), logoUrl: objectUrl, showLogoOnInvoices: true }));
+    } else {
+      setDraftBranding((prev) => ({ ...(prev || {}), signatureUrl: objectUrl, showSignatureOnInvoices: true }));
+    }
+  }, [revokePendingObjectUrl]);
+
+  const handleRemoveDraftBranding = useCallback((type) => {
+    setBrandingError("");
+    revokePendingObjectUrl(type);
+    pendingFilesRef.current[type] = null;
+    if (type === "logo") {
+      setDraftBranding((prev) => ({ ...(prev || {}), logoUrl: "", showLogoOnInvoices: false }));
+    } else {
+      setDraftBranding((prev) => ({ ...(prev || {}), signatureUrl: "", showSignatureOnInvoices: false }));
+    }
+  }, [revokePendingObjectUrl]);
+
+  const handleResetDraftBranding = useCallback(() => {
+    setBrandingError("");
+    setDraftBranding((prev) => ({
+      ...(prev || {}),
+      logoWidth: 120,
+      logoHeight: 52,
+      logoAlign: "left",
+      logoLayout: "side",
+      signatureWidth: 140,
+      signatureHeight: 48,
+      signatureAlign: "right",
+      authorizedPerson: "",
+      signatoryLabel: "Authorized Signatory",
+    }));
+  }, []);
+
+  const handleCancelDraftBranding = useCallback(() => {
+    clearPendingBrandingMedia();
+    setBrandingError("");
+    setDraftBranding(null);
+    setActiveBrandingEditor(null);
+  }, [clearPendingBrandingMedia]);
+
+  const readFileAsDataUrl = (file) =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error("Failed to read selected image file."));
+      reader.readAsDataURL(file);
+    });
+
+  const handleSaveDraftBranding = useCallback(async () => {
+    if (savingBranding) return;
+    if (!draftBranding) {
+      setActiveBrandingEditor(null);
+      return;
+    }
+    setSavingBranding(true);
+    setBrandingError("");
+    try {
+      let nextLogoUrl = draftBranding.logoUrl !== undefined ? draftBranding.logoUrl : (shopSettings?.logoUrl || "");
+      let nextSignatureUrl = draftBranding.signatureUrl !== undefined ? draftBranding.signatureUrl : (shopSettings?.signatureUrl || "");
+
+      if (pendingFilesRef.current.logo) {
+        const fileData = await readFileAsDataUrl(pendingFilesRef.current.logo);
+        const res = await settingsApi.uploadBranding({ type: "logo", fileData });
+        if (!res?.url) throw new Error("Upload succeeded without returning a logo URL.");
+        nextLogoUrl = res.url;
+      } else if (draftBranding.logoUrl === "" && shopSettings?.logoUrl) {
+        await settingsApi.removeBranding("logo");
+      }
+
+      if (pendingFilesRef.current.signature) {
+        const fileData = await readFileAsDataUrl(pendingFilesRef.current.signature);
+        const res = await settingsApi.uploadBranding({ type: "signature", fileData });
+        if (!res?.url) throw new Error("Upload succeeded without returning a signature URL.");
+        nextSignatureUrl = res.url;
+      } else if (draftBranding.signatureUrl === "" && shopSettings?.signatureUrl) {
+        await settingsApi.removeBranding("signature");
+      }
+
+      const updatedSettings = normalizeShopSettings({
+        ...(shopSettings || {}),
+        ...draftBranding,
+        logoUrl: nextLogoUrl,
+        signatureUrl: nextSignatureUrl,
+      });
+
+      await settingsApi.updateBrandingPreferences({
+        showLogoOnInvoices: updatedSettings.showLogoOnInvoices,
+        showSignatureOnInvoices: updatedSettings.showSignatureOnInvoices,
+        logoWidth: updatedSettings.logoWidth,
+        logoHeight: updatedSettings.logoHeight,
+        logoAlign: updatedSettings.logoAlign,
+        logoLayout: updatedSettings.logoLayout,
+        signatureWidth: updatedSettings.signatureWidth,
+        signatureHeight: updatedSettings.signatureHeight,
+        signatureAlign: updatedSettings.signatureAlign,
+        authorizedPerson: updatedSettings.authorizedPerson,
+        signatoryLabel: updatedSettings.signatoryLabel,
+      });
+      localStorage.setItem("bilzet_invoice_settings", JSON.stringify(updatedSettings));
+      clearPendingBrandingMedia();
+      setShopSettings(updatedSettings);
+      setDraftBranding(null);
+      setActiveBrandingEditor(null);
+      notify("success", "Invoice branding customization saved for this store.");
+    } catch (err) {
+      const msg = err?.response?.data?.message || err?.message || "Failed to save branding customization.";
+      setBrandingError(msg);
+      notify("error", msg);
+    } finally {
+      setSavingBranding(false);
+    }
+  }, [savingBranding, draftBranding, shopSettings, normalizeShopSettings, clearPendingBrandingMedia]);
 
   // Fetch sequential quotation number from backend
   const fetchNextQuotationNumber = useCallback(async () => {
@@ -382,7 +585,7 @@ export default function Billing() {
         setQuotationNumber(res.quotationNumber);
         return res.quotationNumber;
       }
-    } catch (_) {}
+    } catch (_) { }
     const fallback = `QUO-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
     setQuotationNumber(fallback);
     return fallback;
@@ -504,7 +707,7 @@ export default function Billing() {
           const q = res?.quotation || res?.data?.quotation || res;
           if (q) applyQuotationForConversion(q);
         })
-        .catch(() => {});
+        .catch(() => { });
     } else if (quoteToEdit) {
       applyQuotationForEditing(quoteToEdit);
     } else if (editQuotationId) {
@@ -514,7 +717,7 @@ export default function Billing() {
           const q = res?.quotation || res?.data?.quotation || res;
           if (q) applyQuotationForEditing(q);
         })
-        .catch(() => {});
+        .catch(() => { });
     } else if (params.get("type") === "quotation") {
       setDocumentType("quotation");
     }
@@ -898,7 +1101,7 @@ export default function Billing() {
 
     setBillNumber(
       heldBill.billNumber ||
-        `INV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`
+      `INV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`
     );
     setBillDate(heldBill.billDate || new Date().toISOString().split("T")[0]);
     setCustomerName(heldBill.customerName || "");
@@ -1086,7 +1289,7 @@ export default function Billing() {
         : `Invoice ${finalInvoiceNumber} permanently saved in database!`;
 
       notify("success", msg);
-      subscriptionApi.getBillCredits().then(setBillCredits).catch(() => {});
+      subscriptionApi.getBillCredits().then(setBillCredits).catch(() => { });
 
       setSourceQuotationId(null);
       setReferenceQuotationNumber(null);
@@ -1323,11 +1526,10 @@ export default function Billing() {
                 type="button"
                 id="doc-type-invoice-btn"
                 onClick={() => handleSwitchDocumentType("invoice")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                  documentType === "invoice"
-                    ? "bg-[#12151C] text-white shadow-xs"
-                    : "text-[#7C7F8A] hover:text-[#111318]"
-                }`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${documentType === "invoice"
+                  ? "bg-[#12151C] text-white shadow-xs"
+                  : "text-[#7C7F8A] hover:text-[#111318]"
+                  }`}
               >
                 <Receipt size={13} className={documentType === "invoice" ? "text-[#5BF07B]" : ""} />
                 <span>Invoice</span>
@@ -1336,11 +1538,10 @@ export default function Billing() {
                 type="button"
                 id="doc-type-quotation-btn"
                 onClick={() => handleSwitchDocumentType("quotation")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                  documentType === "quotation"
-                    ? "bg-[#12151C] text-white shadow-xs"
-                    : "text-[#7C7F8A] hover:text-[#111318]"
-                }`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${documentType === "quotation"
+                  ? "bg-[#12151C] text-white shadow-xs"
+                  : "text-[#7C7F8A] hover:text-[#111318]"
+                  }`}
               >
                 <FileSpreadsheet size={13} className={documentType === "quotation" ? "text-[#5BF07B]" : ""} />
                 <span>Quotation</span>
@@ -1383,11 +1584,10 @@ export default function Billing() {
             <button
               type="button"
               onClick={() => setShowMobileScannerModal(true)}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer shadow-xs ${
-                mobileScannerStatus === "connected"
-                  ? "bg-[#DFFFE6] text-[#0E2A16] border border-[#5BF07B]/40 hover:bg-[#D4F7DC]"
-                  : "bg-white text-[#111318] border border-[#E7E8EC] hover:bg-[#EDEDEF]"
-              }`}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer shadow-xs ${mobileScannerStatus === "connected"
+                ? "bg-[#DFFFE6] text-[#0E2A16] border border-[#5BF07B]/40 hover:bg-[#D4F7DC]"
+                : "bg-white text-[#111318] border border-[#E7E8EC] hover:bg-[#EDEDEF]"
+                }`}
               title="Connect mobile phone as wireless barcode scanner via QR"
             >
               {mobileScannerStatus === "connected" ? (
@@ -1476,11 +1676,10 @@ export default function Billing() {
         {/* Notifications Banner */}
         {notification.text && (
           <div
-            className={`px-4 py-3 rounded-2xl text-xs font-medium flex items-center justify-between gap-3 shadow-[0_1px_2px_rgba(0,0,0,0.02)] ${
-              notification.type === "success"
-                ? "bg-[#EDF8F0] border border-[#CCE8D4] text-[#248A3D]"
-                : "bg-[#FFF2F2] border border-[#FFD0D0] text-[#D70015]"
-            }`}
+            className={`px-4 py-3 rounded-2xl text-xs font-medium flex items-center justify-between gap-3 shadow-[0_1px_2px_rgba(0,0,0,0.02)] ${notification.type === "success"
+              ? "bg-[#EDF8F0] border border-[#CCE8D4] text-[#248A3D]"
+              : "bg-[#FFF2F2] border border-[#FFD0D0] text-[#D70015]"
+              }`}
           >
             <div className="flex items-center gap-2">
               {notification.type === "success" ? (
@@ -1654,9 +1853,8 @@ export default function Billing() {
                   <span>{showGstOptions ? "Hide" : "+ Add"} GSTIN &amp; Billing Address</span>
                   <ChevronDown
                     size={14}
-                    className={`transition-transform duration-200 ${
-                      showGstOptions ? "rotate-180" : ""
-                    }`}
+                    className={`transition-transform duration-200 ${showGstOptions ? "rotate-180" : ""
+                      }`}
                   />
                 </button>
               </div>
@@ -1809,11 +2007,10 @@ export default function Billing() {
                   <button
                     type="button"
                     onClick={() => setTaxInclusive(true)}
-                    className={`h-8 px-3 rounded-lg font-medium transition cursor-pointer text-xs ${
-                      taxInclusive
-                        ? "bg-[#12151C] text-white shadow-xs font-semibold"
-                        : "text-[#7C7F8A] hover:text-[#111318]"
-                    }`}
+                    className={`h-8 px-3 rounded-lg font-medium transition cursor-pointer text-xs ${taxInclusive
+                      ? "bg-[#12151C] text-white shadow-xs font-semibold"
+                      : "text-[#7C7F8A] hover:text-[#111318]"
+                      }`}
                     title="Unit rate already includes GST (MRP)"
                   >
                     Inclusive (MRP)
@@ -1821,11 +2018,10 @@ export default function Billing() {
                   <button
                     type="button"
                     onClick={() => setTaxInclusive(false)}
-                    className={`h-8 px-3 rounded-lg font-medium transition cursor-pointer text-xs ${
-                      !taxInclusive
-                        ? "bg-[#12151C] text-white shadow-xs font-semibold"
-                        : "text-[#7C7F8A] hover:text-[#111318]"
-                    }`}
+                    className={`h-8 px-3 rounded-lg font-medium transition cursor-pointer text-xs ${!taxInclusive
+                      ? "bg-[#12151C] text-white shadow-xs font-semibold"
+                      : "text-[#7C7F8A] hover:text-[#111318]"
+                      }`}
                     title="Tax calculated on top of unit rate"
                   >
                     Exclusive (Std)
@@ -1914,8 +2110,8 @@ export default function Billing() {
                           item.discountPercent !== undefined
                             ? item.discountPercent
                             : item.rate && item.qty
-                            ? Number(((Number(item.discount || 0) / (item.rate * item.qty)) * 100).toFixed(1))
-                            : 0;
+                              ? Number(((Number(item.discount || 0) / (item.rate * item.qty)) * 100).toFixed(1))
+                              : 0;
 
                         return (
                           <tr
@@ -2352,11 +2548,10 @@ export default function Billing() {
                   <button
                     type="button"
                     onClick={() => handleQuickPayment("Cash", "Paid")}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer border ${
-                      paymentMode === "Cash" && paymentStatus === "Paid"
-                        ? "bg-[#12151C] text-white border-[#12151C] shadow-fintech"
-                        : "bg-white text-[#111318] border-[#E7E8EC] hover:bg-[#EDEDEF]"
-                    }`}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer border ${paymentMode === "Cash" && paymentStatus === "Paid"
+                      ? "bg-[#12151C] text-white border-[#12151C] shadow-fintech"
+                      : "bg-white text-[#111318] border-[#E7E8EC] hover:bg-[#EDEDEF]"
+                      }`}
                   >
                     <span className={paymentMode === "Cash" && paymentStatus === "Paid" ? "text-[#5BF07B]" : ""}>✓</span> Cash Paid
                   </button>
@@ -2364,11 +2559,10 @@ export default function Billing() {
                   <button
                     type="button"
                     onClick={() => handleQuickPayment("UPI", "Paid")}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer border ${
-                      paymentMode === "UPI" && paymentStatus === "Paid"
-                        ? "bg-[#12151C] text-white border-[#12151C] shadow-fintech"
-                        : "bg-white text-[#111318] border-[#E7E8EC] hover:bg-[#EDEDEF]"
-                    }`}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer border ${paymentMode === "UPI" && paymentStatus === "Paid"
+                      ? "bg-[#12151C] text-white border-[#12151C] shadow-fintech"
+                      : "bg-white text-[#111318] border-[#E7E8EC] hover:bg-[#EDEDEF]"
+                      }`}
                   >
                     <span className={paymentMode === "UPI" && paymentStatus === "Paid" ? "text-[#5BF07B]" : ""}>✓</span> UPI Paid
                   </button>
@@ -2704,45 +2898,88 @@ export default function Billing() {
 
             {/* ── 7. Live Document Preview Card ── */}
             <div className="bg-[#F6F6F8] rounded-[24px] border border-[#E7E8EC] overflow-hidden shadow-fintech">
-              <div className="px-4 py-3 bg-[#F6F6F8] border-b border-[#E7E8EC] flex items-center justify-between">
+              <div className="px-4 py-3 bg-[#F6F6F8] border-b border-[#E7E8EC] flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <span
-                    className={`w-2 h-2 rounded-full animate-pulse ${
-                      documentType === "quotation" ? "bg-[#7C7F8A]" : "bg-[#5BF07B]"
-                    }`}
+                    className={`w-2 h-2 rounded-full animate-pulse ${documentType === "quotation" ? "bg-[#7C7F8A]" : "bg-[#5BF07B]"
+                      }`}
                   />
                   <span className="text-xs font-bold text-[#111318]">
                     {documentType === "quotation" ? "Live Quotation Preview" : "Live Bill Preview"}
                   </span>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setShowLivePreview(!showLivePreview)}
-                  className="text-[11px] font-semibold text-[#111318] hover:underline cursor-pointer flex items-center gap-1"
-                >
-                  {showLivePreview ? (
-                    <>
-                      <EyeOff size={13} />
-                      <span>Hide</span>
-                    </>
-                  ) : (
-                    <>
-                      <Eye size={13} />
-                      <span>Show</span>
-                    </>
-                  )}
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => handleStartEditBranding(activeBrandingEditor === "logo" ? null : "logo")}
+                    className={`px-2 py-1 rounded-lg text-[10px] font-semibold transition cursor-pointer ${
+                      activeBrandingEditor === "logo"
+                        ? "bg-[#111318] text-white"
+                        : "bg-white text-[#111318] border border-[#E7E8EC] hover:bg-slate-50"
+                    }`}
+                  >
+                    Edit Logo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleStartEditBranding(activeBrandingEditor === "signature" ? null : "signature")}
+                    className={`px-2 py-1 rounded-lg text-[10px] font-semibold transition cursor-pointer ${
+                      activeBrandingEditor === "signature"
+                        ? "bg-[#111318] text-white"
+                        : "bg-white text-[#111318] border border-[#E7E8EC] hover:bg-slate-50"
+                    }`}
+                  >
+                    Edit Signature
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowLivePreview(!showLivePreview)}
+                    className="text-[11px] font-semibold text-[#111318] hover:underline cursor-pointer flex items-center gap-1 ml-1"
+                  >
+                    {showLivePreview ? (
+                      <>
+                        <EyeOff size={13} />
+                        <span>Hide</span>
+                      </>
+                    ) : (
+                      <>
+                        <Eye size={13} />
+                        <span>Show</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
 
               {showLivePreview && (
-                <div className="p-3 overflow-y-auto max-h-[calc(100vh-320px)] bg-white">
-                  <TaxInvoice
-                    invoice={generateCurrentInvoiceSnapshot()}
-                    shopSettings={shopSettings}
-                    isModal={false}
-                    showActions={false}
+                <>
+                  <LiveBrandingEditor
+                    activeSection={activeBrandingEditor}
+                    onSelectSection={setActiveBrandingEditor}
+                    settings={effectiveShopSettings || {}}
+                    hasUnsavedChanges={Boolean(draftBranding)}
+                    saving={savingBranding}
+                    errorMessage={brandingError}
+                    onUpdateDraft={handleUpdateDraftBranding}
+                    onSelectFile={handleSelectBrandingFile}
+                    onRemoveAsset={handleRemoveDraftBranding}
+                    onResetDefaults={handleResetDraftBranding}
+                    onCancel={handleCancelDraftBranding}
+                    onSave={handleSaveDraftBranding}
                   />
-                </div>
+                  <div className="p-3 overflow-y-auto max-h-[calc(100vh-320px)] bg-white">
+                    <TaxInvoice
+                      invoice={generateCurrentInvoiceSnapshot()}
+                      shopSettings={effectiveShopSettings}
+                      isModal={false}
+                      showActions={false}
+                      editableBranding={true}
+                      activeBrandingSection={activeBrandingEditor}
+                      onEditLogo={() => handleStartEditBranding("logo")}
+                      onEditSignature={() => handleStartEditBranding("signature")}
+                    />
+                  </div>
+                </>
               )}
             </div>
           </div>
@@ -2920,11 +3157,10 @@ export default function Billing() {
                           key={rate}
                           type="button"
                           onClick={() => setItemForm({ ...itemForm, taxRate: rate })}
-                          className={`px-1.5 py-0.5 rounded text-[10px] font-semibold transition cursor-pointer ${
-                            Number(itemForm.taxRate) === rate
-                              ? "bg-[#12151C] text-white shadow-xs"
-                              : "bg-[#EDEDEF] text-[#7C7F8A] hover:text-[#111318]"
-                          }`}
+                          className={`px-1.5 py-0.5 rounded text-[10px] font-semibold transition cursor-pointer ${Number(itemForm.taxRate) === rate
+                            ? "bg-[#12151C] text-white shadow-xs"
+                            : "bg-[#EDEDEF] text-[#7C7F8A] hover:text-[#111318]"
+                            }`}
                         >
                           {rate}%
                         </button>
@@ -3010,7 +3246,7 @@ export default function Billing() {
           isOpen={Boolean(shareQuotationTarget)}
           onClose={() => setShareQuotationTarget(null)}
           quotation={shareQuotationTarget}
-          shopSettings={shopSettings}
+          shopSettings={effectiveShopSettings}
         />
 
         {/* ── Held Bills Modal ── */}
@@ -3180,7 +3416,7 @@ export default function Billing() {
       {showInvoiceModal && completedInvoice && (
         <TaxInvoice
           invoice={completedInvoice}
-          shopSettings={shopSettings}
+          shopSettings={effectiveShopSettings}
           isModal={true}
           onClose={() => {
             setShowInvoiceModal(false);

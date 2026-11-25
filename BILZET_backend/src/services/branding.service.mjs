@@ -75,6 +75,15 @@ export async function getStoreBranding(storeId) {
     signatureUrl: null,
     showLogoOnInvoices: false,
     showSignatureOnInvoices: false,
+    logoWidth: 120,
+    logoHeight: 52,
+    logoAlign: 'left',
+    logoLayout: 'side',
+    signatureWidth: 140,
+    signatureHeight: 48,
+    signatureAlign: 'right',
+    authorizedPerson: '',
+    signatoryLabel: 'Authorized Signatory',
     updatedAt: new Date().toISOString(),
   };
 
@@ -96,6 +105,37 @@ export async function getStoreBranding(storeId) {
       if (biz.showSignatureOnInvoices !== undefined) branding.showSignatureOnInvoices = biz.showSignatureOnInvoices;
     }
   } catch (_) {}
+
+  // Verify local branding files still exist on disk so stale missing URLs never cause 404 loops
+  const verifyLocalBrandingFile = (url) => {
+    if (!url || typeof url !== 'string') return url;
+    const match = url.match(/\/branding\/file\/([^/]+)\/([^/?#]+)/);
+    if (!match) return url;
+    const fileStoreId = sanitizeStoreId(match[1]);
+    const fileName = path.basename(match[2]);
+    const diskPath = path.join(BRANDING_DIR, fileStoreId, fileName);
+    return fs.existsSync(diskPath) ? url : null;
+  };
+
+  let needsCleanupSave = false;
+  const verifiedLogo = verifyLocalBrandingFile(branding.logoUrl);
+  if (branding.logoUrl && !verifiedLogo) {
+    branding.logoUrl = null;
+    branding.showLogoOnInvoices = false;
+    needsCleanupSave = true;
+  }
+  const verifiedSig = verifyLocalBrandingFile(branding.signatureUrl);
+  if (branding.signatureUrl && !verifiedSig) {
+    branding.signatureUrl = null;
+    branding.showSignatureOnInvoices = false;
+    needsCleanupSave = true;
+  }
+
+  if (needsCleanupSave && fs.existsSync(metaFile)) {
+    try {
+      fs.writeFileSync(metaFile, JSON.stringify(branding, null, 2), 'utf8');
+    } catch (_) {}
+  }
 
   // Defaults: enable only if image is uploaded
   if (branding.logoUrl && branding.showLogoOnInvoices === undefined) {

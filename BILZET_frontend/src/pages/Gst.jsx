@@ -240,23 +240,19 @@ export default function Gst() {
         <div className="card p-5 border border-[#E7E8EC] bg-[#F6F6F8] rounded-[24px]">
           <p className="text-[11px] font-semibold text-[#7C7F8A] uppercase tracking-wider">Total Taxable Sales</p>
           <p className="text-xl font-bold text-[#111318] mt-1.5 font-heading">₹{Number(gstData.totalTaxable || 0).toLocaleString("en-IN")}</p>
-          <p className="text-[11px] text-[#A9ABB5] mt-0.5">Excluding GST charges</p>
         </div>
         <div className="card p-5 border border-[#E7E8EC] bg-[#F6F6F8] rounded-[24px]">
           <p className="text-[11px] font-semibold text-[#7C7F8A] uppercase tracking-wider">CGST (Central Tax)</p>
           <p className="text-xl font-bold text-[#111318] mt-1.5 font-heading">₹{Number(gstData.totalCgst || 0).toLocaleString("en-IN")}</p>
-          <p className="text-[11px] text-[#A9ABB5] mt-0.5">Central Government share</p>
         </div>
         <div className="card p-5 border border-[#E7E8EC] bg-[#F6F6F8] rounded-[24px]">
           <p className="text-[11px] font-semibold text-[#7C7F8A] uppercase tracking-wider">SGST (State Tax)</p>
           <p className="text-xl font-bold text-[#111318] mt-1.5 font-heading">₹{Number(gstData.totalSgst || 0).toLocaleString("en-IN")}</p>
-          <p className="text-[11px] text-[#A9ABB5] mt-0.5">State Government share</p>
         </div>
         {/* Card 4: Contrast Dark Bento Card */}
         <div className="card card-dark p-5 bg-[#12151C] text-white border border-[#202530] rounded-[24px] shadow-fintech">
           <p className="text-[11px] font-semibold text-[#A9ABB5] uppercase tracking-wider">Total GST Collected</p>
           <p className="text-xl font-bold text-[#5BF07B] mt-1.5 font-heading">₹{Number(gstData.totalGst || 0).toLocaleString("en-IN")}</p>
-          <p className="text-[11px] text-[#A9ABB5] mt-0.5">{gstData.invoices?.length || 0} Invoices generated</p>
         </div>
       </div>
 

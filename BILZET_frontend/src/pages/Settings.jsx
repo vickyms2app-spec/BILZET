@@ -191,6 +191,15 @@ export default function Settings({ defaultTab: initialTab }) {
       showLogoOnInvoices: parsed.showLogoOnInvoices !== undefined ? parsed.showLogoOnInvoices : Boolean(parsed.logoUrl),
       showSignatureOnInvoices: parsed.showSignatureOnInvoices !== undefined ? parsed.showSignatureOnInvoices : Boolean(parsed.signatureUrl),
       showSignatureOnQuotations: parsed.showSignatureOnQuotations !== undefined ? parsed.showSignatureOnQuotations : Boolean(parsed.signatureUrl),
+      logoWidth: Number(parsed.logoWidth) || 120,
+      logoHeight: Number(parsed.logoHeight) || 52,
+      logoAlign: parsed.logoAlign || "left",
+      logoLayout: parsed.logoLayout || "side",
+      signatureWidth: Number(parsed.signatureWidth) || 140,
+      signatureHeight: Number(parsed.signatureHeight) || 48,
+      signatureAlign: parsed.signatureAlign || "right",
+      authorizedPerson: parsed.authorizedPerson || "",
+      signatoryLabel: parsed.signatoryLabel || "Authorized Signatory",
       ...parsed,
     };
   });
@@ -256,6 +265,15 @@ export default function Settings({ defaultTab: initialTab }) {
             signatureUrl: data.signatureUrl || "",
             showLogoOnInvoices: data.showLogoOnInvoices !== undefined ? data.showLogoOnInvoices : Boolean(data.logoUrl),
             showSignatureOnInvoices: data.showSignatureOnInvoices !== undefined ? data.showSignatureOnInvoices : Boolean(data.signatureUrl),
+            logoWidth: Number(data.logoWidth) || 120,
+            logoHeight: Number(data.logoHeight) || 52,
+            logoAlign: data.logoAlign || "left",
+            logoLayout: data.logoLayout || "side",
+            signatureWidth: Number(data.signatureWidth) || 140,
+            signatureHeight: Number(data.signatureHeight) || 48,
+            signatureAlign: data.signatureAlign || "right",
+            authorizedPerson: data.authorizedPerson || "",
+            signatoryLabel: data.signatoryLabel || "Authorized Signatory",
           }));
         }
       }).catch(() => {});
@@ -1065,6 +1083,95 @@ export default function Settings({ defaultTab: initialTab }) {
                       Upload a logo above to enable on invoices.
                     </span>
                   )}
+
+                  {/* Business Logo Size & Left-Area Positioning */}
+                  <div className="mt-4 pt-4 border-t border-slate-100 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-slate-700">Left-Side Logo Sizing &amp; Position</span>
+                      <span className="text-[10px] text-slate-400">BILZET logo stays fixed Top-Right</span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <div className="flex justify-between text-[11px] text-slate-600 mb-1">
+                          <span>Width</span>
+                          <span className="font-mono font-medium">{Number(form.logoWidth) || 120}px</span>
+                        </div>
+                        <input
+                          type="range"
+                          min={36}
+                          max={240}
+                          step={4}
+                          value={Number(form.logoWidth) || 120}
+                          onChange={(e) => setForm((prev) => ({ ...prev, logoWidth: Number(e.target.value) }))}
+                          className="w-full accent-indigo-600 cursor-pointer"
+                        />
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-[11px] text-slate-600 mb-1">
+                          <span>Height</span>
+                          <span className="font-mono font-medium">{Number(form.logoHeight) || 52}px</span>
+                        </div>
+                        <input
+                          type="range"
+                          min={24}
+                          max={120}
+                          step={2}
+                          value={Number(form.logoHeight) || 52}
+                          onChange={(e) => setForm((prev) => ({ ...prev, logoHeight: Number(e.target.value) }))}
+                          className="w-full accent-indigo-600 cursor-pointer"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] text-slate-600 mb-1">Left-Area Alignment</label>
+                        <div className="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-lg">
+                          {[
+                            { value: "left", label: "Left" },
+                            { value: "center", label: "Center" },
+                            { value: "right", label: "Right" },
+                          ].map((opt) => (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              onClick={() => setForm((prev) => ({ ...prev, logoAlign: opt.value }))}
+                              className={`px-2 py-1 text-[11px] font-medium rounded-md transition ${
+                                (form.logoAlign || "left") === opt.value
+                                  ? "bg-white text-indigo-600 shadow-sm"
+                                  : "text-slate-600 hover:text-slate-900"
+                              }`}
+                            >
+                              {opt.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-[11px] text-slate-600 mb-1">Header Arrangement</label>
+                        <div className="grid grid-cols-2 gap-1 bg-slate-100 p-1 rounded-lg">
+                          {[
+                            { value: "side", label: "Side-by-Side" },
+                            { value: "top", label: "Stacked" },
+                          ].map((opt) => (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              onClick={() => setForm((prev) => ({ ...prev, logoLayout: opt.value }))}
+                              className={`px-2 py-1 text-[11px] font-medium rounded-md transition ${
+                                (form.logoLayout || "side") === opt.value
+                                  ? "bg-white text-indigo-600 shadow-sm"
+                                  : "text-slate-600 hover:text-slate-900"
+                              }`}
+                            >
+                              {opt.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1169,120 +1276,206 @@ export default function Settings({ defaultTab: initialTab }) {
                       Upload a signature above to enable on invoices.
                     </span>
                   )}
+
+                  {/* Signature Size, Position & Signatory Details */}
+                  <div className="mt-4 pt-4 border-t border-slate-100 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-slate-700">Bottom-Right Signature Settings</span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <div className="flex justify-between text-[11px] text-slate-600 mb-1">
+                          <span>Width</span>
+                          <span className="font-mono font-medium">{Number(form.signatureWidth) || 140}px</span>
+                        </div>
+                        <input
+                          type="range"
+                          min={48}
+                          max={240}
+                          step={4}
+                          value={Number(form.signatureWidth) || 140}
+                          onChange={(e) => setForm((prev) => ({ ...prev, signatureWidth: Number(e.target.value) }))}
+                          className="w-full accent-indigo-600 cursor-pointer"
+                        />
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-[11px] text-slate-600 mb-1">
+                          <span>Height</span>
+                          <span className="font-mono font-medium">{Number(form.signatureHeight) || 48}px</span>
+                        </div>
+                        <input
+                          type="range"
+                          min={24}
+                          max={120}
+                          step={2}
+                          value={Number(form.signatureHeight) || 48}
+                          onChange={(e) => setForm((prev) => ({ ...prev, signatureHeight: Number(e.target.value) }))}
+                          className="w-full accent-indigo-600 cursor-pointer"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] text-slate-600 mb-1">Alignment in Bottom-Right Box</label>
+                      <div className="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-lg">
+                        {[
+                          { value: "left", label: "Left" },
+                          { value: "center", label: "Center" },
+                          { value: "right", label: "Right" },
+                        ].map((opt) => (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => setForm((prev) => ({ ...prev, signatureAlign: opt.value }))}
+                            className={`px-2 py-1 text-[11px] font-medium rounded-md transition ${
+                              (form.signatureAlign || "right") === opt.value
+                                ? "bg-white text-indigo-600 shadow-sm"
+                                : "text-slate-600 hover:text-slate-900"
+                            }`}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] text-slate-600 mb-1">Authorized Signatory Name</label>
+                        <input
+                          type="text"
+                          value={form.authorizedPerson || ""}
+                          onChange={(e) => setForm((prev) => ({ ...prev, authorizedPerson: e.target.value }))}
+                          placeholder="e.g. Rajesh Kumar"
+                          className="w-full px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] text-slate-600 mb-1">Designation / Label</label>
+                        <input
+                          type="text"
+                          value={form.signatoryLabel ?? "Authorized Signatory"}
+                          onChange={(e) => setForm((prev) => ({ ...prev, signatoryLabel: e.target.value }))}
+                          placeholder="Authorized Signatory"
+                          className="w-full px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* ── LIVE INVOICE PREVIEW (REQUIREMENT 8) ── */}
+          {/* ── LIVE INVOICE PREVIEW (MASTER TAXINVOICE) ── */}
           <div className="bg-white p-6 rounded-2xl border border-slate-200/90 shadow-xs space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
               <div>
                 <h3 className="text-sm font-bold text-slate-900">Live Invoice Branding Preview</h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Illustrative preview showing how your company logo and owner signature render on invoices.
+                  Instant preview of your Business Logo (Left), fixed BILZET Logo (Top-Right), and Authorized Signature (Bottom-Right).
                 </p>
               </div>
-              <span className="text-[11px] font-mono text-slate-400">
-                Live Output Mode
-              </span>
-            </div>
-
-            {/* Scaled / Compact Master Invoice Frame */}
-            <div className="max-w-xl mx-auto p-5 sm:p-6 bg-white rounded-xl border border-slate-200 shadow-sm space-y-4 text-xs">
-              {/* Header with Logo & Store */}
-              <div className="flex items-center justify-between border-b border-slate-200 pb-3 gap-3">
-                <div className="space-y-0.5">
-                  <h4 className="text-sm font-bold text-slate-900 uppercase">
-                    {form.shopName || "BILZET Retail Mart"}
-                  </h4>
-                  <p className="text-[11px] text-slate-500">
-                    {form.address || "123 Commercial Plaza, Main Market"}
-                  </p>
-                  <p className="text-[10px] font-mono text-slate-600">
-                    GSTIN: {form.gstin || "33AAAAA0000A1Z5"}
-                  </p>
-                </div>
-                {form.showLogoOnInvoices && form.logoUrl ? (
-                  <div className="shrink-0 p-1 bg-white rounded border border-slate-200/80">
-                    <img
-                      src={resolveAssetUrl(form.logoUrl)}
-                      alt="Logo preview"
-                      className="max-h-12 max-w-[120px] object-contain"
-                    />
-                  </div>
-                ) : (
-                  <div className="text-[10px] text-slate-400 italic">
-                    (Logo disabled or not uploaded)
-                  </div>
-                )}
-              </div>
-
-              {/* Sample Mini Table */}
-              <div className="space-y-1 py-1">
-                <div className="flex justify-between font-mono text-[11px] text-slate-500 pb-1 border-b border-slate-100">
-                  <span>ITEM DESCRIPTION</span>
-                  <span>TOTAL</span>
-                </div>
-                <div className="flex justify-between text-slate-800 text-xs py-0.5">
-                  <span>1. Premium Basmati Rice (5kg)</span>
-                  <span className="font-mono">₹1,102.50</span>
-                </div>
-                <div className="flex justify-between text-slate-800 text-xs py-0.5">
-                  <span>2. Cold-Pressed Groundnut Oil (1L)</span>
-                  <span className="font-mono">₹537.60</span>
-                </div>
-                <div className="flex justify-between font-bold text-slate-900 border-t border-slate-200 pt-1 text-xs">
-                  <span>Grand Total</span>
-                  <span className="font-mono text-blue-600">₹1,640.10</span>
-                </div>
-              </div>
-
-              {/* Footer with Signatory Area */}
-              <div className="flex items-end justify-between pt-3 border-t border-slate-200">
-                <div className="text-[10px] text-slate-400">
-                  <p>Terms: Goods once sold are not returnable.</p>
-                  <p className="italic">Thank you for your business!</p>
-                </div>
-
-                <div className="flex flex-col items-end min-w-[140px]">
-                  <div className="h-12 flex items-end justify-center w-full pb-1">
-                    {form.showSignatureOnInvoices && form.signatureUrl ? (
-                      <img
-                        src={resolveAssetUrl(form.signatureUrl)}
-                        alt="Signature preview"
-                        className="max-h-10 max-w-[110px] object-contain"
-                      />
-                    ) : (
-                      <span className="text-[9px] text-slate-300 italic">
-                        (Signature / Seal)
-                      </span>
-                    )}
-                  </div>
-                  <div className="border-t border-slate-400 pt-0.5 w-full text-right">
-                    <p className="text-[10px] font-bold text-slate-900">
-                      {form.authorizedPerson || form.ownerName || "Authorized Signatory"}
-                    </p>
-                    <p className="text-[8px] font-semibold text-slate-500 uppercase tracking-wider">
-                      Authorized Signatory
-                    </p>
-                  </div>
-                </div>
+              <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg self-start sm:self-auto">
+                {[
+                  { value: "A4", label: "A4" },
+                  { value: "A5", label: "A5" },
+                  { value: "80mm", label: "80mm Thermal" },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setForm((prev) => ({ ...prev, paperSize: opt.value }))}
+                    className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition ${
+                      (form.paperSize || "A4") === opt.value
+                        ? "bg-white text-indigo-600 shadow-sm"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+            {/* Live Master Invoice Frame */}
+            <div className="bg-slate-50/80 border border-slate-200/80 rounded-xl p-3 sm:p-5 overflow-x-auto">
+              <div className="mx-auto flex justify-center">
+                <TaxInvoice
+                  invoice={{
+                    ...sampleInvoiceData,
+                    business: {
+                      ...(sampleInvoiceData?.business || {}),
+                      name: form.shopName || sampleInvoiceData?.business?.name,
+                      address: form.address || sampleInvoiceData?.business?.address,
+                      phone: form.phone || sampleInvoiceData?.business?.phone,
+                      email: form.email || sampleInvoiceData?.business?.email,
+                      gstin: form.gstin || sampleInvoiceData?.business?.gstin,
+                      logoUrl: form.logoUrl,
+                      signatureUrl: form.signatureUrl,
+                      authorizedPerson: form.authorizedPerson,
+                    },
+                  }}
+                  shopSettings={form}
+                  plan={activePlan}
+                  isModal={false}
+                  showActions={false}
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3 pt-2">
               <p className="text-[11px] text-slate-400 italic">
-                Note: This is an illustrative preview. Saved branding preferences control all actual POS bills, downloads, and receipts.
+                Note: Saved branding preferences apply per store across A4, A5, 80mm thermal prints, downloaded PDFs, and WhatsApp invoices.
               </p>
-              <Button
-                variant="neutral"
-                size="sm"
-                icon={Eye}
-                onClick={() => setShowInvoicePreviewModal(true)}
-              >
-                Preview Full Bill
-              </Button>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="neutral"
+                  size="sm"
+                  onClick={() =>
+                    setForm((prev) => ({
+                      ...prev,
+                      logoWidth: 120,
+                      logoHeight: 52,
+                      logoAlign: "left",
+                      logoLayout: "side",
+                      signatureWidth: 140,
+                      signatureHeight: 48,
+                      signatureAlign: "right",
+                      authorizedPerson: "",
+                      signatoryLabel: "Authorized Signatory",
+                    }))
+                  }
+                  disabled={saving}
+                >
+                  Reset Branding
+                </Button>
+                <Button
+                  variant="neutral"
+                  size="sm"
+                  onClick={handleReset}
+                  disabled={saving}
+                >
+                  Cancel Changes
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleSaveAll}
+                  disabled={saving}
+                >
+                  {saving ? "Saving..." : "Save Changes"}
+                </Button>
+                <Button
+                  variant="neutral"
+                  size="sm"
+                  icon={Eye}
+                  onClick={() => setShowInvoicePreviewModal(true)}
+                >
+                  Preview Full Bill
+                </Button>
+              </div>
             </div>
           </div>
 
