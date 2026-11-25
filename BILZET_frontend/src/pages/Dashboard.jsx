@@ -62,6 +62,7 @@ import {
 } from "lucide-react";
 import {
   dashboardApi,
+  EMPTY_DASHBOARD_DATA,
   settingsApi,
   productsApi,
   customersApi,
@@ -87,8 +88,8 @@ export default function Dashboard() {
   const { user } = useAuth();
   const { currentStore } = useStore();
 
-  // Primary API Data State
-  const [data, setData] = useState(mockDashboardData);
+  // Primary API Data State (starts at zero; populated only from user's real business records)
+  const [data, setData] = useState(EMPTY_DASHBOARD_DATA);
   const [shopSettings, setShopSettings] = useState(() => {
     try {
       const savedLocal = localStorage.getItem("bilzet_invoice_settings");
@@ -112,6 +113,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [gstCopied, setGstCopied] = useState(false);
+  const [gstPeriod, setGstPeriod] = useState("daily");
 
   // Time & Filter States
   const [dateRange, setDateRange] = useState("month"); // 'today' | 'yesterday' | 'week' | 'month' | 'year' | 'custom'
@@ -1097,83 +1099,133 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {/* ═════════════════════════════════════════════════════════════════
-          4. GST CONTROL ROOM & COMPLIANCE CENTER
-      ═════════════════════════════════════════════════════════════════ */}
-      <section className="bg-[#F6F6F8] rounded-[22px] sm:rounded-[28px] border border-[#E7E8EC] p-4 sm:p-6 lg:p-7 shadow-[0_8px_30px_rgba(0,0,0,0.06)] space-y-6 min-w-0">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg sm:text-xl font-bold text-[#111318] font-['Manrope',sans-serif]">
-                GST Control Room &amp; Compliance Center
-              </h2>
-              <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-white text-[#111318] border border-[#E7E8EC]">
-                GSTIN: {storeDisplayGstin}
-              </span>
-            </div>
-            <p className="text-xs text-[#7C7F8A]">
-              Real-time Output Tax, Input Tax Credit (ITC) reconciliation, and statutory return readiness
-            </p>
-          </div>
+        {/* 4. GST CONTROL ROOM & COMPLIANCE CENTER */}
+        {(() => {
+          const gstData = data?.gstSummary?.[gstPeriod] || data?.gstSummary?.daily || {
+            totalGstCollected: 0,
+            cgstAmount: 0,
+            sgstAmount: 0,
+            igstAmount: 0,
+            gstFromSales: 0,
+            gstReturnAdjustments: 0,
+            gstCancelledAdjustments: 0,
+            gstTotalAdjustments: 0,
+            taxableSales: 0,
+            activeInvoiceCount: 0,
+            cancelledInvoiceCount: 0,
+            returnCount: 0,
+          };
+          const fmtGst = (val) =>
+            `₹${Number(val || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => nav("/gst")}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-white hover:bg-[#FAFAFB] text-[#111318] font-bold text-xs transition cursor-pointer border border-[#E7E8EC] shadow-xs"
-            >
-              <FileSpreadsheet size={14} />
-              <span>GSTR Reports Suite</span>
-            </button>
-          </div>
-        </div>
+          return (
+            <section className="bg-[#F6F6F8] rounded-[22px] sm:rounded-[28px] border border-[#E7E8EC] p-4 sm:p-6 lg:p-7 shadow-[0_8px_30px_rgba(0,0,0,0.06)] space-y-6 min-w-0">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="text-lg sm:text-xl font-bold text-[#111318] font-['Manrope',sans-serif]">
+                      GST Summary &amp; Compliance Center
+                    </h2>
+                    <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-white text-[#111318] border border-[#E7E8EC]">
+                      GSTIN: {storeDisplayGstin}
+                    </span>
+                  </div>
+                  <p className="text-xs text-[#7C7F8A]">
+                    Live CGST, SGST, IGST breakdown and adjustments from returns &amp; cancellations ({gstPeriod === "daily" ? "Today" : "This Month"})
+                  </p>
+                </div>
 
-        {/* GST 4-Key Metrics Strip */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* 1. Output GST */}
-          <div className="p-4 rounded-[20px] bg-white border border-[#E7E8EC] space-y-1">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#7C7F8A]">
-              Total Output GST
-            </span>
-            <p className="text-xl sm:text-2xl font-bold text-[#111318] font-['Manrope',sans-serif]">
-              ₹1,22,850
-            </p>
-            <p className="text-[10px] text-[#7C7F8A]">On ₹12.45L Taxable Sales</p>
-          </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="inline-flex rounded-full bg-white border border-[#E7E8EC] p-0.5 shadow-2xs">
+                    <button
+                      type="button"
+                      onClick={() => setGstPeriod("daily")}
+                      className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition cursor-pointer ${
+                        gstPeriod === "daily"
+                          ? "bg-[#12151C] text-white"
+                          : "text-[#7C7F8A] hover:text-[#111318]"
+                      }`}
+                    >
+                      Daily
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setGstPeriod("monthly")}
+                      className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition cursor-pointer ${
+                        gstPeriod === "monthly"
+                          ? "bg-[#12151C] text-white"
+                          : "text-[#7C7F8A] hover:text-[#111318]"
+                      }`}
+                    >
+                      Monthly
+                    </button>
+                  </div>
 
-          {/* 2. Input GST (ITC) */}
-          <div className="p-4 rounded-[20px] bg-[#DFFFE6] border border-[#5BF07B]/40 space-y-1">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#0E2A16]">
-              Input Tax Credit (ITC)
-            </span>
-            <p className="text-xl sm:text-2xl font-bold text-[#0E2A16] font-['Manrope',sans-serif]">
-              ₹38,600
-            </p>
-            <p className="text-[10px] text-[#0E2A16]/80">From 38 Verified Vendor Bills</p>
-          </div>
+                  <button
+                    type="button"
+                    onClick={() => nav("/gst")}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-white hover:bg-[#FAFAFB] text-[#111318] font-bold text-xs transition cursor-pointer border border-[#E7E8EC] shadow-xs"
+                  >
+                    <FileSpreadsheet size={14} />
+                    <span>GSTR Reports Suite</span>
+                  </button>
+                </div>
+              </div>
 
-          {/* 3. Net GST Payable */}
-          <div className="p-4 rounded-[20px] bg-[#12151C] text-white border border-[#232733] space-y-1">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#A9ABB5]">
-              Net GST Payable
-            </span>
-            <p className="text-xl sm:text-2xl font-bold text-[#5BF07B] font-['Manrope',sans-serif]">
-              ₹84,250
-            </p>
-            <p className="text-[10px] text-[#A9ABB5]">CGST ₹42,125 + SGST ₹42,125</p>
-          </div>
+              {/* GST Key Metrics Strip */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* 1. Total GST Collected (Net) */}
+                <div className="p-4 rounded-[20px] bg-[#12151C] text-white border border-[#232733] space-y-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#A9ABB5]">
+                    Total GST Collected
+                  </span>
+                  <p className="text-xl sm:text-2xl font-bold text-[#5BF07B] font-['Manrope',sans-serif]">
+                    {fmtGst(gstData.totalGstCollected)}
+                  </p>
+                  <p className="text-[10px] text-[#A9ABB5]">
+                    On {fmtGst(gstData.taxableSales)} Taxable Sales ({gstData.activeInvoiceCount} bills)
+                  </p>
+                </div>
 
-          {/* 4. ITC Reconciliation Match Rate */}
-          <div className="p-4 rounded-[20px] bg-white border border-[#E7E8EC] space-y-1">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#7C7F8A]">
-              2B Reconciliation
-            </span>
-            <p className="text-xl sm:text-2xl font-bold text-[#111318] font-['Manrope',sans-serif]">
-              98.4% Matched
-            </p>
-            <p className="text-[10px] text-[#7C7F8A]">142 Matched • 3 Under Review</p>
-          </div>
-        </div>
+                {/* 2. CGST + SGST (Intra-State) */}
+                <div className="p-4 rounded-[20px] bg-white border border-[#E7E8EC] space-y-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#7C7F8A]">
+                    CGST &amp; SGST (Intra-State)
+                  </span>
+                  <p className="text-lg sm:text-xl font-bold text-[#111318] font-['Manrope',sans-serif]">
+                    {fmtGst(gstData.cgstAmount + gstData.sgstAmount)}
+                  </p>
+                  <p className="text-[10px] text-[#7C7F8A]">
+                    CGST {fmtGst(gstData.cgstAmount)} • SGST {fmtGst(gstData.sgstAmount)}
+                  </p>
+                </div>
+
+                {/* 3. IGST (Inter-State) */}
+                <div className="p-4 rounded-[20px] bg-white border border-[#E7E8EC] space-y-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#7C7F8A]">
+                    IGST (Inter-State)
+                  </span>
+                  <p className="text-xl sm:text-2xl font-bold text-[#111318] font-['Manrope',sans-serif]">
+                    {fmtGst(gstData.igstAmount)}
+                  </p>
+                  <p className="text-[10px] text-[#7C7F8A]">
+                    GST from Sales: {fmtGst(gstData.gstFromSales)}
+                  </p>
+                </div>
+
+                {/* 4. Returns & Cancellations Adjustments */}
+                <div className="p-4 rounded-[20px] bg-[#DFFFE6] border border-[#5BF07B]/40 space-y-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#0E2A16]">
+                    Returns &amp; Cancel Adjustments
+                  </span>
+                  <p className="text-xl sm:text-2xl font-bold text-[#0E2A16] font-['Manrope',sans-serif]">
+                    {fmtGst(gstData.gstTotalAdjustments)}
+                  </p>
+                  <p className="text-[10px] text-[#0E2A16]/80">
+                    Returns {fmtGst(gstData.gstReturnAdjustments)} • Cancelled {fmtGst(gstData.gstCancelledAdjustments)}
+                  </p>
+                </div>
+              </div>
 
         {/* GST Filing Status & Exceptions Inbox */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 pt-2">
@@ -1186,7 +1238,7 @@ export default function Dashboard() {
                 </div>
                 <div>
                   <p className="text-xs font-bold text-[#111318]">GSTR-1 (Outward Sales)</p>
-                  <p className="text-[11px] text-[#7C7F8A]">142 B2B/B2C invoices synced &amp; verified</p>
+                  <p className="text-[11px] text-[#7C7F8A]">{gstData.activeInvoiceCount} B2B/B2C invoices in {gstPeriod === "daily" ? "today's" : "this month's"} ledger</p>
                 </div>
               </div>
               <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-[#DFFFE6] text-[#0E2A16]">
@@ -1200,8 +1252,8 @@ export default function Dashboard() {
                   <Clock size={18} />
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-[#111318]">GSTR-3B (Monthly Summary)</p>
-                  <p className="text-[11px] text-[#7C7F8A]">Net tax liability computed: ₹84,250</p>
+                  <p className="text-xs font-bold text-[#111318]">GSTR-3B ({gstPeriod === "daily" ? "Daily" : "Monthly"} Summary)</p>
+                  <p className="text-[11px] text-[#7C7F8A]">Net GST collected: {fmtGst(gstData.totalGstCollected)}</p>
                 </div>
               </div>
               <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-[#12151C] text-white">
@@ -1219,51 +1271,44 @@ export default function Dashboard() {
                   Exceptions Inbox (Audit Discrepancies)
                 </h3>
               </div>
-              <span className="text-[11px] font-semibold text-[#E5484D]">
-                3 items require verification
+              <span className="text-[11px] font-semibold text-[#7C7F8A]">
+                {discrepancies.length > 0 ? `${discrepancies.length} items require verification` : "All clear"}
               </span>
             </div>
 
             <div className="space-y-2">
-              {[
-                {
-                  id: "disc-1",
-                  title: "GST Rate Mismatch on Raw Spice PO #442",
-                  vendor: "Kaveri Agro Traders",
-                  amount: "₹1,450.00 difference",
-                  note: "Invoice shows 5% GST; portal detected 12% category code.",
-                },
-                {
-                  id: "disc-2",
-                  title: "Missing 2B Record: Packing Material PO #389",
-                  vendor: "Premier Packaging",
-                  amount: "₹2,100.00 ITC on hold",
-                  note: "Supplier GSTR-1 not submitted by the 11th deadline.",
-                },
-              ].map((disc) => (
-                <div
-                  key={disc.id}
-                  className="p-3 rounded-[16px] bg-[#FAFAFB] border border-[#E7E8EC] flex items-center justify-between gap-3 text-xs"
-                >
-                  <div className="space-y-0.5 min-w-0">
-                    <p className="font-bold text-[#111318] truncate">{disc.title}</p>
-                    <p className="text-[11px] text-[#7C7F8A]">
-                      {disc.vendor} • <span className="text-[#111318] font-medium">{disc.amount}</span>
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedDiscrepancy(disc)}
-                    className="shrink-0 px-3 py-1.5 rounded-full bg-[#12151C] hover:bg-black text-white font-semibold text-[11px] transition cursor-pointer"
-                  >
-                    Review
-                  </button>
+              {discrepancies.length === 0 ? (
+                <div className="p-3 rounded-[16px] bg-[#FAFAFB] border border-[#E7E8EC] text-xs text-[#7C7F8A]">
+                  No audit discrepancies flagged for this store.
                 </div>
-              ))}
+              ) : (
+                discrepancies.slice(0, 3).map((disc) => (
+                  <div
+                    key={disc.id}
+                    className="p-3 rounded-[16px] bg-[#FAFAFB] border border-[#E7E8EC] flex items-center justify-between gap-3 text-xs"
+                  >
+                    <div className="space-y-0.5 min-w-0">
+                      <p className="font-bold text-[#111318] truncate">{disc.title || disc.exceptionType || "Audit Discrepancy"}</p>
+                      <p className="text-[11px] text-[#7C7F8A]">
+                        {disc.vendor || disc.customerName || "Invoice"} • <span className="text-[#111318] font-medium">{disc.amount || disc.severity || "Review"}</span>
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDiscrepancy(disc)}
+                      className="shrink-0 px-3 py-1.5 rounded-full bg-[#12151C] hover:bg-black text-white font-semibold text-[11px] transition cursor-pointer"
+                    >
+                      Review
+                    </button>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
       </section>
+          );
+        })()}
 
       {/* ═════════════════════════════════════════════════════════════════
           5. INVOICE & PAYMENT OVERVIEW TABLE

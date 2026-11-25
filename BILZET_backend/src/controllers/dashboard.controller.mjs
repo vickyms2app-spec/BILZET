@@ -4,15 +4,142 @@ import prisma from '../config/prisma.mjs';
 import { round2 } from '../utils/calculations.mjs';
 import dateUtils, { DEFAULT_TIMEZONE } from '../utils/dateUtils.mjs';
 
+const isInterStateTransaction = (customerState, storeState) => {
+  if (!customerState || !storeState) return false;
+  return customerState.trim().toLowerCase() !== storeState.trim().toLowerCase();
+};
+
+const computeGstSummaryForWindow = (salesList = [], returnsList = [], storeState = 'Tamil Nadu') => {
+  let taxableSales = 0;
+  let gstFromSales = 0;
+  let salesCgst = 0;
+  let salesSgst = 0;
+  let salesIgst = 0;
+  let gstCancelledAdjustments = 0;
+  let activeInvoiceCount = 0;
+  let cancelledInvoiceCount = 0;
+
+  for (const sale of salesList) {
+    const tax = Number(sale.taxTotal || 0);
+    const subtotal = Number(sale.subtotal || 0);
+    if (sale.status === 'CANCELLED') {
+      gstCancelledAdjustments += tax;
+      cancelledInvoiceCount += 1;
+      continue;
+    }
+    activeInvoiceCount += 1;
+    taxableSales += subtotal;
+    gstFromSales += tax;
+    const interState = Boolean(sale.isSez) || isInterStateTransaction(sale.customer?.state, storeState);
+    if (interState) {
+      salesIgst += tax;
+    } else {
+      salesCgst += tax / 2;
+      salesSgst += tax / 2;
+    }
+  }
+
+  let gstReturnAdjustments = 0;
+  let returnCgst = 0;
+  let returnSgst = 0;
+  let returnIgst = 0;
+
+  for (const ret of returnsList) {
+    const parentSale = ret.sale;
+    if (!parentSale || parentSale.status === 'CANCELLED') continue;
+    const grandTotal = Number(parentSale.grandTotal || 0);
+    const saleTax = Number(parentSale.taxTotal || 0);
+    const retTotal = Number(ret.totalAmount || 0);
+    if (grandTotal <= 0 || saleTax <= 0 || retTotal <= 0) continue;
+
+    const ratio = Math.min(1, retTotal / grandTotal);
+    const retGst = saleTax * ratio;
+    gstReturnAdjustments += retGst;
+    const interState = Boolean(parentSale.isSez) || isInterStateTransaction(parentSale.customer?.state, storeState);
+    if (interState) {
+      returnIgst += retGst;
+    } else {
+      returnCgst += retGst / 2;
+      returnSgst += retGst / 2;
+    }
+  }
+
+  const totalGstCollected = Math.max(0, round2(gstFromSales - gstReturnAdjustments));
+  const cgstAmount = Math.max(0, round2(salesCgst - returnCgst));
+  const sgstAmount = Math.max(0, round2(salesSgst - returnSgst));
+  const igstAmount = Math.max(0, round2(salesIgst - returnIgst));
+
+  return {
+    totalGstCollected,
+    cgstAmount,
+    sgstAmount,
+    igstAmount,
+    gstFromSales: round2(gstFromSales),
+    gstReturnAdjustments: round2(gstReturnAdjustments),
+    gstCancelledAdjustments: round2(gstCancelledAdjustments),
+    gstTotalAdjustments: round2(gstReturnAdjustments + gstCancelledAdjustments),
+    taxableSales: round2(taxableSales),
+    activeInvoiceCount,
+    cancelledInvoiceCount,
+    returnCount: returnsList.length,
+  };
+};
+
 export const getDashboardStats = asyncHandler(async (req, res) => {
-  const businessId =
-    req.headers['x-business-id'] ||
-    req.query.businessId ||
-    req.query.storeId ||
-    req.user?.businessId ||
-    null;
+  const isSuperAdmin = req.user?.role === 'SUPER_ADMIN' || Boolean(req.user?.isSuperAdmin);
+  const businessId = isSuperAdmin
+    ? (req.headers['x-business-id'] || req.query.businessId || req.query.storeId || req.user?.businessId || null)
+    : (req.user?.businessId || null);
 
   const baseStoreFilter = businessId ? { businessId } : {};
+
+  // Fail closed for non-super-admins without an assigned businessId: never aggregate other businesses' records
+  if (!businessId && !isSuperAdmin) {
+    return sendResponse(
+      res,
+      200,
+      {
+        rangeSales: 0,
+        rangeRevenue: 0,
+        rangeBills: 0,
+        rangePaidBills: 0,
+        rangeUnpaidBills: 0,
+        rangeExpenses: 0,
+        rangePurchases: 0,
+        rangePurchasesCount: 0,
+        rangeProfit: 0,
+        realizedPercentage: 0,
+        profitMarginPercentage: 0,
+        averageOrderValue: 0,
+        todaySales: 0,
+        todayRevenue: 0,
+        todayBills: 0,
+        todayProfit: 0,
+        todayExpenses: 0,
+        todayPurchases: 0,
+        todayPurchasesCount: 0,
+        monthSales: 0,
+        monthBills: 0,
+        yearSales: 0,
+        yearBills: 0,
+        totalSales: 0,
+        pendingPayments: 0,
+        totalProducts: 0,
+        lowStockProducts: 0,
+        inventoryValuation: 0,
+        totalCustomers: 0,
+        totalSuppliers: 0,
+        chartData: [],
+        trendData: { '7days': [], today: [], yesterday: [] },
+        paymentMethodSummary: [],
+        gstSummary: null,
+        topSellingProducts: [],
+        recentSales: [],
+        lowStockProductsList: [],
+      },
+      'Dashboard statistics fetched successfully'
+    );
+  }
 
   // 1. Resolve Timezone
   const timezone = req.query.timezone || req.headers['x-timezone'] || DEFAULT_TIMEZONE;
@@ -405,6 +532,63 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
   const profitMarginPercentage = rangeSales > 0 ? round2((rangeProfit / rangeSales) * 100) : 0;
   const averageOrderValue = rangeBills > 0 ? round2(rangeSales / rangeBills) : 0;
 
+  // GST Summary (Daily, Monthly, Active Range) — excludes CANCELLED invoices from active sales
+  const [businessRecord, rangeGstSales, monthGstSales, todayGstSales, rangeGstReturns, monthGstReturns, todayGstReturns] =
+    await Promise.all([
+      businessId
+        ? prisma.business.findUnique({ where: { id: businessId }, select: { state: true } }).catch(() => null)
+        : Promise.resolve(null),
+      prisma.sale.findMany({
+        where: { ...baseStoreFilter, createdAt: { gte: rangeWindow.startUtc, lte: rangeWindow.endUtc } },
+        select: { id: true, subtotal: true, taxTotal: true, grandTotal: true, status: true, isSez: true, customer: { select: { state: true } } },
+      }),
+      prisma.sale.findMany({
+        where: { ...baseStoreFilter, createdAt: { gte: monthWindow.startUtc, lte: monthWindow.endUtc } },
+        select: { id: true, subtotal: true, taxTotal: true, grandTotal: true, status: true, isSez: true, customer: { select: { state: true } } },
+      }),
+      prisma.sale.findMany({
+        where: { ...baseStoreFilter, createdAt: { gte: todayWindow.startUtc, lte: todayWindow.endUtc } },
+        select: { id: true, subtotal: true, taxTotal: true, grandTotal: true, status: true, isSez: true, customer: { select: { state: true } } },
+      }),
+      prisma.salesReturn.findMany({
+        where: {
+          ...(businessId ? { sale: { businessId } } : {}),
+          createdAt: { gte: rangeWindow.startUtc, lte: rangeWindow.endUtc },
+        },
+        select: {
+          totalAmount: true,
+          sale: { select: { taxTotal: true, grandTotal: true, status: true, isSez: true, customer: { select: { state: true } } } },
+        },
+      }),
+      prisma.salesReturn.findMany({
+        where: {
+          ...(businessId ? { sale: { businessId } } : {}),
+          createdAt: { gte: monthWindow.startUtc, lte: monthWindow.endUtc },
+        },
+        select: {
+          totalAmount: true,
+          sale: { select: { taxTotal: true, grandTotal: true, status: true, isSez: true, customer: { select: { state: true } } } },
+        },
+      }),
+      prisma.salesReturn.findMany({
+        where: {
+          ...(businessId ? { sale: { businessId } } : {}),
+          createdAt: { gte: todayWindow.startUtc, lte: todayWindow.endUtc },
+        },
+        select: {
+          totalAmount: true,
+          sale: { select: { taxTotal: true, grandTotal: true, status: true, isSez: true, customer: { select: { state: true } } } },
+        },
+      }),
+    ]);
+
+  const storeState = businessRecord?.state || 'Tamil Nadu';
+  const gstSummary = {
+    daily: computeGstSummaryForWindow(todayGstSales, todayGstReturns, storeState),
+    monthly: computeGstSummaryForWindow(monthGstSales, monthGstReturns, storeState),
+    range: computeGstSummaryForWindow(rangeGstSales, rangeGstReturns, storeState),
+  };
+
   // Build authoritative response
   const dashboardData = {
     // Range-aware primary metrics
@@ -456,6 +640,7 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
 
     // Collections & Tenders
     paymentMethodSummary,
+    gstSummary,
     topSellingProducts,
     recentSales: recentSales.map((s) => ({
       ...s,

@@ -54,6 +54,9 @@ const getTransporter = () => {
       auth: { user, pass },
       pool: true,
       maxConnections: 5,
+      connectionTimeout: 8000,
+      greetingTimeout: 8000,
+      socketTimeout: 10000,
     });
   }
 

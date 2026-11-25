@@ -32,7 +32,7 @@ export async function checkDbConnection() {
   try {
     const probePromise = rawPrisma.$queryRaw`SELECT 1`;
     const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('DB probe timeout')), 800)
+      setTimeout(() => reject(new Error('DB probe timeout')), 5000)
     );
     await Promise.race([probePromise, timeoutPromise]);
     isDbAvailable = true;
@@ -85,147 +85,15 @@ for (const r of SYSTEM_ROLE_DEFINITIONS) {
   }
 }
 
-// Seed realistic sales, purchases, and payments
-const seedTransactions = (() => {
-  const now = new Date();
-  const sales = [];
-  const saleItems = [];
-  const payments = [];
-  const purchases = [];
-  const purchaseItems = [];
-  const expenses = [];
-
-  const dailyPattern = [
-    { daysAgo: 6, sales: [22300], purchases: [10500] },
-    { daysAgo: 5, sales: [17900], purchases: [7800] },
-    { daysAgo: 4, sales: [24800], purchases: [11400] },
-    { daysAgo: 3, sales: [19400], purchases: [6200] },
-    { daysAgo: 2, sales: [21500, 9800], purchases: [9500] },
-    { daysAgo: 1, sales: [18200, 8400], purchases: [12000] },
-    { daysAgo: 0, sales: [12500, 9450, 6500], purchases: [8400] },
-  ];
-
-  const stores = ['busi-01', 'busi-02'];
-  stores.forEach((bizId) => {
-    dailyPattern.forEach((dp, idx) => {
-      const d = new Date(now.getTime() - dp.daysAgo * 86400000);
-      dp.sales.forEach((amt, sIdx) => {
-        const isCredit = dp.daysAgo === 0 && sIdx === 2;
-        const paid = isCredit ? 0 : amt;
-        const saleId = `sale-${bizId}-${idx}-${sIdx}`;
-        sales.push({
-          id: saleId,
-          invoiceNumber: `INV-${bizId.toUpperCase()}-${idx * 10 + sIdx + 1}`,
-          businessId: bizId,
-          customerId: isCredit ? 'cust-01' : sIdx % 2 === 0 ? 'cust-01' : 'cust-02',
-          subtotal: Math.round(amt / 1.18),
-          taxTotal: amt - Math.round(amt / 1.18),
-          grandTotal: amt,
-          paidAmount: paid,
-          paymentStatus: isCredit ? 'UNPAID' : 'PAID',
-          paymentMethod: isCredit ? 'CREDIT' : sIdx % 2 === 0 ? 'UPI' : 'CASH',
-          status: 'COMPLETED',
-          dueDate: isCredit ? new Date(now.getTime() + 7 * 86400000) : null,
-          createdAt: d,
-          updatedAt: d,
-        });
-        saleItems.push({
-          id: `si-${bizId}-${idx}-${sIdx}`,
-          saleId,
-          productId: 'prod-01',
-          name: 'Basmati Rice Premium 5kg',
-          sku: 'PBR-5KG',
-          quantity: Math.max(1, Math.round(amt / 1500)),
-          price: 1500,
-          total: amt,
-        });
-        if (paid > 0) {
-          payments.push({
-            id: `pay-${bizId}-${idx}-${sIdx}`,
-            saleId,
-            customerId: sIdx % 2 === 0 ? 'cust-01' : 'cust-02',
-            amount: paid,
-            method: sIdx % 2 === 0 ? 'UPI' : 'CASH',
-            createdAt: d,
-          });
-        }
-      });
-
-      dp.purchases.forEach((pAmt, pIdx) => {
-        const purId = `pur-${bizId}-${idx}-${pIdx}`;
-        purchases.push({
-          id: purId,
-          invoiceNumber: `PUR-${bizId.toUpperCase()}-${idx * 10 + pIdx + 1}`,
-          supplierId: pIdx % 2 === 0 ? 'sup-01' : 'sup-02',
-          businessId: bizId,
-          subtotal: Math.round(pAmt / 1.12),
-          taxTotal: pAmt - Math.round(pAmt / 1.12),
-          grandTotal: pAmt,
-          paidAmount: pAmt,
-          paymentStatus: 'PAID',
-          createdAt: d,
-          updatedAt: d,
-        });
-        purchaseItems.push({
-          id: `pi-${bizId}-${idx}-${pIdx}`,
-          purchaseId: purId,
-          productId: 'prod-02',
-          quantity: 50,
-          price: 45,
-          total: pAmt,
-        });
-      });
-
-      expenses.push({
-        id: `exp-${bizId}-${idx}`,
-        businessId: bizId,
-        category: 'Store Utility & Operations',
-        amount: 1200,
-        date: d,
-        createdAt: d,
-        updatedAt: d,
-      });
-    });
-
-    // Additional 3 weeks of earlier history for "This Month" and "This Year"
-    for (let w = 1; w <= 3; w++) {
-      const d = new Date(now.getTime() - (w * 7 + 3) * 86400000);
-      const sAmt = 26000 + w * 2500;
-      const pAmt = 11000 + w * 1200;
-      const sId = `sale-w-${bizId}-${w}`;
-      sales.push({
-        id: sId,
-        invoiceNumber: `INV-${bizId.toUpperCase()}-W0${w}`,
-        businessId: bizId,
-        customerId: 'cust-02',
-        subtotal: Math.round(sAmt / 1.18),
-        taxTotal: sAmt - Math.round(sAmt / 1.18),
-        grandTotal: sAmt,
-        paidAmount: sAmt,
-        paymentStatus: 'PAID',
-        paymentMethod: 'UPI',
-        status: 'COMPLETED',
-        createdAt: d,
-        updatedAt: d,
-      });
-      purchases.push({
-        id: `pur-w-${bizId}-${w}`,
-        invoiceNumber: `PUR-${bizId.toUpperCase()}-W0${w}`,
-        supplierId: 'sup-01',
-        businessId: bizId,
-        subtotal: Math.round(pAmt / 1.12),
-        taxTotal: pAmt - Math.round(pAmt / 1.12),
-        grandTotal: pAmt,
-        paidAmount: pAmt,
-        paymentStatus: 'PAID',
-        createdAt: d,
-        updatedAt: d,
-      });
-    }
-  });
-
-  return { sales, saleItems, payments, purchases, purchaseItems, expenses };
-})();
+// Empty fallback transactions: never inject fake sales/purchases/expenses into real business dashboards
+const seedTransactions = {
+  sales: [],
+  saleItems: [],
+  payments: [],
+  purchases: [],
+  purchaseItems: [],
+  expenses: [],
+};
 
 // In-Memory Storage for zero-latency fallback and offline demo mode
 export const memoryStore = {
@@ -274,40 +142,7 @@ export const memoryStore = {
   // No subscriptions in the fallback memory store — all users start on FREE by default.
   // Paid subscriptions are only created after verified payment via upgradeSubscription().
   subscription: [],
-  customer: [
-    {
-      id: 'cust-01',
-      businessId: 'busi-01',
-      name: 'Ramesh Hardware',
-      phone: '9876543210',
-      email: 'ramesh@example.com',
-      address: 'Shop 12, Market Rd',
-      gstin: '33AAAAA0000A1Z5',
-      state: 'Tamil Nadu',
-      creditLimit: 50000,
-      balance: 12500,
-      isActive: true,
-      totalOrders: 4,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    },
-    {
-      id: 'cust-02',
-      businessId: 'busi-01',
-      name: 'Priya Supermarket',
-      phone: '9876543211',
-      email: 'priya@example.com',
-      address: '45 Anna Nagar',
-      gstin: '33BBBBB1111B1Z6',
-      state: 'Tamil Nadu',
-      creditLimit: 100000,
-      balance: 45000,
-      isActive: true,
-      totalOrders: 12,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    },
-  ],
+  customer: [],
   category: [
     { id: 'cat-01', businessId: 'busi-01', name: 'Electronics', description: 'Electronic appliances and accessories', defaultGstRate: 18, isActive: true, createdAt: new Date() },
     { id: 'cat-02', businessId: 'busi-01', name: 'Groceries', description: 'Daily household groceries', defaultGstRate: 5, isActive: true, createdAt: new Date() },
@@ -1838,12 +1673,15 @@ export const resilientPrisma = new Proxy(prismaTarget, {
       return new Proxy(rawModel || {}, {
         get(mTarget, mProp) {
           return async (...args) => {
-            // If DB is known to be available, try Prisma first with a fast safety timeout
+            if (!isDbAvailable && rawModel) {
+              await checkDbConnection();
+            }
+            // If DB is known to be available, try Prisma first with a safety timeout
             if (isDbAvailable && rawModel && typeof rawModel[mProp] === 'function') {
               try {
                 const callPromise = rawModel[mProp](...args);
                 const timeoutPromise = new Promise((_, reject) =>
-                  setTimeout(() => reject(new Error('Prisma query timeout')), 3000)
+                  setTimeout(() => reject(new Error('Prisma query timeout')), 10000)
                 );
                 return await Promise.race([callPromise, timeoutPromise]);
               } catch (err) {
@@ -1870,4 +1708,5 @@ export const resilientPrisma = new Proxy(prismaTarget, {
   },
 });
 
+export { rawPrisma };
 export default resilientPrisma;

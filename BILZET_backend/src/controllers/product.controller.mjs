@@ -4,6 +4,7 @@ import { ApiError } from '../utils/ApiError.mjs';
 import prisma from '../config/prisma.mjs';
 import { getPaginationParams, buildPaginationMeta } from '../utils/pagination.mjs';
 import { generateBarcodeBuffer, generateBarcodeString } from '../utils/generateBarcode.mjs';
+import { recordCreationHistory } from '../services/audit.service.mjs';
 import realtimeService from '../services/realtime.service.mjs';
 
 const mapProduct = (p) => {
@@ -201,17 +202,6 @@ export const createProduct = asyncHandler(async (req, res) => {
     }
   }
 
-  const existingName = await prisma.product.findFirst({
-    where: {
-      name: { equals: name.trim(), mode: 'insensitive' },
-      brand: brand ? { equals: brand.trim(), mode: 'insensitive' } : null,
-      isActive: true,
-    },
-  });
-  if (existingName) {
-    throw ApiError.conflict(`Product with name '${name}' already exists in catalog`);
-  }
-
   const product = await prisma.product.create({
     data: {
       name,
@@ -231,6 +221,15 @@ export const createProduct = asyncHandler(async (req, res) => {
       businessId: activeBusinessId,
     },
     include: { category: true },
+  });
+
+  await recordCreationHistory({
+    userId: req.user?.id,
+    businessId: activeBusinessId,
+    action: 'PRODUCT_CREATED',
+    entity: 'PRODUCT',
+    entityId: product.id,
+    details: { name: product.name, sku: product.sku, stock: product.stock },
   });
 
   if (stock > 0) {

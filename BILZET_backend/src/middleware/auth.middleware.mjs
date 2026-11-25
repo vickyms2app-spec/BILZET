@@ -182,13 +182,16 @@ const attachTenantContext = async (user, requestedStoreId = null) => {
     role: effectiveRole,
   };
   } catch (err) {
-    console.warn('[Tenant] attachTenantContext resilient fallback:', err?.message);
+    if (err instanceof ApiError) {
+      throw err;
+    }
+    console.warn('[Tenant] attachTenantContext error (failing closed):', err?.message);
     return {
       ...user,
       _id: user?.id,
-      businessId: user?.businessId || requestedStoreId || 'busi-01',
-      isOwner: Boolean(user?.isOwner),
-      role: user?.role || 'STAFF',
+      businessId: null,
+      isOwner: false,
+      role: user?.role || 'NONE',
     };
   }
 };
@@ -250,14 +253,20 @@ export const authMiddleware = asyncHandler(async (req, res, next) => {
             userName = verifiedClerk.name || userName;
           }
         } catch (clerkVerifyErr) {
-          // If verifyToken fails (e.g. network/JWKS latency or offline testing), inspect decoded claims
-          if (decodedToken && (decodedToken.iss?.includes('clerk') || String(decodedToken.sub).startsWith('user_'))) {
+          // Only allow unverified claim inspection in isolated test runs
+          if (
+            env.NODE_ENV === 'test' &&
+            decodedToken &&
+            (decodedToken.iss?.includes('clerk') || String(decodedToken.sub).startsWith('user_'))
+          ) {
             if (decodedToken.exp && decodedToken.exp * 1000 < Date.now() - 300000) {
               throw ApiError.unauthorized('Session has expired. Please log in again.');
             }
             clerkUserId = decodedToken.sub;
             emailClaim = decodedToken.email || decodedToken.email_address || decodedToken.preferred_username || emailClaim;
             userName = decodedToken.name || userName;
+          } else {
+            throw ApiError.unauthorized('Authentication token could not be verified with Clerk');
           }
         }
       }

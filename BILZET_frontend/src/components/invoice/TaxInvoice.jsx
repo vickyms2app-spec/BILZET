@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import {
   Printer,
   Download,
+  MessageCircle,
   X,
   Building2,
   Phone,
@@ -118,7 +119,7 @@ export const DEFAULT_INVOICE_SETTINGS = {
 
   // Business Information
   shopName: "BILZET Retail Mart",
-  tagline: "Smart Billing for Smarter Businesses",
+  tagline: "",
   ownerName: "Store Manager",
   phone: "+91 98765 43210",
   email: "billing@bilzet.app",
@@ -215,6 +216,8 @@ export default function TaxInvoice({
 }) {
   const printRef = useRef(null);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [sharingWhatsApp, setSharingWhatsApp] = useState(false);
+  const [whatsappFeedback, setWhatsappFeedback] = useState(null);
   const [logoLoadFailed, setLogoLoadFailed] = useState(false);
   const [signatureLoadFailed, setSignatureLoadFailed] = useState(false);
 
@@ -286,16 +289,8 @@ export default function TaxInvoice({
       ? "TAX INVOICE"
       : rawTitle.trim() || (isQuotationDoc ? "QUOTATION" : "TAX INVOICE");
 
-  // Subscription Plan & Watermark Enforcements (Free tier bills always carry fixed BILZET watermark)
-  const tierUpper = String(
-    cleanShopSettings?.subscriptionTier ||
-    settings?.subscriptionTier ||
-    settings?.planTier ||
-    cleanShopSettings?.planTier ||
-    ""
-  ).toUpperCase();
-  const isPaidPlan = ["PRO", "PREMIUM", "ENTERPRISE"].includes(tierUpper);
-  const isWatermarkVisible = !isPaidPlan || (settings.showWatermark !== false && !settings.removeWatermark);
+  // Customer bills must not display subscription-tier promotional watermarks
+  const isWatermarkVisible = false;
 
   // Dynamic Store Information from currently selected store / settings
   const storeName =
@@ -304,12 +299,6 @@ export default function TaxInvoice({
     shopSettings?.storeName ||
     settings?.shopName ||
     "BILZET Retail Mart";
-
-  const storeTagline =
-    shopSettings?.tagline ||
-    shopSettings?.storeTagline ||
-    settings?.tagline ||
-    "Smart Billing for Smarter Businesses";
 
   const storeAddress =
     invoice?.business?.address ||
@@ -667,6 +656,96 @@ export default function TaxInvoice({
     }
   };
 
+  // Share Official Document via WhatsApp (Document Attachment Flow)
+  const handleShareWhatsApp = async () => {
+    if (!printRef.current || sharingWhatsApp || downloadingPdf) return;
+    setSharingWhatsApp(true);
+    setWhatsappFeedback(null);
+    try {
+      const element = printRef.current;
+      await preloadPrintableImages(element);
+
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: "#ffffff",
+        onclone: (clonedDoc, clonedElement) => {
+          sanitizeClonedDocumentForPdf(clonedDoc, clonedElement);
+        },
+      });
+
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+
+      const imgWidth = 210;
+      const pageHeight = 297;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight, undefined, "FAST");
+      heightLeft -= pageHeight;
+
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight, undefined, "FAST");
+        heightLeft -= pageHeight;
+      }
+
+      const safeDocNum = (invNumber || (isQuotationDoc ? "QUOTATION" : "TAX_INVOICE")).replace(/[^a-zA-Z0-9_-]/g, "_");
+      const docLabel = isQuotationDoc ? "Quotation" : "Invoice";
+      const fileName = `BILZET_${docLabel}_${safeDocNum}.pdf`;
+      const pdfBlob = pdf.output("blob");
+      const pdfFile = new File([pdfBlob], fileName, { type: "application/pdf" });
+
+      let rawPhone = (customerPhone || "").replace(/\D/g, "");
+      if (rawPhone.length === 10) rawPhone = "91" + rawPhone;
+
+      const shopName = shopDetails?.shopName || shopDetails?.businessName || settings?.shopName || "BILZET Retail";
+      const totalAmount = Number(invoice?.grandTotal || invoice?.total || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const captionText = `Dear ${customerName || "Valued Customer"},\n\nThank you for your business at ${shopName}! Please find attached your official ${docLabel.toUpperCase()} #${invNumber} for Rs. ${totalAmount}.\n\nFor any queries, please reach out to us.`;
+
+      // 1. Mobile Web Share API: Attaches PDF directly into WhatsApp app
+      if (typeof navigator !== "undefined" && navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+        try {
+          await navigator.share({
+            title: `${docLabel} ${invNumber}`,
+            text: captionText,
+            files: [pdfFile],
+          });
+          setWhatsappFeedback("Document shared to WhatsApp!");
+          setTimeout(() => setWhatsappFeedback(null), 3000);
+          return;
+        } catch (shareErr) {
+          if (shareErr.name === "AbortError") return;
+          console.warn("Navigator share failed, using WhatsApp Web fallback:", shareErr);
+        }
+      }
+
+      // 2. Desktop WhatsApp Web Flow: Downloads PDF & opens WhatsApp Web chat
+      pdf.save(fileName);
+      const waUrl = rawPhone
+        ? `https://web.whatsapp.com/send?phone=${rawPhone}&text=${encodeURIComponent(captionText)}`
+        : `https://web.whatsapp.com/send?text=${encodeURIComponent(captionText)}`;
+
+      window.open(waUrl, "_blank");
+      setWhatsappFeedback(`PDF saved as "${fileName}". WhatsApp Web opened for ${customerName || "Customer"}! Click paperclip to attach.`);
+      setTimeout(() => setWhatsappFeedback(null), 5000);
+    } catch (err) {
+      console.error("WhatsApp share failed:", err);
+      setWhatsappFeedback("Failed to generate PDF for WhatsApp.");
+      setTimeout(() => setWhatsappFeedback(null), 4000);
+    } finally {
+      setSharingWhatsApp(false);
+    }
+  };
+
   return (
     <div
       className={`${
@@ -708,7 +787,7 @@ export default function TaxInvoice({
               <button
                 type="button"
                 onClick={handleDownloadPdf}
-                disabled={downloadingPdf}
+                disabled={downloadingPdf || sharingWhatsApp}
                 className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold bg-white hover:bg-[#F4F9FF] text-[#526B87] border border-[#E3EDF8] transition active:scale-95 cursor-pointer disabled:opacity-60 shadow-2xs"
                 title="Download official PDF file"
               >
@@ -725,6 +804,26 @@ export default function TaxInvoice({
                 )}
               </button>
 
+              <button
+                type="button"
+                onClick={handleShareWhatsApp}
+                disabled={sharingWhatsApp || downloadingPdf}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold bg-[#25D366] hover:bg-[#20BD5A] text-white shadow-2xs transition active:scale-95 cursor-pointer disabled:opacity-60"
+                title={customerPhone ? `Send official ${isQuotationDoc ? "Quotation" : "Invoice"} PDF to ${customerPhone} via WhatsApp` : "Share PDF via WhatsApp"}
+              >
+                {sharingWhatsApp ? (
+                  <>
+                    <Loader2 size={13} className="animate-spin text-white" />
+                    <span>Preparing...</span>
+                  </>
+                ) : (
+                  <>
+                    <MessageCircle size={13} className="fill-current" />
+                    <span>WhatsApp</span>
+                  </>
+                )}
+              </button>
+
               {isModal && onClose && (
                 <button
                   type="button"
@@ -736,6 +835,24 @@ export default function TaxInvoice({
                 </button>
               )}
             </div>
+          </div>
+        )}
+
+        {/* WhatsApp Real-time User Feedback Banner */}
+        {whatsappFeedback && (
+          <div className="bg-[#DFFFE6] text-[#0E2A16] px-5 py-2 text-xs font-semibold flex items-center justify-between border-b border-[#5BF07B]/40 print:hidden select-none animate-in fade-in">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 size={14} className="text-[#0E2A16] shrink-0" />
+              <span>{whatsappFeedback}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setWhatsappFeedback(null)}
+              className="p-1 rounded-md text-[#0E2A16] hover:bg-black/5 transition cursor-pointer"
+              title="Dismiss"
+            >
+              <X size={13} />
+            </button>
           </div>
         )}
 
@@ -758,62 +875,52 @@ export default function TaxInvoice({
             color: "#0F172A",
           }}
         >
-          {/* Thermal Layout Centered Logo */}
-          {settings.paperSize?.includes("Thermal") && shouldDisplayLogo && (
-            <div className="flex justify-center pb-2 border-b border-slate-200">
-              <img
-                src={resolvedLogoUrl}
-                alt={storeName}
-                crossOrigin="anonymous"
-                className="max-h-12 max-w-[140px] object-contain mx-auto"
-                onError={() => setLogoLoadFailed(true)}
-              />
-            </div>
-          )}
-          {/* ── 1. Store Information Header & Logo ── */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-3 border-b border-slate-200">
-            {/* Left: Store Logo & Information */}
-            <div className="flex items-start gap-4">
-              <div className="shrink-0 pt-0.5">
-                {shouldDisplayLogo ? (
-                  <img
-                    src={resolvedLogoUrl}
-                    alt={storeName}
-                    crossOrigin="anonymous"
-                    className="h-12 sm:h-14 max-w-[140px] sm:max-w-[180px] object-contain rounded"
-                    onError={() => setLogoLoadFailed(true)}
-                  />
-                ) : (
-                  <img
-                    src="/assets/bilzet-logo-dark.png"
-                    alt="BILZET"
-                    className="h-10 sm:h-12 w-auto object-contain"
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src = "/assets/bilzet-logo-main.png";
-                    }}
-                  />
-                )}
-              </div>
-
-              <div className="space-y-0.5 border-l border-slate-200 pl-4">
-                <h2 className="text-sm sm:text-base font-extrabold text-[#0F2747] tracking-tight uppercase leading-snug">
-                  {storeName}
-                </h2>
-                {storeTagline && (
-                  <p className="text-[10px] text-slate-500 italic font-medium leading-tight">
-                    {storeTagline}
-                  </p>
-                )}
+          {/* ── 1. Store Information Header (Left) & Logo (Right) ── */}
+          <div className="flex flex-row items-start sm:items-center justify-between gap-4 pb-3 border-b border-slate-200">
+            {/* Left: Store Information */}
+            <div className="min-w-0 flex-1 space-y-0.5">
+              <h2 className="text-sm sm:text-base font-extrabold text-[#0F2747] tracking-tight uppercase leading-snug">
+                {storeName}
+              </h2>
+              <p className="text-[11px] text-slate-600 leading-tight">
+                {storeAddress}
+              </p>
+              {cityStatePin && (
                 <p className="text-[11px] text-slate-600 leading-tight">
-                  {storeAddress}
+                  {cityStatePin}
                 </p>
-                {cityStatePin && (
-                  <p className="text-[11px] text-slate-600 leading-tight">
-                    {cityStatePin}
-                  </p>
-                )}
-              </div>
+              )}
+            </div>
+
+            {/* Right: Business / BILZET Logo */}
+            <div className="shrink-0 ml-auto flex items-center justify-end pt-0.5">
+              {shouldDisplayLogo ? (
+                <img
+                  src={resolvedLogoUrl}
+                  alt={storeName}
+                  crossOrigin="anonymous"
+                  className={`${
+                    settings.paperSize?.includes("Thermal")
+                      ? "max-h-10 max-w-[100px]"
+                      : "h-12 sm:h-14 max-w-[140px] sm:max-w-[180px]"
+                  } w-auto object-contain rounded`}
+                  onError={() => setLogoLoadFailed(true)}
+                />
+              ) : (
+                <img
+                  src="/assets/bilzet-logo-dark.png"
+                  alt="BILZET"
+                  className={`${
+                    settings.paperSize?.includes("Thermal")
+                      ? "h-8 max-w-[90px]"
+                      : "h-10 sm:h-12 max-w-[140px]"
+                  } w-auto object-contain`}
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = "/assets/bilzet-logo-main.png";
+                  }}
+                />
+              )}
             </div>
           </div>
 
@@ -1103,7 +1210,7 @@ export default function TaxInvoice({
                   {invoice?.notes ||
                     (isQuotationDoc
                       ? "Thank you for considering our proposal. Valid for 15 days from date of issue."
-                      : settings.notes || settings.thankYouMessage || "Thank you for choosing BILZET. Please visit us again.")}
+                      : settings.notes || settings.thankYouMessage || "Thank you for your business. Please visit us again.")}
                 </p>
                 {(invoice?.terms || settings.terms) && (
                   <div className="pt-1.5 border-t border-slate-200 mt-1.5">
@@ -1280,17 +1387,11 @@ export default function TaxInvoice({
             </div>
           </div>
 
-          {/* ── 7. Clean Footer with BILZET Branding & Tagline ── */}
+          {/* ── 7. Clean Footer with Authorized Signature ── */}
           <div className="pt-4 border-t border-slate-200 flex flex-col sm:flex-row items-end justify-between gap-4 text-xs">
-            {/* Left: BILZET Logo & Tagline */}
-            <div className="flex items-center gap-2.5 pb-1 self-start sm:self-end">
-              <span className="font-black text-[#0F2747] tracking-wider uppercase text-sm">
-                BILZET
-              </span>
-              <span className="text-slate-300 font-light">|</span>
-              <span className="text-[11px] font-medium text-slate-500 italic">
-                Smart Billing for Smarter Businesses
-              </span>
+            {/* Left: Computer-generated invoice notice */}
+            <div className="pb-1 self-start sm:self-end text-[10px] text-slate-400">
+              This is a computer-generated document.
             </div>
 
             {/* Right: Store Tagline & Authorized Signature */}

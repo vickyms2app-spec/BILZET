@@ -1238,7 +1238,7 @@ export const clerkSync = async ({ clerkId, email, name, avatar, phone } = {}) =>
         }
       }
 
-      // If user has no businessId and is an owner or has no active memberships, provision their store
+      // If user has no businessId and is an owner or active member, re-link their store
       if (!user.businessId && user.role !== 'SUPER_ADMIN') {
         const owned = await prisma.business.findFirst({ where: { ownerId: user.id } }).catch(() => null);
         if (owned) {
@@ -1247,8 +1247,15 @@ export const clerkSync = async ({ clerkId, email, name, avatar, phone } = {}) =>
             data: { businessId: owned.id, isOwner: true, role: 'ADMIN' },
           });
         } else {
-          // Do not auto-provision stores or assume roles for unassigned users
-          // Roles and stores must only be created when explicitly registered or assigned by business owner
+          const activeMember = await prisma.businessMember.findFirst({
+            where: { userId: user.id, status: 'ACTIVE' },
+          }).catch(() => null);
+          if (activeMember) {
+            user = await prisma.user.update({
+              where: { id: user.id },
+              data: { businessId: activeMember.businessId, role: activeMember.role || user.role },
+            });
+          }
         }
       }
     }

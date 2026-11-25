@@ -13,10 +13,50 @@ import {
 
 const unwrap = (r) => r.data.data;
 
-// Seamlessly falls back to mock demo data if backend server is not running
+export const EMPTY_DASHBOARD_DATA = {
+  rangeSales: 0,
+  rangeRevenue: 0,
+  rangeBills: 0,
+  rangePaidBills: 0,
+  rangeUnpaidBills: 0,
+  rangeExpenses: 0,
+  rangePurchases: 0,
+  rangePurchasesCount: 0,
+  rangeProfit: 0,
+  realizedPercentage: 0,
+  profitMarginPercentage: 0,
+  averageOrderValue: 0,
+  todaySales: 0,
+  todayRevenue: 0,
+  todayBills: 0,
+  todayProfit: 0,
+  todayExpenses: 0,
+  todayPurchases: 0,
+  todayPurchasesCount: 0,
+  monthSales: 0,
+  monthBills: 0,
+  yearSales: 0,
+  yearBills: 0,
+  totalSales: 0,
+  pendingPayments: 0,
+  totalProducts: 0,
+  lowStockProducts: 0,
+  inventoryValuation: 0,
+  totalCustomers: 0,
+  totalSuppliers: 0,
+  chartData: [],
+  trendData: { "7days": [], today: [], yesterday: [] },
+  paymentMethodSummary: [],
+  topSellingProducts: [],
+  recentSales: [],
+  lowStockProductsList: [],
+  gstSummary: null,
+};
+
+// Gracefully return empty state instead of fake demo numbers if backend is unreachable
 const withFallback = (promise, fallbackValue) =>
   promise.catch((err) => {
-    console.warn("Backend API offline — serving demo data fallback:", err?.message || err);
+    console.warn("Backend API unreachable:", err?.message || err);
     return fallbackValue;
   });
 
@@ -33,7 +73,7 @@ export const productsApi = {
   list: (p) =>
     withFallback(
       http.get("/products", { params: p }).then((r) => r.data),
-      { products: mockProducts, total: mockProducts.length }
+      { products: [], total: 0 }
     ),
   get: (id) => http.get(`/products/${id}`).then(unwrap),
   create: (p) => http.post("/products", p).then(unwrap),
@@ -60,7 +100,7 @@ export const customersApi = {
   list: (p) =>
     withFallback(
       http.get("/customers", { params: p }).then((r) => r.data),
-      { customers: mockCustomers, total: mockCustomers.length }
+      { customers: [], total: 0 }
     ),
   get: (id) => http.get(`/customers/${id}`).then(unwrap),
   create: (p) => http.post("/customers", p).then(unwrap),
@@ -105,19 +145,19 @@ export const quotationsApi = {
 };
 
 export const dashboardApi = {
-  get: (params) => withFallback(http.get("/dashboard", { params }).then(unwrap), mockDashboardData),
+  get: (params) => withFallback(http.get("/dashboard", { params }).then(unwrap), EMPTY_DASHBOARD_DATA),
 };
 
 export const inventoryApi = {
   list: (p) =>
     withFallback(
       http.get("/inventory", { params: p }).then((r) => r.data),
-      { data: { inventory: mockProducts }, total: mockProducts.length }
+      { data: { inventory: [] }, total: 0 }
     ),
   low: (p) =>
     withFallback(
       http.get("/inventory/low-stock", { params: p }).then((r) => r.data),
-      { data: { inventory: mockProducts.filter((i) => (i.stock || 0) <= (i.minimumStock || 5)) } }
+      { data: { inventory: [] } }
     ),
   history: (p) =>
     withFallback(

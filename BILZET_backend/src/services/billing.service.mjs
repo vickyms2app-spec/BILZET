@@ -426,12 +426,20 @@ export const createSale = async (saleData, user, context = {}) => {
     const cleanEmail = customerEmail && String(customerEmail).trim() ? String(customerEmail).trim() : null;
     const cleanGstin = customerGstin && String(customerGstin).trim() ? String(customerGstin).trim() : null;
 
+    const activeBusinessId = user?.businessId || saleData.businessId || null;
+
     if (customerId) {
-      customer = await tx.customer.findUnique({ where: { id: customerId } });
+      const foundCustomer = await tx.customer.findUnique({ where: { id: customerId } });
+      if (foundCustomer && (!foundCustomer.businessId || !activeBusinessId || foundCustomer.businessId === activeBusinessId)) {
+        customer = foundCustomer;
+      }
     }
 
     if (!customer && cleanPhone) {
-      customer = await tx.customer.findUnique({ where: { phone: cleanPhone } });
+      const foundByPhone = await tx.customer.findUnique({ where: { phone: cleanPhone } });
+      if (foundByPhone && (!foundByPhone.businessId || !activeBusinessId || foundByPhone.businessId === activeBusinessId)) {
+        customer = foundByPhone;
+      }
     }
 
     const isGenericWalkin =
@@ -474,7 +482,6 @@ export const createSale = async (saleData, user, context = {}) => {
 
     // Resolve business and determine intra-state vs inter-state
     let business = null;
-    const activeBusinessId = user?.businessId || saleData.businessId || null;
     if (activeBusinessId) {
       business = await tx.business.findUnique({ where: { id: activeBusinessId } });
     }
@@ -493,6 +500,20 @@ export const createSale = async (saleData, user, context = {}) => {
     );
 
     // 2. Validate Items, Calculate Line-by-Line GST & Stock Deductions (Req 1, 2, 3, 4, 6, 8, 9)
+    // Batch-fetch all valid UUID products in a single query to avoid N+1 round-trips inside transaction
+    const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const requestedProductIds = [
+      ...new Set(
+        items
+          .map((i) => i.productId)
+          .filter((id) => typeof id === 'string' && UUID_PATTERN.test(id))
+      ),
+    ];
+    const prefetchedProducts = requestedProductIds.length > 0
+      ? await tx.product.findMany({ where: { id: { in: requestedProductIds } } })
+      : [];
+    const productById = new Map(prefetchedProducts.map((p) => [p.id, p]));
+
     let subtotal = 0;
     let taxTotal = 0;
     const calculatedItems = [];
@@ -518,28 +539,13 @@ export const createSale = async (saleData, user, context = {}) => {
         throw ApiError.badRequest('GST rate must be between 0 and 100');
       }
 
-      // Attempt product lookup — treat non-UUID / missing IDs as ad-hoc items (no FK)
-      // If Prisma throws P2023 (invalid UUID format) we catch it and set resolvedProductId = null
-      let resolvedProductId = null;
+      // Resolve product from batch map — treat non-UUID IDs as ad-hoc items (no FK)
+      let product = null;
       if (item.productId) {
-        try {
-          const productCheck = await tx.product.findUnique({ where: { id: item.productId } });
-          if (productCheck) {
-            resolvedProductId = item.productId;
-          } else {
-            // productId provided but not found in catalog — reject if it looks like a real UUID
-            const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-            if (UUID_PATTERN.test(item.productId)) {
-              throw ApiError.badRequest(`Product with ID '${item.productId}' does not exist.`);
-            }
-            // Otherwise it's a client temp ID — treat as ad-hoc item, resolvedProductId stays null
-          }
-        } catch (e) {
-          if (e.code === 'P2023' || e.message?.includes('Invalid') || e.message?.includes('UUID')) {
-            // Prisma error: invalid UUID format — treat as ad-hoc item
-            resolvedProductId = null;
-          } else {
-            throw e; // re-throw real errors
+        if (typeof item.productId === 'string' && UUID_PATTERN.test(item.productId)) {
+          product = productById.get(item.productId) || null;
+          if (!product) {
+            throw ApiError.badRequest(`Product with ID '${item.productId}' does not exist.`);
           }
         }
       }
@@ -573,15 +579,10 @@ export const createSale = async (saleData, user, context = {}) => {
       const itemSgst = isInterState ? 0 : Number((lineTax / 2).toFixed(2));
       const itemIgst = isInterState ? lineTax : 0;
 
-      // Look up product first to resolve correct product name, HSN, and validate stock
-      let product = null;
-      if (resolvedProductId) {
-        product = await tx.product.findUnique({ where: { id: resolvedProductId } });
-        if (product && product.stock < qty) {
-          throw ApiError.badRequest(
-            `Insufficient stock for '${product.name}'. Available: ${product.stock}, Requested: ${qty}`
-          );
-        }
+      if (product && product.stock < qty) {
+        throw ApiError.badRequest(
+          `Insufficient stock for '${product.name}'. Available: ${product.stock}, Requested: ${qty}`
+        );
       }
 
       const hsn = String(item.hsn || item.hsnCode || product?.hsnCode || product?.hsn || product?.sku || '1904').trim();
@@ -890,14 +891,9 @@ export const getSales = async (query = {}, user = null) => {
   const where = {};
   const andConditions = [];
 
-  if (user && user.role !== 'SUPER_ADMIN') {
+  if (user && user.role !== 'SUPER_ADMIN' && !user.isSuperAdmin) {
     if (user.businessId) {
-      andConditions.push({
-        OR: [
-          { businessId: user.businessId },
-          { businessId: null, createdById: user.id },
-        ],
-      });
+      andConditions.push({ businessId: user.businessId });
     } else if (user.id) {
       andConditions.push({ createdById: user.id });
     }
@@ -1061,9 +1057,9 @@ export const getSaleById = async (saleId, user = null) => {
   }
 
   // Anti-IDOR Multi-Tenant Verification
-  if (user && user.role !== 'SUPER_ADMIN') {
+  if (user && user.role !== 'SUPER_ADMIN' && !user.isSuperAdmin) {
     const saleBusinessId = sale.businessId || sale.createdBy?.businessId;
-    if (saleBusinessId && user.businessId && saleBusinessId !== user.businessId) {
+    if (!saleBusinessId || !user.businessId || saleBusinessId !== user.businessId) {
       throw ApiError.forbidden('Access denied: Invoice belongs to another organization');
     }
   }
@@ -1122,9 +1118,9 @@ export const recordPayment = async (saleId, paymentData = {}, user = null) => {
 
   if (!sale) throw ApiError.notFound('Sale not found');
 
-  if (user && user.role !== 'SUPER_ADMIN') {
+  if (user && user.role !== 'SUPER_ADMIN' && !user.isSuperAdmin) {
     const saleBusinessId = sale.businessId || sale.createdBy?.businessId;
-    if (saleBusinessId && user.businessId && saleBusinessId !== user.businessId) {
+    if (!saleBusinessId || !user.businessId || saleBusinessId !== user.businessId) {
       throw ApiError.forbidden('Access denied: Invoice belongs to another organization');
     }
   }
@@ -1297,9 +1293,9 @@ export const returnSale = async (saleId, returnData = {}, user = null) => {
   if (!sale) throw ApiError.notFound('Sale not found');
 
   // Anti-IDOR Multi-Tenant Verification
-  if (user && user.role !== 'SUPER_ADMIN') {
+  if (user && user.role !== 'SUPER_ADMIN' && !user.isSuperAdmin) {
     const saleBusinessId = sale.businessId || sale.createdBy?.businessId;
-    if (saleBusinessId && user.businessId && saleBusinessId !== user.businessId) {
+    if (!saleBusinessId || !user.businessId || saleBusinessId !== user.businessId) {
       throw ApiError.forbidden('Access denied: Invoice belongs to another organization');
     }
   }
@@ -1677,10 +1673,18 @@ export const voidSale = async (saleId, reason = 'Voided by authorized manager', 
     include: {
       items: true,
       returns: { include: { items: true } },
+      createdBy: { select: { id: true, businessId: true } },
     },
   });
 
   if (!sale) throw ApiError.notFound('Sale not found');
+
+  if (user && user.role !== 'SUPER_ADMIN' && !user.isSuperAdmin) {
+    const saleBusinessId = sale.businessId || sale.createdBy?.businessId;
+    if (!saleBusinessId || !user.businessId || saleBusinessId !== user.businessId) {
+      throw ApiError.forbidden('Access denied: Invoice belongs to another organization');
+    }
+  }
 
   if (sale.status === 'CANCELLED') {
     throw ApiError.conflict('Invoice is already cancelled/voided');

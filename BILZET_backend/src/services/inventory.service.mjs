@@ -2,6 +2,7 @@ import prisma from '../config/prisma.mjs';
 import { ApiError } from '../utils/ApiError.mjs';
 import { getPaginationParams, buildPaginationMeta } from '../utils/pagination.mjs';
 import realtimeService from './realtime.service.mjs';
+import { recordCreationHistory } from './audit.service.mjs';
 
 const mapProduct = (p) => {
   if (!p) return null;
@@ -214,6 +215,18 @@ export const adjustStock = async (adjustmentData, user, context = {}) => {
           reason: `${reason || (isRemoval ? 'Stock Deduction' : 'Stock Addition')}${warehouseId ? ` [Warehouse: ${warehouseId}]` : ''}${user?.name ? ` by ${user.name}` : ''}`,
         },
       });
+
+      if (!isRemoval && delta > 0) {
+        await recordCreationHistory({
+          prismaClient: tx,
+          userId: user?.id,
+          businessId: updated.businessId || user?.businessId,
+          action: 'INVENTORY_ADDED',
+          entity: 'INVENTORY',
+          entityId: stockTx.id,
+          details: { productId: updated.id, productName: updated.name, addedQuantity: delta, newStock },
+        });
+      }
 
       const result = {
         product: mapProduct(updated),

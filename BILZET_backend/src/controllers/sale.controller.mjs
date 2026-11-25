@@ -36,6 +36,32 @@ export const returnSale = asyncHandler(async (req, res) => {
 // ─── DELIVERY CHALLANS ───
 export const createDeliveryChallan = asyncHandler(async (req, res) => {
   const { customerId, warehouseId, deliveryAddress, transportDetails, vehicleNumber, deliveryDate } = req.body;
+  const isSuperAdmin = req.user?.role === 'SUPER_ADMIN' || Boolean(req.user?.isSuperAdmin);
+
+  if (!isSuperAdmin) {
+    if (!req.user?.businessId) {
+      throw ApiError.forbidden('Business context is required to create a delivery challan');
+    }
+    if (customerId) {
+      const customer = await prisma.customer.findUnique({
+        where: { id: customerId },
+        select: { id: true, businessId: true },
+      });
+      if (!customer || customer.businessId !== req.user.businessId) {
+        throw ApiError.forbidden('Access denied: Customer belongs to another organization');
+      }
+    }
+    if (warehouseId) {
+      const warehouse = await prisma.warehouse.findUnique({
+        where: { id: warehouseId },
+        select: { id: true, businessId: true },
+      });
+      if (!warehouse || warehouse.businessId !== req.user.businessId) {
+        throw ApiError.forbidden('Access denied: Warehouse belongs to another organization');
+      }
+    }
+  }
+
   const challanNumber = `CHAL-${Date.now().toString().slice(-6)}`;
 
   const challan = await prisma.deliveryChallan.create({
@@ -54,7 +80,37 @@ export const createDeliveryChallan = asyncHandler(async (req, res) => {
 });
 
 export const getDeliveryChallans = asyncHandler(async (req, res) => {
+  const isSuperAdmin = req.user?.role === 'SUPER_ADMIN' || Boolean(req.user?.isSuperAdmin);
+  let where = {};
+
+  if (!isSuperAdmin) {
+    if (!req.user?.businessId) {
+      throw ApiError.forbidden('Business context is required to view delivery challans');
+    }
+    const [customers, warehouses] = await Promise.all([
+      prisma.customer.findMany({
+        where: { businessId: req.user.businessId },
+        select: { id: true },
+      }),
+      prisma.warehouse.findMany({
+        where: { businessId: req.user.businessId },
+        select: { id: true },
+      }),
+    ]);
+    const customerIds = customers.map((c) => c.id);
+    const warehouseIds = warehouses.map((w) => w.id);
+    const orFilters = [];
+    if (customerIds.length > 0) orFilters.push({ customerId: { in: customerIds } });
+    if (warehouseIds.length > 0) orFilters.push({ warehouseId: { in: warehouseIds } });
+
+    if (orFilters.length === 0) {
+      return sendResponse(res, 200, { challans: [] }, 'Delivery challans fetched successfully');
+    }
+    where = { OR: orFilters };
+  }
+
   const challans = await prisma.deliveryChallan.findMany({
+    where,
     orderBy: { createdAt: 'desc' },
   });
   return sendResponse(res, 200, { challans }, 'Delivery challans fetched successfully');
@@ -62,7 +118,18 @@ export const getDeliveryChallans = asyncHandler(async (req, res) => {
 
 // ─── SALES RETURNS ───
 export const getSalesReturns = asyncHandler(async (req, res) => {
+  const isSuperAdmin = req.user?.role === 'SUPER_ADMIN' || Boolean(req.user?.isSuperAdmin);
+  const where = {};
+
+  if (!isSuperAdmin) {
+    if (!req.user?.businessId) {
+      throw ApiError.forbidden('Business context is required to view sales returns');
+    }
+    where.sale = { businessId: req.user.businessId };
+  }
+
   const returns = await prisma.salesReturn.findMany({
+    where,
     orderBy: { createdAt: 'desc' },
     include: {
       sale: {

@@ -1,11 +1,20 @@
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendResponse } from '../utils/apiResponse.mjs';
+import { ApiError } from '../utils/ApiError.mjs';
 import { getPaginationParams, buildPaginationMeta } from '../utils/pagination.mjs';
 import prisma from '../config/prisma.mjs';
 
 export const getAuditLogs = asyncHandler(async (req, res) => {
   const { page, limit, skip } = getPaginationParams(req.query);
   const where = {};
+  const isSuperAdmin = req.user?.role === 'SUPER_ADMIN' || Boolean(req.user?.isSuperAdmin);
+
+  if (!isSuperAdmin) {
+    if (!req.user?.businessId) {
+      throw ApiError.forbidden('Business context is required to view audit history');
+    }
+    where.user = { businessId: req.user.businessId };
+  }
 
   if (req.query.action) where.action = { contains: req.query.action, mode: 'insensitive' };
   if (req.query.entity) where.entity = { contains: req.query.entity, mode: 'insensitive' };

@@ -3,6 +3,7 @@ import { ApiError } from '../utils/ApiError.mjs';
 import { getPaginationParams, buildPaginationMeta } from '../utils/pagination.mjs';
 import realtimeService from './realtime.service.mjs';
 import billingService from './billing.service.mjs';
+import { recordCreationHistory } from './audit.service.mjs';
 
 /**
  * Builds date range filtering for quotations.
@@ -96,6 +97,31 @@ export const generateQuotationNumber = async (businessId) => {
   return candidate;
 };
 
+const isSuperAdminUser = (user) =>
+  Boolean(user && (user.role === 'SUPER_ADMIN' || user.isSuperAdmin));
+
+const resolveAuthorizedBusinessId = (user, requestedBusinessId = null) => {
+  if (isSuperAdminUser(user)) {
+    return requestedBusinessId || user?.businessId || null;
+  }
+  if (!user?.businessId) {
+    throw ApiError.forbidden('Business context is required');
+  }
+  return user.businessId;
+};
+
+const assertQuotationOwnership = (quotation, user) => {
+  if (!quotation) {
+    throw ApiError.notFound('Quotation not found');
+  }
+  if (isSuperAdminUser(user)) {
+    return;
+  }
+  if (!quotation.businessId || !user?.businessId || quotation.businessId !== user.businessId) {
+    throw ApiError.forbidden('Access denied: Quotation belongs to another organization');
+  }
+};
+
 export class QuotationService {
   /**
    * Generates next unique collision-free quotation number
@@ -109,7 +135,7 @@ export class QuotationService {
    */
   async getQuotations(query = {}, user) {
     const { page, limit, skip } = getPaginationParams(query);
-    const businessId = query.businessId || user?.businessId || 'busi-01';
+    const businessId = resolveAuthorizedBusinessId(user, query.businessId);
 
     const where = {};
     if (businessId) {
@@ -170,9 +196,7 @@ export class QuotationService {
       },
     });
 
-    if (!quotation) {
-      throw ApiError.notFound('Quotation not found');
-    }
+    assertQuotationOwnership(quotation, user);
 
     return mapQuotation(quotation);
   }
@@ -181,7 +205,7 @@ export class QuotationService {
    * Create a new quotation (DOES NOT touch or deduct stock)
    */
   async createQuotation(data, user) {
-    const businessId = data.businessId || user?.businessId || 'busi-01';
+    const businessId = resolveAuthorizedBusinessId(user, data.businessId);
     const quotationNumber = data.quotationNumber || (await generateQuotationNumber(businessId));
 
     // Resolve customer info
@@ -194,6 +218,9 @@ export class QuotationService {
     if (customerId) {
       const customer = await prisma.customer.findUnique({ where: { id: customerId } });
       if (customer) {
+        if (businessId && customer.businessId && customer.businessId !== businessId) {
+          throw ApiError.forbidden('Access denied: Customer belongs to another organization');
+        }
         customerName = customerName || customer.name;
         customerPhone = customerPhone || customer.phone || '';
         customerGstin = customerGstin || customer.gstin || null;
@@ -291,6 +318,15 @@ export class QuotationService {
       },
     });
 
+    await recordCreationHistory({
+      userId: user?.id,
+      businessId,
+      action: 'QUOTATION_CREATED',
+      entity: 'QUOTATION',
+      entityId: newQuotation.id,
+      details: { quotationNumber: newQuotation.quotationNumber, grandTotal: Number(newQuotation.grandTotal || 0) },
+    });
+
     try {
       realtimeService.broadcastBusinessEvent(businessId, 'QUOTATION_CREATED', {
         quotation: mapQuotation(newQuotation),
@@ -309,9 +345,7 @@ export class QuotationService {
       include: { items: true },
     });
 
-    if (!existing) {
-      throw ApiError.notFound('Quotation not found');
-    }
+    assertQuotationOwnership(existing, user);
 
     if (existing.convertedToInvoiceId) {
       throw ApiError.badRequest('Cannot edit quotation that has already been converted to an invoice');
@@ -401,6 +435,9 @@ export class QuotationService {
    * Update quotation status (DRAFT, SENT, ACCEPTED, REJECTED, EXPIRED)
    */
   async updateQuotationStatus(id, status, user) {
+    const existing = await prisma.quotation.findUnique({ where: { id } });
+    assertQuotationOwnership(existing, user);
+
     const validStatuses = ['DRAFT', 'SENT', 'ACCEPTED', 'REJECTED', 'EXPIRED'];
     const norm = String(status || '').toUpperCase();
     if (!validStatuses.includes(norm)) {
@@ -437,9 +474,7 @@ export class QuotationService {
       include: { customer: true, items: true },
     });
 
-    if (!quotation) {
-      throw ApiError.notFound('Quotation not found');
-    }
+    assertQuotationOwnership(quotation, user);
 
     if (quotation.convertedToInvoiceId) {
       // Find and return existing converted sale
@@ -479,7 +514,7 @@ export class QuotationService {
       customerId: quotation.customerId || payload.customerId || null,
       customerName: quotation.customerName || quotation.customer?.name || payload.customerName || 'Walk-in Customer',
       customerPhone: quotation.customerPhone || quotation.customer?.phone || payload.customerPhone || '',
-      businessId: quotation.businessId || user?.businessId || 'busi-01',
+      businessId: quotation.businessId || user?.businessId,
       items: saleItems,
       paymentMethod: payload.paymentMethod || 'CASH',
       paidAmount: payload.paidAmount !== undefined ? Number(payload.paidAmount) : 0,
@@ -527,9 +562,7 @@ export class QuotationService {
    */
   async deleteQuotation(id, user) {
     const quotation = await prisma.quotation.findUnique({ where: { id } });
-    if (!quotation) {
-      throw ApiError.notFound('Quotation not found');
-    }
+    assertQuotationOwnership(quotation, user);
 
     if (quotation.convertedToInvoiceId) {
       throw ApiError.badRequest('Cannot delete quotation linked to a finalized invoice');

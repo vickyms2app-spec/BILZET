@@ -139,8 +139,14 @@ export default function RegisterShop() {
   useEffect(() => {
     if (isStaffOrCA) {
       navigate("/onboarding", { replace: true });
+      return;
     }
-  }, [isStaffOrCA, navigate]);
+    const params = new URLSearchParams(window.location.search);
+    const allowNewStore = params.get("newStore") === "true";
+    if (user?.businessId && !allowNewStore && !registrationSuccess) {
+      navigate(getWorkspaceRedirectPath(user), { replace: true });
+    }
+  }, [isStaffOrCA, user, registrationSuccess, navigate]);
 
   // Capture CA / Merchant referral code from URL query parameters
   useEffect(() => {

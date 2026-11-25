@@ -1,4 +1,5 @@
 import prisma from '../config/prisma.mjs';
+import { recordCreationHistory } from '../services/audit.service.mjs';
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env.mjs';
 import { sendResponse } from '../utils/apiResponse.mjs';
@@ -200,6 +201,15 @@ export const createStore = asyncHandler(async (req, res) => {
     where: { id: req.user.id },
     data: { businessId: newStore.id, isOwner: true, role: 'ADMIN' },
   }).catch(() => {});
+
+  await recordCreationHistory({
+    userId: req.user.id,
+    businessId: newStore.id,
+    action: 'BUSINESS_CREATED',
+    entity: 'BUSINESS',
+    entityId: newStore.id,
+    details: { name: newStore.name },
+  });
 
   // Generate fresh token with updated businessId
   const tokenPayload = {
@@ -423,6 +433,15 @@ export const registerShop = asyncHandler(async (req, res) => {
       acceptedAt: new Date(),
     },
   }).catch(() => {});
+
+  await recordCreationHistory({
+    userId,
+    businessId: newBusiness.id,
+    action: 'BUSINESS_CREATED',
+    entity: 'BUSINESS',
+    entityId: newBusiness.id,
+    details: { name: newBusiness.name },
+  });
 
   // 6. Update or initialize ShopSettings
   try {

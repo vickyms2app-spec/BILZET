@@ -129,13 +129,6 @@ export default function Plans() {
 
   const [loadingStatus, setLoadingStatus] = useState(true);
 
-  // Dealer Special Offers State (Task 3)
-  const [dealerOffers, setDealerOffers] = useState([]);
-  const [loadingOffers, setLoadingOffers] = useState(false);
-  const [promoCodeInput, setPromoCodeInput] = useState("");
-  const [appliedOffer, setAppliedOffer] = useState(null);
-  const [promoValidating, setPromoValidating] = useState(false);
-  const [promoMessage, setPromoMessage] = useState({ type: "", text: "" });
   const [billingCycle, setBillingCycle] = useState("ANNUAL"); // 'ANNUAL' | 'MONTHLY'
 
   const [checkoutModal, setCheckoutModal] = useState({
@@ -249,71 +242,6 @@ export default function Plans() {
     };
   }, [updateSubscription]);
 
-  // Fetch active dealer promotional offers whenever billingCycle changes
-  useEffect(() => {
-    let mounted = true;
-    subscriptionApi
-      .getDealerOffers({ billingCycle })
-      .then((res) => {
-        if (mounted && res && res.offers) {
-          setDealerOffers(res.offers);
-        }
-      })
-      .catch((err) => {
-        console.warn("Notice: could not load dealer offers:", err);
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, [billingCycle]);
-
-  // Handler to validate dealer promo code with backend API
-  const handleApplyPromoCode = async (codeToValidate, targetPlanTier) => {
-    const code = (codeToValidate || promoCodeInput).trim().toUpperCase();
-    if (!code) {
-      setPromoMessage({ type: "error", text: "Please enter a valid dealer promo code." });
-      return;
-    }
-    setPromoValidating(true);
-    setPromoMessage({ type: "", text: "" });
-    try {
-      const tier = targetPlanTier || checkoutModal.plan?.tier || "PRO";
-      const res = await subscriptionApi.validateDealerOffer({
-        code,
-        planTier: tier,
-        billingCycle,
-      });
-      if (res && res.valid) {
-        setAppliedOffer(res);
-        setPromoMessage({
-          type: "success",
-          text: `Dealer offer "${code}" applied! You save ₹${Number(res.discountAmount || 0).toLocaleString("en-IN")}.`,
-        });
-      } else {
-        setAppliedOffer(null);
-        setPromoMessage({
-          type: "error",
-          text: res?.message || "Invalid or expired dealer promo code.",
-        });
-      }
-    } catch (err) {
-      setAppliedOffer(null);
-      setPromoMessage({
-        type: "error",
-        text: err?.message || "Failed to validate dealer offer code.",
-      });
-    } finally {
-      setPromoValidating(false);
-    }
-  };
-
-  const handleRemovePromo = () => {
-    setAppliedOffer(null);
-    setPromoCodeInput("");
-    setPromoMessage({ type: "", text: "" });
-  };
-
   const saveSubData = (updated) => {
     setSubData(updated);
     const tierUpper = String(updated.currentPlan || "FREE").toUpperCase();
@@ -326,136 +254,6 @@ export default function Plans() {
         status: updated.status || "Active",
       })
     );
-  };
-
-  // Memoized dealer plans supporting Dealer Basic, Dealer Pro, and Dealer Premium with dynamic backend offers
-  const displayedDealerPlans = useMemo(() => {
-    const isMonthly = billingCycle === "MONTHLY";
-    const defaultPlans = [
-      {
-        planName: "Dealer Basic",
-        badge: "Entry-level plan",
-        code: "DEALERBASIC20",
-        discountType: "PERCENTAGE",
-        discountValue: 20,
-        applicablePlans: ["BASIC", "DEALER_BASIC", "FREE", "PRO"],
-        originalPrice: isMonthly ? 199 : 2388,
-        discountedPrice: isMonthly ? 159 : 1910,
-        savingsAmount: isMonthly ? 40 : 478,
-        discountPercentage: 20,
-        billingDuration: isMonthly ? "Monthly" : "Annual (365 Days)",
-        durationLabel: isMonthly ? "/month" : "/year",
-        features: [
-          "Billing & Invoicing",
-          "Product Catalog",
-          "Basic Inventory",
-          "Customer and Supplier Management",
-          "Basic Sales Reports",
-          "500 included bills/month",
-        ],
-        validUntil: "2026-12-31",
-      },
-      {
-        planName: "Dealer Pro",
-        badge: "Most Popular",
-        code: "DEALER30",
-        discountType: "PERCENTAGE",
-        discountValue: 30,
-        applicablePlans: ["PRO", "DEALER_PRO"],
-        originalPrice: isMonthly ? 349 : 4188,
-        discountedPrice: isMonthly ? 244 : 2932,
-        savingsAmount: isMonthly ? 105 : 1256,
-        discountPercentage: 30,
-        billingDuration: isMonthly ? "Monthly" : "Annual (365 Days)",
-        durationLabel: isMonthly ? "/month" : "/year",
-        features: [
-          "Everything in Basic",
-          "Advanced Stock Overview",
-          "Stock Movements",
-          "Purchase Management",
-          "Advanced Reports and Analytics",
-          "GST Reports",
-          "Expanded Multi-user Access",
-        ],
-        validUntil: "2026-12-31",
-      },
-      {
-        planName: "Dealer Premium",
-        badge: "Best Value",
-        code: "DEALERVIP40",
-        discountType: "PERCENTAGE",
-        discountValue: 40,
-        applicablePlans: ["PREMIUM", "DEALER_PREMIUM"],
-        originalPrice: isMonthly ? 499 : 5988,
-        discountedPrice: isMonthly ? 299 : 3593,
-        savingsAmount: isMonthly ? 200 : 2395,
-        discountPercentage: 40,
-        billingDuration: isMonthly ? "Monthly" : "Annual (365 Days)",
-        durationLabel: isMonthly ? "/month" : "/year",
-        features: [
-          "Everything in Pro",
-          "Multi-Store Management",
-          "Advanced Staff Management",
-          "Role and Permission Management",
-          "CA Connect",
-          "Advanced GST Analytics",
-          "Centralized Inventory",
-          "Priority Support",
-        ],
-        validUntil: "2026-12-31",
-      },
-    ];
-
-    if (!dealerOffers || dealerOffers.length === 0) {
-      return defaultPlans;
-    }
-
-    return defaultPlans.map((dp) => {
-      const match = dealerOffers.find(
-        (o) =>
-          (o.code && o.code.toUpperCase() === dp.code.toUpperCase()) ||
-          (o.dealerPlan && o.dealerPlan.toUpperCase() === dp.planName.toUpperCase())
-      );
-      if (!match) return dp;
-
-      return {
-        ...dp,
-        planName: match.dealerPlan || dp.planName,
-        badge: match.badge || dp.badge,
-        code: match.code || dp.code,
-        discountPercentage: match.discountPercentage ?? match.discountValue ?? dp.discountPercentage,
-        originalPrice: match.originalPrice ?? dp.originalPrice,
-        discountedPrice: match.discountedPrice ?? dp.discountedPrice,
-        savingsAmount: match.savingsAmount ?? dp.savingsAmount,
-        billingDuration: match.billingDuration || dp.billingDuration,
-        durationLabel: match.durationLabel || dp.durationLabel,
-        features: (match.dealerBenefits && match.dealerBenefits.length > 0) ? match.dealerBenefits : dp.features,
-        validUntil: match.validUntil || dp.validUntil,
-      };
-    });
-  }, [dealerOffers, billingCycle]);
-
-  const handleSubscribeDealerPlan = (plan) => {
-    setPromoCodeInput(plan.code);
-    const targetTier =
-      plan.planName.toUpperCase().includes("PREMIUM")
-        ? "PREMIUM"
-        : "PRO";
-
-    const matchedPlan = plans.find((p) => p.tier === targetTier) || plans[1];
-
-    handleApplyPromoCode(plan.code, targetTier);
-    setCheckoutModal({
-      open: true,
-      plan: {
-        ...matchedPlan,
-        name: plan.planName,
-        tier: targetTier,
-        amount: plan.discountedPrice || matchedPlan.amount,
-        price: `₹${Number(plan.discountedPrice || matchedPlan.amount).toLocaleString("en-IN")}`,
-      },
-      extraBills: false,
-    });
   };
 
   const plans = [
@@ -690,12 +488,11 @@ export default function Plans() {
         : (checkoutModal.plan.tier || checkoutModal.plan.name).toUpperCase();
       const targetPlanName = checkoutModal.plan.name;
 
-      // 1. Create order on backend with dealer offer discount
+      // 1. Create order on backend
       const effectiveCycle = billingCycle || "ANNUAL";
       const orderData = await subscriptionApi.createRazorpayOrder({
         planTier: targetPlanTier,
         billingCycle: effectiveCycle,
-        dealerOfferCode: appliedOffer?.code || undefined,
       });
 
       if (!orderData || !orderData.orderId) {
@@ -841,16 +638,15 @@ export default function Plans() {
       let upgradeResult = null;
       if (!checkoutModal.extraBills) {
         try {
-          // Authoritatively verify and persist upgrade to backend DB with dealer discount
+          // Authoritatively verify and persist upgrade to backend DB
           const effectiveCycle = billingCycle || "ANNUAL";
-          const payableTotal = appliedOffer ? (appliedOffer.totalWithGst || appliedOffer.discountedPrice) : checkoutModal.plan.amount;
+          const payableTotal = checkoutModal.plan.amount;
           upgradeResult = await subscriptionApi.verifyPayment({
             planTier: targetPlanTier,
             amount: payableTotal,
             billingCycle: effectiveCycle,
             paymentReference: paymentRef,
             paymentMethod: "UPI",
-            dealerOfferCode: appliedOffer?.code || undefined,
           });
         } catch (apiErr) {
           console.warn("[Plans] verifyPayment backend notice:", apiErr);
@@ -1072,203 +868,7 @@ export default function Plans() {
       </div>
 
       {/* ══════════════════════════════════════════════════
-          2. DEALER PARTNER & SPECIAL OFFERS SECTION (TASK 3)
-      ══════════════════════════════════════════════════ */}
-      <div className="bg-[#F6F6F8] rounded-[28px] border border-[#E7E8EC] p-6 sm:p-7 shadow-fintech space-y-5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#12151C] text-[#5BF07B] uppercase tracking-wider">
-                Dealer &amp; Partner Program
-              </span>
-              <span className="text-xs font-semibold text-[#7C7F8A]">
-                Exclusive Volume &amp; Franchise Discounts
-              </span>
-            </div>
-            <h3 className="text-xl font-bold text-[#111318] mt-1 tracking-tight font-heading">
-              Dealer Special Offers &amp; Partner Pricing
-            </h3>
-            <p className="text-xs text-[#7C7F8A] mt-0.5">
-              Verified dealers, distributors, and franchise partners receive exclusive discounted pricing on Pro and Premium tiers.
-            </p>
-          </div>
-
-          {/* Professional Billing Cycle Switcher */}
-          <div className="inline-flex rounded-full p-1 bg-[#EDEDEF] border border-[#D8D9DE] self-start sm:self-auto shadow-xs text-xs font-semibold">
-            <button
-              type="button"
-              onClick={() => setBillingCycle("MONTHLY")}
-              className={`px-4 py-1.5 rounded-full transition-all cursor-pointer font-bold ${
-                billingCycle === "MONTHLY"
-                  ? "bg-[#12151C] text-white shadow-xs"
-                  : "text-[#7C7F8A] hover:text-[#111318]"
-              }`}
-            >
-              Monthly
-            </button>
-            <button
-              type="button"
-              onClick={() => setBillingCycle("ANNUAL")}
-              className={`px-4 py-1.5 rounded-full transition-all cursor-pointer font-bold flex items-center gap-1.5 ${
-                billingCycle === "ANNUAL"
-                  ? "bg-[#12151C] text-white shadow-xs"
-                  : "text-[#7C7F8A] hover:text-[#111318]"
-              }`}
-            >
-              <span>Yearly (Best Savings)</span>
-              <span className={`text-[10px] px-2 py-0.5 rounded-full font-black ${billingCycle === "ANNUAL" ? "bg-white/20 text-[#5BF07B]" : "bg-[#DFFFE6] text-[#0E2A16]"}`}>
-                SAVE UP TO 40%
-              </span>
-            </button>
-          </div>
-        </div>
-
-        {/* Dealer Plans Subscription Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 pt-2">
-          {displayedDealerPlans.map((plan) => {
-            const isApplied = appliedOffer?.code === plan.code;
-            const isProCard = plan.badge === "Most Popular";
-
-            return (
-              <div
-                key={plan.code || plan.planName}
-                className={`rounded-[28px] p-6 sm:p-7 border transition-all flex flex-col justify-between relative shadow-fintech ${
-                  isProCard
-                    ? "bg-[#12151C] text-white border-[#202530]"
-                    : "bg-[#FAFAFB] text-[#111318] border-[#E7E8EC]"
-                }`}
-              >
-                <div>
-                  {/* Top Bar: Plan Name & Badges */}
-                  <div className="flex items-start justify-between gap-2 mb-3">
-                    <div>
-                      <h4 className={`text-lg font-bold tracking-tight font-heading ${isProCard ? "text-white" : "text-[#111318]"}`}>
-                        {plan.planName}
-                      </h4>
-                      <span className={`font-mono text-[10px] px-2 py-0.5 rounded-full font-semibold inline-block mt-0.5 ${isProCard ? "bg-white/10 text-[#5BF07B] border border-white/15" : "bg-white text-[#111318] border border-[#E7E8EC]"}`}>
-                        Code: {plan.code}
-                      </span>
-                    </div>
-                    <div className="flex flex-col items-end gap-1">
-                      <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border shadow-2xs ${
-                        isProCard
-                          ? "bg-white/10 text-white border-white/20"
-                          : "bg-[#EDEDEF] text-[#111318] border-[#D8D9DE]"
-                      }`}>
-                        {plan.badge}
-                      </span>
-                      <span className="text-[10px] font-bold text-[#0E2A16] bg-[#5BF07B] px-2 py-0.5 rounded-full">
-                        {plan.discountPercentage}% OFF
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Pricing Details */}
-                  <div className={`mb-4 p-4 rounded-2xl border space-y-1.5 ${
-                    isProCard ? "bg-white/5 border-white/10" : "bg-white border-[#E7E8EC]"
-                  }`}>
-                    <div className="flex items-baseline gap-2">
-                      <span className={`text-xs line-through font-mono ${isProCard ? "text-white/40" : "text-[#A9ABB5]"}`}>
-                        ₹{Number(plan.originalPrice).toLocaleString("en-IN")}
-                      </span>
-                      <span className={`text-2xl sm:text-3xl font-black tracking-tight font-heading ${isProCard ? "text-white" : "text-[#111318]"}`}>
-                        ₹{Number(plan.discountedPrice).toLocaleString("en-IN")}
-                      </span>
-                      <span className={`text-xs font-semibold ${isProCard ? "text-white/60" : "text-[#7C7F8A]"}`}>
-                        {billingCycle === "MONTHLY" ? "/month" : "/year"}
-                      </span>
-                    </div>
-                    <div className={`flex items-center justify-between text-[11px] pt-1.5 border-t ${isProCard ? "border-white/10" : "border-[#E7E8EC]"}`}>
-                      <span className={`font-bold ${isProCard ? "text-[#5BF07B]" : "text-[#0E2A16]"}`}>
-                        Save ₹{Number(plan.savingsAmount).toLocaleString("en-IN")} {billingCycle === "MONTHLY" ? "/mo" : "/yr"}
-                      </span>
-                      <span className={`font-medium ${isProCard ? "text-white/60" : "text-[#7C7F8A]"}`}>
-                        Duration: {plan.billingDuration}
-                      </span>
-                    </div>
-                    <p className={`text-[10px] pt-0.5 ${isProCard ? "text-white/40" : "text-[#A9ABB5]"}`}>
-                      Promotional dealer price (excl. 18% GST)
-                    </p>
-                  </div>
-
-                  {/* Included Features */}
-                  <div className="space-y-2 mb-6">
-                    <p className={`text-[11px] font-bold uppercase tracking-wider ${isProCard ? "text-white/70" : "text-[#7C7F8A]"}`}>
-                      Included Features:
-                    </p>
-                    <ul className={`space-y-2 text-xs ${isProCard ? "text-white/90" : "text-[#111318]"}`}>
-                      {plan.features.map((feat, idx) => (
-                        <li key={idx} className="flex items-start gap-2">
-                          <CheckCircle2 size={14} className="text-[#5BF07B] shrink-0 mt-0.5" />
-                          <span className="leading-snug">{feat}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-
-                {/* Card Footer: Expiry & Subscribe Now Button */}
-                <div className={`pt-4 border-t space-y-2.5 ${isProCard ? "border-white/10" : "border-[#E7E8EC]"}`}>
-                  <div className={`flex items-center justify-between text-[11px] ${isProCard ? "text-white/50" : "text-[#7C7F8A]"}`}>
-                    <span className="flex items-center gap-1">
-                      <Clock size={12} className={isProCard ? "text-white/40" : "text-[#A9ABB5]"} />
-                      <span>
-                        Expires:{" "}
-                        {plan.validUntil
-                          ? new Date(plan.validUntil).toLocaleDateString("en-GB", {
-                              day: "numeric",
-                              month: "short",
-                              year: "numeric",
-                            })
-                          : "31 Dec 2026"}
-                      </span>
-                    </span>
-                    {isApplied && (
-                      <span className="text-[10px] font-bold text-[#5BF07B]">Applied ✓</span>
-                    )}
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => handleSubscribeDealerPlan(plan)}
-                    className={`w-full py-3 rounded-full text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-fintech ${
-                      isProCard
-                        ? "bg-[#5BF07B] hover:bg-[#4de66e] text-[#0E2A16]"
-                        : "bg-[#12151C] hover:bg-[#202530] text-white"
-                    }`}
-                  >
-                    <Zap size={14} />
-                    <span>Subscribe Now</span>
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Dealer Benefits Comparison */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-[#E7E8EC] text-xs">
-          <div className="bg-white rounded-2xl p-3.5 border border-[#E7E8EC] shadow-2xs">
-            <p className="font-bold text-[#111318] text-[11px]">Special Dealer Pricing</p>
-            <p className="text-[10px] text-[#7C7F8A] mt-0.5">Up to 40% margin on retail client activations</p>
-          </div>
-          <div className="bg-white rounded-2xl p-3.5 border border-[#E7E8EC] shadow-2xs">
-            <p className="font-bold text-[#111318] text-[11px]">Multi-Store Godowns</p>
-            <p className="text-[10px] text-[#7C7F8A] mt-0.5">Centralized inventory transfers between outlets</p>
-          </div>
-          <div className="bg-white rounded-2xl p-3.5 border border-[#E7E8EC] shadow-2xs">
-            <p className="font-bold text-[#111318] text-[11px]">Thermal &amp; POS SDK</p>
-            <p className="text-[10px] text-[#7C7F8A] mt-0.5">Thermal 80mm &amp; 58mm printer drivers included</p>
-          </div>
-          <div className="bg-white rounded-2xl p-3.5 border border-[#E7E8EC] shadow-2xs">
-            <p className="font-bold text-[#111318] text-[11px]">Dedicated CA Support</p>
-            <p className="text-[10px] text-[#7C7F8A] mt-0.5">Priority audit portal &amp; GST compliance</p>
-          </div>
-        </div>
-      </div>
-
-      {/* ══════════════════════════════════════════════════
-          3. THREE PRICING TIERS
+          2. THREE PRICING TIERS
       ══════════════════════════════════════════════════ */}
       <div className="space-y-4">
         <div className="text-center sm:text-left">
@@ -1626,113 +1226,10 @@ export default function Plans() {
                   </p>
                 </div>
                 <div className="text-right">
-                  {appliedOffer && !checkoutModal.extraBills ? (
-                    <div>
-                      <p className="text-xs line-through text-[#A9ABB5] font-mono">
-                        {checkoutModal.plan.price}
-                      </p>
-                      <p className="text-base font-black text-[#0E2A16] font-mono">
-                        ₹{Number(appliedOffer.discountedPrice).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                      </p>
-                    </div>
-                  ) : (
-                    <p className="text-base font-black text-[#111318] font-mono">{checkoutModal.plan.price}</p>
-                  )}
+                  <p className="text-base font-black text-[#111318] font-mono">{checkoutModal.plan.price}</p>
                   <span className="text-[10px] text-[#0E2A16] font-bold bg-[#DFFFE6] px-2 py-0.5 rounded-full inline-block mt-0.5">18% GST Included</span>
                 </div>
               </div>
-
-              {/* Dealer Promo Code Input & Verification (Task 3) */}
-              {!checkoutModal.extraBills && (
-                <div className="p-4 rounded-[20px] bg-[#FAFAFB] border border-[#E7E8EC] space-y-2.5 shadow-2xs">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-[#111318] text-[11px] flex items-center gap-1.5">
-                      <Sparkles size={13} className="text-[#5BF07B]" />
-                      <span>Have a Dealer Offer Code?</span>
-                    </span>
-                    {appliedOffer && (
-                      <span className="text-[10px] font-bold text-[#0E2A16] bg-[#DFFFE6] px-2.5 py-0.5 rounded-full border border-[#5BF07B]/40">
-                        Offer Active
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={promoCodeInput}
-                      onChange={(e) => setPromoCodeInput(e.target.value.toUpperCase())}
-                      placeholder="e.g. DEALER30, DEALER500"
-                      disabled={Boolean(appliedOffer)}
-                      className="flex-1 px-3.5 py-2 rounded-full border border-[#E7E8EC] bg-white text-[#111318] font-mono text-xs uppercase focus:outline-none focus:border-[#12151C] disabled:bg-[#EDEDEF]"
-                    />
-                    {appliedOffer ? (
-                      <button
-                        type="button"
-                        onClick={handleRemovePromo}
-                        className="px-4 py-2 rounded-full bg-[#EDEDEF] hover:bg-[#E3E3E5] text-[#111318] text-xs font-semibold cursor-pointer transition border border-[#E7E8EC]"
-                      >
-                        Remove
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => handleApplyPromoCode(promoCodeInput, checkoutModal.plan?.tier)}
-                        disabled={promoValidating || !promoCodeInput.trim()}
-                        className="px-4 py-2 rounded-full bg-[#12151C] hover:bg-[#202530] text-[#5BF07B] text-xs font-bold cursor-pointer transition disabled:opacity-50 shadow-xs"
-                      >
-                        {promoValidating ? "Checking..." : "Apply"}
-                      </button>
-                    )}
-                  </div>
-
-                  {promoMessage.text && (
-                    <p
-                      className={`text-[11px] font-medium ${
-                        promoMessage.type === "success" ? "text-[#0E2A16]" : "text-[#E5484D]"
-                      }`}
-                    >
-                      {promoMessage.text}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {/* Full Payment Breakdown at Checkout */}
-              {appliedOffer && !checkoutModal.extraBills && (
-                <div className="p-4 rounded-[20px] bg-[#DFFFE6]/40 border border-[#5BF07B]/40 space-y-2 shadow-2xs">
-                  <div className="flex items-center justify-between text-[#7C7F8A] text-[11px]">
-                    <span>Original Price:</span>
-                    <span className="line-through font-mono">
-                      ₹{Number(appliedOffer.originalPrice || checkoutModal.plan.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-[#0E2A16] font-semibold text-[11px]">
-                    <span>Dealer Discount ({appliedOffer.discountPercentage || appliedOffer.savingsPercentage}% · {appliedOffer.code}):</span>
-                    <span className="font-mono">
-                      - ₹{Number(appliedOffer.savingsAmount || appliedOffer.discountAmount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-[#111318] font-medium text-[11px] pt-1.5 border-t border-[#5BF07B]/30">
-                    <span>Net Price (after discount):</span>
-                    <span className="font-mono font-bold text-[#111318]">
-                      ₹{Number(appliedOffer.discountedPrice || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-[#7C7F8A] text-[11px]">
-                    <span>Applicable GST (18%):</span>
-                    <span className="font-mono text-[#0E2A16] font-semibold">
-                      + ₹{Number(appliedOffer.gstAmount || Math.round((appliedOffer.discountedPrice || 0) * 0.18)).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                    </span>
-                  </div>
-                  <div className="pt-2 border-t border-[#5BF07B]/40 flex items-center justify-between text-[#111318] font-bold text-xs">
-                    <span>Final Payable Total:</span>
-                    <span className="text-base text-[#0E2A16] font-mono font-black">
-                      ₹{Number(appliedOffer.totalWithGst || ((appliedOffer.discountedPrice || 0) + Math.round((appliedOffer.discountedPrice || 0) * 0.18))).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                    </span>
-                  </div>
-                </div>
-              )}
 
               <div className="p-3.5 rounded-[20px] border border-dashed border-[#C3C5CE] flex items-center gap-3 bg-[#FAFAFB]">
                 <QrCode size={36} className="text-[#111318] shrink-0" />
@@ -1777,8 +1274,6 @@ export default function Plans() {
                   <span>
                     {checkoutModal.extraBills
                       ? `Pay ${checkoutModal.plan.price}`
-                      : appliedOffer
-                      ? `Pay with Razorpay (₹${Number(appliedOffer.totalWithGst || ((appliedOffer.discountedPrice || 0) + Math.round((appliedOffer.discountedPrice || 0) * 0.18))).toLocaleString("en-IN")})`
                       : `Pay with Razorpay (${checkoutModal.plan.price})`}
                   </span>
                 </button>
@@ -1806,7 +1301,7 @@ export default function Plans() {
       ══════════════════════════════════════════════════ */}
       {upiModalOpen && checkoutModal.open && checkoutModal.plan && !checkoutModal.extraBills && (
         <UpiPaymentModal
-          amount={appliedOffer?.totalWithGst || appliedOffer?.pricing?.totalWithGst || checkoutModal.plan.amount}
+          amount={checkoutModal.plan.amount}
           invoiceNumber={`SUB-${checkoutModal.plan.tier || checkoutModal.plan.name.toUpperCase()}`}
           customerName={authUser?.name || "Customer"}
           upiId="bilzet@hdfcbank"

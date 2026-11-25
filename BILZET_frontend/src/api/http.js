@@ -4,7 +4,7 @@ const API =
   (import.meta.env.PROD ? "/api/v1" : "http://localhost:5000/api/v1");
 export const http = axios.create({
   baseURL: API,
-  timeout: 15000,
+  timeout: 25000,
   headers: { "Content-Type": "application/json" },
 });
 let accessToken = localStorage.getItem("bilzet_access_token") || localStorage.getItem("token");
@@ -57,10 +57,13 @@ export function registerTokenProvider(fn) {
 http.interceptors.request.use(async (config) => {
   let token = null;
 
-  // 1. Prioritize Clerk session token via registered provider
+  // 1. Prioritize Clerk session token via registered provider (bounded by 5s timeout)
   if (tokenProvider) {
     try {
-      token = await tokenProvider();
+      token = await Promise.race([
+        tokenProvider(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Clerk token provider timeout")), 5000)),
+      ]);
     } catch (_) {}
   }
 
@@ -164,9 +167,11 @@ http.interceptors.response.use(
 
       if (refreshToken) {
         try {
-          refreshing ??= axios.post(`${API}/auth/refresh`, {
-            refreshToken,
-          });
+          refreshing ??= axios.post(
+            `${API}/auth/refresh`,
+            { refreshToken },
+            { timeout: 8000 }
+          );
           const { data } = await refreshing;
           refreshing = null;
 
@@ -196,6 +201,9 @@ http.interceptors.response.use(
   },
 );
 export function apiError(e) {
+  if (e?.code === "ECONNABORTED" || e?.message?.toLowerCase().includes("timeout")) {
+    return "Request timed out while waiting for the server. Please check your connection and try again.";
+  }
   if (e?.response?.status === 500) {
     return (
       e?.response?.data?.message ||

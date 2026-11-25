@@ -2,7 +2,10 @@ import { asyncHandler } from '../utils/asyncHandler.mjs';
 import invoiceService from '../services/invoice.service.mjs';
 
 export const getInvoicePdf = asyncHandler(async (req, res) => {
-  const doc = await invoiceService.generateSaleInvoicePdf(req.params.saleId);
+  const doc = await invoiceService.generateSaleInvoicePdf(
+    req.params.saleId,
+    req.user
+  );
 
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader(

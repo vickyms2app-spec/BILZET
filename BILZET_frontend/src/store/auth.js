@@ -285,6 +285,9 @@ export const useAuth = create((set) => ({
 
   async logout() {
     try {
+      if (typeof window !== "undefined" && window.Clerk?.signOut) {
+        await window.Clerk.signOut().catch(() => {});
+      }
       await authApi.logout();
     } catch {
     } finally {

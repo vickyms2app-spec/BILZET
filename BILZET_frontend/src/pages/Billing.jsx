@@ -154,6 +154,7 @@ export default function Billing() {
   const [completedInvoice, setCompletedInvoice] = useState(null);
   const [shopSettings, setShopSettings] = useState(null);
   const [savingBill, setSavingBill] = useState(false);
+  const savingBillRef = useRef(false);
   const [notification, setNotification] = useState({ type: "", text: "" });
 
   // Held Bills state persisted in localStorage
@@ -1026,8 +1027,9 @@ export default function Billing() {
       return;
     }
 
-    if (savingBill) return;
+    if (savingBillRef.current || savingBill) return;
 
+    savingBillRef.current = true;
     setSavingBill(true);
     try {
       const activeStoreId = localStorage.getItem("bilzet_active_store_id") || undefined;
@@ -1098,6 +1100,7 @@ export default function Billing() {
     } catch (err) {
       notify("error", err?.response?.data?.message || err?.message || "Failed to save invoice");
     } finally {
+      savingBillRef.current = false;
       setSavingBill(false);
     }
   };
@@ -1117,7 +1120,8 @@ export default function Billing() {
       return;
     }
 
-    if (savingBill) return;
+    if (savingBillRef.current || savingBill) return;
+    savingBillRef.current = true;
     setSavingBill(true);
 
     try {
@@ -1182,6 +1186,7 @@ export default function Billing() {
     } catch (err) {
       notify("error", err?.response?.data?.message || err?.message || "Failed to save quotation");
     } finally {
+      savingBillRef.current = false;
       setSavingBill(false);
     }
   };

@@ -117,6 +117,10 @@ export function ClerkAuthSync() {
 export function ClerkGoogleButton({ mode = "login", onError, setBusy, busy, className = "" }) {
   const { signIn, isLoaded: isSignInLoaded } = useSignIn();
   const { signUp, isLoaded: isSignUpLoaded } = useSignUp();
+  const { isSignedIn, user: clerkUser } = useUser();
+  const { getToken } = useClerkAuth();
+  const syncClerkUser = useAuth((s) => s.syncClerkUser);
+  const navigate = useNavigate();
 
   const handleGoogleClick = async () => {
     if (!isSignInLoaded || !isSignUpLoaded) {
@@ -127,24 +131,43 @@ export function ClerkGoogleButton({ mode = "login", onError, setBusy, busy, clas
       if (setBusy) setBusy(true);
       if (onError) onError("");
 
+      // If Clerk already has an active session, sync and route directly instead of triggering session_exists error
+      if (isSignedIn && clerkUser) {
+        const token = await getToken();
+        const appUser = await syncClerkUser(clerkUser, token);
+        navigate(getWorkspaceRedirectPath(appUser), { replace: true });
+        return;
+      }
+
       const ssoCallbackUrl = `${window.location.origin}/sso-callback`;
+      const completeRedirectUrl = `${window.location.origin}/`;
 
       if (mode === "register") {
         await signUp.authenticateWithRedirect({
           strategy: "oauth_google",
           redirectUrl: ssoCallbackUrl,
-          redirectUrlComplete: `${window.location.origin}/dashboard`,
+          redirectUrlComplete: completeRedirectUrl,
         });
       } else {
         await signIn.authenticateWithRedirect({
           strategy: "oauth_google",
           redirectUrl: ssoCallbackUrl,
-          redirectUrlComplete: `${window.location.origin}/dashboard`,
+          redirectUrlComplete: completeRedirectUrl,
         });
       }
     } catch (err) {
       console.error("Clerk Google OAuth initiation failed:", err);
       if (setBusy) setBusy(false);
+
+      const errCode = err?.errors?.[0]?.code || "";
+      if (errCode === "session_exists" && clerkUser) {
+        try {
+          const token = await getToken();
+          const appUser = await syncClerkUser(clerkUser, token);
+          navigate(getWorkspaceRedirectPath(appUser), { replace: true });
+          return;
+        } catch (_) {}
+      }
 
       // Extract clear professional error messages without alert() or prompt()
       const isCancelled =
@@ -215,8 +238,19 @@ export function ClerkGoogleButton({ mode = "login", onError, setBusy, busy, clas
  */
 export function ClerkSsoCallback() {
   const [showRetry, setShowRetry] = useState(false);
+  const [callbackError, setCallbackError] = useState("");
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const errParam = params.get("error_description") || params.get("error");
+    if (errParam) {
+      setCallbackError(
+        errParam.toLowerCase().includes("access_denied")
+          ? "Google sign-in was cancelled."
+          : "Google authentication could not be completed. Please try again."
+      );
+      setShowRetry(true);
+    }
     const timer = setTimeout(() => setShowRetry(true), 10000);
     return () => clearTimeout(timer);
   }, []);
@@ -224,15 +258,23 @@ export function ClerkSsoCallback() {
   return (
     <div className="min-h-screen grid place-items-center bg-[#F7FBFF]">
       <div className="flex flex-col items-center gap-3 p-6 text-center max-w-sm">
-        <div
-          className="w-10 h-10 rounded-full animate-spin"
-          style={{ border: "3px solid #DCEBFA", borderTopColor: "#1A5CFF" }}
-        />
-        <p className="text-sm font-semibold text-[#1E293B]">Authenticating with Google…</p>
-        <p className="text-xs text-[#64748B]">Establishing secure Clerk ERP session</p>
+        {!callbackError && (
+          <div
+            className="w-10 h-10 rounded-full animate-spin"
+            style={{ border: "3px solid #DCEBFA", borderTopColor: "#1A5CFF" }}
+          />
+        )}
+        <p className="text-sm font-semibold text-[#1E293B]">
+          {callbackError || "Authenticating with Google…"}
+        </p>
+        {!callbackError && (
+          <p className="text-xs text-[#64748B]">Establishing secure Clerk ERP session</p>
+        )}
         {showRetry && (
           <div className="mt-4 flex flex-col items-center gap-2">
-            <p className="text-xs text-[#64748B]">Taking longer than usual?</p>
+            {!callbackError && (
+              <p className="text-xs text-[#64748B]">Taking longer than usual?</p>
+            )}
             <a
               href="/sign-in"
               className="text-xs font-semibold text-[#1A5CFF] hover:underline"
@@ -242,13 +284,15 @@ export function ClerkSsoCallback() {
           </div>
         )}
       </div>
-      <AuthenticateWithRedirectCallback
-        signInFallbackRedirectUrl="/dashboard"
-        signUpFallbackRedirectUrl="/dashboard"
-        continueSignUpUrl="/sign-up"
-        signInUrl="/sign-in"
-        signUpUrl="/sign-up"
-      />
+      {!callbackError && (
+        <AuthenticateWithRedirectCallback
+          signInFallbackRedirectUrl="/"
+          signUpFallbackRedirectUrl="/"
+          continueSignUpUrl="/sign-up"
+          signInUrl="/sign-in"
+          signUpUrl="/sign-up"
+        />
+      )}
     </div>
   );
 }

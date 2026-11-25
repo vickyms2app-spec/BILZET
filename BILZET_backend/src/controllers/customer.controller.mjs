@@ -4,6 +4,7 @@ import { ApiError } from '../utils/ApiError.mjs';
 import prisma from '../config/prisma.mjs';
 import { getPaginationParams, buildPaginationMeta } from '../utils/pagination.mjs';
 import realtimeService from '../services/realtime.service.mjs';
+import { recordCreationHistory } from '../services/audit.service.mjs';
 import { isValidStateForCountry } from '../utils/countryStateData.mjs';
 
 const mapCustomer = (c) => {
@@ -18,41 +19,7 @@ const mapCustomer = (c) => {
   };
 };
 
-let inMemoryCustomers = [
-  {
-    id: "cust-01",
-    businessId: "busi-01",
-    name: "Ramesh Hardware",
-    phone: "9876543210",
-    email: "ramesh@example.com",
-    address: "Shop 12, Market Rd",
-    country: "India",
-    gstin: "33AAAAA0000A1Z5",
-    state: "Tamil Nadu",
-    creditLimit: 50000,
-    balance: 12500,
-    isActive: true,
-    totalOrders: 4,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: "cust-02",
-    businessId: "busi-01",
-    name: "Priya Supermarket",
-    phone: "9876543211",
-    email: "priya@example.com",
-    address: "45 Anna Nagar",
-    gstin: "33BBBBB1111B1Z6",
-    state: "Tamil Nadu",
-    creditLimit: 100000,
-    balance: 45000,
-    isActive: true,
-    totalOrders: 12,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-];
+let inMemoryCustomers = [];
 
 export const getCustomers = asyncHandler(async (req, res) => {
   const { page, limit, skip } = getPaginationParams(req.query);
@@ -202,6 +169,7 @@ export const createCustomer = asyncHandler(async (req, res) => {
 
   const cleanPhone = phone && String(phone).trim() ? String(phone).trim() : null;
   const cleanEmail = email && String(email).trim() ? String(email).trim() : null;
+  const cleanGstin = gstin && String(gstin).trim() ? String(gstin).trim().toUpperCase() : null;
   const cleanCountry = country && String(country).trim() ? String(country).trim() : "India";
   const cleanState = state && String(state).trim() ? String(state).trim() : null;
 
@@ -217,18 +185,39 @@ export const createCustomer = asyncHandler(async (req, res) => {
       }
     }
 
+    if (cleanGstin && req.user?.businessId) {
+      const existingGstin = await prisma.customer.findFirst({
+        where: {
+          businessId: req.user.businessId,
+          gstin: { equals: cleanGstin, mode: 'insensitive' },
+        },
+      });
+      if (existingGstin) {
+        throw ApiError.conflict(`Customer with GSTIN '${cleanGstin}' already exists in your store`);
+      }
+    }
+
     const customer = await prisma.customer.create({
       data: {
         name: name.trim(),
         phone: cleanPhone,
         email: cleanEmail,
         address: address && String(address).trim() ? String(address).trim() : null,
-        gstin: gstin && String(gstin).trim() ? String(gstin).trim() : null,
+        gstin: cleanGstin,
         state: cleanState,
         creditLimit: Number(creditLimit || 0),
         balance: Number(balance || 0),
         businessId: req.user?.businessId || null,
       },
+    });
+
+    await recordCreationHistory({
+      userId: req.user?.id,
+      businessId: customer.businessId || req.user?.businessId,
+      action: 'CUSTOMER_CREATED',
+      entity: 'CUSTOMER',
+      entityId: customer.id,
+      details: { name: customer.name, phone: customer.phone },
     });
 
     try {

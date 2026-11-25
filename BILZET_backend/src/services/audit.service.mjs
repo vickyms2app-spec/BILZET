@@ -1,5 +1,57 @@
+import prisma from '../config/prisma.mjs';
 import { AuditLog } from '../models/AuditLog.mjs';
 import { getPaginationParams, buildPaginationMeta } from '../utils/pagination.mjs';
+
+/**
+ * Records a history entry ONLY when a user successfully creates or adds a record.
+ * Deduplicates by (action, entity, entityId) to prevent duplicate history on retries.
+ */
+export const recordCreationHistory = async ({
+  prismaClient = prisma,
+  userId = null,
+  businessId = null,
+  action,
+  entity,
+  entityId,
+  details = {},
+}) => {
+  if (!action || !entity || !entityId) {
+    return null;
+  }
+
+  try {
+    const existing = await prismaClient.auditLog.findFirst({
+      where: {
+        action,
+        entity,
+        entityId: String(entityId),
+      },
+      select: { id: true },
+    });
+
+    if (existing) {
+      return existing;
+    }
+
+    return await prismaClient.auditLog.create({
+      data: {
+        userId: userId || null,
+        action,
+        entity,
+        entityId: String(entityId),
+        changes: {
+          eventType: action,
+          businessId: businessId || null,
+          ...details,
+          recordedAt: new Date().toISOString(),
+        },
+      },
+    });
+  } catch (err) {
+    console.warn('[AuditService] recordCreationHistory notice:', err?.message);
+    return null;
+  }
+};
 
 export const getAuditLogs = async (query = {}) => {
   const { page, limit, skip, sort } = getPaginationParams(query);
@@ -35,5 +87,6 @@ export const getAuditLogs = async (query = {}) => {
 };
 
 export default {
-  getAuditLogs
+  getAuditLogs,
+  recordCreationHistory,
 };
