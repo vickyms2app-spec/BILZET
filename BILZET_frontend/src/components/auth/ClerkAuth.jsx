@@ -17,6 +17,14 @@ import {
   setTokens,
 } from "../../api/http";
 import { getWorkspaceRedirectPath } from "../../utils/workspaceRouter";
+import {
+  CLERK_SIGN_IN_URL,
+  CLERK_SIGN_UP_URL,
+  CLERK_SIGN_IN_FALLBACK_REDIRECT_URL,
+  CLERK_SIGN_UP_FALLBACK_REDIRECT_URL,
+  CLERK_SIGN_IN_FORCE_REDIRECT_URL,
+  CLERK_SIGN_UP_FORCE_REDIRECT_URL,
+} from "../../config/clerk";
 
 /**
  * ClerkAuthSync
@@ -360,7 +368,11 @@ export function ClerkGoogleButton({
         `${window.location.origin}/sso-callback`;
 
       const completeUrl =
-        `${window.location.origin}/dashboard`;
+        `${window.location.origin}${
+          mode === "register"
+            ? CLERK_SIGN_UP_FORCE_REDIRECT_URL
+            : CLERK_SIGN_IN_FORCE_REDIRECT_URL
+        }`;
 
       if (mode === "register") {
         await signUp.authenticateWithRedirect({
@@ -594,12 +606,12 @@ export function ClerkSsoCallback() {
 
       {!callbackError && (
         <AuthenticateWithRedirectCallback
-          signInFallbackRedirectUrl="/dashboard"
-          signUpFallbackRedirectUrl="/dashboard"
-          signInForceRedirectUrl="/dashboard"
-          signUpForceRedirectUrl="/dashboard"
-          signInUrl="/sign-in"
-          signUpUrl="/sign-up"
+          signInFallbackRedirectUrl={CLERK_SIGN_IN_FALLBACK_REDIRECT_URL}
+          signUpFallbackRedirectUrl={CLERK_SIGN_UP_FALLBACK_REDIRECT_URL}
+          signInForceRedirectUrl={CLERK_SIGN_IN_FORCE_REDIRECT_URL}
+          signUpForceRedirectUrl={CLERK_SIGN_UP_FORCE_REDIRECT_URL}
+          signInUrl={CLERK_SIGN_IN_URL}
+          signUpUrl={CLERK_SIGN_UP_URL}
         />
       )}
     </div>
@@ -617,11 +629,11 @@ export function ClerkAuthBox({ mode = "login" }) {
       {mode === "register" ? (
         <SignUp
           routing="path"
-          path="/sign-up"
-          signInUrl="/sign-in"
-          fallbackRedirectUrl="/dashboard"
-          signInForceRedirectUrl="/dashboard"
-          signUpForceRedirectUrl="/dashboard"
+          path={CLERK_SIGN_UP_URL}
+          signInUrl={CLERK_SIGN_IN_URL}
+          fallbackRedirectUrl={CLERK_SIGN_UP_FALLBACK_REDIRECT_URL}
+          signInForceRedirectUrl={CLERK_SIGN_IN_FORCE_REDIRECT_URL}
+          signUpForceRedirectUrl={CLERK_SIGN_UP_FORCE_REDIRECT_URL}
           appearance={{
             elements: {
               rootBox: "w-full flex justify-center",
@@ -634,11 +646,11 @@ export function ClerkAuthBox({ mode = "login" }) {
       ) : (
         <SignIn
           routing="path"
-          path="/sign-in"
-          signUpUrl="/sign-up"
-          fallbackRedirectUrl="/dashboard"
-          signInForceRedirectUrl="/dashboard"
-          signUpForceRedirectUrl="/dashboard"
+          path={CLERK_SIGN_IN_URL}
+          signUpUrl={CLERK_SIGN_UP_URL}
+          fallbackRedirectUrl={CLERK_SIGN_IN_FALLBACK_REDIRECT_URL}
+          signInForceRedirectUrl={CLERK_SIGN_IN_FORCE_REDIRECT_URL}
+          signUpForceRedirectUrl={CLERK_SIGN_UP_FORCE_REDIRECT_URL}
           appearance={{
             elements: {
               rootBox: "w-full flex justify-center",
@@ -659,7 +671,7 @@ export function ClerkAuthBox({ mode = "login" }) {
 export function ClerkUserProfileButton() {
   return (
     <UserButton
-      afterSignOutUrl="/sign-in"
+      afterSignOutUrl={CLERK_SIGN_IN_URL}
       appearance={{
         elements: {
           avatarBox: "w-8 h-8 rounded-full",

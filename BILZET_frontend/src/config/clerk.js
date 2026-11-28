@@ -36,6 +36,24 @@ export const hasClerk =
 export const CLERK_PUBLISHABLE_KEY =
   hasClerk ? sanitizedKey : "";
 
+export const CLERK_SIGN_IN_URL =
+  import.meta.env.VITE_CLERK_SIGN_IN_URL || "/sign-in";
+
+export const CLERK_SIGN_UP_URL =
+  import.meta.env.VITE_CLERK_SIGN_UP_URL || "/sign-up";
+
+export const CLERK_SIGN_IN_FALLBACK_REDIRECT_URL =
+  import.meta.env.VITE_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL || "/dashboard";
+
+export const CLERK_SIGN_UP_FALLBACK_REDIRECT_URL =
+  import.meta.env.VITE_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL || "/dashboard";
+
+export const CLERK_SIGN_IN_FORCE_REDIRECT_URL =
+  import.meta.env.VITE_CLERK_SIGN_IN_FORCE_REDIRECT_URL || "/dashboard";
+
+export const CLERK_SIGN_UP_FORCE_REDIRECT_URL =
+  import.meta.env.VITE_CLERK_SIGN_UP_FORCE_REDIRECT_URL || "/dashboard";
+
 export const clerkDiagnostics = {
   environment: isProd ? (isLocalhost ? "development" : "production") : "development",
   keyExists: Boolean(sanitizedKey),

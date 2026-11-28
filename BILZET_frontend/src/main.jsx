@@ -11,6 +11,12 @@ import { ClerkProvider } from "@clerk/clerk-react";
 
 import {
   CLERK_PUBLISHABLE_KEY,
+  CLERK_SIGN_IN_URL,
+  CLERK_SIGN_UP_URL,
+  CLERK_SIGN_IN_FALLBACK_REDIRECT_URL,
+  CLERK_SIGN_UP_FALLBACK_REDIRECT_URL,
+  CLERK_SIGN_IN_FORCE_REDIRECT_URL,
+  CLERK_SIGN_UP_FORCE_REDIRECT_URL,
   hasClerk,
   clerkDiagnostics,
 } from "./config/clerk";
@@ -217,11 +223,13 @@ function ClerkProviderWithRouter({ children }) {
       publishableKey={CLERK_PUBLISHABLE_KEY}
       routerPush={(to) => navigate(to)}
       routerReplace={(to) => navigate(to, { replace: true })}
-      signInUrl="/sign-in"
-      signUpUrl="/sign-up"
-      signInFallbackRedirectUrl="/dashboard"
-      signUpFallbackRedirectUrl="/dashboard"
-      afterSignOutUrl="/sign-in"
+      signInUrl={CLERK_SIGN_IN_URL}
+      signUpUrl={CLERK_SIGN_UP_URL}
+      signInFallbackRedirectUrl={CLERK_SIGN_IN_FALLBACK_REDIRECT_URL}
+      signUpFallbackRedirectUrl={CLERK_SIGN_UP_FALLBACK_REDIRECT_URL}
+      signInForceRedirectUrl={CLERK_SIGN_IN_FORCE_REDIRECT_URL}
+      signUpForceRedirectUrl={CLERK_SIGN_UP_FORCE_REDIRECT_URL}
+      afterSignOutUrl={CLERK_SIGN_IN_URL}
       fallback={<AuthLoadingScreen message="Initializing BILZET Workspace…" />}
     >
       {children}

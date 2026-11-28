@@ -420,6 +420,7 @@ export default function AppRoutes() {
       <Route path="/sign-up" element={<Signup />} />
       <Route path="/login" element={<Navigate to="/sign-in" replace />} />
       <Route path="/register" element={<Navigate to="/sign-up" replace />} />
+      <Route path="/signup" element={<Navigate to="/sign-up" replace />} />
       <Route path="/sso-callback" element={<ClerkSsoCallback />} />
       <Route path="/sso-callback/*" element={<ClerkSsoCallback />} />
       <Route path="/mobile-scanner" element={<MobileScanner />} />
