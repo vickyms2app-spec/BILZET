@@ -48,6 +48,11 @@ import Layout from "../components/layout/Layout";
 import NotFound from "../pages/NotFound";
 import Login from "../pages/Login";
 import Signup from "../pages/Signup";
+import PrivacyPolicy from "../pages/PrivacyPolicy";
+import TermsAndConditions from "../pages/TermsAndConditions";
+import RefundPolicy from "../pages/RefundPolicy";
+import AboutUs from "../pages/AboutUs";
+import ContactUs from "../pages/ContactUs";
 import Dashboard from "../pages/Dashboard";
 import Billing from "../pages/Billing";
 import Products from "../pages/Products";
@@ -373,6 +378,16 @@ export default function AppRoutes() {
       <Route path="/sso-callback" element={<ClerkSsoCallback />} />
       <Route path="/sso-callback/*" element={<ClerkSsoCallback />} />
       <Route path="/mobile-scanner" element={<MobileScanner />} />
+      <Route path="/about-us" element={<AboutUs />} />
+      <Route path="/about" element={<Navigate to="/about-us" replace />} />
+      <Route path="/contact-us" element={<ContactUs />} />
+      <Route path="/contact" element={<Navigate to="/contact-us" replace />} />
+      <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+      <Route path="/privacy" element={<Navigate to="/privacy-policy" replace />} />
+      <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
+      <Route path="/terms" element={<Navigate to="/terms-and-conditions" replace />} />
+      <Route path="/refund-policy" element={<RefundPolicy />} />
+      <Route path="/refund" element={<Navigate to="/refund-policy" replace />} />
       <Route path="/" element={<RootRedirect />} />
       <Route
         path="/onboarding"

@@ -480,6 +480,66 @@ export const cancelSubscription = async (businessId, userId) => {
   return getActiveSubscription(businessId, targetUserId);
 };
 
+/**
+ * Returns persistent subscription payment history for the business owner / user.
+ */
+export const getSubscriptionPaymentHistory = async (businessId, userId = null) => {
+  let targetUserId = userId;
+  if (businessId) {
+    try {
+      const business = await prisma.business.findUnique({
+        where: { id: businessId },
+        select: { ownerId: true },
+      });
+      if (business?.ownerId) {
+        targetUserId = business.ownerId;
+      }
+    } catch (_) {}
+  }
+
+  if (!targetUserId) return [];
+
+  const records = await prisma.subscription.findMany({
+    where: {
+      userId: targetUserId,
+      OR: [
+        { amount: { gt: 0 } },
+        { paymentReference: { not: null } },
+        { planTier: { in: ['PRO', 'PREMIUM'] } },
+      ],
+    },
+    orderBy: { createdAt: 'desc' },
+    take: 50,
+  });
+
+  const seenRefs = new Set();
+  const history = [];
+
+  for (const sub of records) {
+    const ref = sub.paymentReference || sub.id;
+    // Deduplicate actor-mirror rows created alongside the owner row
+    const baseRef = String(ref).replace(/-ACTOR$/, '');
+    if (seenRefs.has(baseRef)) continue;
+    seenRefs.add(baseRef);
+
+    const amountNum = Number(sub.amount || 0);
+    history.push({
+      id: baseRef,
+      subscriptionId: sub.id,
+      plan: `${sub.planName || sub.planTier} ${sub.billingCycle === 'MONTHLY' ? 'Monthly' : 'Annual'}`,
+      planTier: sub.planTier,
+      billingCycle: sub.billingCycle,
+      amount: amountNum,
+      formattedAmount: `₹${amountNum.toLocaleString('en-IN')}`,
+      paymentMethod: sub.paymentMethod || 'Razorpay',
+      status: sub.paymentStatus === 'PAID' ? 'Success' : (sub.paymentStatus || 'Success'),
+      date: sub.createdAt,
+    });
+  }
+
+  return history;
+};
+
 export default {
   getActiveSubscription,
   getSubscriptionUsage,
@@ -487,4 +547,5 @@ export default {
   upgradeSubscription,
   verifyAndActivatePayment,
   cancelSubscription,
+  getSubscriptionPaymentHistory,
 };

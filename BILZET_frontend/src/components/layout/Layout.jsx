@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
-import { NavLink, useNavigate, useLocation } from "react-router-dom";
+import { Link, NavLink, useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutGrid,
   Plus,
@@ -635,11 +635,10 @@ export default function Layout({ children }) {
       ══════════════════════════════════════════════════ */}
       <aside
         className={`h-full shrink-0 hidden md:flex flex-col transition-all duration-300 ease-in-out z-30 select-none ${
-          sidebarOpen ? "w-[264px]" : "w-[72px]"
+          sidebarOpen ? "w-[264px] border-r border-[#D8D9DE]" : "w-0 overflow-hidden border-r-0 pointer-events-none"
         }`}
         style={{
           background: "#EDEDEF",
-          borderRight: "1px solid #D8D9DE",
         }}
       >
         {/* Brand Header */}
@@ -1686,12 +1685,29 @@ export default function Layout({ children }) {
         </main>
 
         {/* ── Fixed Clean Footer ── */}
-        <footer className="h-10 shrink-0 bg-[#EDEDEF] border-t border-[#D8D9DE] px-4 sm:px-6 flex items-center z-10">
+        <footer className="min-h-10 shrink-0 bg-[#EDEDEF] border-t border-[#D8D9DE] px-4 sm:px-6 py-2 flex flex-wrap items-center justify-between gap-2 z-10">
           <div className="flex items-center gap-2.5 sm:gap-3 text-xs">
             <span className="font-bold text-[#111318] tracking-tight">{shopInfo?.shopName || "BILZET"}</span>
             <span className="h-3.5 w-px bg-[#D8D9DE]" aria-hidden="true" />
             <span className="text-[#7C7F8A] font-normal">© 2026 BILZET ERP. All rights reserved.</span>
           </div>
+          <nav className="flex flex-wrap items-center gap-3 sm:gap-4 text-[11px] font-medium text-[#636674]">
+            <Link to="/about-us" className="hover:text-[#111318] transition">
+              About Us
+            </Link>
+            <Link to="/contact-us" className="hover:text-[#111318] transition">
+              Contact Us
+            </Link>
+            <Link to="/privacy-policy" className="hover:text-[#111318] transition">
+              Privacy Policy
+            </Link>
+            <Link to="/terms-and-conditions" className="hover:text-[#111318] transition">
+              Terms &amp; Conditions
+            </Link>
+            <Link to="/refund-policy" className="hover:text-[#111318] transition">
+              Refund &amp; Cancellation Policy
+            </Link>
+          </nav>
         </footer>
       </div>
 

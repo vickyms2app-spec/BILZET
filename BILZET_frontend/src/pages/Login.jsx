@@ -225,11 +225,24 @@ export default function Login({ initialMode = "login" }) {
           </div>
 
           {/* Bottom Left Footer */}
-          <div className="pt-8 border-t border-[#D8D9DE]/60 hidden lg:flex items-center justify-between text-xs text-[#7C7F8A]">
+          <div className="pt-8 border-t border-[#D8D9DE]/60 hidden lg:flex flex-wrap items-center justify-between gap-2 text-xs text-[#7C7F8A]">
             <span>&copy; {new Date().getFullYear()} BILZET. All rights reserved.</span>
-            <div className="flex items-center gap-2 font-medium text-[#111318]">
-              <span className="w-2 h-2 rounded-full bg-[#A9DAD3]" />
-              <span>Enterprise Grade Fintech ERP</span>
+            <div className="flex flex-wrap items-center gap-3 font-medium">
+              <Link to="/about-us" className="hover:text-[#111318] transition">
+                About Us
+              </Link>
+              <Link to="/contact-us" className="hover:text-[#111318] transition">
+                Contact Us
+              </Link>
+              <Link to="/privacy-policy" className="hover:text-[#111318] transition">
+                Privacy Policy
+              </Link>
+              <Link to="/terms-and-conditions" className="hover:text-[#111318] transition">
+                Terms &amp; Conditions
+              </Link>
+              <Link to="/refund-policy" className="hover:text-[#111318] transition">
+                Refund &amp; Cancellation Policy
+              </Link>
             </div>
           </div>
         </div>

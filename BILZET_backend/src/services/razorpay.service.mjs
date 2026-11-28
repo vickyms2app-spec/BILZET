@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import prisma from '../config/prisma.mjs';
 import { env } from '../config/env.mjs';
 import { PLAN_DETAILS, EXTRA_BILL_PACK_PRICE } from '../config/plans.config.mjs';
 import { ApiError } from '../utils/ApiError.mjs';
@@ -31,7 +32,15 @@ export const createSubscriptionCheckoutOrder = async ({
   user,
   businessId,
   amount: overrideAmount,
+  prismaClient = prisma,
 }) => {
+  const userId = (user?.id || user?._id || '').trim();
+  if (!userId) {
+    throw ApiError.unauthorized('Authenticated user is required to create a subscription order.');
+  }
+
+  const resolvedBusinessId = (businessId || user?.businessId || '').trim() || null;
+
   const normalizedTier = String(planTier || '').toUpperCase();
   if (!['PRO', 'PREMIUM', 'EXTRA_BILLS'].includes(normalizedTier)) {
     throw ApiError.badRequest(`Invalid paid plan tier: '${planTier}'. Direct purchase supports PRO, PREMIUM, or EXTRA_BILLS.`);
@@ -67,10 +76,10 @@ export const createSubscriptionCheckoutOrder = async ({
   }
 
   const receipt = `rcpt_${normalizedTier.toLowerCase()}_${Date.now()}`;
-  const keyId = (env.RAZORPAY_KEY_ID || '').trim();
-  const keySecret = (env.RAZORPAY_KEY_SECRET || '').trim();
+  const keyId = (process.env.RAZORPAY_KEY_ID ?? env.RAZORPAY_KEY_ID ?? '').trim();
+  const keySecret = (process.env.RAZORPAY_KEY_SECRET ?? env.RAZORPAY_KEY_SECRET ?? '').trim();
 
-  if (!keyId || !keySecret || keyId === 'rzp_test_bilzet2026') {
+  if (!keyId || !keySecret || keyId === 'rzp_test_bilzet2026' || keySecret === 'bilzet_rzp_secret_key_2026') {
     throw ApiError.badRequest(
       'Razorpay is not configured on the server. Please verify RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in backend environment.'
     );
@@ -94,8 +103,8 @@ export const createSubscriptionCheckoutOrder = async ({
           planTier: normalizedTier,
           planName: planInfo.name,
           razorpayPlanId,
-          businessId: businessId || user?.businessId || '',
-          userId: user?.id || user?._id || '',
+          businessId: resolvedBusinessId || '',
+          userId,
           userEmail: user?.email || '',
         },
       }),
@@ -115,11 +124,38 @@ export const createSubscriptionCheckoutOrder = async ({
     throw ApiError.badRequest(`Could not reach Razorpay API: ${apiErr.message}`);
   }
 
+  if (!orderData?.id) {
+    throw ApiError.badRequest('Razorpay returned an invalid order response without an order ID.');
+  }
+
+  const persistedAmount = Number.isInteger(orderData.amount) ? orderData.amount : amountInPaise;
+  const persistedCurrency = String(orderData.currency || 'INR').toUpperCase();
+
+  try {
+    await prismaClient.subscriptionOrder.create({
+      data: {
+        orderId: orderData.id,
+        businessId: resolvedBusinessId,
+        userId,
+        planTier: normalizedTier,
+        amount: persistedAmount,
+        currency: persistedCurrency,
+        status: 'CREATED',
+      },
+    });
+  } catch (dbErr) {
+    if (dbErr?.code === 'P2002') {
+      throw ApiError.conflict('Duplicate Razorpay order ID detected. Please retry checkout.');
+    }
+    console.error('[SubscriptionOrder Persistence Error]', dbErr?.message || dbErr);
+    throw ApiError.internal('Failed to persist subscription order record. Please try again.');
+  }
+
   return {
     orderId: orderData.id,
-    amount: orderData.amount,
+    amount: persistedAmount,
     amountInRupees: effectiveAmountInRupees,
-    currency: orderData.currency || 'INR',
+    currency: persistedCurrency,
     keyId,
     planTier: normalizedTier,
     planName: planInfo.name,
@@ -128,45 +164,46 @@ export const createSubscriptionCheckoutOrder = async ({
     receipt: orderData.receipt || receipt,
     notes: {
       planTier: normalizedTier,
-      businessId: businessId || user?.businessId || '',
-      userId: user?.id || user?._id || '',
+      businessId: resolvedBusinessId || '',
+      userId,
     },
   };
 };
 
 /**
- * Validates Razorpay HMAC SHA256 payment signature.
+ * Validates Razorpay HMAC SHA256 payment signature using constant-time comparison.
  */
 export const verifyRazorpayPaymentSignature = ({ orderId, paymentId, signature }) => {
-  if (!orderId || !paymentId || !signature) return false;
-
-  const secret = (env.RAZORPAY_KEY_SECRET || '').trim();
-  const keyId = (env.RAZORPAY_KEY_ID || '').trim();
-  const isTestKey = Boolean(!keyId || keyId.startsWith('rzp_test_'));
-
-  // Allow explicit mock token during automated tests if in test mode
-  if (isTestKey && signature === 'sig_mock_verified') {
-    return true;
-  }
-
-  if (!secret) return false;
-
-  try {
-    const text = `${orderId}|${paymentId}`;
-    const expectedSignature = crypto
-      .createHmac('sha256', secret)
-      .update(text)
-      .digest('hex');
-
-    if (expectedSignature.length !== signature.length) {
-      return false;
-    }
-
-    return crypto.timingSafeEqual(Buffer.from(expectedSignature), Buffer.from(signature));
-  } catch (err) {
-    console.warn('[Razorpay] Signature verification error:', err.message);
+  if (
+    typeof orderId !== 'string' ||
+    typeof paymentId !== 'string' ||
+    typeof signature !== 'string' ||
+    !orderId.trim() ||
+    !paymentId.trim() ||
+    !signature.trim()
+  ) {
     return false;
   }
+
+  const secret = (process.env.RAZORPAY_KEY_SECRET ?? env.RAZORPAY_KEY_SECRET ?? '').trim();
+  if (!secret || secret === 'bilzet_rzp_secret_key_2026') {
+    return false;
+  }
+
+  const text = `${orderId.trim()}|${paymentId.trim()}`;
+  const expectedSignature = crypto
+    .createHmac('sha256', secret)
+    .update(text)
+    .digest('hex');
+
+  const expectedBuf = Buffer.from(expectedSignature, 'utf8');
+  const providedBuf = Buffer.from(signature.trim(), 'utf8');
+
+  if (expectedBuf.length !== providedBuf.length) {
+    return false;
+  }
+
+  return crypto.timingSafeEqual(expectedBuf, providedBuf);
 };
 
 /**
@@ -224,26 +261,32 @@ export const verifyAndActivateRazorpayPayment = async ({
 };
 
 /**
- * Processes Razorpay webhook events to maintain state synchronization.
+ * Processes Razorpay webhook events after strict HMAC-SHA256 verification against rawBody.
  */
 export const handleRazorpayWebhook = async ({ payload, signature, rawBody }) => {
-  const webhookSecret = env.RAZORPAY_WEBHOOK_SECRET || 'bilzet_webhook_secret_2026';
+  const webhookSecret = (process.env.RAZORPAY_WEBHOOK_SECRET || '').trim();
+  if (!webhookSecret || webhookSecret === 'bilzet_webhook_secret_2026') {
+    throw ApiError.internal('Razorpay webhook verification is not configured.');
+  }
 
-  // Verify webhook signature if provided
-  if (signature && rawBody) {
-    try {
-      const expectedSignature = crypto
-        .createHmac('sha256', webhookSecret)
-        .update(typeof rawBody === 'string' ? rawBody : JSON.stringify(rawBody))
-        .digest('hex');
+  if (typeof signature !== 'string' || !signature.trim()) {
+    throw ApiError.unauthorized('Missing Razorpay webhook signature.');
+  }
 
-      if (expectedSignature !== signature) {
-        throw ApiError.badRequest('Invalid Razorpay webhook signature');
-      }
-    } catch (err) {
-      if (err instanceof ApiError) throw err;
-      console.warn('[Razorpay Webhook] Signature verification warning:', err.message);
-    }
+  if (!rawBody || (!Buffer.isBuffer(rawBody) && typeof rawBody !== 'string') || rawBody.length === 0) {
+    throw ApiError.badRequest('Missing raw webhook request body for signature verification.');
+  }
+
+  const expectedSignature = crypto
+    .createHmac('sha256', webhookSecret)
+    .update(rawBody)
+    .digest('hex');
+
+  const expectedBuf = Buffer.from(expectedSignature, 'utf8');
+  const providedBuf = Buffer.from(signature.trim(), 'utf8');
+
+  if (expectedBuf.length !== providedBuf.length || !crypto.timingSafeEqual(expectedBuf, providedBuf)) {
+    throw ApiError.unauthorized('Invalid Razorpay webhook signature.');
   }
 
   const event = payload?.event || '';

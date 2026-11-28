@@ -1,3 +1,4 @@
+
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
@@ -6,7 +7,7 @@ import realtimeService from './realtime.service.mjs';
 
 /**
  * Service for Persistent Mobile-to-Desktop Barcode Scanner Pairing
- * 
+ *
  * - Generates secure 15-minute pairing tokens and QR codes for first-time handshake
  * - Persists authorized mobile devices with SHA-256 hashed revocable device tokens
  * - Multi-tenant isolation enforced on every request (scoped by businessId)
@@ -24,10 +25,13 @@ class ScannerPairingService {
 
     this.initStorage();
 
-    // Clean up expired pair tokens every 5 minutes
-    setInterval(() => {
+    // Clean up expired pair tokens every 5 minutes.
+    // unref() prevents this background timer from keeping test processes alive.
+    this.cleanupInterval = setInterval(() => {
       this.cleanupExpiredTokens();
     }, 5 * 60 * 1000);
+
+    this.cleanupInterval.unref?.();
   }
 
   initStorage() {
@@ -78,7 +82,12 @@ class ScannerPairingService {
   /**
    * 1. Laptop initiates pairing: Generates a temporary pairToken & QR code
    */
-  async createPairRequest({ businessId, userId, businessName = 'BILZET Store', origin = '' }) {
+  async createPairRequest({
+    businessId,
+    userId,
+    businessName = 'BILZET Store',
+    origin = ''
+  }) {
     if (!businessId) {
       throw new Error('businessId is required to generate a mobile pairing token');
     }
@@ -129,7 +138,13 @@ class ScannerPairingService {
   /**
    * 2. First-time handshake: Mobile phone scans QR code and authorizes device
    */
-  async verifyAndAuthorizeDevice({ pairToken, businessId, deviceInfo = {}, clientIp = '', userAgent = '' }) {
+  async verifyAndAuthorizeDevice({
+    pairToken,
+    businessId,
+    deviceInfo = {},
+    clientIp = '',
+    userAgent = ''
+  }) {
     if (!pairToken) {
       throw new Error('Pairing token is required');
     }
@@ -206,7 +221,12 @@ class ScannerPairingService {
   /**
    * 3. Subsequent visits: Reconnects automatically using saved device credentials
    */
-  async reconnectDevice({ deviceId, deviceToken, businessId, clientIp = '' }) {
+  async reconnectDevice({
+    deviceId,
+    deviceToken,
+    businessId,
+    clientIp = ''
+  }) {
     if (!deviceId || !deviceToken || !businessId) {
       throw new Error('Device credentials and business context are required for reconnection');
     }
@@ -264,7 +284,14 @@ class ScannerPairingService {
   /**
    * 4. Transmit Scanned Barcode from Mobile to Laptop Billing Operator
    */
-  async processBarcodeScan({ deviceId, deviceToken, businessId, barcode, scanId = '', timestamp = '' }) {
+  async processBarcodeScan({
+    deviceId,
+    deviceToken,
+    businessId,
+    barcode,
+    scanId = '',
+    timestamp = ''
+  }) {
     if (!deviceId || !deviceToken || !businessId || !barcode) {
       throw new Error('Incomplete scan payload');
     }

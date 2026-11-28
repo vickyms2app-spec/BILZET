@@ -591,20 +591,13 @@ export const createSale = async (saleData, user, context = {}) => {
         productId: product ? product.id : null,
         name: item.name || product?.name || 'Standard Product',
         sku: item.sku || product?.sku || null,
-        hsn,
         hsnCode: hsn,
         quantity: Math.max(1, Math.round(qty)),
         rate,
         discount: itemDiscount,
-        taxableAmount: lineTaxable,
         gstRate,
         taxAmount: lineTax,
-        cgst: itemCgst,
-        sgst: itemSgst,
-        igst: itemIgst,
         total: lineTotal,
-        isTaxInclusive: isItemInclusive,
-        pricingMethod: isItemInclusive ? 'INCLUSIVE' : 'EXCLUSIVE',
       });
 
       // Deduct inventory stock if productId is linked
@@ -731,8 +724,6 @@ export const createSale = async (saleData, user, context = {}) => {
         status: 'COMPLETED',
         createdById: user ? user.id : null,
         createdAt,
-        referenceQuotationNumber: saleData.referenceQuotationNumber || null,
-        quotationId: saleData.quotationId || null,
         items: {
           create: calculatedItems,
         },

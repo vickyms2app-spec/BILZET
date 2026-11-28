@@ -81,8 +81,11 @@ model Business {
   caInvitations   CaInvitation[]  @relation("BusinessCAInvitations")
   businessMembers BusinessMember[]
   roleInvitations RoleInvitation[]
-  expenses        Expense[]
-  caExceptions    CaException[]
+  expenses           Expense[]
+  caExceptions       CaException[]
+  subscriptionOrders SubscriptionOrder[]
+  whatsappSession    WhatsAppSession?
+  whatsappMessages   WhatsAppMessage[]
 
   @@index([ownerId])
   @@map("businesses")
@@ -115,6 +118,7 @@ model User {
   expenses            Expense[]
   auditLogs           AuditLog[]
   subscriptions       Subscription[]
+  subscriptionOrders  SubscriptionOrder[]
   caAccesses          CaStoreAccess[] @relation("CAUserAccess")
   sentCaInvites            CaInvitation[]   @relation("InvitedCAUsers")
   acceptedCaInvites        CaInvitation[]   @relation("AcceptedCAInvitations")
@@ -323,9 +327,10 @@ model Sale {
   createdAt     DateTime      @default(now()) @map("created_at")
   updatedAt     DateTime      @updatedAt @map("updated_at")
 
-  items         SaleItem[]
-  payments      Payment[]
-  returns       SalesReturn[]
+  items            SaleItem[]
+  payments         Payment[]
+  returns          SalesReturn[]
+  whatsappMessages WhatsAppMessage[]
 
   @@index([businessId])
   @@index([createdById])
@@ -704,6 +709,88 @@ model Subscription {
   @@index([userId])
   @@index([status])
   @@map("subscriptions")
+}
+
+enum SubscriptionOrderStatus {
+  CREATED
+  PAID
+  FAILED
+}
+
+model SubscriptionOrder {
+  id         String                  @id @default(uuid())
+  orderId    String                  @unique @map("order_id")
+  paymentId  String?                 @unique @map("payment_id")
+  businessId String?                 @map("business_id")
+  business   Business?               @relation(fields: [businessId], references: [id], onDelete: SetNull)
+  userId     String                  @map("user_id")
+  user       User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planTier   String                  @map("plan_tier")
+  amount     Int
+  currency   String                  @default("INR")
+  status     SubscriptionOrderStatus @default(CREATED)
+  createdAt  DateTime                @default(now()) @map("created_at")
+  updatedAt  DateTime                @updatedAt @map("updated_at")
+
+  @@index([businessId])
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("subscription_orders")
+}
+
+enum WhatsAppConnectionStatus {
+  NOT_CONNECTED
+  CONNECTING
+  WAITING_FOR_QR
+  CONNECTED
+  RECONNECTING
+  DISCONNECTED
+  AUTH_FAILED
+  CONNECTION_ERROR
+}
+
+enum WhatsAppMessageStatus {
+  QUEUED
+  SENDING
+  SENT
+  FAILED
+  UNKNOWN
+}
+
+model WhatsAppSession {
+  id               String                   @id @default(uuid())
+  businessId       String                   @unique @map("business_id")
+  business         Business                 @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  connectionStatus WhatsAppConnectionStatus @default(NOT_CONNECTED) @map("connection_status")
+  phoneNumber      String?                  @map("phone_number")
+  lastConnectedAt  DateTime?                @map("last_connected_at")
+  createdAt        DateTime                 @default(now()) @map("created_at")
+  updatedAt        DateTime                 @updatedAt @map("updated_at")
+
+  @@index([connectionStatus])
+  @@map("whatsapp_sessions")
+}
+
+model WhatsAppMessage {
+  id                String                @id @default(uuid())
+  businessId        String                @map("business_id")
+  business          Business              @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  invoiceId         String                @map("invoice_id")
+  invoice           Sale                  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  customerPhone     String                @map("customer_phone")
+  messageType       String                @default("INVOICE_PDF") @map("message_type")
+  messageStatus     WhatsAppMessageStatus @default(QUEUED) @map("message_status")
+  externalMessageId String?               @map("external_message_id")
+  errorMessage      String?               @map("error_message")
+  createdAt         DateTime              @default(now()) @map("created_at")
+  updatedAt         DateTime              @updatedAt @map("updated_at")
+
+  @@index([businessId])
+  @@index([invoiceId])
+  @@index([messageStatus])
+  @@index([createdAt])
+  @@map("whatsapp_messages")
 }
 
 model AppConfig {

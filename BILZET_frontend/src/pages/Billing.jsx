@@ -30,9 +30,10 @@ import {
   Smartphone,
   MessageCircle,
 } from "lucide-react";
-import { settingsApi, productsApi, customersApi, salesApi, subscriptionApi, quotationsApi, scannerApi } from "../api";
+import { settingsApi, productsApi, customersApi, salesApi, subscriptionApi, quotationsApi, scannerApi, whatsappApi } from "../api";
 import TaxInvoice from "../components/invoice/TaxInvoice";
 import LiveBrandingEditor from "../components/billing/LiveBrandingEditor";
+import WhatsAppInvoiceModal from "../components/invoice/WhatsAppInvoiceModal";
 import UpiPaymentModal from "../components/payment/UpiPaymentModal";
 import BarcodeScannerModal from "../components/pos/BarcodeScannerModal";
 import HeldBillsModal from "../components/pos/HeldBillsModal";
@@ -151,6 +152,7 @@ export default function Billing() {
   const [recentMobileScans, setRecentMobileScans] = useState([]);
   const [shareQuotationTarget, setShareQuotationTarget] = useState(null);
   const [showHeldBillsModal, setShowHeldBillsModal] = useState(false);
+  const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
   const [showLivePreview, setShowLivePreview] = useState(true);
   const [completedInvoice, setCompletedInvoice] = useState(null);
   const [shopSettings, setShopSettings] = useState(null);
@@ -1216,7 +1218,34 @@ export default function Billing() {
   });
 
   // Save Bill & Complete Sale (Invoice Workflow)
-  const handleSaveBill = async (openPrintModal = false) => {
+  const autoSendInvoiceToWhatsApp = async ({ invoiceId, invoiceNumber, customerPhone }) => {
+    const cleanPhone = String(customerPhone || "").trim();
+    if (!invoiceId || cleanPhone.length < 6) {
+      return;
+    }
+
+    try {
+      const statusRes = await whatsappApi.getStatus();
+      if (!statusRes?.connected || statusRes?.status !== "CONNECTED") {
+        notify(
+          "error",
+          `Invoice ${invoiceNumber} saved, but WhatsApp is not connected. Connect WhatsApp to auto-send.`
+        );
+        return;
+      }
+
+      await whatsappApi.sendInvoice({
+        invoiceId,
+        customerPhone: cleanPhone,
+      });
+      notify("success", `Invoice ${invoiceNumber} saved & sent to WhatsApp (${cleanPhone})!`);
+    } catch (err) {
+      const waErr = err?.response?.data?.message || err?.message || "Failed to send WhatsApp message.";
+      notify("error", `Invoice ${invoiceNumber} saved, but WhatsApp send failed: ${waErr}`);
+    }
+  };
+
+  const handleSaveBill = async (openPrintModal = false, { skipReset = false } = {}) => {
     if (billCredits && !billCredits.isUnlimited && billCredits.totalRemaining <= 0) {
       notify(
         "error",
@@ -1297,11 +1326,20 @@ export default function Billing() {
       if (openPrintModal) {
         setCompletedInvoice(invoiceData);
         setShowInvoiceModal(true);
+        autoSendInvoiceToWhatsApp({
+          invoiceId: invoiceData.id,
+          invoiceNumber: finalInvoiceNumber,
+          customerPhone: mobileNumber,
+        });
+      } else if (skipReset) {
+        setCompletedInvoice(invoiceData);
       } else {
         handleStartNewBill(false);
       }
+      return invoiceData;
     } catch (err) {
       notify("error", err?.response?.data?.message || err?.message || "Failed to save invoice");
+      return null;
     } finally {
       savingBillRef.current = false;
       setSavingBill(false);
@@ -2827,6 +2865,18 @@ export default function Billing() {
                       <span>Clear</span>
                     </button>
                   </div>
+
+                  {/* Direct Business WhatsApp Invoice Sharing */}
+                  <button
+                    type="button"
+                    onClick={() => setShowWhatsAppModal(true)}
+                    disabled={items.length === 0}
+                    className="w-full py-2.5 px-3 rounded-xl bg-[#25D366] hover:bg-[#20BD5A] disabled:opacity-40 text-white text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
+                    title="Connect WhatsApp and send invoice PDF directly to customer"
+                  >
+                    <MessageCircle size={14} />
+                    <span>Send via WhatsApp</span>
+                  </button>
                 </>
               ) : (
                 <>
@@ -2892,6 +2942,18 @@ export default function Billing() {
                       <span>Clear</span>
                     </button>
                   </div>
+
+                  {/* Direct Business WhatsApp Invoice Sharing */}
+                  <button
+                    type="button"
+                    onClick={() => setShowWhatsAppModal(true)}
+                    disabled={items.length === 0}
+                    className="w-full py-2.5 px-3 rounded-xl bg-[#25D366] hover:bg-[#20BD5A] disabled:opacity-40 text-white text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
+                    title="Connect WhatsApp and send invoice PDF directly to customer"
+                  >
+                    <MessageCircle size={14} />
+                    <span>Send via WhatsApp</span>
+                  </button>
                 </>
               )}
             </div>
@@ -3247,6 +3309,15 @@ export default function Billing() {
           onClose={() => setShareQuotationTarget(null)}
           quotation={shareQuotationTarget}
           shopSettings={effectiveShopSettings}
+        />
+
+        {/* ── Direct Business WhatsApp Invoice Modal ── */}
+        <WhatsAppInvoiceModal
+          isOpen={showWhatsAppModal}
+          onClose={() => setShowWhatsAppModal(false)}
+          invoice={completedInvoice || generateCurrentInvoiceSnapshot()}
+          businessName={effectiveShopSettings?.shopName || "BILZET"}
+          onEnsureSavedInvoice={() => handleSaveBill(false, { skipReset: true })}
         />
 
         {/* ── Held Bills Modal ── */}

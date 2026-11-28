@@ -669,6 +669,16 @@ export const scannerApi = {
   disconnect: (payload) => http.post('/scanner/disconnect', payload).then(unwrap),
 };
 
+export const whatsappApi = {
+  connect: () => http.post('/whatsapp/connect').then(unwrap),
+  getQr: () => http.get('/whatsapp/qr').then(unwrap),
+  getStatus: () => http.get('/whatsapp/status').then(unwrap),
+  refreshQr: () => http.post('/whatsapp/refresh-qr').then(unwrap),
+  disconnect: (payload = { unlink: true }) => http.post('/whatsapp/disconnect', payload).then(unwrap),
+  sendInvoice: (payload) => http.post('/whatsapp/send-invoice', payload).then(unwrap),
+  getMessages: (invoiceId) => http.get(`/whatsapp/messages/${encodeURIComponent(invoiceId)}`).then(unwrap),
+};
+
 
 
 

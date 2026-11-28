@@ -40,6 +40,7 @@ import realtimeRoutes from './routes/realtime.routes.mjs';
 import scannerRoutes from './routes/scanner.routes.mjs';
 import caReferralRoutes from './routes/caReferral.routes.mjs';
 import quotationRoutes from './routes/quotation.routes.mjs';
+import whatsappRoutes from './routes/whatsapp.routes.mjs';
 
 // Error middlewares
 import { notFoundHandler } from './middleware/notFound.middleware.mjs';
@@ -114,8 +115,20 @@ if (env.NODE_ENV === 'production') {
 
 import { clerkMiddleware } from '@clerk/express';
 
-// Body parsing
-app.use(express.json({ limit: '10mb' }));
+// Body parsing (capture exact raw bytes for Razorpay webhook signature verification)
+app.use(
+  express.json({
+    limit: '10mb',
+    verify: (req, _res, buf) => {
+      if (
+        req.originalUrl &&
+        /^\/api\/v1\/subscriptions?\/razorpay\/webhook(?:\?|$)/.test(req.originalUrl)
+      ) {
+        req.rawBody = buf;
+      }
+    },
+  })
+);
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Clerk Authentication Middleware (verifies Clerk tokens & populates req.auth)
@@ -328,6 +341,7 @@ app.use('/api/v1/ca-referral', caReferralRoutes);
 app.use('/api/v1/super-admin', superAdminRoutes);
 app.use(['/api/v1/realtime', '/api/v1/events'], realtimeRoutes);
 app.use(['/api/v1/scanner', '/api/scanner'], scannerRoutes);
+app.use('/api/v1/whatsapp', whatsappRoutes);
 
 
 // Fallback 404 Handler

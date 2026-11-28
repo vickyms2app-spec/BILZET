@@ -2,6 +2,7 @@ import 'dotenv/config';
 import app from './app.mjs';
 import { env } from './config/env.mjs';
 import prisma from './config/prisma.mjs';
+import whatsappManager from './services/whatsapp.service.mjs';
 
 let server;
 
@@ -27,6 +28,14 @@ const startServer = async () => {
     server = app.listen(env.PORT, () => {
       console.log(`[Server] Bilzet Shop Billing Backend running in ${env.NODE_ENV} mode on port ${env.PORT}`);
       console.log(`[Server] Health Check available at http://localhost:${env.PORT}/api/v1/health`);
+      whatsappManager
+        .restorePersistedSessions()
+        .then((restored) => {
+          if (restored.length > 0) {
+            console.log(`[WhatsApp] Restored ${restored.length} persisted business session(s).`);
+          }
+        })
+        .catch(() => {});
     });
 
     // Handle unhandled promise rejections
@@ -41,7 +50,8 @@ const startServer = async () => {
 
     // Graceful Shutdown Handlers
     const handleShutdown = async (signal) => {
-      console.log(`\n[Process] ${signal} signal received: closing HTTP server and database...`);
+      console.log(`\n[Process] ${signal} signal received: closing HTTP server, WhatsApp sockets, and database...`);
+      await whatsappManager.shutdownAll().catch(() => {});
       if (server) {
         server.close(async () => {
           console.log('[Server] HTTP server closed.');

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import WhatsAppInvoiceModal from "./WhatsAppInvoiceModal";
 import {
   Printer,
   Download,
@@ -229,6 +230,7 @@ export default function TaxInvoice({
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [sharingWhatsApp, setSharingWhatsApp] = useState(false);
   const [whatsappFeedback, setWhatsappFeedback] = useState(null);
+  const [showDirectWhatsAppModal, setShowDirectWhatsAppModal] = useState(false);
   const [logoLoadFailed, setLogoLoadFailed] = useState(false);
   const [signatureLoadFailed, setSignatureLoadFailed] = useState(false);
 
@@ -832,7 +834,7 @@ export default function TaxInvoice({
 
               <button
                 type="button"
-                onClick={handleShareWhatsApp}
+                onClick={!isQuotationDoc ? () => setShowDirectWhatsAppModal(true) : handleShareWhatsApp}
                 disabled={sharingWhatsApp || downloadingPdf}
                 className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold bg-[#25D366] hover:bg-[#20BD5A] text-white shadow-2xs transition active:scale-95 cursor-pointer disabled:opacity-60"
                 title={customerPhone ? `Send official ${isQuotationDoc ? "Quotation" : "Invoice"} PDF to ${customerPhone} via WhatsApp` : "Share PDF via WhatsApp"}
@@ -981,565 +983,574 @@ export default function TaxInvoice({
 
                   {/* Top Right: Permanently Fixed, Non-Editable BILZET Logo */}
                   <div className="shrink-0 ml-auto flex items-start justify-end pt-0.5 select-none pointer-events-none">
-                <img
-                  src="/assets/bilzet-logo-dark.png"
-                  alt="BILZET"
-                  className={`${isThermal ? "h-6 max-w-[78px]" : "h-9 sm:h-11 max-w-[130px]"
-                    } w-auto object-contain`}
-                  onError={(e) => {
-                    e.target.onerror = null;
-                    e.target.src = "/assets/bilzet-logo-main.png";
-                  }}
-                />
-              </div>
+                    <img
+                      src="/assets/bilzet-logo-dark.png"
+                      alt="BILZET"
+                      className={`${isThermal ? "h-6 max-w-[78px]" : "h-9 sm:h-11 max-w-[130px]"
+                        } w-auto object-contain`}
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = "/assets/bilzet-logo-main.png";
+                      }}
+                    />
+                  </div>
                 </div>
-          );
+              );
             })()}
 
-          {/* ── 2. Horizontal Information Strip (GSTIN, FSSAI, State) ── */}
-          <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg px-4 py-2 flex flex-wrap items-center justify-between gap-2.5 text-[11px]">
-            <div className="flex items-center gap-1.5">
-              <span className="font-bold text-slate-500 uppercase tracking-wider text-[10px]">GSTIN:</span>
-              <span className="font-mono font-bold text-[#0F2747]">{gstin}</span>
-            </div>
-
-            {fssai && (
+            {/* ── 2. Horizontal Information Strip (GSTIN, FSSAI, State) ── */}
+            <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg px-4 py-2 flex flex-wrap items-center justify-between gap-2.5 text-[11px]">
               <div className="flex items-center gap-1.5">
-                <span className="font-bold text-slate-500 uppercase tracking-wider text-[10px]">FSSAI:</span>
-                <span className="font-mono font-semibold text-slate-800">{fssai}</span>
+                <span className="font-bold text-slate-500 uppercase tracking-wider text-[10px]">GSTIN:</span>
+                <span className="font-mono font-bold text-[#0F2747]">{gstin}</span>
               </div>
-            )}
 
-            <div className="flex items-center gap-1.5">
-              <span className="font-bold text-slate-500 uppercase tracking-wider text-[10px]">State &amp; Code:</span>
-              <span className="font-semibold text-slate-800">
-                {storeState} {storeStateCode ? `(Code: ${storeStateCode})` : ""}
-              </span>
-            </div>
-          </div>
-
-          {/* ── 3. Document Title & Status Header Row ── */}
-          <div className="flex items-center justify-between gap-3 pt-1">
-            {/* Left: Document Title & Notice Badge */}
-            <div className="min-w-0">
-              <h1 className="text-xl sm:text-2xl font-black text-[#0F2747] tracking-tight uppercase leading-tight truncate">
-                {isQuotationDoc ? "QUOTATION" : displayTitle}
-              </h1>
-              {isQuotationDoc ? (
-                <span className="inline-block px-3 py-1 mt-1 rounded bg-amber-50 text-amber-800 text-[10px] font-black uppercase tracking-wider border border-amber-300 shadow-2xs">
-                  QUOTATION — NOT A TAX INVOICE
-                </span>
-              ) : (
-                <span className="inline-block px-2.5 py-0.5 mt-1 rounded bg-[#EFF6FF] text-[#1E40AF] text-[10px] font-bold uppercase tracking-wider border border-[#BFDBFE]">
-                  Original for Recipient
-                </span>
+              {fssai && (
+                <div className="flex items-center gap-1.5">
+                  <span className="font-bold text-slate-500 uppercase tracking-wider text-[10px]">FSSAI:</span>
+                  <span className="font-mono font-semibold text-slate-800">{fssai}</span>
+                </div>
               )}
+
+              <div className="flex items-center gap-1.5">
+                <span className="font-bold text-slate-500 uppercase tracking-wider text-[10px]">State &amp; Code:</span>
+                <span className="font-semibold text-slate-800">
+                  {storeState} {storeStateCode ? `(Code: ${storeStateCode})` : ""}
+                </span>
+              </div>
             </div>
 
-            {/* Right: Status Badge (Quotation Status vs Invoice Payment Status) */}
-            {isQuotationDoc ? (
-              <div
-                className={`px-3 py-1.5 rounded-xl border text-center shrink-0 shadow-2xs whitespace-nowrap ${quotationStatus === "ACCEPTED"
-                  ? "bg-[#ECFDF5] border-[#A7F3D0] text-[#047857]"
-                  : quotationStatus === "SENT"
-                    ? "bg-[#EFF6FF] border-[#BFDBFE] text-[#1D4ED8]"
-                    : quotationStatus === "REJECTED"
-                      ? "bg-[#FEF2F2] border-[#FECACA] text-[#B91C1C]"
-                      : quotationStatus === "EXPIRED"
-                        ? "bg-[#FFFBEB] border-[#FDE68A] text-[#B45309]"
-                        : "bg-slate-50 border-slate-200 text-slate-700"
-                  }`}
-              >
-                <div className="flex items-center justify-center gap-1.5 font-black text-xs uppercase tracking-wider">
-                  <FileText size={13} />
-                  <span>STATUS: {quotationStatus}</span>
-                </div>
-                <div className="text-[9px] font-mono text-slate-500 mt-0.5">
-                  Valid Until: {quotationValidityFormatted()}
-                </div>
-              </div>
-            ) : (
-              <div
-                className={`px-3 py-1.5 rounded-xl border text-center shrink-0 shadow-2xs whitespace-nowrap ${paymentStatus === "PAID"
-                  ? "bg-[#ECFDF5] border-[#A7F3D0] text-[#047857]"
-                  : paymentStatus === "PARTIALLY PAID"
-                    ? "bg-[#FFFBEB] border-[#FDE68A] text-[#B45309]"
-                    : "bg-[#FEF2F2] border-[#FECACA] text-[#B91C1C]"
-                  }`}
-              >
-                <div className="flex items-center justify-center gap-1.5 font-black text-xs uppercase tracking-wider">
-                  {paymentStatus === "PAID" && <CheckCircle2 size={13} />}
-                  {paymentStatus === "PARTIALLY PAID" && <AlertCircle size={13} />}
-                  <span>{paymentStatus}</span>
-                </div>
-                {paymentRef && (
-                  <div className="text-[9px] font-mono text-slate-500 mt-0.5 truncate max-w-[110px]">
-                    Ref: {paymentRef}
-                  </div>
+            {/* ── 3. Document Title & Status Header Row ── */}
+            <div className="flex items-center justify-between gap-3 pt-1">
+              {/* Left: Document Title & Notice Badge */}
+              <div className="min-w-0">
+                <h1 className="text-xl sm:text-2xl font-black text-[#0F2747] tracking-tight uppercase leading-tight truncate">
+                  {isQuotationDoc ? "QUOTATION" : displayTitle}
+                </h1>
+                {isQuotationDoc ? (
+                  <span className="inline-block px-3 py-1 mt-1 rounded bg-amber-50 text-amber-800 text-[10px] font-black uppercase tracking-wider border border-amber-300 shadow-2xs">
+                    QUOTATION — NOT A TAX INVOICE
+                  </span>
+                ) : (
+                  <span className="inline-block px-2.5 py-0.5 mt-1 rounded bg-[#EFF6FF] text-[#1E40AF] text-[10px] font-bold uppercase tracking-wider border border-[#BFDBFE]">
+                    Original for Recipient
+                  </span>
                 )}
               </div>
-            )}
-          </div>
 
-          {/* ── 3B. Aligned Document Metadata Card ── */}
-          <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl px-4 py-2.5 text-xs shadow-2xs">
-            <div className="grid grid-cols-2 @2xl:grid-cols-4 print:grid-cols-4 gap-x-4 gap-y-2">
-              <div className="flex items-center gap-1.5 whitespace-nowrap min-w-0">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0">
-                  {isQuotationDoc ? "Quotation No:" : "Invoice No:"}
-                </span>
-                <span className="font-mono font-extrabold text-[#0F2747] text-xs truncate">
-                  {invNumber}
-                </span>
-              </div>
-
-              <div className="flex items-center gap-1.5 whitespace-nowrap min-w-0">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0">
-                  {isQuotationDoc ? "Quotation Date:" : "Date:"}
-                </span>
-                <span className="font-mono text-slate-800 text-[11px] truncate">
-                  {formattedDateTime()}
-                </span>
-              </div>
-
+              {/* Right: Status Badge (Quotation Status vs Invoice Payment Status) */}
               {isQuotationDoc ? (
-                <>
-                  <div className="flex items-center gap-1.5 whitespace-nowrap min-w-0">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0">
-                      Valid Until:
-                    </span>
-                    <span className="font-bold text-amber-700 text-[11px] truncate">
-                      {quotationValidityFormatted()}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 whitespace-nowrap min-w-0">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0">
-                      Doc Type:
-                    </span>
-                    <span className="text-slate-800 font-bold uppercase text-[11px] truncate">
-                      Official Quotation
-                    </span>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="flex items-center gap-1.5 whitespace-nowrap min-w-0">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0">
-                      Payment:
-                    </span>
-                    <span className="font-bold text-slate-900 uppercase text-[11px] truncate">
-                      {paymentMode}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 whitespace-nowrap min-w-0">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0">
-                      Order Type:
-                    </span>
-                    <span className="text-slate-800 text-[11px] truncate">
-                      {orderType || "Retail Sale / POS"}
-                    </span>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* ── 4. Customer Details Section (Name, Contact, GSTIN, Address) ── */}
-          <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl px-4 py-2.5 text-xs shadow-2xs space-y-1.5">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0 whitespace-nowrap">
-                  Customer Name:
-                </span>
-                <span className="font-bold text-slate-900 truncate">
-                  {customerName && customerName.trim() ? customerName : "Walk-in Retail Customer"}
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5 shrink-0 whitespace-nowrap">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0 whitespace-nowrap">
-                  Contact Number:
-                </span>
-                <span className="font-mono font-bold text-slate-900 tracking-wide whitespace-nowrap">
-                  {customerPhone && customerPhone.trim() ? customerPhone : "+91 98000 00000"}
-                </span>
-              </div>
-            </div>
-            {(customerGstin || customerAddress) && (
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 border-t border-slate-200/70 text-[11px]">
-                {customerGstin && (
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Customer GSTIN:</span>
-                    <span className="font-mono font-bold text-[#0F2747]">{customerGstin}</span>
-                  </div>
-                )}
-                {customerAddress && (
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0">Billing Address:</span>
-                    <span className="text-slate-700 truncate">{customerAddress}</span>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* ── 5. Itemized Invoice Table with Navy Header & BILZET Watermark ── */}
-          <div className="relative border border-[#E2E8F0] rounded-xl overflow-hidden shadow-2xs">
-            {/* Subtle BILZET Watermark Centered Behind Table Content */}
-            {isWatermarkVisible && (
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-0 overflow-hidden">
-                <span
-                  className="text-7xl sm:text-9xl font-black uppercase tracking-[0.25em] text-[#0F2747] transform -rotate-15 select-none"
-                  style={{ opacity: 0.045 }}
+                <div
+                  className={`px-3 py-1.5 rounded-xl border text-center shrink-0 shadow-2xs whitespace-nowrap ${quotationStatus === "ACCEPTED"
+                    ? "bg-[#ECFDF5] border-[#A7F3D0] text-[#047857]"
+                    : quotationStatus === "SENT"
+                      ? "bg-[#EFF6FF] border-[#BFDBFE] text-[#1D4ED8]"
+                      : quotationStatus === "REJECTED"
+                        ? "bg-[#FEF2F2] border-[#FECACA] text-[#B91C1C]"
+                        : quotationStatus === "EXPIRED"
+                          ? "bg-[#FFFBEB] border-[#FDE68A] text-[#B45309]"
+                          : "bg-slate-50 border-slate-200 text-slate-700"
+                    }`}
                 >
-                  {settings.watermarkText || "BILZET"}
-                </span>
-              </div>
-            )}
-
-            <div className="overflow-x-auto relative z-10">
-              <table className="w-full text-xs text-left border-collapse">
-                <thead>
-                  <tr className="bg-[#0F2747] text-white font-bold text-[11px] uppercase tracking-wider">
-                    <th className="py-2.5 px-2 text-center w-[5%] border-r border-[#1E3A8A]/50">#</th>
-                    <th className="py-2.5 px-3 text-left w-[33%] border-r border-[#1E3A8A]/50">Item Name</th>
-                    <th className="py-2.5 px-2 text-center w-[11%] border-r border-[#1E3A8A]/50">HSN Code</th>
-                    <th className="py-2.5 px-2 text-center w-[8%] border-r border-[#1E3A8A]/50">Qty</th>
-                    <th className="py-2.5 px-2.5 text-right w-[12%] border-r border-[#1E3A8A]/50">Unit Price (₹)</th>
-                    <th className="py-2.5 px-2 text-right w-[10%] border-r border-[#1E3A8A]/50">Discount (₹)</th>
-                    <th className="py-2.5 px-2 text-center w-[9%] border-r border-[#1E3A8A]/50">Tax Rate</th>
-                    <th className="py-2.5 px-3 text-right w-[12%]">Amount (₹)</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 bg-white/95 text-slate-800">
-                  {items.map((item, idx) => (
-                    <tr
-                      key={item.id || idx}
-                      className={idx % 2 === 0 ? "bg-white" : "bg-[#F8FAFC]/60"}
-                    >
-                      <td className="py-2 px-2 text-center border-r border-slate-100 text-slate-500 font-mono text-[11px]">
-                        {idx + 1}
-                      </td>
-                      <td className="py-2 px-3 border-r border-slate-100 font-medium text-slate-900">
-                        <div className="flex items-center gap-2">
-                          {item.image && (
-                            <img
-                              src={item.image}
-                              alt={item.name}
-                              className="w-7 h-7 object-cover rounded-md shrink-0 border border-slate-200"
-                            />
-                          )}
-                          <div className="min-w-0">
-                            <p className="font-bold text-slate-900 leading-snug truncate">
-                              {item.name}
-                            </p>
-                            {item.code && (
-                              <p className="text-[10px] font-mono text-slate-400">
-                                {item.code}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-2 px-2 text-center border-r border-slate-100 font-mono text-slate-600 text-[11px]">
-                        {item.hsn || "—"}
-                      </td>
-                      <td className="py-2 px-2 text-center border-r border-slate-100 font-bold text-slate-900 font-mono">
-                        {item.qty} {item.unit ? <span className="text-[10px] font-normal text-slate-500">{item.unit}</span> : ""}
-                      </td>
-                      <td className="py-2 px-2.5 text-right border-r border-slate-100 font-mono text-slate-700">
-                        {Number(item.rate).toFixed(2)}
-                      </td>
-                      <td className="py-2 px-2 text-right border-r border-slate-100 font-mono text-emerald-700 font-medium">
-                        {item.discount > 0 ? `-${Number(item.discount).toFixed(2)}` : "0.00"}
-                      </td>
-                      <td className="py-2 px-2 text-center border-r border-slate-100 font-mono text-slate-700 text-[11px]">
-                        {item.gst}%
-                      </td>
-                      <td className="py-2 px-3 text-right font-mono font-bold text-[#0F2747]">
-                        {Number(item.total).toFixed(2)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* ── 6. Notes and Bill Summary (Two Column Layout) ── */}
-          <div className="grid grid-cols-1 @lg:grid-cols-2 print:grid-cols-2 gap-4 items-start pt-1">
-            {/* Left Column: Notes & Settlement Panel */}
-            <div className="space-y-3">
-              {/* Notes Panel */}
-              <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl p-3 text-xs space-y-1">
-                <p className="font-bold uppercase tracking-wider text-[10px] text-slate-500">
-                  {isQuotationDoc ? "Quotation Notes & Remarks:" : "Notes & Remarks:"}
-                </p>
-                <p className="text-[11px] text-slate-700 leading-relaxed whitespace-pre-line">
-                  {invoice?.notes ||
-                    (isQuotationDoc
-                      ? "Thank you for considering our proposal. Valid for 15 days from date of issue."
-                      : settings.notes || settings.thankYouMessage || "Thank you for your business. Please visit us again.")}
-                </p>
-                {(invoice?.terms || settings.terms) && (
-                  <div className="pt-1.5 border-t border-slate-200 mt-1.5">
-                    <p className="font-bold uppercase tracking-wider text-[9px] text-slate-500">
-                      Terms &amp; Conditions:
-                    </p>
-                    <p className="text-[10px] text-slate-500 leading-relaxed whitespace-pre-line">
-                      {invoice?.terms ||
-                        (isQuotationDoc
-                          ? "1. Prices are valid until quotation expiry date.\n2. Payment terms as agreed upon invoice creation.\n3. Taxes as applicable at time of invoicing."
-                          : settings.terms)}
-                    </p>
+                  <div className="flex items-center justify-center gap-1.5 font-black text-xs uppercase tracking-wider">
+                    <FileText size={13} />
+                    <span>STATUS: {quotationStatus}</span>
                   </div>
-                )}
-              </div>
-
-              {/* Settlement Panel (Bank Details for Invoices with UPI QR; Bank Info only for Quotations) */}
-              {settings.showBankDetails !== false && (
-                <div className="bg-[#F0F7FF] border border-[#BFDBFE] rounded-xl p-3 flex items-center justify-between text-xs text-slate-700 shadow-2xs">
-                  <div className="space-y-1 pr-2 min-w-0">
-                    <p className="font-bold uppercase tracking-wider text-[#0F2747] text-[10px] flex items-center gap-1.5">
-                      <Building2 size={12} className="text-[#1E3A8A]" />
-                      <span>{isQuotationDoc ? "Settlement Account Details" : "Bank & UPI Settlement"}</span>
-                    </p>
-                    <div className="space-y-0.5 text-[11px]">
-                      <p className="truncate">
-                        <span className="font-semibold text-slate-700">Bank:</span>{" "}
-                        <span className="text-slate-900 font-medium">{settings.bankName || "HDFC Bank Ltd"}</span>
-                      </p>
-                      <p>
-                        <span className="font-semibold text-slate-700">A/C No:</span>{" "}
-                        <span className="font-mono font-bold text-slate-900">{settings.accountNumber || "50200012345678"}</span>
-                      </p>
-                      <p>
-                        <span className="font-semibold text-slate-700">IFSC:</span>{" "}
-                        <span className="font-mono text-slate-900">{settings.ifsc || "HDFC0001234"}</span>
-                      </p>
-                      {!isQuotationDoc && (
-                        <p className="truncate">
-                          <span className="font-semibold text-slate-700">UPI ID:</span>{" "}
-                          <span className="font-mono font-bold text-[#1E3A8A]">{settings.upiId || "bilzet@hdfcbank"}</span>
-                        </p>
-                      )}
-                    </div>
+                  <div className="text-[9px] font-mono text-slate-500 mt-0.5">
+                    Valid Until: {quotationValidityFormatted()}
                   </div>
-
-                  {!isQuotationDoc && settings.showQrCode !== false && (
-                    <div className="text-center shrink-0 pl-2 border-l border-blue-200">
-                      <img
-                        src={qrImgSrc}
-                        alt="UPI QR Code"
-                        className="w-16 h-16 rounded-lg border border-white bg-white p-0.5 shadow-xs mx-auto"
-                      />
-                      <span className="text-[9px] font-extrabold text-[#0F2747] uppercase tracking-wider block mt-1">
-                        Scan to Pay
-                      </span>
+                </div>
+              ) : (
+                <div
+                  className={`px-3 py-1.5 rounded-xl border text-center shrink-0 shadow-2xs whitespace-nowrap ${paymentStatus === "PAID"
+                    ? "bg-[#ECFDF5] border-[#A7F3D0] text-[#047857]"
+                    : paymentStatus === "PARTIALLY PAID"
+                      ? "bg-[#FFFBEB] border-[#FDE68A] text-[#B45309]"
+                      : "bg-[#FEF2F2] border-[#FECACA] text-[#B91C1C]"
+                    }`}
+                >
+                  <div className="flex items-center justify-center gap-1.5 font-black text-xs uppercase tracking-wider">
+                    {paymentStatus === "PAID" && <CheckCircle2 size={13} />}
+                    {paymentStatus === "PARTIALLY PAID" && <AlertCircle size={13} />}
+                    <span>{paymentStatus}</span>
+                  </div>
+                  {paymentRef && (
+                    <div className="text-[9px] font-mono text-slate-500 mt-0.5 truncate max-w-[110px]">
+                      Ref: {paymentRef}
                     </div>
                   )}
                 </div>
               )}
             </div>
 
-            {/* Right Column: Bill Summary Panel */}
-            <div className="space-y-2">
-              <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl p-3.5 space-y-1.5 text-xs text-slate-700">
-                <p className="font-bold uppercase tracking-wider text-[10px] text-slate-500 pb-1 border-b border-slate-200">
-                  Bill Summary
-                </p>
-
-                {/* Subtotal */}
-                <div className="flex justify-between py-0.5 text-slate-700">
-                  <span className="font-medium">Subtotal</span>
-                  <span className="font-mono font-semibold text-slate-900">
-                    ₹{subtotalVal.toFixed(2)}
+            {/* ── 3B. Aligned Document Metadata Card ── */}
+            <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl px-4 py-2.5 text-xs shadow-2xs">
+              <div className="grid grid-cols-2 @2xl:grid-cols-4 print:grid-cols-4 gap-x-4 gap-y-2">
+                <div className="flex items-center gap-1.5 whitespace-nowrap min-w-0">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0">
+                    {isQuotationDoc ? "Quotation No:" : "Invoice No:"}
+                  </span>
+                  <span className="font-mono font-extrabold text-[#0F2747] text-xs truncate">
+                    {invNumber}
                   </span>
                 </div>
 
-                {/* Total Discount */}
-                {discountTotalVal > 0 && (
-                  <div className="flex justify-between py-0.5 text-emerald-700 font-medium">
-                    <span>Total Discount</span>
-                    <span className="font-mono font-bold">
-                      -₹{discountTotalVal.toFixed(2)}
-                    </span>
-                  </div>
-                )}
-
-                {/* Taxable Amount */}
-                <div className="flex justify-between py-0.5 text-slate-700">
-                  <span className="font-medium">Taxable Amount</span>
-                  <span className="font-mono font-semibold text-slate-900">
-                    ₹{taxableVal.toFixed(2)}
+                <div className="flex items-center gap-1.5 whitespace-nowrap min-w-0">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0">
+                    {isQuotationDoc ? "Quotation Date:" : "Date:"}
+                  </span>
+                  <span className="font-mono text-slate-800 text-[11px] truncate">
+                    {formattedDateTime()}
                   </span>
                 </div>
 
-                {/* Tax Details */}
-                {!isInterState ? (
+                {isQuotationDoc ? (
                   <>
-                    {cgstVal > 0 && (
-                      <div className="flex justify-between py-0.5 text-slate-600 text-[11px]">
-                        <span>CGST</span>
-                        <span className="font-mono">₹{cgstVal.toFixed(2)}</span>
-                      </div>
-                    )}
-                    {sgstVal > 0 && (
-                      <div className="flex justify-between py-0.5 text-slate-600 text-[11px]">
-                        <span>SGST</span>
-                        <span className="font-mono">₹{sgstVal.toFixed(2)}</span>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  igstVal > 0 && (
-                    <div className="flex justify-between py-0.5 text-slate-600 text-[11px]">
-                      <span>IGST</span>
-                      <span className="font-mono">₹{igstVal.toFixed(2)}</span>
-                    </div>
-                  )
-                )}
-
-                {/* Round Off */}
-                {roundOffVal !== 0 && (
-                  <div className="flex justify-between py-0.5 text-slate-600 text-[11px] font-mono">
-                    <span className="font-sans">Round-off</span>
-                    <span>{roundOffVal > 0 ? "+" : ""}₹{Number(roundOffVal).toFixed(2)}</span>
-                  </div>
-                )}
-
-                {/* Goods Return Credit */}
-                {returnedAmountVal > 0 && (
-                  <div className="flex justify-between py-0.5 text-rose-600 font-medium">
-                    <span>Returned Goods Credit</span>
-                    <span className="font-mono font-bold">-₹{returnedAmountVal.toFixed(2)}</span>
-                  </div>
-                )}
-
-                {/* Visually Prominent Final Total Amount */}
-                <div className="bg-[#EFF6FF] border border-[#BFDBFE] p-2.5 rounded-lg flex items-center justify-between text-slate-900 mt-2">
-                  <span className="font-black text-xs uppercase tracking-wider text-[#0F2747]">
-                    Total Amount
-                  </span>
-                  <span className="font-mono text-base sm:text-lg font-black text-[#0F2747]">
-                    ₹{netPayableVal.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </span>
-                </div>
-
-                {/* Amount in Words */}
-                <div className="pt-1 text-[10px] text-slate-600 italic">
-                  <span className="font-bold text-slate-700 not-italic">In Words: </span>
-                  {numberToWordsINR(netPayableVal)}
-                </div>
-
-                {/* Payments & Balance (Invoices Only) */}
-                {!isQuotationDoc && (
-                  <div className="pt-2 border-t border-slate-200 space-y-1">
-                    <div className="flex justify-between text-slate-700 text-[11px]">
-                      <span className="font-medium">Amount Paid</span>
-                      <span className="font-mono font-bold text-emerald-700">
-                        ₹{receivedVal.toFixed(2)}
+                    <div className="flex items-center gap-1.5 whitespace-nowrap min-w-0">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0">
+                        Valid Until:
+                      </span>
+                      <span className="font-bold text-amber-700 text-[11px] truncate">
+                        {quotationValidityFormatted()}
                       </span>
                     </div>
 
-                    {balanceDueVal > 0 && (
-                      <div className="flex justify-between text-rose-700 font-bold text-[11px]">
-                        <span>Balance Due</span>
-                        <span className="font-mono">
-                          ₹{balanceDueVal.toFixed(2)}
+                    <div className="flex items-center gap-1.5 whitespace-nowrap min-w-0">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0">
+                        Doc Type:
+                      </span>
+                      <span className="text-slate-800 font-bold uppercase text-[11px] truncate">
+                        Official Quotation
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-1.5 whitespace-nowrap min-w-0">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0">
+                        Payment:
+                      </span>
+                      <span className="font-bold text-slate-900 uppercase text-[11px] truncate">
+                        {paymentMode}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 whitespace-nowrap min-w-0">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0">
+                        Order Type:
+                      </span>
+                      <span className="text-slate-800 text-[11px] truncate">
+                        {orderType || "Retail Sale / POS"}
+                      </span>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* ── 4. Customer Details Section (Name, Contact, GSTIN, Address) ── */}
+            <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl px-4 py-2.5 text-xs shadow-2xs space-y-1.5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0 whitespace-nowrap">
+                    Customer Name:
+                  </span>
+                  <span className="font-bold text-slate-900 truncate">
+                    {customerName && customerName.trim() ? customerName : "Walk-in Retail Customer"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0 whitespace-nowrap">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0 whitespace-nowrap">
+                    Contact Number:
+                  </span>
+                  <span className="font-mono font-bold text-slate-900 tracking-wide whitespace-nowrap">
+                    {customerPhone && customerPhone.trim() ? customerPhone : "+91 98000 00000"}
+                  </span>
+                </div>
+              </div>
+              {(customerGstin || customerAddress) && (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 border-t border-slate-200/70 text-[11px]">
+                  {customerGstin && (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Customer GSTIN:</span>
+                      <span className="font-mono font-bold text-[#0F2747]">{customerGstin}</span>
+                    </div>
+                  )}
+                  {customerAddress && (
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0">Billing Address:</span>
+                      <span className="text-slate-700 truncate">{customerAddress}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* ── 5. Itemized Invoice Table with Navy Header & BILZET Watermark ── */}
+            <div className="relative border border-[#E2E8F0] rounded-xl overflow-hidden shadow-2xs">
+              {/* Subtle BILZET Watermark Centered Behind Table Content */}
+              {isWatermarkVisible && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-0 overflow-hidden">
+                  <span
+                    className="text-7xl sm:text-9xl font-black uppercase tracking-[0.25em] text-[#0F2747] transform -rotate-15 select-none"
+                    style={{ opacity: 0.045 }}
+                  >
+                    {settings.watermarkText || "BILZET"}
+                  </span>
+                </div>
+              )}
+
+              <div className="overflow-x-auto relative z-10">
+                <table className="w-full text-xs text-left border-collapse">
+                  <thead>
+                    <tr className="bg-[#0F2747] text-white font-bold text-[11px] uppercase tracking-wider">
+                      <th className="py-2.5 px-2 text-center w-[5%] border-r border-[#1E3A8A]/50">#</th>
+                      <th className="py-2.5 px-3 text-left w-[33%] border-r border-[#1E3A8A]/50">Item Name</th>
+                      <th className="py-2.5 px-2 text-center w-[11%] border-r border-[#1E3A8A]/50">HSN Code</th>
+                      <th className="py-2.5 px-2 text-center w-[8%] border-r border-[#1E3A8A]/50">Qty</th>
+                      <th className="py-2.5 px-2.5 text-right w-[12%] border-r border-[#1E3A8A]/50">Unit Price (₹)</th>
+                      <th className="py-2.5 px-2 text-right w-[10%] border-r border-[#1E3A8A]/50">Discount (₹)</th>
+                      <th className="py-2.5 px-2 text-center w-[9%] border-r border-[#1E3A8A]/50">Tax Rate</th>
+                      <th className="py-2.5 px-3 text-right w-[12%]">Amount (₹)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 bg-white/95 text-slate-800">
+                    {items.map((item, idx) => (
+                      <tr
+                        key={item.id || idx}
+                        className={idx % 2 === 0 ? "bg-white" : "bg-[#F8FAFC]/60"}
+                      >
+                        <td className="py-2 px-2 text-center border-r border-slate-100 text-slate-500 font-mono text-[11px]">
+                          {idx + 1}
+                        </td>
+                        <td className="py-2 px-3 border-r border-slate-100 font-medium text-slate-900">
+                          <div className="flex items-center gap-2">
+                            {item.image && (
+                              <img
+                                src={item.image}
+                                alt={item.name}
+                                className="w-7 h-7 object-cover rounded-md shrink-0 border border-slate-200"
+                              />
+                            )}
+                            <div className="min-w-0">
+                              <p className="font-bold text-slate-900 leading-snug truncate">
+                                {item.name}
+                              </p>
+                              {item.code && (
+                                <p className="text-[10px] font-mono text-slate-400">
+                                  {item.code}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-2 px-2 text-center border-r border-slate-100 font-mono text-slate-600 text-[11px]">
+                          {item.hsn || "—"}
+                        </td>
+                        <td className="py-2 px-2 text-center border-r border-slate-100 font-bold text-slate-900 font-mono">
+                          {item.qty} {item.unit ? <span className="text-[10px] font-normal text-slate-500">{item.unit}</span> : ""}
+                        </td>
+                        <td className="py-2 px-2.5 text-right border-r border-slate-100 font-mono text-slate-700">
+                          {Number(item.rate).toFixed(2)}
+                        </td>
+                        <td className="py-2 px-2 text-right border-r border-slate-100 font-mono text-emerald-700 font-medium">
+                          {item.discount > 0 ? `-${Number(item.discount).toFixed(2)}` : "0.00"}
+                        </td>
+                        <td className="py-2 px-2 text-center border-r border-slate-100 font-mono text-slate-700 text-[11px]">
+                          {item.gst}%
+                        </td>
+                        <td className="py-2 px-3 text-right font-mono font-bold text-[#0F2747]">
+                          {Number(item.total).toFixed(2)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* ── 6. Notes and Bill Summary (Two Column Layout) ── */}
+            <div className="grid grid-cols-1 @lg:grid-cols-2 print:grid-cols-2 gap-4 items-start pt-1">
+              {/* Left Column: Notes & Settlement Panel */}
+              <div className="space-y-3">
+                {/* Notes Panel */}
+                <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl p-3 text-xs space-y-1">
+                  <p className="font-bold uppercase tracking-wider text-[10px] text-slate-500">
+                    {isQuotationDoc ? "Quotation Notes & Remarks:" : "Notes & Remarks:"}
+                  </p>
+                  <p className="text-[11px] text-slate-700 leading-relaxed whitespace-pre-line">
+                    {invoice?.notes ||
+                      (isQuotationDoc
+                        ? "Thank you for considering our proposal. Valid for 15 days from date of issue."
+                        : settings.notes || settings.thankYouMessage || "Thank you for your business. Please visit us again.")}
+                  </p>
+                  {(invoice?.terms || settings.terms) && (
+                    <div className="pt-1.5 border-t border-slate-200 mt-1.5">
+                      <p className="font-bold uppercase tracking-wider text-[9px] text-slate-500">
+                        Terms &amp; Conditions:
+                      </p>
+                      <p className="text-[10px] text-slate-500 leading-relaxed whitespace-pre-line">
+                        {invoice?.terms ||
+                          (isQuotationDoc
+                            ? "1. Prices are valid until quotation expiry date.\n2. Payment terms as agreed upon invoice creation.\n3. Taxes as applicable at time of invoicing."
+                            : settings.terms)}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Settlement Panel (Bank Details for Invoices with UPI QR; Bank Info only for Quotations) */}
+                {settings.showBankDetails !== false && (
+                  <div className="bg-[#F0F7FF] border border-[#BFDBFE] rounded-xl p-3 flex items-center justify-between text-xs text-slate-700 shadow-2xs">
+                    <div className="space-y-1 pr-2 min-w-0">
+                      <p className="font-bold uppercase tracking-wider text-[#0F2747] text-[10px] flex items-center gap-1.5">
+                        <Building2 size={12} className="text-[#1E3A8A]" />
+                        <span>{isQuotationDoc ? "Settlement Account Details" : "Bank & UPI Settlement"}</span>
+                      </p>
+                      <div className="space-y-0.5 text-[11px]">
+                        <p className="truncate">
+                          <span className="font-semibold text-slate-700">Bank:</span>{" "}
+                          <span className="text-slate-900 font-medium">{settings.bankName || "HDFC Bank Ltd"}</span>
+                        </p>
+                        <p>
+                          <span className="font-semibold text-slate-700">A/C No:</span>{" "}
+                          <span className="font-mono font-bold text-slate-900">{settings.accountNumber || "50200012345678"}</span>
+                        </p>
+                        <p>
+                          <span className="font-semibold text-slate-700">IFSC:</span>{" "}
+                          <span className="font-mono text-slate-900">{settings.ifsc || "HDFC0001234"}</span>
+                        </p>
+                        {!isQuotationDoc && (
+                          <p className="truncate">
+                            <span className="font-semibold text-slate-700">UPI ID:</span>{" "}
+                            <span className="font-mono font-bold text-[#1E3A8A]">{settings.upiId || "bilzet@hdfcbank"}</span>
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {!isQuotationDoc && settings.showQrCode !== false && (
+                      <div className="text-center shrink-0 pl-2 border-l border-blue-200">
+                        <img
+                          src={qrImgSrc}
+                          alt="UPI QR Code"
+                          className="w-16 h-16 rounded-lg border border-white bg-white p-0.5 shadow-xs mx-auto"
+                        />
+                        <span className="text-[9px] font-extrabold text-[#0F2747] uppercase tracking-wider block mt-1">
+                          Scan to Pay
                         </span>
                       </div>
                     )}
                   </div>
                 )}
               </div>
-            </div>
-          </div>
 
-          {/* ── 7. Clean Footer with Authorized Signature ── */}
-          <div className="pt-4 border-t border-slate-200 flex flex-col sm:flex-row items-end justify-between gap-4 text-xs">
-            {/* Left: Computer-generated invoice notice */}
-            <div className="pb-1 self-start sm:self-end text-[10px] text-slate-400">
-              This is a computer-generated document.
-            </div>
+              {/* Right Column: Bill Summary Panel */}
+              <div className="space-y-2">
+                <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl p-3.5 space-y-1.5 text-xs text-slate-700">
+                  <p className="font-bold uppercase tracking-wider text-[10px] text-slate-500 pb-1 border-b border-slate-200">
+                    Bill Summary
+                  </p>
 
-            {/* Right: Authorized Signature Area (Bottom Right) */}
-            {(() => {
-              const safeSigWidth = Math.min(240, Math.max(48, Number(settings.signatureWidth || 140)));
-              const safeSigHeight = Math.min(120, Math.max(24, Number(settings.signatureHeight || 48)));
-              const sigAlignJustify =
-                settings.signatureAlign === "left"
-                  ? "justify-start"
-                  : settings.signatureAlign === "center"
-                    ? "justify-center"
-                    : "justify-end";
-              const sigTextAlign =
-                settings.signatureAlign === "left"
-                  ? "text-left"
-                  : settings.signatureAlign === "center"
-                    ? "text-center"
-                    : "text-right";
+                  {/* Subtotal */}
+                  <div className="flex justify-between py-0.5 text-slate-700">
+                    <span className="font-medium">Subtotal</span>
+                    <span className="font-mono font-semibold text-slate-900">
+                      ₹{subtotalVal.toFixed(2)}
+                    </span>
+                  </div>
 
-              return (
-                <div className="flex items-end gap-4 ml-auto">
-                  <div
-                    onClick={editableBranding ? () => onEditSignature?.() : undefined}
-                    title={editableBranding ? "Click to customize Authorized Signature (Bottom Right)" : undefined}
-                    className={`flex flex-col min-w-[160px] ${editableBranding
-                      ? `cursor-pointer group relative rounded-lg p-1.5 -m-1.5 transition ${activeBrandingSection === "signature"
-                        ? "ring-2 ring-indigo-500 bg-indigo-50/40"
-                        : "hover:ring-2 hover:ring-indigo-400/70 hover:bg-indigo-50/20"
-                      }`
-                      : ""
-                      }`}
-                    style={{ minWidth: `${Math.max(150, safeSigWidth + 16)}px` }}
-                  >
-                    {editableBranding && (
-                      <span className="pointer-events-none absolute -top-2 right-1 px-1.5 py-0.5 rounded bg-indigo-600 text-white text-[9px] font-semibold opacity-0 group-hover:opacity-100 transition shadow-xs whitespace-nowrap">
-                        Edit Signature
+                  {/* Total Discount */}
+                  {discountTotalVal > 0 && (
+                    <div className="flex justify-between py-0.5 text-emerald-700 font-medium">
+                      <span>Total Discount</span>
+                      <span className="font-mono font-bold">
+                        -₹{discountTotalVal.toFixed(2)}
                       </span>
-                    )}
-                    {/* Dedicated Space for Owner Signature */}
-                    {shouldDisplaySignature ? (
-                      <div className={`flex items-end ${sigAlignJustify} w-full pb-1`} style={{ minHeight: `${safeSigHeight + 6}px` }}>
-                        <img
-                          key={resolvedSignatureUrl}
-                          src={resolvedSignatureUrl}
-                          alt="Authorized Owner Signature"
-                          crossOrigin="anonymous"
-                          style={{
-                            width: `${safeSigWidth}px`,
-                            height: `${safeSigHeight}px`,
-                            maxWidth: "100%",
-                            objectFit: "contain",
-                          }}
-                          onError={() => setSignatureLoadFailed(true)}
-                        />
+                    </div>
+                  )}
+
+                  {/* Taxable Amount */}
+                  <div className="flex justify-between py-0.5 text-slate-700">
+                    <span className="font-medium">Taxable Amount</span>
+                    <span className="font-mono font-semibold text-slate-900">
+                      ₹{taxableVal.toFixed(2)}
+                    </span>
+                  </div>
+
+                  {/* Tax Details */}
+                  {!isInterState ? (
+                    <>
+                      {cgstVal > 0 && (
+                        <div className="flex justify-between py-0.5 text-slate-600 text-[11px]">
+                          <span>CGST</span>
+                          <span className="font-mono">₹{cgstVal.toFixed(2)}</span>
+                        </div>
+                      )}
+                      {sgstVal > 0 && (
+                        <div className="flex justify-between py-0.5 text-slate-600 text-[11px]">
+                          <span>SGST</span>
+                          <span className="font-mono">₹{sgstVal.toFixed(2)}</span>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    igstVal > 0 && (
+                      <div className="flex justify-between py-0.5 text-slate-600 text-[11px]">
+                        <span>IGST</span>
+                        <span className="font-mono">₹{igstVal.toFixed(2)}</span>
                       </div>
-                    ) : (
-                      <div className="h-10 sm:h-12 flex items-end justify-center w-full pb-1">
-                        <span className="text-[9px] font-medium text-slate-300 select-none tracking-wider italic">
-                          (Signature / Seal)
+                    )
+                  )}
+
+                  {/* Round Off */}
+                  {roundOffVal !== 0 && (
+                    <div className="flex justify-between py-0.5 text-slate-600 text-[11px] font-mono">
+                      <span className="font-sans">Round-off</span>
+                      <span>{roundOffVal > 0 ? "+" : ""}₹{Number(roundOffVal).toFixed(2)}</span>
+                    </div>
+                  )}
+
+                  {/* Goods Return Credit */}
+                  {returnedAmountVal > 0 && (
+                    <div className="flex justify-between py-0.5 text-rose-600 font-medium">
+                      <span>Returned Goods Credit</span>
+                      <span className="font-mono font-bold">-₹{returnedAmountVal.toFixed(2)}</span>
+                    </div>
+                  )}
+
+                  {/* Visually Prominent Final Total Amount */}
+                  <div className="bg-[#EFF6FF] border border-[#BFDBFE] p-2.5 rounded-lg flex items-center justify-between text-slate-900 mt-2">
+                    <span className="font-black text-xs uppercase tracking-wider text-[#0F2747]">
+                      Total Amount
+                    </span>
+                    <span className="font-mono text-base sm:text-lg font-black text-[#0F2747]">
+                      ₹{netPayableVal.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+
+                  {/* Amount in Words */}
+                  <div className="pt-1 text-[10px] text-slate-600 italic">
+                    <span className="font-bold text-slate-700 not-italic">In Words: </span>
+                    {numberToWordsINR(netPayableVal)}
+                  </div>
+
+                  {/* Payments & Balance (Invoices Only) */}
+                  {!isQuotationDoc && (
+                    <div className="pt-2 border-t border-slate-200 space-y-1">
+                      <div className="flex justify-between text-slate-700 text-[11px]">
+                        <span className="font-medium">Amount Paid</span>
+                        <span className="font-mono font-bold text-emerald-700">
+                          ₹{receivedVal.toFixed(2)}
                         </span>
                       </div>
-                    )}
-                    <div className={`border-t border-slate-400 pt-1 w-full ${sigTextAlign}`}>
-                      <p className="text-[11px] font-bold text-[#0F2747] leading-tight">
-                        {settings.authorizedPerson || storeName}
-                      </p>
-                      <p className="text-[9px] font-semibold text-slate-500 uppercase tracking-wider">
-                        {settings.signatoryLabel || "Authorized Signatory"}
-                      </p>
+
+                      {balanceDueVal > 0 && (
+                        <div className="flex justify-between text-rose-700 font-bold text-[11px]">
+                          <span>Balance Due</span>
+                          <span className="font-mono">
+                            ₹{balanceDueVal.toFixed(2)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* ── 7. Clean Footer with Authorized Signature ── */}
+            <div className="pt-4 border-t border-slate-200 flex flex-col sm:flex-row items-end justify-between gap-4 text-xs">
+              {/* Left: Computer-generated invoice notice */}
+              <div className="pb-1 self-start sm:self-end text-[10px] text-slate-400">
+                This is a computer-generated document.
+              </div>
+
+              {/* Right: Authorized Signature Area (Bottom Right) */}
+              {(() => {
+                const safeSigWidth = Math.min(240, Math.max(48, Number(settings.signatureWidth || 140)));
+                const safeSigHeight = Math.min(120, Math.max(24, Number(settings.signatureHeight || 48)));
+                const sigAlignJustify =
+                  settings.signatureAlign === "left"
+                    ? "justify-start"
+                    : settings.signatureAlign === "center"
+                      ? "justify-center"
+                      : "justify-end";
+                const sigTextAlign =
+                  settings.signatureAlign === "left"
+                    ? "text-left"
+                    : settings.signatureAlign === "center"
+                      ? "text-center"
+                      : "text-right";
+
+                return (
+                  <div className="flex items-end gap-4 ml-auto">
+                    <div
+                      onClick={editableBranding ? () => onEditSignature?.() : undefined}
+                      title={editableBranding ? "Click to customize Authorized Signature (Bottom Right)" : undefined}
+                      className={`flex flex-col min-w-[160px] ${editableBranding
+                        ? `cursor-pointer group relative rounded-lg p-1.5 -m-1.5 transition ${activeBrandingSection === "signature"
+                          ? "ring-2 ring-indigo-500 bg-indigo-50/40"
+                          : "hover:ring-2 hover:ring-indigo-400/70 hover:bg-indigo-50/20"
+                        }`
+                        : ""
+                        }`}
+                      style={{ minWidth: `${Math.max(150, safeSigWidth + 16)}px` }}
+                    >
+                      {editableBranding && (
+                        <span className="pointer-events-none absolute -top-2 right-1 px-1.5 py-0.5 rounded bg-indigo-600 text-white text-[9px] font-semibold opacity-0 group-hover:opacity-100 transition shadow-xs whitespace-nowrap">
+                          Edit Signature
+                        </span>
+                      )}
+                      {/* Dedicated Space for Owner Signature */}
+                      {shouldDisplaySignature ? (
+                        <div className={`flex items-end ${sigAlignJustify} w-full pb-1`} style={{ minHeight: `${safeSigHeight + 6}px` }}>
+                          <img
+                            key={resolvedSignatureUrl}
+                            src={resolvedSignatureUrl}
+                            alt="Authorized Owner Signature"
+                            crossOrigin="anonymous"
+                            style={{
+                              width: `${safeSigWidth}px`,
+                              height: `${safeSigHeight}px`,
+                              maxWidth: "100%",
+                              objectFit: "contain",
+                            }}
+                            onError={() => setSignatureLoadFailed(true)}
+                          />
+                        </div>
+                      ) : (
+                        <div className="h-10 sm:h-12 flex items-end justify-center w-full pb-1">
+                          <span className="text-[9px] font-medium text-slate-300 select-none tracking-wider italic">
+                            (Signature / Seal)
+                          </span>
+                        </div>
+                      )}
+                      <div className={`border-t border-slate-400 pt-1 w-full ${sigTextAlign}`}>
+                        <p className="text-[11px] font-bold text-[#0F2747] leading-tight">
+                          {settings.authorizedPerson || storeName}
+                        </p>
+                        <p className="text-[9px] font-semibold text-slate-500 uppercase tracking-wider">
+                          {settings.signatoryLabel || "Authorized Signatory"}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })()}
+                );
+              })()}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+
+      {!isQuotationDoc && (
+        <WhatsAppInvoiceModal
+          isOpen={showDirectWhatsAppModal}
+          onClose={() => setShowDirectWhatsAppModal(false)}
+          invoice={invoice}
+          businessName={storeName}
+        />
+      )}
     </div >
   );
 }

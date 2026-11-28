@@ -6,6 +6,7 @@ import {
   upgradeSubscription,
   verifyAndActivatePayment,
   cancelSubscription,
+  getSubscriptionPaymentHistory,
 } from '../services/subscription.service.mjs';
 import {
   getBillCreditBalance,
@@ -87,7 +88,7 @@ router.get(
   })
 );
 
-// Public Razorpay Webhook Endpoint
+// Public Razorpay Webhook Endpoint (authenticates via x-razorpay-signature over rawBody)
 router.post(
   '/razorpay/webhook',
   asyncHandler(async (req, res) => {
@@ -95,7 +96,7 @@ router.post(
     const result = await razorpayService.handleRazorpayWebhook({
       payload: req.body,
       signature,
-      rawBody: req.body,
+      rawBody: req.rawBody,
     });
     return sendResponse(res, 200, result, 'Webhook processed successfully.');
   })
@@ -111,7 +112,20 @@ router.use(authMiddleware);
 router.post(
   '/razorpay/create-order',
   asyncHandler(async (req, res) => {
-    const { planTier, billingCycle, dealerOfferCode } = req.body;
+    const { planTier, billingCycle, dealerOfferCode, businessId: requestedBusinessId } = req.body;
+
+    if (
+      requestedBusinessId &&
+      req.user?.role !== 'SUPER_ADMIN' &&
+      !req.user?.isSuperAdmin &&
+      requestedBusinessId !== req.user?.businessId
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: cannot create a subscription order for another business.',
+      });
+    }
+
     let overrideAmount = undefined;
 
     if (dealerOfferCode) {
@@ -213,6 +227,7 @@ router.get(
     const subInfo = await getActiveSubscription(req.user.businessId, req.user.id);
     const usage = await getSubscriptionUsage(req.user.businessId, req.user.id);
     const billCredits = await getBillCreditBalance(req.user.businessId, req.user.id);
+    const payments = await getSubscriptionPaymentHistory(req.user.businessId, req.user.id);
 
     return sendResponse(
       res,
@@ -221,6 +236,7 @@ router.get(
         ...subInfo,
         usage,
         billCredits,
+        payments,
         currentPlan: subInfo.planTier,
         razorpay: razorpayService.getRazorpayConfig(),
       },

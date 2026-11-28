@@ -531,7 +531,10 @@ export default function Settings({ defaultTab: initialTab }) {
       setSavedSuccess(true);
       setTimeout(() => setSavedSuccess(false), 3500);
     } catch (err) {
-      const apiMsg = err?.response?.data?.message || err?.message || "Failed to save settings. Please try again.";
+      const errDetails = Array.isArray(err?.response?.data?.errors) && err.response.data.errors.length > 0
+        ? ` (${err.response.data.errors.map((e) => `${e.field}: ${e.message}`).join(", ")})`
+        : "";
+      const apiMsg = (err?.response?.data?.message || err?.message || "Failed to save settings. Please try again.") + errDetails;
       setErrorMessage(apiMsg);
     } finally {
       setSaving(false);

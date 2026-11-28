@@ -1,6 +1,6 @@
 import { useState, useEffect, Fragment, useCallback, useMemo } from "react";
 import UpiPaymentModal from "../components/payment/UpiPaymentModal";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import {
   Check,
   ShieldCheck,
@@ -176,6 +176,22 @@ export default function Plans() {
               // Never preserve a local paid plan state when the backend says FREE \u2014
               // it means the subscription is expired, cancelled, or never existed.
 
+              const serverPayments = Array.isArray(res.payments)
+                ? res.payments.map((p) => ({
+                    id: p.id,
+                    plan: p.plan,
+                    amount: p.formattedAmount || `₹${Number(p.amount || 0).toLocaleString("en-IN")}`,
+                    date: p.date
+                      ? new Date(p.date).toLocaleDateString("en-GB", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })
+                      : "",
+                    status: p.status || "Success",
+                  }))
+                : null;
+
               const updated = {
                 ...prev,
                 currentPlan: tierCapitalized,
@@ -188,6 +204,7 @@ export default function Plans() {
                     })
                   : prev.validUntil,
                 totalBills: rawTier === "FREE" ? 100 : "Unlimited",
+                ...(serverPayments ? { payments: serverPayments } : {}),
               };
 
               localStorage.setItem("bilzet_subscription", JSON.stringify(updated));
@@ -540,9 +557,9 @@ export default function Plans() {
               billingCycle: effectiveCycle,
             });
 
-            if (verifyRes?.success || verifyRes?.subscription) {
+            const activatedSub = verifyRes?.subscription || (verifyRes?.planTier ? verifyRes : null);
+            if (verifyRes?.success || activatedSub) {
               setPaymentSuccess(true);
-              const activatedSub = verifyRes.subscription;
               if (updateSubscription && activatedSub) {
                 updateSubscription(activatedSub);
               }
@@ -578,10 +595,11 @@ export default function Plans() {
                     }),
                     status: "Success",
                   },
-                  ...subData.payments,
+                  ...(subData.payments || []),
                 ],
               };
               saveSubData(updated);
+              subscriptionApi.getStatus().catch(() => {});
 
               setTimeout(() => {
                 setPaymentSuccess(false);
@@ -1155,12 +1173,26 @@ export default function Plans() {
       {/* ══════════════════════════════════════════════════
           7. FOOTER
       ══════════════════════════════════════════════════ */}
-      <div className="pt-2 flex flex-col sm:flex-row items-center justify-between text-xs text-[#7C7F8A] gap-2 border-t border-[#E7E8EC]">
+      <div className="pt-3 flex flex-col sm:flex-row items-center justify-between text-xs text-[#7C7F8A] gap-2 border-t border-[#E7E8EC]">
         <div>
           &copy; 2026 <strong>Garden Greens Private Limited</strong>. All rights reserved.
         </div>
-        <div>
-          BILZET &middot; A product of Garden Greens
+        <div className="flex flex-wrap items-center gap-4 font-medium">
+          <Link to="/about-us" className="hover:text-[#111318] transition">
+            About Us
+          </Link>
+          <Link to="/contact-us" className="hover:text-[#111318] transition">
+            Contact Us
+          </Link>
+          <Link to="/privacy-policy" className="hover:text-[#111318] transition">
+            Privacy Policy
+          </Link>
+          <Link to="/terms-and-conditions" className="hover:text-[#111318] transition">
+            Terms &amp; Conditions
+          </Link>
+          <Link to="/refund-policy" className="hover:text-[#111318] transition">
+            Refund &amp; Cancellation Policy
+          </Link>
         </div>
       </div>
 
