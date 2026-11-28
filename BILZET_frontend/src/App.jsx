@@ -1,4 +1,3 @@
-import { BrowserRouter } from "react-router-dom";
 import { useEffect } from "react";
 import { useAuth } from "./store/auth";
 import AppRoutes from "./routes/AppRoutes";
@@ -14,9 +13,9 @@ export default function App() {
   }, [bootstrap]);
 
   return (
-    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+    <>
       {hasClerk && <ClerkAuthSync />}
       <AppRoutes />
-    </BrowserRouter>
+    </>
   );
 }

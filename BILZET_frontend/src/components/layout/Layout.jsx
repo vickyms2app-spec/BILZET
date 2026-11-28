@@ -77,7 +77,7 @@ import NotificationBell from "../common/NotificationBell";
 import KeyboardShortcutsModal from "../common/KeyboardShortcutsModal";
 import NewBillButton from "../common/NewBillButton";
 
-export const caMainNavItems = [
+const caMainNavItems = [
   { label: "CA Dashboard", path: "/ca-portal/dashboard", icon: LayoutGrid },
   { label: "Clients", path: "/ca-portal/clients", icon: Building2 },
   { label: "GST & Tax", path: "/ca-portal/gst", icon: Percent },
@@ -85,12 +85,12 @@ export const caMainNavItems = [
   { label: "Documents", path: "/ca-portal/documents", icon: FolderCheck },
 ];
 
-export const caBottomNavItems = [
+const caBottomNavItems = [
   { label: "Refer & Earn", path: "/ca-portal/referral", icon: Gift },
   { label: "Settings", path: "/ca-portal/settings", icon: Settings },
 ];
 
-export const caNavSections = [
+const caNavSections = [
   {
     title: "",
     key: "ca_main",

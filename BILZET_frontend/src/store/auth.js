@@ -12,6 +12,11 @@ export const useAuth = create((set) => ({
       localStorage.getItem("bilzet_access_token") ||
       localStorage.getItem("token") ||
       "";
+    console.log("[AuthDebug][bootstrap] start", {
+      hasLocalToken: Boolean(token),
+      hasClerkSession: Boolean(typeof window !== "undefined" && window.Clerk?.session),
+      path: typeof window !== "undefined" ? window.location.pathname : "",
+    });
     try {
 
       if (!token && typeof window !== "undefined" && window.Clerk?.session) {
@@ -27,41 +32,11 @@ export const useAuth = create((set) => ({
       }
 
       if (!token) {
+        console.log("[AuthDebug][bootstrap] no token -> user: null, loading: false");
         return set({ user: null, loading: false });
       }
 
-      // If Clerk is active, immediately resolve user identity to prevent UI freeze.
-      // IMPORTANT: Plan is always FREE until the backend /auth/me call confirms otherwise.
-      // Never hardcode a paid plan tier here — the backend is the single source of truth.
-      if (typeof window !== "undefined" && window.Clerk?.user) {
-        const cu = window.Clerk.user;
-        const email = cu.primaryEmailAddress?.emailAddress || cu.emailAddresses?.[0]?.emailAddress;
-        const name = cu.fullName || `${cu.firstName || ''} ${cu.lastName || ''}`.trim() || 'Clerk User';
-        const isSuper = email === 'vickyms2app@gmail.com' || email === 'admin@bilzet.com' || email === 'vicky@bilzet.com';
-        set({
-          user: {
-            id: cu.id,
-            name,
-            email,
-            role: isSuper ? "SUPER_ADMIN" : "NONE",
-            isOwner: isSuper,
-            isActive: true,
-            // Always default to FREE — the /auth/me response will set the real plan.
-            subscription: {
-              planTier: "FREE",
-              planName: "Free Starter",
-              status: "ACTIVE",
-              isActive: true,
-              isUnlimited: false,
-              maxSubUsers: 0,
-            },
-            currentPlan: "FREE",
-          },
-          loading: false,
-        });
-      }
-
-      // Add a 6-second timeout so the UI never hangs on slow network
+      // Add a 12-second timeout so the UI never hangs on slow network
       const mePromise = authApi.me();
       const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error("Auth check timed out")), 12000)
@@ -224,6 +199,10 @@ export const useAuth = create((set) => ({
   },
 
   async syncClerkUser(clerkUser, token) {
+    console.log("[AuthDebug][syncClerkUser] start", {
+      clerkId: clerkUser?.id,
+      hasToken: Boolean(token),
+    });
     if (!clerkUser) return null;
     const email =
       clerkUser?.primaryEmailAddress?.emailAddress ||
@@ -275,6 +254,23 @@ export const useAuth = create((set) => ({
         accessToken: token,
         refreshToken: null,
       };
+    }
+
+    // Normalize subscription and currentPlan consistently
+    if (data?.user) {
+      const sub = data.user.subscription || {
+        planTier: "FREE",
+        planName: "Free Starter",
+        status: "ACTIVE",
+        isActive: true,
+        isUnlimited: false,
+        maxSubUsers: 0,
+        expiresAt: null,
+      };
+      data.user.subscription = sub;
+      const tier = String(sub.planTier || data.user.currentPlan || "FREE").toUpperCase();
+      const isValidPaidTier = ["PRO", "PREMIUM", "ENTERPRISE"].includes(tier) && sub.isActive !== false;
+      data.user.currentPlan = isValidPaidTier ? tier : "FREE";
     }
 
     // CRITICAL: Always prioritize the backend's persistent 7-day JWT accessToken

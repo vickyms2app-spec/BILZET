@@ -136,12 +136,36 @@ import { useAuth as useClerkAuth } from "@clerk/clerk-react";
 
 import { hasClerk } from "../config/clerk";
 
-function RootRedirect() {
+function ClerkRootRedirect() {
+  const { user, loading } = useAuth();
+  const { isLoaded: isClerkLoaded, isSignedIn } = useClerkAuth();
+
+  console.log("[AuthDebug][ClerkRootRedirect]", {
+    isClerkLoaded,
+    isSignedIn,
+    loading,
+    hasUser: Boolean(user),
+    userRole: user?.role || null,
+  });
+
+  if (!isClerkLoaded || (loading && !user) || (isSignedIn && !user)) {
+    return <AuthLoadingScreen />;
+  }
+  if (!user && !isSignedIn) {
+    console.warn("[AuthDebug][ClerkRootRedirect] redirecting to /sign-in");
+    return <Navigate to="/sign-in" replace />;
+  }
+  return <Navigate to={getWorkspaceRedirectPath(user) || "/dashboard"} replace />;
+}
+
+function StandardRootRedirect() {
   const { user, loading } = useAuth();
   if (loading) return <AuthLoadingScreen />;
   if (!user) return <Navigate to="/sign-in" replace />;
-  return <Navigate to={getWorkspaceRedirectPath(user)} replace />;
+  return <Navigate to={getWorkspaceRedirectPath(user) || "/dashboard"} replace />;
 }
+
+const RootRedirect = hasClerk ? ClerkRootRedirect : StandardRootRedirect;
 
 function ClerkProtectedWrapper({ children, roles, permission, minPlan, featureKey }) {
   const { user, loading: authLoading } = useAuth();
@@ -150,21 +174,32 @@ function ClerkProtectedWrapper({ children, roles, permission, minPlan, featureKe
   const location = useLocation();
   const currentPath = location.pathname;
 
-  // Wait only if: auth is still loading AND we have no local user yet
-  if (authLoading && !user) {
+  console.log("[AuthDebug][ClerkProtectedWrapper]", {
+    currentPath,
+    isClerkLoaded,
+    isSignedIn,
+    authLoading,
+    hasUser: Boolean(user),
+    userRole: user?.role || null,
+    businessId: user?.businessId || null,
+  });
+
+  // Wait for Clerk and auth bootstrap before deciding whether a session exists
+  if (!isClerkLoaded || (authLoading && !user)) {
     return <AuthLoadingScreen />;
   }
 
   // Clerk is still loading but we already have a local user — proceed immediately
   // (local JWT auth does not require Clerk to be fully loaded)
-  const effectivelySignedIn = isSignedIn || Boolean(user);
+  const effectivelySignedIn = Boolean(isSignedIn) || Boolean(user);
 
   // No session at all
   if (!effectivelySignedIn) {
+    console.warn("[AuthDebug][ClerkProtectedWrapper] redirecting to /sign-in (not effectivelySignedIn)");
     return <Navigate to="/sign-in" replace />;
   }
 
-  // Prevent null-property crashes while user profile is syncing
+  // Clerk is signed in and ClerkAuthSync is syncing the backend user profile
   if (!user) {
     return <AuthLoadingScreen />;
   }
@@ -357,8 +392,15 @@ function RegisterShopGuard() {
 
 function AuthenticatedOnly({ children }) {
   const { user, loading } = useAuth();
-  if (loading) return <AuthLoadingScreen />;
-  if (!user) return <Navigate to="/sign-in" replace />;
+  const { isLoaded: isClerkLoaded, isSignedIn } = useClerkAuth();
+  if (hasClerk && !user && (!isClerkLoaded || loading || isSignedIn)) {
+    return <AuthLoadingScreen />;
+  }
+  if (!hasClerk && loading) return <AuthLoadingScreen />;
+  if (!user) {
+    console.warn("[AuthDebug][AuthenticatedOnly] redirecting to /sign-in");
+    return <Navigate to="/sign-in" replace />;
+  }
   return children;
 }
 

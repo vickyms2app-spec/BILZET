@@ -1,5 +1,6 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
+import { BrowserRouter, useNavigate } from "react-router-dom";
 
 import App from "./App";
 import ErrorBoundary from "./components/common/ErrorBoundary";
@@ -208,6 +209,26 @@ function ClerkConfigurationError({ diagnostics }) {
   );
 }
 
+function ClerkProviderWithRouter({ children }) {
+  const navigate = useNavigate();
+
+  return (
+    <ClerkProvider
+      publishableKey={CLERK_PUBLISHABLE_KEY}
+      routerPush={(to) => navigate(to)}
+      routerReplace={(to) => navigate(to, { replace: true })}
+      signInUrl="/sign-in"
+      signUpUrl="/sign-up"
+      signInFallbackRedirectUrl="/dashboard"
+      signUpFallbackRedirectUrl="/dashboard"
+      afterSignOutUrl="/sign-in"
+      fallback={<AuthLoadingScreen message="Initializing BILZET Workspace…" />}
+    >
+      {children}
+    </ClerkProvider>
+  );
+}
+
 if (container) {
   const root = createRoot(container);
 
@@ -215,17 +236,11 @@ if (container) {
     <React.StrictMode>
       <ErrorBoundary>
         {hasClerk ? (
-          <ClerkProvider
-            publishableKey={CLERK_PUBLISHABLE_KEY}
-            signInUrl="/sign-in"
-            signUpUrl="/sign-up"
-            signInFallbackRedirectUrl="/dashboard"
-            signUpFallbackRedirectUrl="/dashboard"
-            afterSignOutUrl="/sign-in"
-            fallback={<AuthLoadingScreen message="Initializing BILZET Workspace…" />}
-          >
-            <App />
-          </ClerkProvider>
+          <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+            <ClerkProviderWithRouter>
+              <App />
+            </ClerkProviderWithRouter>
+          </BrowserRouter>
         ) : (
           <ClerkConfigurationError diagnostics={clerkDiagnostics} />
         )}
