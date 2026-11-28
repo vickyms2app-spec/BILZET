@@ -191,7 +191,10 @@ function ClerkProtectedWrapper({ children, roles, permission, minPlan, featureKe
 
   // Clerk is still loading but we already have a local user — proceed immediately
   // (local JWT auth does not require Clerk to be fully loaded)
-  const effectivelySignedIn = Boolean(isSignedIn) || Boolean(user);
+  const hasActiveClerkSession = Boolean(
+    isSignedIn || (typeof window !== "undefined" && window.Clerk?.session)
+  );
+  const effectivelySignedIn = hasActiveClerkSession || Boolean(user);
 
   // No session at all
   if (!effectivelySignedIn) {

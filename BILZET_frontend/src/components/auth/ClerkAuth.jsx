@@ -42,6 +42,7 @@ export function ClerkAuthSync() {
   const appUser = useAuth((state) => state.user);
 
   const syncedUserId = useRef(null);
+  const syncingUserId = useRef(null);
 
   const [syncError, setSyncError] = useState(null);
 
@@ -83,6 +84,7 @@ export function ClerkAuthSync() {
 
     if (!isSignedIn || !clerkUser) {
       syncedUserId.current = null;
+      syncingUserId.current = null;
       setSyncError(null);
       return;
     }
@@ -90,11 +92,14 @@ export function ClerkAuthSync() {
     const clerkUserId = clerkUser.id;
 
     // Prevent repeated synchronization for the same Clerk user
-    if (syncedUserId.current === clerkUserId) {
+    if (
+      syncedUserId.current === clerkUserId ||
+      syncingUserId.current === clerkUserId
+    ) {
       return;
     }
 
-    syncedUserId.current = clerkUserId;
+    syncingUserId.current = clerkUserId;
 
     async function synchronizeUser() {
       try {
@@ -121,11 +126,13 @@ export function ClerkAuthSync() {
           return;
         }
 
+        syncedUserId.current = clerkUserId;
         setSyncError(null);
 
         console.log(
-          "Clerk user synchronized successfully:",
-          clerkUserId
+          "[AuthDebug][ClerkAuthSync] Clerk user synchronized successfully:",
+          clerkUserId,
+          synchronizedUser
         );
 
         return synchronizedUser;
@@ -138,13 +145,17 @@ export function ClerkAuthSync() {
         syncedUserId.current = null;
 
         console.error(
-          "Clerk session synchronization failed:",
+          "[AuthDebug][ClerkAuthSync] Clerk session synchronization failed:",
           error
         );
 
         setSyncError(
           "Unable to connect to the server. Please try again later."
         );
+      } finally {
+        if (syncingUserId.current === clerkUserId) {
+          syncingUserId.current = null;
+        }
       }
     }
 
@@ -152,6 +163,9 @@ export function ClerkAuthSync() {
 
     return () => {
       cancelled = true;
+      if (syncingUserId.current === clerkUserId) {
+        syncingUserId.current = null;
+      }
     };
   }, [
     isLoaded,
